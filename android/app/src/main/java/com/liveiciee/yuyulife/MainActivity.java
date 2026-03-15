@@ -1,4 +1,4 @@
-package com.liveiciee.yuyucamp;
+package com.liveiciee.yuyulife;
 
 import com.getcapacitor.BridgeActivity;
 
