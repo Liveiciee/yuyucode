@@ -2546,6 +2546,40 @@ async function callClaudeAPI(systemPrompt, userMessage, history=[], signal=null,
   }
 }
 
+
+// ─── GLOBAL ANTHROPIC FETCH INTERCEPTOR ──────────────────────────────────────
+// Semua fetch ke api.anthropic.com otomatis fallback ke callLocalAI jika gagal
+const __nativeFetch = window.fetch.bind(window);
+window.fetch = async function(url, opts) {
+  if (typeof url === 'string' && url.includes('api.anthropic.com/v1/messages')) {
+    try {
+      const resp = await __nativeFetch(url, opts);
+      if (resp.ok) return resp;
+      throw new Error('HTTP ' + resp.status);
+    } catch(e) {
+      try {
+        const body = JSON.parse(opts?.body || '{}');
+        const system = body.system || '';
+        const msgs = body.messages || [];
+        const lastUser = [...msgs].reverse().find(m => m.role === 'user')?.content || '';
+        const history = msgs.slice(0, -1);
+        const result = await callLocalAI(system, lastUser, history);
+        const text = typeof result === 'string' ? result : (result.text || 'Yuyu offline... 🌙
+MOOD:rindu
+ACTION:none');
+        const fakeData = { content: [{ type: 'text', text }], stop_reason: 'end_turn' };
+        return new Response(JSON.stringify(fakeData), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      } catch(e2) {
+        const fakeData = { content: [{ type: 'text', text: 'Yuyu sedang offline... 🌙
+MOOD:rindu
+ACTION:none' }], stop_reason: 'end_turn' };
+        return new Response(JSON.stringify(fakeData), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+    }
+  }
+  return __nativeFetch(url, opts);
+};
+// ─────────────────────────────────────────────────────────────────────────────
 const MOOD_PALETTE = {
   biasa:     {sky:"from-slate-950 via-rose-950 to-slate-900",    tint:"rgba(180,100,130,.0)", border:C.A5A2,glow:"rgba(200,130,150,.06)",accent:"var(--yui-accent-soft)"},
   senang:    {sky:"from-rose-950 via-pink-950 to-slate-900",     tint:"rgba(251,113,133,.07)",border:"rgba(251,113,133,.2)", glow:"rgba(251,113,133,.15)",accent:"var(--yui-accent-color)"},
