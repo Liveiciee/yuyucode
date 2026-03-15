@@ -2564,13 +2564,13 @@ window.fetch = async function(url, opts) {
         const lastUser = [...msgs].reverse().find(m => m.role === 'user')?.content || '';
         const history = msgs.slice(0, -1);
         const result = await callLocalAI(system, lastUser, history);
-        const text = typeof result === 'string' ? result : (result.text || 'Yuyu offline... 
+        const text = typeof result === 'string' ? result : (result.text || 'Yuyu offline...\nMOOD:rindu\nACTION:none');
 MOOD:rindu
 ACTION:none');
         const fakeData = { content: [{ type: 'text', text }], stop_reason: 'end_turn' };
         return new Response(JSON.stringify(fakeData), { status: 200, headers: { 'Content-Type': 'application/json' } });
       } catch(e2) {
-        const fakeData = { content: [{ type: 'text', text: 'Yuyu sedang offline... 
+        const fakeData = { content: [{ type: 'text', text: 'Yuyu sedang offline...\nMOOD:rindu\nACTION:none' }], stop_reason: 'end_turn' };
 MOOD:rindu
 ACTION:none' }], stop_reason: 'end_turn' };
         return new Response(JSON.stringify(fakeData), { status: 200, headers: { 'Content-Type': 'application/json' } });
