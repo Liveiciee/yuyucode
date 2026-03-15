@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef, useReducer, useCallback, useMemo } from "react";
 import { Preferences } from "@capacitor/preferences";
-import * as webllm from "@mlc-ai/web-llm";
 
 // ─── window.storage → Capacitor Preferences shim ─────────────────────────────
 // Menjaga semua kode lama (window.storage.get/set/delete) tetap berjalan
@@ -2480,6 +2479,8 @@ async function initLocalAI(onProgress) {
   if (_llmLoading) return null;
   _llmLoading = true;
   try {
+    const webllm = await import("@mlc-ai/web-llm").catch(() => null);
+    if (!webllm) throw new Error("WebLLM tidak tersedia di perangkat ini");
     _llmEngine = await webllm.CreateMLCEngine("Phi-3.5-mini-instruct-q4f16_1-MLC", {
       initProgressCallback: (p) => {
         if (onProgress) onProgress(p.text, p.progress);
