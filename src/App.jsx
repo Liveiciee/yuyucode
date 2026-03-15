@@ -28487,6 +28487,12 @@ function LLMDownloadToast() {
 }
 
 export default function App() {
+  React.useEffect(() => {
+    // Pre-load model AI offline di background
+    setTimeout(() => {
+      initLocalAI().catch(e => console.warn('[App] initLocalAI failed:', e?.message));
+    }, 3000); // delay 3 detik biar app render dulu
+  }, []);
   try {
     return (
       <YuyuErrorBoundary><LLMDownloadToast />
