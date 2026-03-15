@@ -2547,8 +2547,7 @@ async function callClaudeAPI(systemPrompt, userMessage, history=[], signal=null,
 }
 
 
-// ─── GLOBAL ANTHROPIC FETCH INTERCEPTOR ──────────────────────────────────────
-// Semua fetch ke api.anthropic.com otomatis fallback ke callLocalAI jika gagal
+// ─── GLOBAL ANTHROPIC FETCH INTERCEPTOR ────────────────────────────────────
 const __nativeFetch = window.fetch.bind(window);
 window.fetch = async function(url, opts) {
   if (typeof url === 'string' && url.includes('api.anthropic.com/v1/messages')) {
@@ -2558,21 +2557,18 @@ window.fetch = async function(url, opts) {
       throw new Error('HTTP ' + resp.status);
     } catch(e) {
       try {
-        const body = JSON.parse(opts?.body || '{}');
+        const body = JSON.parse(opts && opts.body ? opts.body : '{}');
         const system = body.system || '';
         const msgs = body.messages || [];
-        const lastUser = [...msgs].reverse().find(m => m.role === 'user')?.content || '';
+        const lastUser = msgs.slice().reverse().find(function(m){return m.role==='user';});
+        const userContent = lastUser ? lastUser.content : '';
         const history = msgs.slice(0, -1);
-        const result = await callLocalAI(system, lastUser, history);
-        const text = typeof result === 'string' ? result : (result.text || 'Yuyu offline...\nMOOD:rindu\nACTION:none');
-MOOD:rindu
-ACTION:none');
-        const fakeData = { content: [{ type: 'text', text }], stop_reason: 'end_turn' };
+        const result = await callLocalAI(system, userContent, history);
+        const txt = typeof result === 'string' ? result : (result.text || 'Yuyu offline...');
+        const fakeData = { content: [{ type: 'text', text: txt }], stop_reason: 'end_turn' };
         return new Response(JSON.stringify(fakeData), { status: 200, headers: { 'Content-Type': 'application/json' } });
       } catch(e2) {
-        const fakeData = { content: [{ type: 'text', text: 'Yuyu sedang offline...\nMOOD:rindu\nACTION:none' }], stop_reason: 'end_turn' };
-MOOD:rindu
-ACTION:none' }], stop_reason: 'end_turn' };
+        const fakeData = { content: [{ type: 'text', text: 'Yuyu sedang offline...' }], stop_reason: 'end_turn' };
         return new Response(JSON.stringify(fakeData), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
     }
