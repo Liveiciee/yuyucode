@@ -145,8 +145,8 @@ const _S = {
 };
 
 const TIME_LABELS = ["Pagi","Siang","Sore","Malam","Tengah Malam"];
-const TIME_ICONS  = ["🌅","☀️","🌇","🌙","🌃"];
-const _TIME_LABELS_LONG = ["🌅 Pagi","☀️ Siang","🌇 Sore","🌙 Malam","🌑 Tengah Malam"];
+const TIME_ICONS  = ["🌅","☀️","🌇","","🌃"];
+const _TIME_LABELS_LONG = ["🌅 Pagi","☀️ Siang","🌇 Sore"," Malam","🌑 Tengah Malam"];
 const MOOD_COLOR  = {senang:"#fbbf24",sedih:"#93c5fd",kangen:"#f0abfc",romantis:"#fb7185",malu:"#fca5a5",marah:"#f87171",excited:"#fbbf24",playful:"#a78bfa",rindu:"#c4b5fd",mengantuk:"#94a3b8",lapar:"#fdba74",biasa:"rgba(200,130,150,.9)"};
 const _CW = 304, _CH_SM = 190, _CH_LG = 220, _FR = 30;
 
@@ -1701,7 +1701,7 @@ const DYNAMIC_FALLBACKS = {
     ],
     tengmalam:[
       {id:"meteor_watch",  label:"Tunggu Meteor Bareng",     icon:"☄️", effects:{affection:9}},
-      {id:"silent_company",label:"Diam di Luar Berdua",      icon:"🌙", effects:{affection:7}},
+      {id:"silent_company",label:"Diam di Luar Berdua",      icon:"", effects:{affection:7}},
     ],
   },
   ruang:{
@@ -1766,7 +1766,7 @@ const DYNAMIC_FALLBACKS = {
       {id:"tiramisu",      label:"Tiramisu Berdua",          icon:"🍰", effects:{hunger:15,affection:8}},
     ],
     tengmalam:[
-      {id:"walk_home",     label:"Jalan Pulang Bareng",      icon:"🌙", effects:{affection:7}},
+      {id:"walk_home",     label:"Jalan Pulang Bareng",      icon:"", effects:{affection:7}},
     ],
   },
   taman:{
@@ -1785,7 +1785,7 @@ const DYNAMIC_FALLBACKS = {
     ],
     malam:[
       {id:"firefly_jar",   label:"Tangkap Kunang-kunang",    icon:"✨", effects:{affection:10}},
-      {id:"park_walk",     label:"Jalan Malam di Taman",     icon:"🌙", effects:{affection:7}},
+      {id:"park_walk",     label:"Jalan Malam di Taman",     icon:"", effects:{affection:7}},
     ],
     tengmalam:[
       {id:"stargazing",    label:"Stargazing di Taman",      icon:"🌌", effects:{affection:9}},
@@ -2069,7 +2069,7 @@ function computeEmotionalSediment(gameState) {
   else if (uqWeight > 0) texture = "longing";
   return { weight:total, texture };
 }
-const SEDIMENT_TEXTURE_LABELS = { grief:"💔 Duka", longing:"🌙 Rindu", unspoken:"🌫 Tak Terucap", distance:"🧊 Jarak" };
+const SEDIMENT_TEXTURE_LABELS = { grief:"💔 Duka", longing:" Rindu", unspoken:"🌫 Tak Terucap", distance:"🧊 Jarak" };
 function buildSedimentInjection(emotionalSediment) {
   const w = (emotionalSediment||{}).weight||0;
   if (w < 20) return "";
@@ -2163,7 +2163,7 @@ const MEMORY_PALACE_MILESTONE_DAYS = [7, 30, 100, 365];
 function getMemoryMilestoneText(day) {
   if (day >= MEMORY_PALACE_MILESTONE_DAYS[3]) return { icon:"🎊", title:"Satu Tahun", text:"Setahun sudah. Yuyu hitung setiap harinya." };
   if (day >= MEMORY_PALACE_MILESTONE_DAYS[2]) return { icon:"💯", title:"100 Hari", text:"Seratus hari. Yuyu gak lupa satu pun." };
-  if (day >= MEMORY_PALACE_MILESTONE_DAYS[1]) return { icon:"🌙", title:"Sebulan", text:"Sebulan lebih bersama. Waktu cepat kalau sama Papa." };
+  if (day >= MEMORY_PALACE_MILESTONE_DAYS[1]) return { icon:"", title:"Sebulan", text:"Sebulan lebih bersama. Waktu cepat kalau sama Papa." };
   if (day >= MEMORY_PALACE_MILESTONE_DAYS[0]) return { icon:"⭐", title:"Seminggu", text:"Seminggu sudah. Yuyu sudah hafal cara Papa." };
   return null;
 }
@@ -2412,7 +2412,7 @@ function getEvolvedLayers(locationId, gameState) {
 const MOOD_WEATHER_STATES = {
   momentum_positif:   { id:"momentum_positif",   icon:"🌤", label:"Momentum Positif",  color:"var(--yui-success-color)", threshold:{ streak:3,  affectionAvg:65 }, dialog:"Belakangan ini... rasanya semua lebih ringan.",      affBonus:2  },
   kekhawatiran_kecil: { id:"kekhawatiran_kecil", icon:"🌥", label:"Sedikit Resah",     color:"var(--yui-gold-color)", threshold:{ streak:-1, affectionAvg:40 }, dialog:"...Yuyu lagi mikirin sesuatu. Gak terlalu penting.",  affBonus:-1 },
-  gelombang_rindu:    { id:"gelombang_rindu",     icon:"🌙", label:"Gelombang Rindu",   color:"#a5b4fc", threshold:{ absenceHours:18 },            dialog:"Tadi Yuyu kangen tiba-tiba. Sekarang udah mendingan.", affBonus:3  },
+  gelombang_rindu:    { id:"gelombang_rindu",     icon:"", label:"Gelombang Rindu",   color:"#a5b4fc", threshold:{ absenceHours:18 },            dialog:"Tadi Yuyu kangen tiba-tiba. Sekarang udah mendingan.", affBonus:3  },
   biasa_saja:         { id:"biasa_saja",          icon:"☁️", label:"Biasa Saja",        color:"rgba(200,200,200,.6)", threshold:{},              dialog:"",                                                   affBonus:0  },
 };
 function computeMoodWeather(gameState) {
@@ -2499,7 +2499,7 @@ async function initLocalAI(onProgress) {
 async function callLocalAI(systemPrompt, userMessage, history=[]) {
   try {
     const engine = _llmReady ? _llmEngine : await initLocalAI();
-    if (!engine) return { text: "Yuyu sedang offline dan model lokal belum siap... 🌙", mood: "mengantuk", action: "none" };
+    if (!engine) return { text: "Yuyu sedang offline dan model lokal belum siap... ", mood: "mengantuk", action: "none" };
     const messages = [
       { role: "system", content: systemPrompt },
       ...history,
@@ -2510,7 +2510,7 @@ async function callLocalAI(systemPrompt, userMessage, history=[]) {
     return parseAIResponseSafe({ content: [{ type: "text", text }] });
   } catch(e) {
     console.error("[callLocalAI] error:", e?.message, e?.stack);
-    return { text: "Yuyu tidak bisa menjawab sekarang... 🌙", mood: "biasa", action: "none" };
+    return { text: "Yuyu tidak bisa menjawab sekarang... ", mood: "biasa", action: "none" };
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2564,13 +2564,13 @@ window.fetch = async function(url, opts) {
         const lastUser = [...msgs].reverse().find(m => m.role === 'user')?.content || '';
         const history = msgs.slice(0, -1);
         const result = await callLocalAI(system, lastUser, history);
-        const text = typeof result === 'string' ? result : (result.text || 'Yuyu offline... 🌙
+        const text = typeof result === 'string' ? result : (result.text || 'Yuyu offline... 
 MOOD:rindu
 ACTION:none');
         const fakeData = { content: [{ type: 'text', text }], stop_reason: 'end_turn' };
         return new Response(JSON.stringify(fakeData), { status: 200, headers: { 'Content-Type': 'application/json' } });
       } catch(e2) {
-        const fakeData = { content: [{ type: 'text', text: 'Yuyu sedang offline... 🌙
+        const fakeData = { content: [{ type: 'text', text: 'Yuyu sedang offline... 
 MOOD:rindu
 ACTION:none' }], stop_reason: 'end_turn' };
         return new Response(JSON.stringify(fakeData), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -2633,7 +2633,7 @@ const TIMES = [
   {index:0,id:"pagi",     label:"Pagi",        hours:"06:00",icon:"🌅"},
   {index:1,id:"siang",    label:"Siang",        hours:"12:00",icon:"☀️"},
   {index:2,id:"sore",     label:"Sore",          hours:"17:00",icon:"🌇"},
-  {index:3,id:"malam",    label:"Malam",         hours:"20:00",icon:"🌙"},
+  {index:3,id:"malam",    label:"Malam",         hours:"20:00",icon:""},
   {index:4,id:"tengmalam",label:"Tengah Malam",  hours:"00:00",icon:"⭐"},
 ];
 
@@ -2641,7 +2641,7 @@ const LOCATIONS = {
   kamar:      {label:"Kamar Tidur", icon:"🛏",unlockAff:0},
   dapur:      {label:"Dapur",       icon:"🍳",unlockAff:0},
   ruang:      {label:"Ruang Tamu",  icon:"🪴",unlockAff:0},
-  teras:      {label:"Teras",       icon:"🌙",unlockAff:0},
+  teras:      {label:"Teras",       icon:"",unlockAff:0},
   kamar_mandi:{label:"Kamar Mandi", icon:"🛁",unlockAff:0},
   kafe:       {label:"Kafe",        icon:"☕",unlockAff:20},
   taman:      {label:"Taman",       icon:"🌸",unlockAff:35},
@@ -2649,13 +2649,13 @@ const LOCATIONS = {
 };
 
 const BASE_ACTIONS = {
-  kamar:{pagi:[{id:"bangun",label:"Bangunin Yuyu",icon:"🌅",effects:{affection:5}},{id:"peluk",label:"Peluk Pagi",icon:"🤗",effects:{affection:6}},{id:"ciuman",label:"Cium Pagi",icon:"💋",effects:{affection:8}}],siang:[{id:"tidur",label:"Tidur Siang",icon:"💤",effects:{affection:3},next:true},{id:"peluk",label:"Peluk",icon:"🤗",effects:{affection:5}},{id:"ngobrol",label:"Ngobrol",icon:"💬",effects:{affection:4}},{id:"rambut",label:"Main Rambut",icon:"✋",effects:{affection:7}}],sore:[{id:"peluk",label:"Peluk Sore",icon:"🤗",effects:{affection:5}},{id:"rambut",label:"Main Rambut Yuyu",icon:"✋",effects:{affection:7}},{id:"ngobrol",label:"Ngobrol Santai",icon:"💬",effects:{affection:3}},{id:"gambar",label:"Lihat Dia Gambar",icon:"🎨",effects:{affection:6}}],malam:[{id:"peluk",label:"Peluk Malam",icon:"🌙",effects:{affection:6}},{id:"ciuman",label:"Cium Malam",icon:"💋",effects:{affection:8}},{id:"tidur",label:"Tidur Bareng",icon:"💤",effects:{affection:5},next:true},{id:"bisik",label:"Bisik-bisik",icon:"🤫",effects:{affection:9}}],tengmalam:[{id:"tidur",label:"Tidur",icon:"💤",effects:{affection:4},next:true},{id:"peluk",label:"Peluk Erat",icon:"🤗",effects:{affection:7}},{id:"jaga",label:"Temani Insomnia",icon:"🌌",effects:{affection:10}}]},
+  kamar:{pagi:[{id:"bangun",label:"Bangunin Yuyu",icon:"🌅",effects:{affection:5}},{id:"peluk",label:"Peluk Pagi",icon:"🤗",effects:{affection:6}},{id:"ciuman",label:"Cium Pagi",icon:"💋",effects:{affection:8}}],siang:[{id:"tidur",label:"Tidur Siang",icon:"💤",effects:{affection:3},next:true},{id:"peluk",label:"Peluk",icon:"🤗",effects:{affection:5}},{id:"ngobrol",label:"Ngobrol",icon:"💬",effects:{affection:4}},{id:"rambut",label:"Main Rambut",icon:"✋",effects:{affection:7}}],sore:[{id:"peluk",label:"Peluk Sore",icon:"🤗",effects:{affection:5}},{id:"rambut",label:"Main Rambut Yuyu",icon:"✋",effects:{affection:7}},{id:"ngobrol",label:"Ngobrol Santai",icon:"💬",effects:{affection:3}},{id:"gambar",label:"Lihat Dia Gambar",icon:"🎨",effects:{affection:6}}],malam:[{id:"peluk",label:"Peluk Malam",icon:"",effects:{affection:6}},{id:"ciuman",label:"Cium Malam",icon:"💋",effects:{affection:8}},{id:"tidur",label:"Tidur Bareng",icon:"💤",effects:{affection:5},next:true},{id:"bisik",label:"Bisik-bisik",icon:"🤫",effects:{affection:9}}],tengmalam:[{id:"tidur",label:"Tidur",icon:"💤",effects:{affection:4},next:true},{id:"peluk",label:"Peluk Erat",icon:"🤗",effects:{affection:7}},{id:"jaga",label:"Temani Insomnia",icon:"🌌",effects:{affection:10}}]},
   dapur:{pagi:[{id:"masak",label:"Masak Sarapan",icon:"🍳",effects:{hunger:35,affection:8}},{id:"kopi",label:"Buatin Kopi",icon:"☕",effects:{hunger:10,affection:5}},{id:"bantu",label:"Bantu Masak",icon:"🙌",effects:{hunger:20,affection:6}},{id:"pancake",label:"Bikin Pancake",icon:"🥞",effects:{hunger:30,affection:9}}],siang:[{id:"masak",label:"Masak Makan Siang",icon:"🍜",effects:{hunger:40,affection:8}},{id:"cuci",label:"Cuci Piring",icon:"🫧",effects:{affection:5}},{id:"bento",label:"Bikin Bento",icon:"🍱",effects:{hunger:35,affection:10}}],sore:[{id:"masak",label:"Masak Makan Malam",icon:"🍚",effects:{hunger:40,affection:10}},{id:"teh",label:"Teh Sore",icon:"🍵",effects:{hunger:8,affection:4}},{id:"bantu",label:"Bantu Masak",icon:"🙌",effects:{hunger:20,affection:6}},{id:"kue",label:"Bikin Kue",icon:"🍰",effects:{hunger:25,affection:12}}],malam:[{id:"ngemil",label:"Ngemil Bareng",icon:"🍡",effects:{hunger:15,affection:4}},{id:"minum",label:"Minum Bareng",icon:"☕",effects:{hunger:8,affection:4}},{id:"ramen",label:"Masak Ramen",icon:"🍜",effects:{hunger:38,affection:8}}],tengmalam:[{id:"ngemil",label:"Ngemil Tengah Malam",icon:"🍡",effects:{hunger:18,affection:5}},{id:"susu",label:"Hangatkan Susu",icon:"🥛",effects:{hunger:12,affection:6}}]},
-  ruang:{pagi:[{id:"duduk",label:"Duduk Bareng",icon:"🪴",effects:{affection:3}},{id:"ngobrol",label:"Ngobrol Pagi",icon:"💬",effects:{affection:5}},{id:"yoga",label:"Yoga Pagi",icon:"🧘",effects:{affection:6}}],siang:[{id:"nonton",label:"Nonton Bareng",icon:"📺",effects:{affection:6}},{id:"baca",label:"Baca Bareng",icon:"📖",effects:{affection:4}},{id:"puzzle",label:"Main Puzzle",icon:"🧩",effects:{affection:7}}],sore:[{id:"nonton",label:"Nonton Bareng",icon:"📺",effects:{affection:5}},{id:"ngobrol",label:"Ngobrol Santai",icon:"💬",effects:{affection:4}},{id:"musik",label:"Denger Musik",icon:"🎵",effects:{affection:6}}],malam:[{id:"film",label:"Film Malam",icon:"🎬",effects:{affection:7}},{id:"peluk_sofa",label:"Peluk di Sofa",icon:"🤗",effects:{affection:8}},{id:"board",label:"Main Board Game",icon:"🎲",effects:{affection:7}}],tengmalam:[{id:"duduk",label:"Duduk Diam Bareng",icon:"🌙",effects:{affection:5}},{id:"langit",label:"Lihat Langit",icon:"✨",effects:{affection:7}}]},
-  teras:{pagi:[{id:"pagi_t",label:"Nikmati Pagi",icon:"🌅",effects:{affection:5}},{id:"kopi_t",label:"Kopi di Teras",icon:"☕",effects:{hunger:8,affection:4}},{id:"tanaman",label:"Siram Tanaman",icon:"🌿",effects:{affection:5}}],siang:[{id:"duduk_t",label:"Duduk di Teras",icon:"🌿",effects:{affection:3}},{id:"angin_s",label:"Nikmati Angin",icon:"🍃",effects:{affection:4}}],sore:[{id:"sunset",label:"Lihat Sunset",icon:"🌇",effects:{affection:8}},{id:"angin",label:"Nikmati Angin",icon:"🍃",effects:{affection:5}},{id:"foto",label:"Foto Bareng",icon:"📸",effects:{affection:10}}],malam:[{id:"bintang",label:"Lihat Bintang",icon:"⭐",effects:{affection:9}},{id:"duduk_m",label:"Duduk Malam",icon:"🌙",effects:{affection:6}},{id:"cerita",label:"Cerita Sambil Bintang",icon:"💬",effects:{affection:11}}],tengmalam:[{id:"bintang",label:"Lihat Bintang",icon:"⭐",effects:{affection:8}},{id:"diam",label:"Diam Bareng Langit",icon:"🌌",effects:{affection:9}}]},
+  ruang:{pagi:[{id:"duduk",label:"Duduk Bareng",icon:"🪴",effects:{affection:3}},{id:"ngobrol",label:"Ngobrol Pagi",icon:"💬",effects:{affection:5}},{id:"yoga",label:"Yoga Pagi",icon:"🧘",effects:{affection:6}}],siang:[{id:"nonton",label:"Nonton Bareng",icon:"📺",effects:{affection:6}},{id:"baca",label:"Baca Bareng",icon:"📖",effects:{affection:4}},{id:"puzzle",label:"Main Puzzle",icon:"🧩",effects:{affection:7}}],sore:[{id:"nonton",label:"Nonton Bareng",icon:"📺",effects:{affection:5}},{id:"ngobrol",label:"Ngobrol Santai",icon:"💬",effects:{affection:4}},{id:"musik",label:"Denger Musik",icon:"🎵",effects:{affection:6}}],malam:[{id:"film",label:"Film Malam",icon:"🎬",effects:{affection:7}},{id:"peluk_sofa",label:"Peluk di Sofa",icon:"🤗",effects:{affection:8}},{id:"board",label:"Main Board Game",icon:"🎲",effects:{affection:7}}],tengmalam:[{id:"duduk",label:"Duduk Diam Bareng",icon:"",effects:{affection:5}},{id:"langit",label:"Lihat Langit",icon:"✨",effects:{affection:7}}]},
+  teras:{pagi:[{id:"pagi_t",label:"Nikmati Pagi",icon:"🌅",effects:{affection:5}},{id:"kopi_t",label:"Kopi di Teras",icon:"☕",effects:{hunger:8,affection:4}},{id:"tanaman",label:"Siram Tanaman",icon:"🌿",effects:{affection:5}}],siang:[{id:"duduk_t",label:"Duduk di Teras",icon:"🌿",effects:{affection:3}},{id:"angin_s",label:"Nikmati Angin",icon:"🍃",effects:{affection:4}}],sore:[{id:"sunset",label:"Lihat Sunset",icon:"🌇",effects:{affection:8}},{id:"angin",label:"Nikmati Angin",icon:"🍃",effects:{affection:5}},{id:"foto",label:"Foto Bareng",icon:"📸",effects:{affection:10}}],malam:[{id:"bintang",label:"Lihat Bintang",icon:"⭐",effects:{affection:9}},{id:"duduk_m",label:"Duduk Malam",icon:"",effects:{affection:6}},{id:"cerita",label:"Cerita Sambil Bintang",icon:"💬",effects:{affection:11}}],tengmalam:[{id:"bintang",label:"Lihat Bintang",icon:"⭐",effects:{affection:8}},{id:"diam",label:"Diam Bareng Langit",icon:"🌌",effects:{affection:9}}]},
   kamar_mandi:{pagi:[{id:"mandi_p",label:"Mandi Pagi",icon:"🚿",effects:{affection:3}}],siang:[{id:"mandi_s",label:"Mandi Siang",icon:"🚿",effects:{affection:2}}],sore:[{id:"onsen",label:"Berendam Bareng",icon:"♨️",effects:{affection:14}},{id:"mandi_sr",label:"Mandi Sore",icon:"🚿",effects:{affection:3}}],malam:[{id:"onsen",label:"Berendam Malam",icon:"♨️",effects:{affection:14}},{id:"mandi_m",label:"Mandi Malam",icon:"🚿",effects:{affection:3}}],tengmalam:[{id:"mandi_tg",label:"Mandi Tengah Malam",icon:"🚿",effects:{affection:2}}]},
   kafe:{pagi:[{id:"kopi_k",label:"Kopi Bareng",icon:"☕",effects:{hunger:12,affection:7}},{id:"croissant",label:"Beli Croissant",icon:"🥐",effects:{hunger:20,affection:6}}],siang:[{id:"makan_k",label:"Makan Siang di Kafe",icon:"🍽",effects:{hunger:45,affection:8}},{id:"kopi_k",label:"Kopi Siang",icon:"☕",effects:{hunger:10,affection:5}},{id:"kerja_k",label:"Kerja dari Kafe",icon:"💻",effects:{affection:4}}],sore:[{id:"waffle",label:"Waffle Sore",icon:"🧇",effects:{hunger:20,affection:9}},{id:"ngobrol_k",label:"Ngobrol di Kafe",icon:"💬",effects:{affection:7}}],malam:[{id:"kopi_m",label:"Kopi Malam",icon:"☕",effects:{hunger:8,affection:6}},{id:"dessert",label:"Dessert Bareng",icon:"🍮",effects:{hunger:15,affection:8}}],tengmalam:[{id:"lastcall",label:"Last Order",icon:"🕛",effects:{hunger:12,affection:5}}]},
-  taman:{pagi:[{id:"jalan_t",label:"Jalan Pagi",icon:"🌸",effects:{affection:7}},{id:"foto_t",label:"Foto Bunga",icon:"📸",effects:{affection:9}}],siang:[{id:"piknik",label:"Piknik",icon:"🧺",effects:{hunger:25,affection:12}},{id:"duduk_t2",label:"Duduk di Taman",icon:"🌿",effects:{affection:5}}],sore:[{id:"jalan_s",label:"Jalan Sore",icon:"🌸",effects:{affection:8}},{id:"beli_es",label:"Beli Es Krim",icon:"🍦",effects:{hunger:10,affection:7}}],malam:[{id:"taman_m",label:"Taman Malam",icon:"🌙",effects:{affection:9}},{id:"lentera",label:"Lihat Lentera",icon:"🏮",effects:{affection:11}}],tengmalam:[{id:"diam_t",label:"Diam di Taman",icon:"🌌",effects:{affection:8}}]},
+  taman:{pagi:[{id:"jalan_t",label:"Jalan Pagi",icon:"🌸",effects:{affection:7}},{id:"foto_t",label:"Foto Bunga",icon:"📸",effects:{affection:9}}],siang:[{id:"piknik",label:"Piknik",icon:"🧺",effects:{hunger:25,affection:12}},{id:"duduk_t2",label:"Duduk di Taman",icon:"🌿",effects:{affection:5}}],sore:[{id:"jalan_s",label:"Jalan Sore",icon:"🌸",effects:{affection:8}},{id:"beli_es",label:"Beli Es Krim",icon:"🍦",effects:{hunger:10,affection:7}}],malam:[{id:"taman_m",label:"Taman Malam",icon:"",effects:{affection:9}},{id:"lentera",label:"Lihat Lentera",icon:"🏮",effects:{affection:11}}],tengmalam:[{id:"diam_t",label:"Diam di Taman",icon:"🌌",effects:{affection:8}}]},
   pantai:{pagi:[{id:"sunrise_p",label:"Lihat Sunrise",icon:"🌅",effects:{affection:12}},{id:"jalan_p",label:"Jalan di Pantai",icon:"🐚",effects:{affection:8}}],siang:[{id:"renang",label:"Renang Bareng",icon:"🏊",effects:{affection:10}},{id:"pasir",label:"Main di Pasir",icon:"🏖",effects:{affection:9}}],sore:[{id:"sunset_p",label:"Sunset di Pantai",icon:"🌅",effects:{affection:15}},{id:"ombak",label:"Nikmati Ombak",icon:"🌊",effects:{affection:10}}],malam:[{id:"api_unggun",label:"Api Unggun",icon:"🔥",effects:{affection:13}},{id:"bintang_p",label:"Bintang di Pantai",icon:"⭐",effects:{affection:12}}],tengmalam:[{id:"ombak_m",label:"Dengerin Ombak",icon:"🌊",effects:{affection:11}}]},
 };
 
@@ -2674,7 +2674,7 @@ const SOLO_ACTIONS = {
     pagi:      [{id:"s_stretching",label:"Stretching",icon:"🤸",energy:12,vibe:5},{id:"s_jurnal",label:"Nulis Jurnal",icon:"📓",energy:0,vibe:10,item:"surat"},{id:"s_nonton_pagi",label:"Nonton Sendiri",icon:"📺",energy:5,vibe:8}],
     siang:     [{id:"s_tidur_sing",label:"Tidur Siang",icon:"💤",energy:25,vibe:0},{id:"s_baca",label:"Baca Buku",icon:"📖",energy:5,vibe:10,item:"buku_tanda"},{id:"s_gambar",label:"Sketsa Sendiri",icon:"✏️",energy:0,vibe:12,item:"gambar"}],
     sore:      [{id:"s_musik",label:"Denger Musik",icon:"🎵",energy:8,vibe:14},{id:"s_gambar_s",label:"Sketsa Sendiri",icon:"✏️",energy:0,vibe:12,item:"gambar"},{id:"s_napping",label:"Power Nap",icon:"😴",energy:18,vibe:4}],
-    malam:     [{id:"s_refleksi",label:"Refleksi Malam",icon:"🌙",energy:5,vibe:10,item:"surat"},{id:"s_baca_m",label:"Baca Sebelum Tidur",icon:"📖",energy:4,vibe:8},{id:"s_meditasi",label:"Meditasi",icon:"🧘",energy:15,vibe:10}],
+    malam:     [{id:"s_refleksi",label:"Refleksi Malam",icon:"",energy:5,vibe:10,item:"surat"},{id:"s_baca_m",label:"Baca Sebelum Tidur",icon:"📖",energy:4,vibe:8},{id:"s_meditasi",label:"Meditasi",icon:"🧘",energy:15,vibe:10}],
     tengmalam: [{id:"s_insomnia",label:"Menatap Langit-langit",icon:"🌌",energy:-5,vibe:6,item:"surat"},{id:"s_meditasi_m",label:"Meditasi",icon:"🧘",energy:12,vibe:8}],
   },
   dapur:{
@@ -2695,7 +2695,7 @@ const SOLO_ACTIONS = {
     pagi:      [{id:"s_pagi_send",label:"Nikmati Pagi",icon:"🌅",energy:10,vibe:12},{id:"s_tanaman",label:"Siram Tanaman",icon:"🌿",energy:-4,vibe:10},{id:"s_kopi_teras",label:"Kopi di Teras",icon:"☕",energy:5,vibe:8,item:"kopi_buat"}],
     siang:     [{id:"s_angin",label:"Nikmati Angin",icon:"🍃",energy:8,vibe:8},{id:"s_gambar_luar",label:"Sketsa Luar",icon:"✏️",energy:0,vibe:12,item:"gambar"}],
     sore:      [{id:"s_sunset_send",label:"Lihat Sunset",icon:"🌇",energy:5,vibe:16},{id:"s_foto_send",label:"Foto Langit",icon:"📸",energy:2,vibe:10}],
-    malam:     [{id:"s_bintang_t",label:"Lihat Bintang",icon:"⭐",energy:5,vibe:14,item:"surat"},{id:"s_angin_m",label:"Angin Malam",icon:"🌙",energy:8,vibe:8}],
+    malam:     [{id:"s_bintang_t",label:"Lihat Bintang",icon:"⭐",energy:5,vibe:14,item:"surat"},{id:"s_angin_m",label:"Angin Malam",icon:"",energy:8,vibe:8}],
     tengmalam: [{id:"s_langit_t",label:"Langit Tengah Malam",icon:"🌌",energy:4,vibe:12}],
   },
   kamar_mandi:{
@@ -2716,7 +2716,7 @@ const SOLO_ACTIONS = {
     pagi:      [{id:"s_jalan_pagi",label:"Jalan Pagi",icon:"🌸",energy:10,vibe:12},{id:"s_petik_bunga",label:"Petik Bunga",icon:"💐",energy:3,vibe:8,item:"bunga"}],
     siang:     [{id:"s_duduk_tm",label:"Duduk di Taman",icon:"🌿",energy:8,vibe:8},{id:"s_gambar_tm",label:"Sketsa Taman",icon:"✏️",energy:0,vibe:14,item:"gambar"}],
     sore:      [{id:"s_jalan_sr",label:"Jalan Sore",icon:"🌸",energy:8,vibe:14},{id:"s_petik_s",label:"Petik Bunga Sore",icon:"💐",energy:3,vibe:10,item:"bunga"}],
-    malam:     [{id:"s_taman_m",label:"Taman Malam",icon:"🌙",energy:5,vibe:12,item:"surat"},{id:"s_bintang_tm",label:"Lihat Bintang",icon:"⭐",energy:4,vibe:14}],
+    malam:     [{id:"s_taman_m",label:"Taman Malam",icon:"",energy:5,vibe:12,item:"surat"},{id:"s_bintang_tm",label:"Lihat Bintang",icon:"⭐",energy:4,vibe:14}],
     tengmalam: [{id:"s_diam_tm",label:"Diam di Taman",icon:"🌌",energy:6,vibe:10}],
   },
   pantai:{
@@ -2829,7 +2829,7 @@ const JOBS = [
 const SHOP_CATEGORIES = [
   { id:"makan",  label:"Makan",  icon:"🍽",  color:"rgba(110,231,183," },
   { id:"hadiah", label:"Hadiah", icon:"🎁",  color:"rgba(251,113,133," },
-  { id:"kencan", label:"Kencan", icon:"🌙",  color:"rgba(167,139,250," },
+  { id:"kencan", label:"Kencan", icon:"",  color:"rgba(167,139,250," },
   { id:"spesial",label:"Spesial",icon:"✨",  color:"rgba(251,191,36,"  },
 ];
 
@@ -2915,7 +2915,7 @@ const SHOP = [
   },
 
   {
-    id:"date", label:"Kencan Malam", icon:"🌙", price:800,
+    id:"date", label:"Kencan Malam", icon:"", price:800,
     effects:{affection:25}, category:"kencan", needsYuyu:true, next:true,
     tagline:"dinner di restoran kecil dekat sungai",
     desc:"Meja untuk dua. Lampu redup. Tidak perlu rencana yang rumit.",
@@ -3017,7 +3017,7 @@ const QUESTS_UTAMA = [
   },
   {
     id:"q07", type:"utama", tier:2,
-    title:"Kencan Malam", icon:"🌙",
+    title:"Kencan Malam", icon:"",
     desc:"Ajak Yuyu kencan malam.",
     flavorDone:"Yuyu pilih baju tiga kali sebelum keluar. Jangan bilang Papa tahu.",
     check:(a)=>a==="date",
@@ -3417,7 +3417,7 @@ const ACHIEVEMENTS = [
     hint:"Kaki membawa ke tempat baru.",
     progress: s=>({val:Math.min((s.actionFrequency?.jalan||0)+(s.actionFrequency?.taman||0),10),max:10}),
     check: s => ((s.actionFrequency?.jalan||0)+(s.actionFrequency?.taman||0))>=10},
-  {id:"ach_ritual5",  cat:"aktivitas", rarity:"langka",     icon:"🌙", title:"Rutinitas Sakral",
+  {id:"ach_ritual5",  cat:"aktivitas", rarity:"langka",     icon:"", title:"Rutinitas Sakral",
     desc:"Capai tier ritual pada 5 aksi berbeda.",
     hint:"Pengulangan menciptakan maknanya sendiri.",
     progress: s=>({val:Math.min(Object.values(s.actionFrequency||{}).filter(v=>v>=8).length,5),max:5}),
@@ -3448,7 +3448,7 @@ const ACHIEVEMENTS = [
     hint:"Satu minggu penuh.",
     progress: s=>({val:Math.min(s.day||1,7),max:7}),
     check: s => (s.day||1)>=7},
-  {id:"ach_day30",    cat:"waktu", rarity:"langka",         icon:"🌙", title:"Satu Bulan",
+  {id:"ach_day30",    cat:"waktu", rarity:"langka",         icon:"", title:"Satu Bulan",
     desc:"30 hari bersama Yuyu.",
     hint:"Sebulan. Cukup untuk mengenal seseorang.",
     progress: s=>({val:Math.min(s.day||1,30),max:30}),
@@ -3791,7 +3791,7 @@ const GOLDEN_HOUR_POOL = [
   { id:"golden_afternoon", timeSlot:2, windowMinutes:[0,30],  location:null,      icon:"🌇", title:"Golden Afternoon",   text:"Sore ini cahayanya keemasan banget. Yuyu diem-diem senyum sendiri.",                  bonus:{affection:10}, exclusive:false },
   { id:"midnight_letter",  timeSlot:4, windowMinutes:[30,55], location:"kamar",   icon:"✉️", title:"Surat Tengah Malam", text:"Yuyu lagi nulis sesuatu di buku kecilnya. Selembar kertas terlipat keluar.",          bonus:{affection:20}, exclusive:true },
   { id:"cooking_hum",      timeSlot:0, windowMinutes:[10,35], location:"dapur",   icon:"🎵", title:"Nyanyi di Dapur",    text:"Dari dapur terdengar Yuyu nyanyi kecil-kecilan sambil masak. Suaranya pelan banget.", bonus:{affection:8},  exclusive:false },
-  { id:"window_stare",     timeSlot:3, windowMinutes:[20,50], location:"ruang",   icon:"🌙", title:"Melamun di Jendela", text:"Yuyu berdiri di jendela, melamun. Kalau ditemenin, dia bakal cerita banyak.",          bonus:{affection:13}, exclusive:false },
+  { id:"window_stare",     timeSlot:3, windowMinutes:[20,50], location:"ruang",   icon:"", title:"Melamun di Jendela", text:"Yuyu berdiri di jendela, melamun. Kalau ditemenin, dia bakal cerita banyak.",          bonus:{affection:13}, exclusive:false },
   { id:"stretch_morning",  timeSlot:0, windowMinutes:[40,60], location:"kamar",   icon:"🌤", title:"Peregangan Pagi",    text:"Yuyu masih setengah ngantuk, lagi stretching kecil-kecilan di kamar.",                bonus:{affection:7},  exclusive:false },
 ];
 function rollTodayGoldenHours() {
@@ -3975,7 +3975,7 @@ const IDLE_ANIMATIONS = [
   { id:"baca",      minIdleSeconds:120, text:"Yuyu mengambil buku kecil dari laci dan mulai membaca.", icon:"📖",  moodEffect:null },
   { id:"gambar",    minIdleSeconds:180, text:"Yuyu ambil kertas dan pensil, mulai corat-coret sesuatu.", icon:"✏️", moodEffect:null },
   { id:"nyanyi",    minIdleSeconds:90,  text:"Samar-samar terdengar Yuyu nyanyi pelan-pelan sendirian.", icon:"🎵", moodEffect:"senang" },
-  { id:"jendela",   minIdleSeconds:150, text:"Yuyu berdiri di jendela, menatap keluar tanpa bersuara.", icon:"🌙", moodEffect:"rindu" },
+  { id:"jendela",   minIdleSeconds:150, text:"Yuyu berdiri di jendela, menatap keluar tanpa bersuara.", icon:"", moodEffect:"rindu" },
   { id:"tidur",     minIdleSeconds:300, text:"Yuyu kelihatannya ketiduran. Napasnya pelan.", icon:"💤", moodEffect:"mengantuk" },
   { id:"masak_kecil",minIdleSeconds:200,text:"Terdengar suara panci kecil dari dapur. Yuyu buat sesuatu.", icon:"🍵", moodEffect:null },
   { id:"stretching",minIdleSeconds:100, text:"Yuyu stretching kecil-kecilan, lengannya terangkat.", icon:"🌤", moodEffect:null },
@@ -4005,7 +4005,7 @@ const YUYU_AGENDA_POOL = [
   { id:"agenda_baca",     icon:"📚",secret:"Pengen baca bareng",            matchActions:["baca","duduk","duduk_t2"],                      discoveryText:"Kamu mau diem-diem bareng. Yuyu suka ini.", bonusIfFulfilled:{affection:10} },
   { id:"agenda_musik",    icon:"🎵",secret:"Pengen denger musik",           matchActions:["musik","nonton","film","board"],                discoveryText:"...Kamu tahu aku lagi pengen denger musik? Bisa baca pikiran?", bonusIfFulfilled:{affection:13} },
   { id:"agenda_sentuhan", icon:"🤗",secret:"Pengen dipeluk",                matchActions:["peluk","peluk_sofa","rambut","bisik"],          discoveryText:"Kamu... tahu. Yuyu gak bilang apa-apa tapi kamu tahu.", bonusIfFulfilled:{affection:18} },
-  { id:"agenda_diam",     icon:"🌙",secret:"Pengen duduk diam bareng",      matchActions:["diam","langit","bintang","duduk","jaga"],       discoveryText:"Tepat. Hari ini Yuyu cuma mau diam bareng kamu.", bonusIfFulfilled:{affection:14} },
+  { id:"agenda_diam",     icon:"",secret:"Pengen duduk diam bareng",      matchActions:["diam","langit","bintang","duduk","jaga"],       discoveryText:"Tepat. Hari ini Yuyu cuma mau diam bareng kamu.", bonusIfFulfilled:{affection:14} },
   { id:"agenda_cerita",   icon:"💬",secret:"Pengen ngobrol dalam",          matchActions:["ngobrol","cerita","bisik","ngobrol_k"],         discoveryText:"...Yuyu emang lagi pengen ngobrol banyak hari ini.", bonusIfFulfilled:{affection:11} },
 ];
 function rollYuyuAgenda() {
@@ -4053,7 +4053,7 @@ function getYuyuHumming(timeSlotIndex) {
 
 const TEMPORAL_REFLECTION_MILESTONES = [
   { days:7,   text:"Seminggu. Waktu cepet ya, Papa.", icon:"🌱" },
-  { days:30,  text:"Sebulan udah lewat. Yuyu masih inget hari pertama.", icon:"🌙" },
+  { days:30,  text:"Sebulan udah lewat. Yuyu masih inget hari pertama.", icon:"" },
   { days:50,  text:"50 hari. Setengah seratus. Yuyu hitung sendiri.", icon:"⭐" },
   { days:100, text:"Seratus hari. Aku hitung, lho. Tiap hari.", icon:"💫" },
   { days:180, text:"Setengah tahun. Papa... kamu masih di sini.", icon:"🌸" },
@@ -4971,7 +4971,7 @@ function shouldShowGoodbyeThought(goodbyeThoughtTs, currentTs) {
 }
 
 const INTERRUPT_EVENT_POOL = [
-  { id:"bulan_bagus",  chance:0.04, timeSlots:[3,4], icon:"🌙", text:"Eh lihat! Bulan bagus banget malam ini.", bonus:{affection:6},  sceneEffect:"moonGlow" },
+  { id:"bulan_bagus",  chance:0.04, timeSlots:[3,4], icon:"", text:"Eh lihat! Bulan bagus banget malam ini.", bonus:{affection:6},  sceneEffect:"moonGlow" },
   { id:"listrik_mati", chance:0.02, timeSlots:[2,3], icon:"🕯", text:"Eh! Listrik mati. Gelap... *tawa kecil* Sini deket-deket.", bonus:{affection:8}, sceneEffect:"dark" },
   { id:"beli_sesuatu", chance:0.05, timeSlots:[0,1], icon:"🛍", text:"Oh kamu bangun juga. Tadi Yuyu beliin sesuatu. Ini buat kamu.", bonus:{affection:10}, sceneEffect:"warmMorning" },
   { id:"kucing_teras", chance:0.03, timeSlots:[1,2], icon:"🐱", text:"Papa! Ada kucing di teras! Lucu banget, udah Yuyu kasih makan.", bonus:{affection:7},  sceneEffect:"catVisit" },
@@ -6965,7 +6965,7 @@ const COLOR_THEMES = [
     dark:{bgPanel:"#060210",bg:"#030108",surface:"#0e0520",card:C.ACC3,cardBorder:"rgba(180,120,255,.08)",textMain:"rgba(235,220,255,.90)",textSub:"rgba(180,150,220,.56)",textMuted:"rgba(140,110,180,.32)",divider:"rgba(180,120,255,.07)"},
     light:{bgPanel:"#fdfaff",bg:"#fefcff",surface:"#f5eeff",card:C.ADAA,cardBorder:"rgba(160,100,220,.14)",textMain:"rgba(25,8,50,.90)",textSub:"rgba(90,50,140,.58)",textMuted:"rgba(140,100,170,.38)",divider:"rgba(160,100,220,.1)"},
     accent:{main:"#a855f7",soft:"#e9d5ff",glow:"rgba(168,85,247,.22)",border:"rgba(168,85,247,.32)"}},
-  {id:"moonlit",     icon:"🌙", label:"Moonlit",
+  {id:"moonlit",     icon:"", label:"Moonlit",
     dark:{bgPanel:"#050810",bg:"#020510",surface:"#0c1020",card:C.ACC3,cardBorder:"rgba(140,160,240,.08)",textMain:"rgba(215,225,248,.90)",textSub:"rgba(150,165,210,.56)",textMuted:"rgba(110,125,175,.32)",divider:"rgba(140,160,240,.07)"},
     light:{bgPanel:"#f7f9ff",bg:"#fafbff",surface:"#eef2ff",card:C.ADAA,cardBorder:"rgba(100,120,200,.14)",textMain:"rgba(15,20,55,.90)",textSub:"rgba(60,70,130,.58)",textMuted:"rgba(100,110,160,.38)",divider:"rgba(100,120,200,.1)"},
     accent:{main:"#818cf8",soft:"#c7d2fe",glow:"rgba(129,140,248,.22)",border:"rgba(129,140,248,.32)"}},
@@ -7480,7 +7480,7 @@ function EmotionalStateStrip({ gameState, palette, isLight, yuyuName,
   });
 
   if (sed >= 30) signals.push({
-    id:"sed", icon: sedTex==="grief"?"💜":sedTex==="longing"?"🌙":sedTex==="distance"?"💨":"🪨",
+    id:"sed", icon: sedTex==="grief"?"💜":sedTex==="longing"?"":sedTex==="distance"?"💨":"🪨",
     color:"rgba(192,132,252,",
     label:`endapan`,
     pulse: sed>=65,
@@ -7897,7 +7897,7 @@ function YuyuHeartPanel({ gameState, isLight, palette, yuyuName, playerName, onC
         )}
 
         {agenda && (
-          <Section icon="🌙" title="KEINGINAN HARI INI">
+          <Section icon="" title="KEINGINAN HARI INI">
             <p style={_S.FONTSIZE_8690}>
               {gameState.agendaFulfilled
                 ? `"${agenda.discoveryText}" ✓`
@@ -8376,7 +8376,7 @@ const PHOTO_SCENES_V2 = [
   { id:"taman",   label:"Taman Bunga",      bg0:"#c8f5d0", bg1:"#5a9e72", mood:"🌸🌺🍃" },
   { id:"pantai",  label:"Pantai Sunset",    bg0:"#ffd6a5", bg1:"#e76f51", mood:"🌊🐚🌅" },
   { id:"kafe",    label:"Pojok Kafe",       bg0:"#e8d5b7", bg1:"#8b6343", mood:"☕📖🕯️" },
-  { id:"malam",   label:"Malam Berbintang", bg0:"#1a1a3e", bg1:"#0a0a1e", mood:"⭐🌙✨" },
+  { id:"malam",   label:"Malam Berbintang", bg0:"#1a1a3e", bg1:"#0a0a1e", mood:"⭐✨" },
   { id:"perpus",  label:"Perpustakaan",     bg0:"#f0e6d3", bg1:"#8b6f47", mood:"📚🪴🌿" },
 ];
 
@@ -10467,7 +10467,7 @@ function ReturnThresholdScene({ hoursSince, gameState, yuyuName, playerName, isL
         marginBottom:"24px",
         animation:"rts_pulse 2.8s ease-in-out infinite",
       }}>
-        <span style={{fontSize:"36px"}}>{MOOD_FSM[mood]?.e || "🌙"}</span>
+        <span style={{fontSize:"36px"}}>{MOOD_FSM[mood]?.e || ""}</span>
       </div>
 
       {desc && (
@@ -11605,7 +11605,7 @@ function KamarScene({ night, dawn, siang=false, seasonId="kemarau", affectionTie
         {showYuyu&&<YuyuFigureAnimated cx={155} cy={360} sz={68}
           bodyColor="#ffd7e0" hairColor="#1a0814"
           skirtColor={night?"#6a1b9a":dawn?"#e91e8c":"#e91e8c"} night={night}
-          extra={night?"🌙":dawn?"🌅":affectionTier>=3?"💕":null}
+          extra={night?"":dawn?"🌅":affectionTier>=3?"💕":null}
           outfit={night?"pajama":"dress"} mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
       </g>
     </svg>
@@ -11831,7 +11831,7 @@ function DapurScene({ warm, night=false, affectionTier = 0, weather, mood = "bia
         {showYuyu&&<YuyuFigureAnimated cx={155} cy={400} sz={68}
           bodyColor="#ffd7e0" hairColor="#1a0814"
           skirtColor={night?"#4a1556":warm?"#c2185b":"#e91e8c"} night={night}
-          extra={night?"🌙":warm?"🍳":"🌿"} outfit={night?"pajama":"dress"} mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
+          extra={night?"":warm?"🍳":"🌿"} outfit={night?"pajama":"dress"} mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
       </g>
     </svg>
   );
@@ -12116,7 +12116,7 @@ function TerasScene({ night, dusk, dawn=false, affectionTier = 0, weather, mood 
         {showYuyu&&<YuyuFigureAnimated cx={150} cy={370} sz={66}
           bodyColor="#ffd7e0" hairColor="#1a0814"
           skirtColor={isNight?"#3a1060":isDusk?"#8a1030":"#7b1fa2"} night={isNight}
-          extra={isNight?"🌙":isDusk?"🌅":isDawn?"🍃":"✨"} outfit="dress" mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
+          extra={isNight?"":isDusk?"🌅":isDawn?"🍃":"✨"} outfit="dress" mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
       </g>
     </svg>
   );
@@ -12677,7 +12677,7 @@ function KafeScene({ timeId, affectionTier = 0, mood = "biasa", showYuyu=true, a
         {showYuyu&&<YuyuFigureAnimated cx={150} cy={340} sz={66}
           bodyColor="#ffd7e0" hairColor="#1a0814"
           skirtColor={isNight?"#3e1a0a":isDusk?"#6a1808":"#e65100"} night={isNight}
-          extra={isNight?"🌙":isDusk?"🌇":"☕"} outfit="cafe" mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
+          extra={isNight?"":isDusk?"🌇":"☕"} outfit="cafe" mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
       </g>
     </svg>
   );
@@ -12849,7 +12849,7 @@ function TamanScene({ timeId, affectionTier = 0, weather, mood = "biasa", showYu
         {showYuyu&&<YuyuFigureAnimated cx={150} cy={270} sz={66}
           bodyColor="#ffd7e0" hairColor="#1a0814"
           skirtColor={night?"#4a1556":dusk?"#d81b60":"#e91e8c"} night={night}
-          extra={night?"🌙":dusk?"🌇":"🌸"} outfit="dress" mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
+          extra={night?"":dusk?"🌇":"🌸"} outfit="dress" mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
       </g>
     </svg>
   );
@@ -13071,7 +13071,7 @@ function PantaiScene({ timeId, affectionTier = 0, weather, mood = "biasa", showY
         {showYuyu&&<YuyuFigureAnimated cx={178} cy={570} sz={68}
           bodyColor="#ffd7e0" hairColor="#1a0814"
           skirtColor={night?"#880e4f":dusk?"#c62828":"#e91e8c"} night={night}
-          extra={night?"🌙":dusk?"🌅":"🌊"} outfit="swimsuit" mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
+          extra={night?"":dusk?"🌅":"🌊"} outfit="swimsuit" mood={mood} affection={affection} idleSeconds={idleSeconds} gestureSignal={gestureSignal}/>}
       </g>
     </svg>
   );
@@ -14122,7 +14122,7 @@ function DaySummaryModal({day,journal,onClose}) {
             display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",
             animation:star?"dayStarIn .45s cubic-bezier(.16,1,.3,1)":"none",
             boxShadow:"0 0 20px rgba(251,113,133,.1)",
-          }}>🌙</div>
+          }}></div>
         </div>
 
         <div style={{height:"1px",background:"rgba(200,100,130,.12)",marginBottom:"20px"}}/>
@@ -14446,7 +14446,7 @@ function TimeCardPopup({ gameState, isLight, season, weather, worldEvents, locDe
       particle:"✦",
     },
     { // Malam
-      label:"Malam", icon:"🌙",
+      label:"Malam", icon:"",
       heroGrad:"linear-gradient(160deg,#1a1040 0%,#2d1b6e 45%,#4a2d9c 100%)",
       glowColor:"rgba(120,80,220,",
       accent:"#a78bfa", textHero:"rgba(240,228,255,.95)", textSub:"rgba(210,195,255,.40)",
@@ -16922,7 +16922,7 @@ function YuyuInnerWorldPanel({ gameState, isLight, palette, yuyuName, playerName
   };
   const LOC_META = {
     kamar:{label:"Kamar Tidur",icon:"🛏"}, dapur:{label:"Dapur",icon:"🍳"}, ruang:{label:"Ruang Tamu",icon:"🪴"},
-    teras:{label:"Teras",icon:"🌙"}, kafe:{label:"Kafe",icon:"☕"}, taman:{label:"Taman",icon:"🌸"}, pantai:{label:"Pantai",icon:"🌊"},
+    teras:{label:"Teras",icon:""}, kafe:{label:"Kafe",icon:"☕"}, taman:{label:"Taman",icon:"🌸"}, pantai:{label:"Pantai",icon:"🌊"},
   };
   function actionsToChips(ids=[]) {
     return ids.slice(0,3).map(id => ACTION_META[id] ? `${ACTION_META[id].icon} ${ACTION_META[id].label}` : id).join("  ·  ");
@@ -19295,7 +19295,7 @@ function SettingsPanel({
           <div>
             <SLabel text="MODE CAHAYA"/>
             <div style={_S.DISPLAY_7050}>
-              {[{value:"light",icon:"☀️",label:"Terang"},{value:"dark",icon:"🌙",label:"Gelap"},{value:"auto",icon:"🔄",label:"Auto"}].map(opt=>{
+              {[{value:"light",icon:"☀️",label:"Terang"},{value:"dark",icon:"",label:"Gelap"},{value:"auto",icon:"🔄",label:"Auto"}].map(opt=>{
                 const sel=opt.value==="auto"?autoTheme:(!autoTheme&&uiTheme===opt.value);
                 return (
                   <button key={opt.value} onClick={()=>{if(opt.value==="auto"){setAutoTheme(true);}else{setAutoTheme(false);setUiTheme(opt.value);}}}
@@ -19653,7 +19653,7 @@ function MoreMenuSheet({ isLight, palette, gameState, completedQuestCount, yuyuN
         { icon:"📖", label:"Memoir",       sub:`${memCount} tersimpan${arcActCount>0?` · 🧬${arcActCount} aktif`:""}`, color:"rgba(147,197,253,", action:()=>setShowMemoryPalace(true) },
         { icon:"🎵", label:"Playlist",     sub:`${(gameState.yuyuSecretPlaylist||[]).length} lagu · mood ${gameState.mood||"manis"}`, color:"rgba(251,113,133,", action:()=>{ onClose(); setShowPlaylist(true); } },
         { icon:"🎹", label:"Piano",        sub:pianoState?.active?"▶ berjalan":"klasik",  color:"rgba(192,132,252,", action:()=>setShowPiano(true) },
-        { icon:"🌙", label:"Jurnal Mimpi", sub:"cerita dari alam bawah sadar", color:"rgba(147,197,253,", action:()=>{ onClose(); setShowDreamJournal(true); } },
+        { icon:"", label:"Jurnal Mimpi", sub:"cerita dari alam bawah sadar", color:"rgba(147,197,253,", action:()=>{ onClose(); setShowDreamJournal(true); } },
         { icon:"💫", label:"Milestones",   sub:"pencapaian hubungan kalian", color:"rgba(251,191,36,", action:()=>{ onClose(); setShowMilestones(true); } },
         { icon:"✨", label:"Astrologi",    sub:`bintang ${gameState.astroSign||"belum diset"}`, color:"rgba(192,132,252,", action:()=>{ onClose(); setShowAstrology(true); } },
         { icon:"💌", label:"Mailbox",      sub:"surat & pesan dari Yuyu", color:"rgba(110,231,183,", action:()=>{ onClose(); setShowMailbox(true); } },
@@ -20048,7 +20048,7 @@ const MAP_NODES = {
   kamar:       { x:27, y:23, label:"Kamar Tidur",  icon:"🛏", color:"#c084fc", unlockAff:0,  desc:"Pagi selalu dimulai di sini." },
   dapur:       { x:27, y:50, label:"Dapur",        icon:"🍳", color:"#fbbf24", unlockAff:0,  desc:"Bau masakan yang akrab." },
   ruang:       { x:21, y:69, label:"Ruang Tamu",   icon:"🪴", color:"#6ee7b7", unlockAff:0,  desc:"Sofa yang sudah hafal postur kalian." },
-  teras:       { x:28, y:87, label:"Teras",        icon:"🌙", color:"#93c5fd", unlockAff:0,  desc:"Angin sore yang tidak pernah terlambat." },
+  teras:       { x:28, y:87, label:"Teras",        icon:"", color:"#93c5fd", unlockAff:0,  desc:"Angin sore yang tidak pernah terlambat." },
   kafe:        { x:64, y:17, label:"Kafe",         icon:"☕", color:"#fb923c", unlockAff:20, desc:"Barista sudah hafal pesanan kalian." },
   taman:       { x:71, y:57, label:"Taman",        icon:"🌸", color:"#f0abfc", unlockAff:35, desc:"Bunga mekar sesuai musimnya." },
   pantai:      { x:86, y:82, label:"Pantai",       icon:"🌊", color:"#38bdf8", unlockAff:55, desc:"Ombak yang tidak pernah berhenti." },
@@ -20594,7 +20594,7 @@ function Yuyu({ gameState, dispatch, palette, isLight, yuyuName, playerName, onC
         </div>
         <div style={{display:"flex",alignItems:"center",gap:"8px",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:"5px"}}>
-            <span style={{fontSize:"11px"}}>{["🌅","☀️","🌇","🌙","🌑"][timeIdx]||"🌙"}</span>
+            <span style={{fontSize:"11px"}}>{["🌅","☀️","🌇","","🌑"][timeIdx]||""}</span>
             <span style={{fontSize:"8px",letterSpacing:"0.06em",color:TMU,fontFamily:F}}>{["Pagi","Siang","Sore","Malam","Tengah Malam"][timeIdx]||"Malam"}</span>
           </div>
           <button onClick={onClose} style={{width:"28px",height:"28px",borderRadius:"50%",background:isLight?"rgba(0,0,0,.05)":"rgba(255,255,255,.05)",border:BRD,color:TS,fontSize:"12px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent",fontFamily:F}}>✕</button>
@@ -20720,7 +20720,7 @@ function getAvailableDateNights(gs) {
 
 const RELATIONSHIP_MILESTONE_DEFS = [
   {id:"m1",title:"Hari Pertama",desc:"Kamu dan Yuyu memulai perjalanan ini bersama.",threshold:{day:1},icon:"🌱",reward:"Surat perkenalan dari Yuyu"},{id:"m2",title:"Seminggu Bersama",desc:"7 hari yang penuh cerita kecil.",threshold:{day:7},icon:"📅",reward:"Entri jurnal Yuyu tentang minggu pertama"},
-  {id:"m3",title:"Afeksi 30",desc:"Yuyu mulai benar-benar merasa nyaman denganmu.",threshold:{affection:30},icon:"💚",reward:"Playlist pertama dari Yuyu"},{id:"m4",title:"Sebulan Berlalu",desc:"30 hari — bukan waktu yang singkat.",threshold:{day:30},icon:"🌙",reward:"Surat bulan pertama dari Yuyu"},
+  {id:"m3",title:"Afeksi 30",desc:"Yuyu mulai benar-benar merasa nyaman denganmu.",threshold:{affection:30},icon:"💚",reward:"Playlist pertama dari Yuyu"},{id:"m4",title:"Sebulan Berlalu",desc:"30 hari — bukan waktu yang singkat.",threshold:{day:30},icon:"",reward:"Surat bulan pertama dari Yuyu"},
   {id:"m5",title:"Afeksi 60",desc:"Hubunganmu dengan Yuyu semakin dalam.",threshold:{affection:60},icon:"💙",reward:"Lagu rahasia dari Yuyu"},{id:"m6",title:"Dua Bulan",desc:"60 hari bersama — dan masih ada banyak cerita.",threshold:{day:60},icon:"✨",reward:"Moodboard Yuyu untukmu"},
   {id:"m7",title:"Afeksi 90",desc:"Kepercayaan yang tumbuh pelan tapi pasti.",threshold:{affection:90},icon:"💜",reward:"Mimpi Yuyu tentang masa depan"},{id:"m8",title:"100 Hari",desc:"Seratus hari adalah angka yang terasa seperti janji.",threshold:{day:100},icon:"🏆",reward:"Surat panjang dari Yuyu untuk 100 hari"},
 ];
@@ -20812,7 +20812,7 @@ function DreamJournalPanel({gs, dispatch, onClose, palette, isLight}) {
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem"}}>
       <div style={{background:bg,borderRadius:16,width:"100%",maxWidth:480,maxHeight:"85vh",display:"flex",flexDirection:"column",overflow:"hidden",border:`1.5px solid ${p2}40`}}>
         <div style={{padding:"1rem 1.2rem",borderBottom:`1px solid ${p2}20`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <span style={{fontWeight:700,fontSize:"1.1rem",color:txt}}>🌙 Jurnal Mimpi Yuyu</span>
+          <span style={{fontWeight:700,fontSize:"1.1rem",color:txt}}> Jurnal Mimpi Yuyu</span>
           <button onClick={onClose} style={{background:"none",border:"none",fontSize:"1.3rem",cursor:"pointer",color:sub}}>✕</button>
         </div>
         <div style={{padding:"1rem",borderBottom:`1px solid ${p2}20`}}>
@@ -22287,7 +22287,7 @@ Berikan response dalam format JSON persis ini (tidak ada teks lain):
               background:`${moodColor}12`,border:`1px solid ${moodColor}35`}}>
               <div style={{fontSize:7,letterSpacing:"0.18em",color:moodColor,marginBottom:8}}>PREDIKSI MOOD HARI INI</div>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                <span style={{fontSize:28}}>{MOOD_COLOR[prediction.prediksi_mood]?prediction.prediksi_mood==="senang"?"😊":prediction.prediksi_mood==="sedih"?"😢":prediction.prediksi_mood==="rindu"?"💜":prediction.prediksi_mood==="kangen"?"💙":prediction.prediksi_mood==="malu"?"🌸":prediction.prediksi_mood==="excited"?"✨":prediction.prediksi_mood==="playful"?"🎭":prediction.prediksi_mood==="mengantuk"?"😴":prediction.prediksi_mood==="lapar"?"🍜":"🌙":"🌙"}</span>
+                <span style={{fontSize:28}}>{MOOD_COLOR[prediction.prediksi_mood]?prediction.prediksi_mood==="senang"?"😊":prediction.prediksi_mood==="sedih"?"😢":prediction.prediksi_mood==="rindu"?"💜":prediction.prediksi_mood==="kangen"?"💙":prediction.prediksi_mood==="malu"?"🌸":prediction.prediksi_mood==="excited"?"✨":prediction.prediksi_mood==="playful"?"🎭":prediction.prediksi_mood==="mengantuk"?"😴":prediction.prediksi_mood==="lapar"?"🍜":"":""}</span>
                 <div>
                   <div style={{fontSize:16,color:moodColor,fontFamily:"Georgia,serif",fontStyle:"italic",fontWeight:700,textTransform:"capitalize"}}>{prediction.prediksi_mood}</div>
                   <div style={{fontSize:9,color:txt1,lineHeight:1.5,marginTop:2}}>{prediction.alasan}</div>
@@ -23469,7 +23469,7 @@ function YuyuRPG() {
           setDialog(prev=>({...prev, text:line}));
           setDialogLog(prev=>[...prev.slice(-19),{text:line,act:"Yuyu rawat Papa",timestamp:Date.now(),time:time?.label||""}]);
           dispatch({type:"PAPA_CARE", payload:{energy:25}});
-          pushNotif("🌙 Yuyu minta Papa istirahat","info");
+          pushNotif(" Yuyu minta Papa istirahat","info");
         })();
       }, 2500 + Math.random()*2000);
     }
@@ -23748,7 +23748,7 @@ function YuyuRPG() {
     agenda_baca:     { icon:"📚", verb:"baca",  activityLabel:"lagi baca...",     needsLocation:"ruang", lines:["*buka buku* Yuyu lagi baca ini. Mau ikut diam bareng?","Sini duduk. Yuyu temenin sambil baca.","...halaman ini bagus. *tidak lanjut ngomong*"] },
     agenda_musik:    { icon:"🎵", verb:"musik", activityLabel:"denger musik...",  needsLocation:"ruang", lines:["*headphone tergantung di leher* Yuyu lagi cari lagu yang pas.","Ada lagu yang muter terus di kepala Yuyu dari tadi.","...denger ini gak? *senandung kecil*"] },
     agenda_sentuhan: { icon:"🤗", verb:"dekat", activityLabel:"pengen didekati...",needsLocation:null,   lines:["*duduk dekat* Dingin ya hari ini.","...Yuyu boleh sini? Cuma sebentar.","*tidak ngomong, cuma mendekat*"] },
-    agenda_diam:     { icon:"🌙", verb:"diam",  activityLabel:"pengen diam bareng...",needsLocation:null,lines:["...gak perlu ngomong apa-apa. Diam bareng aja.","*duduk di teras, menatap langit*","Hari ini Yuyu pengen tenang aja. Kamu di sini aja."] },
+    agenda_diam:     { icon:"", verb:"diam",  activityLabel:"pengen diam bareng...",needsLocation:null,lines:["...gak perlu ngomong apa-apa. Diam bareng aja.","*duduk di teras, menatap langit*","Hari ini Yuyu pengen tenang aja. Kamu di sini aja."] },
     agenda_cerita:   { icon:"💬", verb:"cerita",activityLabel:"mau cerita...",    needsLocation:"ruang", lines:["...sebenernya Yuyu mau cerita sesuatu.","Kamu punya waktu gak? Yuyu pengen ngobrol.","*mulai ngomong, lalu berhenti* Hmm. Nanti deh."] },
   }),[]);
 
@@ -25607,7 +25607,7 @@ Terima kasih sudah ada.`,
           const sedTex = gameState.emotionalSediment?.texture||"unspoken";
           const sedColor = sedTex==="grief"?"147,112,219":sedTex==="longing"?"192,132,252":sedTex==="distance"?"100,150,240":"150,120,180";
           const sedOpacity = Math.min(0.22, ((gameState.emotionalSediment.weight-35)/55)*0.22);
-          const sedIcon = sedTex==="grief"?"💜":sedTex==="longing"?"🌙":sedTex==="distance"?"💨":"🪨";
+          const sedIcon = sedTex==="grief"?"💜":sedTex==="longing"?"":sedTex==="distance"?"💨":"🪨";
           return (
             <>
               <div style={{
@@ -27399,7 +27399,7 @@ const _ST_NODES = [
     desc:"Semua data Yuyu bersemayam di sini dan saling memperbarui setiap interaksi. Tanpa core state, tidak ada Yuyu.",
     fields:["affection (0–100)","mood & moodIntensity","day · streak","hunger · money","locationId · timeIdx","yuyuHealthState"],
     affects:["Semua sistem tanpa terkecuali"], influenced:["Setiap aksi player"] },
-  { id:"mood",        label:"Mood System",          icon:"🌙", x:635,y:215, cat:"emotion",     r:28, tagline:"Warna emosi Yuyu saat ini",
+  { id:"mood",        label:"Mood System",          icon:"", x:635,y:215, cat:"emotion",     r:28, tagline:"Warna emosi Yuyu saat ini",
     desc:"12 mood: senang, sedih, kangen, romantis, malu, marah, excited, playful, rindu, mengantuk, lapar, biasa. Tiap mood punya intensitas 0–100 dan undertone tersembunyi yang terbentuk dari konteks.",
     affects:["Mood Weather","AI Dialog","Emotional Sediment","Drifted Register"],
     influenced:["Aksi player","Weekly Arc","Cuaca","Kesehatan Yuyu"] },
@@ -27448,7 +27448,7 @@ const _ST_NODES = [
     desc:"Karakter lain yang muncul sesekali menciptakan ketegangan dan respons emosional dari Yuyu. Bukan musuh, tapi dinamika yang membuat hubungan terasa tiga dimensi.",
     affects:["Mood","AI Dialog"], influenced:["Hari ke-","Affection threshold"] },
   { id:"timeSlot",    label:"Time Slots",            icon:"🕐", x:580,y:112, cat:"time",        r:26, tagline:"Ritme hari yang membentuk segalanya",
-    desc:"Lima slot: 🌅 Pagi, ☀️ Siang, 🌇 Sore, 🌙 Malam, 🌃 Tengah Malam. Setiap slot mengubah aksi, lokasi Yuyu, ambient, dan warna dialog.",
+    desc:"Lima slot: 🌅 Pagi, ☀️ Siang, 🌇 Sore,  Malam, 🌃 Tengah Malam. Setiap slot mengubah aksi, lokasi Yuyu, ambient, dan warna dialog.",
     affects:["Locations","Weather","AI Dialog","Ambient Audio"], influenced:["Waktu nyata player"] },
   { id:"circadian",   label:"Circadian Pattern",     icon:"🌀", x:700,y:75,  cat:"time",        r:20, tagline:"Pola ritme yang dipelajari",
     desc:"Yuyu menganalisis riwayat session timestamps. Kalau kamu selalu datang malam, dia tahu. Saat kamu datang di waktu tidak biasa, ada dialog yang merespons.",
@@ -27460,7 +27460,7 @@ const _ST_NODES = [
     desc:"Setiap ~30 hari, musim berganti: 🌸 Semi, ☀️ Panas, 🍂 Gugur, ❄️ Dingin. Mempengaruhi cuaca dominan dan tematik cerita.",
     affects:["Weather","AI Dialog"], influenced:["Hari ke-"] },
   { id:"location",    label:"Location System",       icon:"🏠", x:242,y:388, cat:"environment", r:26, tagline:"Tempat yang memberi warna berbeda",
-    desc:"8 lokasi: 🛏 Kamar, 🍳 Dapur, 🪴 Ruang, 🌙 Teras, 🛁 Kamar Mandi, ☕ Kafe (≥20), 🌸 Taman (≥35), 🌊 Pantai (≥55). Tiap lokasi punya set aksi unik.",
+    desc:"8 lokasi: 🛏 Kamar, 🍳 Dapur, 🪴 Ruang,  Teras, 🛁 Kamar Mandi, ☕ Kafe (≥20), 🌸 Taman (≥35), 🌊 Pantai (≥55). Tiap lokasi punya set aksi unik.",
     affects:["Ambient Audio","Scene Layers","AI Dialog","Available Actions"],
     influenced:["Aksi player","Time Slots","Yuyu Location"] },
   { id:"weather",     label:"Weather",               icon:"🌧", x:128,y:362, cat:"environment", r:22, tagline:"Cuaca yang ikut merasakan",
@@ -27503,7 +27503,7 @@ const _ST_NODES = [
   { id:"piano",       label:"Piano System",          icon:"🎹", x:692,y:538, cat:"extra",          r:22, tagline:"Musik yang disintesis bersama",
     desc:"Piano synthesized real-time (WebAudio API, zero external deps). Yuyu bisa memainkan 8+ melodi dengan dinamika yang berubah.",
     affects:["Mood","Pengalaman atmosfer"], influenced:["Player action"] },
-  { id:"dreamJournal",label:"Dream Journal",         icon:"🌙", x:778,y:492, cat:"extra",          r:20, tagline:"Yang tidak bisa dikatakan, dituliskan",
+  { id:"dreamJournal",label:"Dream Journal",         icon:"", x:778,y:492, cat:"extra",          r:20, tagline:"Yang tidak bisa dikatakan, dituliskan",
     desc:"Jurnal mimpi Yuyu — berisi visi dan harapan tersembunyi. Entri baru di-generate berdasarkan mood, jarak emosional, dan hari ke-.",
     affects:["Memory Log"], influenced:["Mood","Emotional Distance","Hari ke-"] },
   { id:"astrology",   label:"Astrology Panel",       icon:"⭐", x:848,y:385, cat:"extra",          r:20, tagline:"Bintang yang membaca hubungan kalian",
@@ -27587,7 +27587,7 @@ const _ST_GUIDE = {
   quest:        { body:"Quest berlapis: single, chain, secret. Ada quest yang hanya muncul di threshold affection tertentu atau setelah hari ke-N. Completion memicu dialog dan visual khusus.", hint:"Quest chain bisa span beberapa hari — jaga konsistensi." },
   thread:       { body:"Topik yang digantung — Yuyu ingat, dan akan memanfaatkan momen yang tepat untuk melanjutkan. Membuat percakapan terasa organik, bukan reset setiap sesi.", hint:"Thread paling kuat biasanya muncul saat kamu sudah lupa topiknya." },
   rival:        { body:"Karakter lain yang muncul sesekali menciptakan ketegangan dan respons emosional dari Yuyu. Bukan musuh — dinamika yang membuat hubungan terasa tiga dimensi.", hint:"Rival events lebih sering di hari tertentu dan threshold affection tertentu." },
-  timeSlot:     { body:"Lima slot: 🌅 Pagi, ☀️ Siang, 🌇 Sore, 🌙 Malam, 🌑 Tengah Malam. Setiap slot mengubah aksi, lokasi Yuyu, ambient, dan warna dialog.", hint:"Tengah malam dan golden afternoon adalah slot paling intim." },
+  timeSlot:     { body:"Lima slot: 🌅 Pagi, ☀️ Siang, 🌇 Sore,  Malam, 🌑 Tengah Malam. Setiap slot mengubah aksi, lokasi Yuyu, ambient, dan warna dialog.", hint:"Tengah malam dan golden afternoon adalah slot paling intim." },
   circadian:    { body:"Setelah 7+ sesi, Yuyu menganalisis pola waktumu. Kalau kamu selalu datang malam, dia ada di sana. Dialog menyesuaikan — 'Kamu datang lebih awal hari ini' bukan kebetulan.", hint:"Lihat di ❤️ → Pola untuk pattern yang terdeteksi." },
   golden:       { body:"Setiap hari, 2 dari 8 golden hour di-roll. Masing-masing aktif dalam window menit tertentu. Saat aktif: modal + dialog unik + bonus affection 7–20. Terlewat = expired hari ini.", hint:"Golden hour tidak muncul kalau kamu tidak berada di lokasi yang tepat." },
   season:       { body:"Siklus 120 hari: ☀️ Kemarau (45h) → 🌦 Pancaroba (15h) → 🌧 Hujan (45h) → 🌤 Pancaroba (15h). Setiap musim ubah cuaca dominan, mood modifier, dan energi Yuyu.", hint:"Pergantian musim memicu skenario emergent 'Musim Baru' dengan efek scene seasonShift." },
@@ -27727,7 +27727,7 @@ function _stLiveState(nodeId, gs) {
       add("momen spesial", `${(gs.specialMoments||[]).length}/5`);
       break;
     case "timeSlot":
-      add("slot", ["🌅 Pagi","☀️ Siang","🌇 Sore","🌙 Malam","🌑 Tengah Malam"][gs.timeIdx||0]);
+      add("slot", ["🌅 Pagi","☀️ Siang","🌇 Sore"," Malam","🌑 Tengah Malam"][gs.timeIdx||0]);
       add("jam", new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"}));
       break;
     case "circadian": {
