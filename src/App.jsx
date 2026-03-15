@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef, useReducer, useCallback, useMemo } from "react";
 import { Preferences } from "@capacitor/preferences";
+import * as webllm from "@mlc-ai/web-llm";
 
 // ─── window.storage → Capacitor Preferences shim ─────────────────────────────
 // Menjaga semua kode lama (window.storage.get/set/delete) tetap berjalan
@@ -2464,29 +2465,78 @@ Hadir di sensasi, bukan nulis tentang sensasi.
   Tulis ACTION:none jika tidak mau, tidak bisa, atau tidak sesuai situasi.
   Hanya tulis ACTION jika Papa JELAS memintamu melakukan sesuatu spesifik.`;
 
-async function callClaudeAPI(systemPrompt, userMessage, history=[], signal=null, maxTokens=1000) {
-  const messages=[
-    ...history,
-    { role: "user", content: userMessage }
-  ];
-  const fetchOpts = {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages,
-    }),
-  };
-  if (signal) fetchOpts.signal = signal;
-  const response = await fetch("https://api.anthropic.com/v1/messages", fetchOpts);
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.error?.message || `HTTP ${response.status}`);
+
+// ─── LOCAL AI ENGINE (Phi-3 mini, offline fallback) ──────────────────────────
+let _llmEngine = null;
+let _llmLoading = false;
+let _llmReady = false;
+
+async function initLocalAI(onProgress) {
+  if (_llmReady) return _llmEngine;
+  if (_llmLoading) return null;
+  _llmLoading = true;
+  try {
+    _llmEngine = await webllm.CreateMLCEngine("Phi-3.5-mini-instruct-q4f16_1-MLC", {
+      initProgressCallback: (p) => {
+        if (onProgress) onProgress(p.text, p.progress);
+      }
+    });
+    _llmReady = true;
+    return _llmEngine;
+  } catch(e) {
+    console.error("[LocalAI] init error:", e);
+    _llmLoading = false;
+    return null;
   }
-  const data = await response.json();
-  return parseAIResponseSafe(data);
+}
+
+async function callLocalAI(systemPrompt, userMessage, history=[]) {
+  try {
+    const engine = _llmReady ? _llmEngine : await initLocalAI();
+    if (!engine) return { text: "Yuyu sedang offline dan model lokal belum siap... 🌙", mood: "mengantuk", action: "none" };
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...history,
+      { role: "user", content: userMessage }
+    ];
+    const reply = await engine.chat.completions.create({ messages, max_tokens: 1000 });
+    const text = reply.choices[0].message.content;
+    return parseAIResponseSafe({ content: [{ type: "text", text }] });
+  } catch(e) {
+    return { text: "Yuyu tidak bisa menjawab sekarang... 🌙", mood: "biasa", action: "none" };
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+async function callClaudeAPI(systemPrompt, userMessage, history=[], signal=null, maxTokens=1000) {
+  try {
+    const messages=[
+      ...history,
+      { role: "user", content: userMessage }
+    ];
+    const fetchOpts = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages,
+      }),
+    };
+    if (signal) fetchOpts.signal = signal;
+    const response = await fetch("https://api.anthropic.com/v1/messages", fetchOpts);
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    return parseAIResponseSafe(data);
+  } catch(e) {
+    console.warn("[AI] Claude API gagal, fallback ke lokal:", e.message);
+    return callLocalAI(systemPrompt, userMessage, history);
+  }
 }
 
 const MOOD_PALETTE = {
