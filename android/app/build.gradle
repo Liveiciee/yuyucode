@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.liveiciee.yuyucamp"
+    namespace = "com.liveiciee.yuyulife"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.liveiciee.yuyucamp"
+        applicationId "com.liveiciee.yuyulife"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
