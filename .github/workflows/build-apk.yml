@@ -21,6 +21,8 @@ jobs:
 
       - name: Build Vite
         run: npm run build
+        env:
+          VITE_GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
       - uses: actions/setup-java@v5
         with:

@@ -2542,7 +2542,7 @@ async function callClaudeAPI(systemPrompt, userMessage, history=[], signal=null,
     return parseAIResponseSafe(data);
   } catch(e) {
     console.warn("[AI] Claude API gagal, fallback ke lokal:", e.message);
-    return callLocalAI(systemPrompt, userMessage, history);
+    return callGroqAPI(systemPrompt, userMessage, history);
   }
 }
 
@@ -2563,7 +2563,7 @@ window.fetch = async function(url, opts) {
         const lastUser = msgs.slice().reverse().find(function(m){return m.role==='user';});
         const userContent = lastUser ? lastUser.content : '';
         const history = msgs.slice(0, -1);
-        const result = await callLocalAI(system, userContent, history);
+        const result = await callGroqAPI(system, userContent, history);
         const txt = typeof result === 'string' ? result : (result.text || 'Yuyu offline...');
         const fakeData = { content: [{ type: 'text', text: txt }], stop_reason: 'end_turn' };
         return new Response(JSON.stringify(fakeData), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -2575,6 +2575,32 @@ window.fetch = async function(url, opts) {
   }
   return __nativeFetch(url, opts);
 };
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── GROQ API (offline fallback, gratis) ─────────────────────────────────────
+const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+async function callGroqAPI(systemPrompt, userMessage, history=[]) {
+  if (!GROQ_KEY) return { text: 'Yuyu offline...', mood: 'rindu', action: 'none' };
+  try {
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...history,
+      { role: 'user', content: userMessage }
+    ];
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+      body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages, max_tokens: 1000 })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const text = data.choices[0].message.content;
+    return parseAIResponseSafe({ content: [{ type: 'text', text }] });
+  } catch(e) {
+    console.error('[Groq] error:', e.message);
+    return { text: 'Yuyu tidak bisa menjawab sekarang...', mood: 'biasa', action: 'none' };
+  }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 const MOOD_PALETTE = {
   biasa:     {sky:"from-slate-950 via-rose-950 to-slate-900",    tint:"rgba(180,100,130,.0)", border:C.A5A2,glow:"rgba(200,130,150,.06)",accent:"var(--yui-accent-soft)"},
