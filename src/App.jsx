@@ -2479,6 +2479,7 @@ async function initLocalAI(onProgress) {
     _llmEngine = await webllm.CreateMLCEngine("Phi-3.5-mini-instruct-q4f16_1-MLC", {
       initProgressCallback: (p) => {
         if (onProgress) onProgress(p.text, p.progress);
+        _emitLLMProgress(p.text, p.progress);
       }
     });
     _llmReady = true;
@@ -28427,10 +28428,32 @@ function YuyuKnowledgePanel({ initialTab="peta", gameState, gameMode, playerName
 }
 // ─── END KNOWLEDGE PANEL ──────────────────────────────────────────────────────
 
+
+function LLMDownloadToast() {
+  const [prog, setProg] = React.useState(null);
+  React.useEffect(() => {
+    const unsub = onLLMProgress((text, progress) => {
+      if (progress >= 1) { setTimeout(() => setProg(null), 2000); setProg({text:"✅ Model siap!", progress:1}); }
+      else setProg({text, progress});
+    });
+    return unsub;
+  }, []);
+  if (!prog) return null;
+  return (
+    <div style={{position:"fixed",bottom:24,left:16,right:16,zIndex:9999,background:"rgba(9,3,5,.97)",border:"1px solid rgba(255,255,255,.12)",borderRadius:16,padding:"14px 16px",boxShadow:"0 8px 32px rgba(0,0,0,.6)"}}>
+      <div style={{fontSize:11,color:"rgba(255,220,240,.9)",marginBottom:8,fontFamily:"Georgia,serif"}}>🤖 Mengunduh model AI offline Yuyu...</div>
+      <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,.08)",overflow:"hidden",marginBottom:6}}>
+        <div style={{height:"100%",borderRadius:99,background:"linear-gradient(90deg,#e879f9,#f472b6)",width:`${Math.round((prog.progress||0)*100)}%`,transition:"width .3s"}}/>
+      </div>
+      <div style={{fontSize:9,color:"rgba(255,255,255,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{prog.text}</div>
+    </div>
+  );
+}
+
 export default function App() {
   try {
     return (
-      <YuyuErrorBoundary>
+      <YuyuErrorBoundary><LLMDownloadToast />
         <YuyuRPG />
       </YuyuErrorBoundary>
     );
