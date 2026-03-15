@@ -2509,6 +2509,7 @@ async function callLocalAI(systemPrompt, userMessage, history=[]) {
     const text = reply.choices[0].message.content;
     return parseAIResponseSafe({ content: [{ type: "text", text }] });
   } catch(e) {
+    console.error("[callLocalAI] error:", e?.message, e?.stack);
     return { text: "Yuyu tidak bisa menjawab sekarang... 🌙", mood: "biasa", action: "none" };
   }
 }
