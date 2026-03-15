@@ -2467,6 +2467,10 @@ Hadir di sensasi, bukan nulis tentang sensasi.
 
 
 // ─── LOCAL AI ENGINE (Phi-3 mini, offline fallback) ──────────────────────────
+
+const _llmProgressListeners = new Set();
+function onLLMProgress(cb) { _llmProgressListeners.add(cb); return () => _llmProgressListeners.delete(cb); }
+function _emitLLMProgress(text, progress) { _llmProgressListeners.forEach(cb => cb(text, progress)); }
 let _llmEngine = null;
 let _llmLoading = false;
 let _llmReady = false;
