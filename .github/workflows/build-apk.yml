@@ -43,6 +43,9 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle*') }}
           restore-keys: gradle-
 
+      - name: Generate App Icons
+        run: npm install --prefix /tmp sharp && node -e "const sharp=require('/tmp/node_modules/sharp');const svg=Buffer.from('<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 108 108\"><rect width=\"108\" height=\"108\" rx=\"16\" fill=\"#0C0915\"/><path fill=\"#e879f9\" d=\"M30,18 L54,52 L78,18 L68,18 L54,38 L40,18 Z M46,54 L62,54 L62,90 L46,90 Z\"/></svg>');const base='android/app/src/main/res';const s={'mipmap-mdpi':48,'mipmap-hdpi':72,'mipmap-xhdpi':96,'mipmap-xxhdpi':144,'mipmap-xxxhdpi':192};Promise.all(Object.entries(s).map(([f,z])=>sharp(svg).resize(z,z).png().toFile(base+'/'+f+'/ic_launcher.png').then(()=>sharp(svg).resize(z,z).png().toFile(base+'/'+f+'/ic_launcher_round.png')))).then(()=>console.log('done')).catch(console.error);"
+
       - name: Add Capacitor Android
         run: |
           if [ ! -d "android" ]; then npx cap add android; fi
@@ -62,3 +65,4 @@ jobs:
         with:
           name: YuyuLife
           path: android/app/build/outputs/apk/debug/YuyuLife.apk
+# updated Mon Mar 16 07:53:39 WITA 2026
