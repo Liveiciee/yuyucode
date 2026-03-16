@@ -411,7 +411,6 @@ function Terminal({ folder }) {
     </div>
   );
 }
-function getFileIcon(name) {
 
 
 
