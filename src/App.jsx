@@ -210,7 +210,7 @@ function renderMarkdown(raw) {
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
   // Tables - process before other replacements
-  const tableRegex = /(|.+|
+    const tableRegex = /(\|.+\|\n)+/g;
 )+/g;
   t = t.replace(tableRegex, (match) => {
     const rows = match.trim().split('
