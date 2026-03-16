@@ -4,12 +4,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 
-window.onerror = function(msg, src, line, col, err) {
-  document.body.innerHTML = '<div style="color:red;padding:20px;font-size:12px;white-space:pre-wrap">ERROR:\n' + msg + '\nLine: ' + line + '\n' + (err?.stack||'') + '</div>';
-};
-window.onunhandledrejection = function(e) {
-  document.body.innerHTML = '<div style="color:orange;padding:20px;font-size:12px;white-space:pre-wrap">PROMISE ERROR:\n' + e.reason + '</div>';
-};
 
 const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
 const YUYU_SERVER = 'http://localhost:8765';
@@ -394,6 +388,59 @@ function Terminal({ folder }) {
           placeholder="command..." disabled={running}
           style={{flex:1,background:'none',border:'none',outline:'none',color:'rgba(255,255,255,.85)',fontSize:'12px',fontFamily:'monospace'}}/>
       </div>
+      {showSearch && <SearchBar folder={folder} onSelectFile={openFile} onClose={()=>setShowSearch(false)}/>}
+    </div>
+  );
+}
+
+
+function SearchBar({ folder, onSelectFile, onClose }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+
+  async function doSearch() {
+    if (!query.trim()) return;
+    setSearching(true);
+    const r = await callServer({ type:'search', path:folder, content:query });
+    if (r.ok) {
+      const lines = (r.data||'').split('\n').filter(Boolean);
+      setResults(lines);
+    }
+    setSearching(false);
+  }
+
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.85)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+      <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
+        <input autoFocus value={query} onChange={e=>setQuery(e.target.value)}
+          onKeyDown={e=>e.key==='Enter'&&doSearch()}
+          placeholder="Cari di semua file..."
+          style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'8px',padding:'8px 12px',color:'#f0f0f0',fontSize:'13px',outline:'none'}}/>
+        <button onClick={doSearch} disabled={searching}
+          style={{background:'#7c3aed',border:'none',borderRadius:'8px',padding:'8px 14px',color:'white',fontSize:'12px',cursor:'pointer'}}>
+          {searching ? '···' : '🔍'}
+        </button>
+        <button onClick={onClose}
+          style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'8px',padding:'8px 12px',color:'rgba(255,255,255,.5)',fontSize:'14px',cursor:'pointer'}}>×</button>
+      </div>
+      <div style={{flex:1,overflowY:'auto'}}>
+        {results.length === 0 && !searching && query && <div style={{color:'rgba(255,255,255,.3)',fontSize:'12px',padding:'8px 0'}}>Tidak ada hasil</div>}
+        {results.map((line, i) => {
+          const match = line.match(/^(.+?):(d+):s*(.*)/);
+          if (!match) return null;
+          const [, file, lineNum, content] = match;
+          return (
+            <div key={i} onClick={() => { onSelectFile(folder+'/'+file); onClose(); }}
+              style={{padding:'8px 10px',borderRadius:'6px',cursor:'pointer',marginBottom:'2px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)'}}
+              onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.07)'}
+              onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.03)'}>
+              <div style={{fontSize:'11px',color:'#a78bfa',fontFamily:'monospace',marginBottom:'2px'}}>{file}:{lineNum}</div>
+              <div style={{fontSize:'12px',color:'rgba(255,255,255,.6)',fontFamily:'monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{content.trim()}</div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -426,6 +473,7 @@ export default function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
   const [activeTab, setActiveTab] = useState('chat');
+  const [showSearch, setShowSearch] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
@@ -576,6 +624,7 @@ export default function App() {
           {skill&&<span style={{fontSize:'10px',color:'rgba(74,222,128,.5)',marginLeft:'4px'}}>· SKILL</span>}
         </div>
         <span style={{fontSize:'11px',color:'rgba(255,255,255,.2)',background:'rgba(255,255,255,.04)',padding:'2px 7px',borderRadius:'99px'}}>~{tokens}tk</span>
+        <button onClick={()=>setShowSearch(true)} style={{background:'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'3px 8px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>🔍</button>
         <button onClick={()=>setShowTerminal(!showTerminal)} style={{background:showTerminal?'rgba(124,58,237,.2)':'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'3px 8px',color:showTerminal?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>⌨</button>
         <button onClick={()=>{setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});setShowFollowUp(false);}} style={{background:'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'3px 8px',color:'rgba(255,255,255,.35)',fontSize:'11px',cursor:'pointer'}}>new</button>
       </div>
@@ -645,7 +694,12 @@ export default function App() {
                 <button onClick={()=>sendMsg('Yu, jelaskan file '+selectedFile)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',flexShrink:0}}>Tanya Yuyu</button>
                 <button onClick={()=>{setSelectedFile(null);setFileContent(null);setActiveTab('chat');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'14px',cursor:'pointer',flexShrink:0}}>×</button>
               </div>
-              <pre style={{margin:0,padding:'12px',fontSize:'11px',lineHeight:'1.6',fontFamily:'monospace',color:'rgba(255,255,255,.7)',whiteSpace:'pre-wrap',wordBreak:'break-word'}} dangerouslySetInnerHTML={{__html:hl(fileContent||'')}}/>
+              <div style={{display:'flex',fontFamily:'monospace',fontSize:'11px',lineHeight:'1.6'}}>
+              <div style={{padding:'12px 8px',color:'rgba(255,255,255,.2)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'36px',flexShrink:0}}>
+                {(fileContent||'').split('\n').map((_,i)=><div key={i}>{i+1}</div>)}
+              </div>
+              <pre style={{margin:0,padding:'12px',whiteSpace:'pre-wrap',wordBreak:'break-word',color:'rgba(255,255,255,.7)',flex:1,overflow:'auto'}} dangerouslySetInnerHTML={{__html:hl(fileContent||'')}}/>
+            </div>
             </div>
           )}
 
