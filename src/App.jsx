@@ -66,6 +66,18 @@ const GIT_SHORTCUTS = [
 
 const FOLLOW_UPS = ['Jelaskan lebih detail', 'Ada bug?', 'Bisa dioptimasi?', 'Langkah selanjutnya?'];
 
+// ── SLASH COMMANDS ──
+const SLASH_COMMANDS = [
+  { cmd:'/model',      desc:'Ganti model AI' },
+  { cmd:'/compact',    desc:'Kompres context sekarang' },
+  { cmd:'/checkpoint', desc:'Simpan checkpoint sesi ini' },
+  { cmd:'/restore',    desc:'Restore checkpoint terakhir' },
+  { cmd:'/memory',     desc:'Lihat/edit auto memories' },
+  { cmd:'/cost',       desc:'Estimasi token terpakai' },
+  { cmd:'/review',     desc:'Code review file aktif' },
+  { cmd:'/clear',      desc:'Clear chat history' },
+];
+
 const S = {
   msgRow: (isUser) => ({ display:'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', padding:'2px 16px', marginBottom:'2px' }),
   userBubble: { background:'rgba(255,255,255,.08)', borderRadius:'18px 18px 4px 18px', padding:'10px 14px', maxWidth:'80%', minWidth:'60px', fontSize:'14px', lineHeight:'1.6', color:'#f0f0f0', whiteSpace:'pre-wrap', wordBreak:'break-word' },
@@ -896,9 +908,16 @@ export default function App() {
   const [showSnippets, setShowSnippets] = useState(false);
   const [splitView, setSplitView] = useState(false);
   const [offlineCache, setOfflineCache] = useState('');
+  const [memories, setMemories] = useState([]);
+  const [checkpoints, setCheckpoints] = useState([]);
+  const [showMemory, setShowMemory] = useState(false);
+  const [showCheckpoints, setShowCheckpoints] = useState(false);
+  const [hooks, setHooks] = useState({ preWrite:[], postWrite:[], postPush:[] });
+  const [slashSuggestions, setSlashSuggestions] = useState([]);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
+  const autoContextRef = useRef({});
   const T = THEMES[theme] || THEMES.dark;
 
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:'smooth'});},[messages,streaming]);
@@ -921,7 +940,10 @@ export default function App() {
       Preferences.get({key:'yc_pinned'}),
       Preferences.get({key:'yc_recent'}),
       Preferences.get({key:'yc_sidebar_w'}),
-    ]).then(([f,h,ch,mo,th,pi,re,sw])=>{
+      Preferences.get({key:'yc_memories'}),
+      Preferences.get({key:'yc_checkpoints'}),
+      Preferences.get({key:'yc_hooks'}),
+    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk])=>{
       if(f.value){setFolder(f.value);setFolderInput(f.value);}
       if(h.value){try{setMessages(JSON.parse(h.value));}catch{}}
       if(ch.value){try{setCmdHistory(JSON.parse(ch.value));}catch{}}
@@ -930,6 +952,9 @@ export default function App() {
       if(pi.value){try{setPinnedFiles(JSON.parse(pi.value));}catch{}}
       if(re.value){try{setRecentFiles(JSON.parse(re.value));}catch{}}
       if(sw.value) setSidebarWidth(parseInt(sw.value)||180);
+      if(mem.value){try{setMemories(JSON.parse(mem.value));}catch{}}
+      if(ckp.value){try{setCheckpoints(JSON.parse(ckp.value));}catch{}}
+      if(hk.value){try{setHooks(JSON.parse(hk.value));}catch{}}
     });
     callServer({type:'ping'}).then(r=>setServerOk(r.ok));
   },[]);
@@ -1002,6 +1027,8 @@ export default function App() {
       a.executed=true;
     }
     setMessages(m=>m.map((x,i)=>i===idx?{...x}:x));
+    // ── POST-WRITE HOOK ──
+    await runHooks('postWrite', targets.map(a=>a.path).join(','));
   }
 
   async function undoLastEdit(){
@@ -1014,23 +1041,138 @@ export default function App() {
 
   function cancel(){abortRef.current?.abort();setLoading(false);setStreaming('');}
 
-  // ── CONTEXT WINDOW MANAGEMENT ──
+  // ── AUTO MEMORY: extract patterns dari response ──
+  async function extractMemories(userMsg, aiReply) {
+    if (aiReply.length < 100) return;
+    try {
+      const ctrl = new AbortController();
+      const reply = await askCerebrasStream([
+        {role:'system', content:'Extract 0-3 hal penting yang perlu diingat dari percakapan ini sebagai coding memories. Format: satu per baris, dimulai "• ". Hanya extract kalau benar-benar penting (bug patterns, preferensi Papa, keputusan arsitektur). Kalau tidak ada yang penting, tulis "none".'},
+        {role:'user', content:'User: '+userMsg.slice(0,500)+'\n\nAI: '+aiReply.slice(0,800)}
+      ], 'llama3.1-8b', ()=>{}, ctrl.signal);
+      if (reply.trim()==='none'||!reply.includes('•')) return;
+      const newMems = reply.split('\n').filter(l=>l.startsWith('•')).map(l=>({id:Date.now()+Math.random(), text:l.slice(1).trim(), folder, ts:new Date().toLocaleDateString('id')}));
+      if (!newMems.length) return;
+      setMemories(prev => {
+        const merged = [...newMems, ...prev].slice(0,50);
+        Preferences.set({key:'yc_memories', value:JSON.stringify(merged)});
+        return merged;
+      });
+    } catch {}
+  }
+
+  // ── CHECKPOINTS ──
+  function saveCheckpoint() {
+    const cp = {
+      id: Date.now(),
+      label: new Date().toLocaleString('id'),
+      messages: messages.slice(-20),
+      folder, branch, notes,
+    };
+    setCheckpoints(prev => {
+      const next = [cp, ...prev].slice(0,10);
+      Preferences.set({key:'yc_checkpoints', value:JSON.stringify(next)});
+      return next;
+    });
+    setMessages(m=>[...m,{role:'assistant',content:'📍 Checkpoint disimpan: '+cp.label,actions:[]}]);
+  }
+
+  function restoreCheckpoint(cp) {
+    setMessages(cp.messages);
+    setFolder(cp.folder); setFolderInput(cp.folder);
+    setNotes(cp.notes||'');
+    setShowCheckpoints(false);
+    setMessages(m=>[...m,{role:'assistant',content:'✅ Restored checkpoint: '+cp.label,actions:[]}]);
+  }
+
+  // ── SMART COMPACTION: summarize instead of trim ──
+  async function compactContext() {
+    if (messages.length < 10) {
+      setMessages(m=>[...m,{role:'assistant',content:'Context masih kecil, belum perlu compact~',actions:[]}]);
+      return;
+    }
+    setLoading(true);
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    try {
+      const toCompact = messages.slice(1, -6); // keep first + last 6
+      const summary = await askCerebrasStream([
+        {role:'system', content:'Buat ringkasan singkat dari percakapan coding ini. Fokus pada: keputusan teknis, files yang diubah, bug yang ditemukan/fix, status project saat ini. Maksimal 300 kata.'},
+        {role:'user', content:toCompact.map(m=>m.role+': '+m.content.slice(0,300)).join('\n\n')}
+      ], 'llama3.1-8b', ()=>{}, ctrl.signal);
+      const compacted = [
+        messages[0],
+        {role:'assistant', content:'📦 **Context dicompact** ('+toCompact.length+' pesan → ringkasan):\n\n'+summary},
+        ...messages.slice(-6)
+      ];
+      setMessages(compacted);
+      setMessages(m=>[...m,{role:'assistant',content:'✅ Context berhasil dikompres!',actions:[]}]);
+    } catch(e) {
+      if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
+    }
+    setLoading(false);
+  }
+
+  // ── HOOKS RUNNER ──
+  async function runHooks(type, context='') {
+    const hookList = hooks[type] || [];
+    for (const hook of hookList) {
+      try {
+        await callServer({type:'exec', path:folder, command:hook.replace('{{context}}', context)});
+      } catch {}
+    }
+  }
+
+  // ── PARALLEL FILE READ ──
+  async function readFilesParallel(paths) {
+    const results = await Promise.all(paths.map(p=>callServer({type:'read', path:resolvePath(folder,p)})));
+    return paths.reduce((acc,p,i)=>({...acc,[p]:results[i]}),{});
+  }
+
+  // ── SLASH COMMAND HANDLER ──
+  async function handleSlashCommand(cmd) {
+    const parts = cmd.trim().split(' ');
+    const base = parts[0];
+    if (base==='/model') {
+      const next = model===MODELS[0].id ? MODELS[1].id : MODELS[0].id;
+      setModel(next); Preferences.set({key:'yc_model',value:next});
+      setMessages(m=>[...m,{role:'assistant',content:'🔄 Model diganti ke: '+MODELS.find(m=>m.id===next)?.label,actions:[]}]);
+    } else if (base==='/compact') {
+      await compactContext();
+    } else if (base==='/checkpoint') {
+      saveCheckpoint();
+    } else if (base==='/restore') {
+      setShowCheckpoints(true);
+    } else if (base==='/memory') {
+      setShowMemory(true);
+    } else if (base==='/cost') {
+      const total = messages.reduce((a,m)=>a+m.content.length,0);
+      const tokens = Math.round(total/4);
+      setMessages(m=>[...m,{role:'assistant',content:`💰 Estimasi token: ~${tokens}tk | ~${messages.length} pesan | Cerebras gratis jadi $0 😄`,actions:[]}]);
+    } else if (base==='/review') {
+      if (!selectedFile) { setMessages(m=>[...m,{role:'assistant',content:'Buka file dulu Papa~',actions:[]}]); return; }
+      await sendMsg('Lakukan code review menyeluruh pada file '+selectedFile+'. Cari: bugs potensial, performance issues, security issues, dan saran improvement.');
+    } else if (base==='/clear') {
+      setMessages([{role:'assistant',content:'Chat dibersihkan. Mau ngerjain apa Papa? 🌸'}]);
+      Preferences.remove({key:'yc_history'});
+    }
+  }
+
+  // ── CONTEXT WINDOW MANAGEMENT (upgraded with smart trim) ──
   function trimHistory(msgs) {
-    const MAX_CHARS = 80000; // ~20k tokens
-    let total = msgs.reduce((a,m)=>a+m.content.length,0);
+    const MAX_CHARS = 80000;
+    const total = msgs.reduce((a,m)=>a+m.content.length,0);
     if (total <= MAX_CHARS) return msgs;
-    // Keep first (welcome) + last N messages
-    const trimmed = [msgs[0]];
-    let i = msgs.length - 1;
-    let chars = msgs[0].content.length;
     const tail = [];
-    while (i > 0 && chars < MAX_CHARS) {
+    let chars = 0;
+    for (let i = msgs.length-1; i > 0; i--) {
+      if (chars + msgs[i].content.length > MAX_CHARS) break;
       chars += msgs[i].content.length;
       tail.unshift(msgs[i]);
-      i--;
     }
-    if (i > 0) tail.unshift({role:'assistant',content:'[... '+i+' pesan sebelumnya dipotong untuk hemat token ...]'});
-    return [...trimmed, ...tail];
+    const skipped = msgs.length - 1 - tail.length;
+    if (skipped > 0) tail.unshift({role:'assistant',content:'[... '+skipped+' pesan lama dipotong ...]'});
+    return [msgs[0], ...tail];
   }
 
   // ── COMMIT MESSAGE GENERATOR ──
@@ -1077,8 +1219,12 @@ export default function App() {
   async function sendMsg(override){
     const txt=(override||input).trim();
     if(!txt||loading) return;
+
+    // ── SLASH COMMAND ──
+    if (txt.startsWith('/')) { setInput(''); setSlashSuggestions([]); await handleSlashCommand(txt); return; }
+
     setInput('');setHistIdx(-1);addHistory(txt);
-    setShowFollowUp(false);setActiveTab('chat');
+    setShowFollowUp(false);setActiveTab('chat');setSlashSuggestions([]);
     const userMsg={role:'user',content:txt};
     const history=[...messages,userMsg];
     setMessages(history);
@@ -1090,7 +1236,14 @@ export default function App() {
       const skillCtx=skill?'\n\nSKILL.md:\n'+skill:'';
       const pinnedCtx=pinnedFiles.length?'\n\nPinned files: '+pinnedFiles.join(', '):'';
       const fileCtx=selectedFile&&fileContent?'\n\nFile terbuka: '+selectedFile+'\n```\n'+fileContent.slice(0,1500)+'\n```':'';
-      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx;
+      const memCtx=memories.length?'\n\nMemories (pola coding Papa):\n'+memories.slice(0,10).map(m=>'• '+m.text).join('\n'):'';
+      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx;
+
+      // ── PARALLEL PRE-LOAD pinned files ──
+      if (pinnedFiles.length) {
+        const loaded = await readFilesParallel(pinnedFiles.slice(0,3));
+        Object.entries(loaded).forEach(([p,r])=>{ if(r.ok) autoContextRef.current[p]=r.data; });
+      }
 
       // ── AGENTIC LOOP ──
       const MAX_ITER = 6;
@@ -1098,7 +1251,7 @@ export default function App() {
       let allMessages = [...history];
       let finalContent = '';
       let finalActions = [];
-      let autoContext = {}; // path → content, auto-loaded files
+      let autoContext = {...(autoContextRef.current||{})};
 
       while (iter < MAX_ITER) {
         iter++;
@@ -1116,11 +1269,20 @@ export default function App() {
         const writes = allActions.filter(a=>a.type==='write_file');
         const nonWrites = allActions.filter(a=>a.type!=='write_file');
 
-        // Execute non-write actions
-        for(const a of nonWrites) {
-          a.result = await executeAction(a, folder);
-          // ── AUTO CONTEXT: scan imports dari file yang dibaca ──
-          if (a.type==='read_file' && a.result?.ok && a.path) {
+        // ── PARALLEL READ for multiple read_file actions ──
+        const readActions = nonWrites.filter(a=>a.type==='read_file');
+        const otherActions = nonWrites.filter(a=>a.type!=='read_file');
+        if (readActions.length > 1) {
+          const results = await Promise.all(readActions.map(a=>executeAction(a,folder)));
+          readActions.forEach((a,i)=>{ a.result=results[i]; });
+        } else {
+          for(const a of readActions) a.result = await executeAction(a,folder);
+        }
+        for(const a of otherActions) a.result = await executeAction(a,folder);
+
+        // ── AUTO CONTEXT: scan imports ──
+        for (const a of readActions) {
+          if (a.result?.ok && a.path) {
             const content = a.result.data || '';
             const importRegex = /(?:import|require)\s+.*?['"](.+?)['"]/g;
             let im;
@@ -1128,33 +1290,32 @@ export default function App() {
               const imp = im[1];
               if (!imp.startsWith('.')) continue;
               const base = a.path.split('/').slice(0,-1).join('/');
-              const candidates = [imp, imp+'.jsx', imp+'.js', imp+'.ts', imp+'.tsx'].map(s=>base+'/'+s.replace('./','/').replace('//','/'));
+              const candidates = [imp,imp+'.jsx',imp+'.js',imp+'.ts',imp+'.tsx'].map(s=>base+'/'+s.replace('./','/').replace('//','/'));
               for (const cand of candidates) {
                 if (autoContext[cand]) continue;
-                const r = await callServer({type:'read', path:resolvePath(folder, cand)});
-                if (r.ok) { autoContext[cand] = r.data; break; }
+                const r = await callServer({type:'read',path:resolvePath(folder,cand)});
+                if (r.ok) { autoContext[cand]=r.data; break; }
               }
             }
           }
         }
 
-        const fileData = nonWrites.filter(a=>a.result?.ok&&a.type!=='exec').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
+        const fileData = [...readActions,...otherActions].filter(a=>a.result?.ok&&a.type!=='exec').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
 
-        // If no file reads and no writes — done
         if (!fileData && writes.length === 0) {
           finalContent = reply;
-          finalActions = nonWrites;
+          finalActions = [...readActions,...otherActions];
           break;
         }
 
-        // If writes found — pause for approval
         if (writes.length > 0) {
+          // ── PRE-WRITE HOOK ──
+          await runHooks('preWrite', writes.map(a=>a.path).join(','));
           finalContent = reply;
-          finalActions = [...nonWrites, ...writes.map(a=>({...a,executed:false}))];
+          finalActions = [...readActions,...otherActions,...writes.map(a=>({...a,executed:false}))];
           break;
         }
 
-        // Feed file data back for next iteration
         const agentNote = iter < MAX_ITER ? '' : '\n\n(Ini iterasi terakhir, berikan jawaban final.)';
         allMessages = [
           ...allMessages,
@@ -1170,12 +1331,16 @@ export default function App() {
         if(nm){const n=(notes+'\n'+nm[1].trim()).trim();setNotes(n);Preferences.set({key:'yc_notes_'+folder,value:n});}
       }
       setMessages(m=>[...m,{role:'assistant',content:finalContent,actions:finalActions}]);
-      // ── OFFLINE CACHE: simpan response terakhir ──
+
+      // ── OFFLINE CACHE ──
       if (finalContent) {
-        const cache = JSON.stringify({q:txt, a:finalContent, t:Date.now()});
-        Preferences.set({key:'yc_offline_cache', value:cache});
+        Preferences.set({key:'yc_offline_cache', value:JSON.stringify({q:txt,a:finalContent,t:Date.now()})});
         setOfflineCache(finalContent);
       }
+
+      // ── AUTO MEMORY (background) ──
+      extractMemories(txt, finalContent);
+
     }catch(e){
       setAgentRunning(false);
       if(e.name!=='AbortError'){
@@ -1264,6 +1429,8 @@ export default function App() {
         </div>
         <span style={{fontSize:'11px',color:'rgba(255,255,255,.2)',background:'rgba(255,255,255,.04)',padding:'2px 6px',borderRadius:'99px',flexShrink:0}}>~{tokens}tk</span>
         <button onClick={()=>setShowSearch(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>🔍</button>
+        <button onClick={()=>setShowMemory(true)} style={{background:memories.length?'rgba(124,58,237,.1)':'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:memories.length?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}} title="Memories">🧠{memories.length>0&&<span style={{fontSize:'9px',marginLeft:'2px'}}>{memories.length}</span>}</button>
+        <button onClick={()=>setShowCheckpoints(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}} title="Checkpoints">📍</button>
         <button onClick={()=>setShowTerminal(!showTerminal)} style={{background:showTerminal?'rgba(124,58,237,.2)':'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:showTerminal?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>⌨</button>
         <button onClick={()=>setShowShortcuts(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>?</button>
         <select value={theme} onChange={e=>{setTheme(e.target.value);Preferences.set({key:'yc_theme',value:e.target.value});}}
@@ -1448,21 +1615,47 @@ export default function App() {
 
           {/* INPUT */}
           {!showTerminal&&(
-            <div style={{padding:'8px 12px',borderTop:'1px solid '+T.border,display:'flex',gap:'6px',alignItems:'flex-end',background:T.bg2,flexShrink:0}}>
-              <textarea ref={inputRef} value={input}
-                onChange={e=>{setInput(e.target.value);e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,120)+'px';}}
-                onKeyDown={e=>{
-                  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();return;}
-                  if(e.key==='ArrowUp'&&!input){const i=Math.min(histIdx+1,cmdHistory.length-1);setHistIdx(i);setInput(cmdHistory[i]||'');}
-                  if(e.key==='ArrowDown'&&histIdx>-1){const i=histIdx-1;setHistIdx(i);setInput(i>=0?cmdHistory[i]:'');}
-                }}
-                placeholder="Tanya Yuyu..." disabled={loading} rows={1}
-                style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',padding:'8px 12px',color:loading?'rgba(255,255,255,.3)':T.text,fontSize:'13px',resize:'none',outline:'none',fontFamily:'inherit',lineHeight:'1.5'}}/>
-              {loading
-                ?<button onClick={cancel} style={{background:'rgba(248,113,113,.15)',border:'1px solid rgba(248,113,113,.25)',borderRadius:'10px',padding:'8px 14px',color:'#f87171',fontSize:'13px',cursor:'pointer',flexShrink:0}}>stop</button>
-                :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'10px',padding:'8px 14px',color:'white',fontSize:'13px',cursor:'pointer',fontWeight:'500',flexShrink:0}}>↑</button>
-              }
-              <VoiceBtn disabled={loading} onResult={txt=>{setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}} />
+            <div style={{padding:'8px 12px',borderTop:'1px solid '+T.border,background:T.bg2,flexShrink:0,position:'relative'}}>
+              {/* SLASH SUGGESTIONS */}
+              {slashSuggestions.length>0&&(
+                <div style={{position:'absolute',bottom:'100%',left:'12px',right:'12px',background:'#1a1a1e',border:'1px solid rgba(255,255,255,.12)',borderRadius:'8px',overflow:'hidden',zIndex:99,marginBottom:'4px'}}>
+                  {slashSuggestions.map(s=>(
+                    <div key={s.cmd} onClick={()=>{setInput(s.cmd);setSlashSuggestions([]);inputRef.current?.focus();}}
+                      style={{display:'flex',gap:'10px',padding:'7px 12px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.04)'}}
+                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <span style={{color:'#a78bfa',fontFamily:'monospace',fontSize:'12px',flexShrink:0}}>{s.cmd}</span>
+                      <span style={{color:'rgba(255,255,255,.4)',fontSize:'12px'}}>{s.desc}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{display:'flex',gap:'6px',alignItems:'flex-end'}}>
+                <textarea ref={inputRef} value={input}
+                  onChange={e=>{
+                    setInput(e.target.value);
+                    e.target.style.height='auto';
+                    e.target.style.height=Math.min(e.target.scrollHeight,120)+'px';
+                    const v=e.target.value;
+                    if(v.startsWith('/')){
+                      setSlashSuggestions(SLASH_COMMANDS.filter(s=>s.cmd.startsWith(v)));
+                    } else {
+                      setSlashSuggestions([]);
+                    }
+                  }}
+                  onKeyDown={e=>{
+                    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();return;}
+                    if(e.key==='ArrowUp'&&!input){const i=Math.min(histIdx+1,cmdHistory.length-1);setHistIdx(i);setInput(cmdHistory[i]||'');}
+                    if(e.key==='ArrowDown'&&histIdx>-1){const i=histIdx-1;setHistIdx(i);setInput(i>=0?cmdHistory[i]:'');}
+                  }}
+                  placeholder="Tanya Yuyu... atau / untuk commands" disabled={loading} rows={1}
+                  style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',padding:'8px 12px',color:loading?'rgba(255,255,255,.3)':T.text,fontSize:'13px',resize:'none',outline:'none',fontFamily:'inherit',lineHeight:'1.5'}}/>
+                {loading
+                  ?<button onClick={cancel} style={{background:'rgba(248,113,113,.15)',border:'1px solid rgba(248,113,113,.25)',borderRadius:'10px',padding:'8px 14px',color:'#f87171',fontSize:'13px',cursor:'pointer',flexShrink:0}}>stop</button>
+                  :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'10px',padding:'8px 14px',color:'white',fontSize:'13px',cursor:'pointer',fontWeight:'500',flexShrink:0}}>↑</button>
+                }
+                <VoiceBtn disabled={loading} onResult={txt=>{setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}} />
+              </div>
             </div>
           )}
         </div>
@@ -1474,6 +1667,53 @@ export default function App() {
       {showDiff&&<GitDiffPanel folder={folder} onClose={()=>setShowDiff(false)}/>}
       {showBlame&&selectedFile&&<GitBlamePanel folder={folder} filePath={selectedFile} onClose={()=>setShowBlame(false)}/>}
       {showSnippets&&<SnippetLibrary onInsert={code=>{setInput(i=>i?i+'\n'+code:code);setShowSnippets(false);inputRef.current?.focus();}} onClose={()=>setShowSnippets(false)}/>}
+
+      {/* MEMORY PANEL */}
+      {showMemory&&(
+        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+          <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+            <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🧠 Auto Memories ({memories.length})</span>
+            <button onClick={()=>{setMemories([]);Preferences.remove({key:'yc_memories'});}} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>clear all</button>
+            <button onClick={()=>setShowMemory(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+          </div>
+          <div style={{flex:1,overflowY:'auto'}}>
+            {memories.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada memories. Yuyu akan otomatis belajar dari percakapan~</div>}
+            {memories.map(m=>(
+              <div key={m.id} style={{display:'flex',gap:'8px',padding:'7px 10px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:'7px'}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'12px',color:'rgba(255,255,255,.75)'}}>{m.text}</div>
+                  <div style={{fontSize:'10px',color:'rgba(255,255,255,.25)',marginTop:'2px'}}>{m.folder} · {m.ts}</div>
+                </div>
+                <button onClick={()=>{const next=memories.filter(x=>x.id!==m.id);setMemories(next);Preferences.set({key:'yc_memories',value:JSON.stringify(next)});}} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer',flexShrink:0}}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* CHECKPOINT PANEL */}
+      {showCheckpoints&&(
+        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+          <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+            <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>📍 Checkpoints</span>
+            <button onClick={saveCheckpoint} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>+ Save now</button>
+            <button onClick={()=>setShowCheckpoints(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+          </div>
+          <div style={{flex:1,overflowY:'auto'}}>
+            {checkpoints.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada checkpoint. Ketik /checkpoint atau tap "+ Save now"~</div>}
+            {checkpoints.map(cp=>(
+              <div key={cp.id} style={{display:'flex',gap:'8px',alignItems:'center',padding:'8px 10px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:'7px'}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'12px',color:'rgba(255,255,255,.75)'}}>{cp.label}</div>
+                  <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)'}}>{cp.folder} · {cp.messages.length} pesan</div>
+                </div>
+                <button onClick={()=>restoreCheckpoint(cp)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer'}}>restore</button>
+                <button onClick={()=>{const next=checkpoints.filter(x=>x.id!==cp.id);setCheckpoints(next);Preferences.set({key:'yc_checkpoints',value:JSON.stringify(next)});}} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer'}}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
