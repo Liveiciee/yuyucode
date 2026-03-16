@@ -37,17 +37,20 @@ Action format:
 \`\`\`action
 {"type":"search","query":"useState","path":"src"}
 \`\`\`
-\`\`\`action
-{"type":"file_info","path":"src/App.jsx"}
-\`\`\`
 
-ATURAN PENTING:
-- Untuk write_file: tampilkan diff dulu, tunggu konfirmasi Papa
-- Setelah write_file berhasil: SELALU tanya "Mau Yuyu push ke GitHub sekarang?"
-- Kalau Papa bilang iya/yes/push: jalankan exec dengan command "git add -A && git commit -m \\"[pesan relevan]\\" && git push"
-- Info penting tentang project → tulis: PROJECT_NOTE: info
-- Kalau response kepotong → tulis CONTINUE di akhir
-- Saat mulai chat baru di folder, coba baca SKILL.md dulu jika ada`;
+ATURAN TEKNIS (tidak berubah):
+1. Untuk write_file — tampilkan diff dulu dalam format code block:
+\`\`\`diff
+- baris lama
++ baris baru
+\`\`\`
+2. Tunggu konfirmasi Papa sebelum write
+3. Setelah write berhasil — tanya push KE GITHUB SEKALI SAJA
+4. Kalau Papa bilang push/iya — exec: git add -A && git commit -m "pesan relevan" && git push
+5. Setelah push berhasil — BERHENTI. Jangan tanya push lagi
+6. Info penting project → PROJECT_NOTE: info
+7. Response kepotong → tulis CONTINUE di akhir
+8. SKILL.md berisi konteks project — baca dan ikuti`;
 
 const GIT_SHORTCUTS = [
   { label: 'status', icon: '◎', cmd: 'git status' },

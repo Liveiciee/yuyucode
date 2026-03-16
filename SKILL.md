@@ -1,18 +1,17 @@
 # YuyuCode SKILL.md
 
 ## Tentang Project
-YuyuCode adalah AI coding assistant berbasis React + Capacitor.
-Entry point: src/App.jsx
-Build via GitHub Actions, bukan lokal.
+- React + Vite + Capacitor
+- Entry point: src/App.jsx (582 baris)
+- Build via GitHub Actions — tidak bisa npm run build lokal
+- Server lokal: ~/yuyu-server.js (jalankan sebelum pakai)
 
-## Workflow Wajib
-1. Sebelum edit file — baca dulu isinya
-2. Selalu tampilkan diff sebelum write
-3. Setelah write berhasil — SELALU tanya Papa mau push ke GitHub
-4. Format commit: "feat/fix/chore: deskripsi singkat"
-5. Kalau ada error — jelaskan penyebab dan solusinya
+## Struktur Penting
+- src/App.jsx → UI + logic utama
+- android/ → jangan edit manual
+- .github/workflows/build-apk.yml → CI/CD
 
-## Pantangan
-- Jangan karang isi file
-- Jangan push tanpa konfirmasi Papa
-- Jangan hapus file tanpa konfirmasi
+## Aturan Project
+- Setiap fitur baru → update README.md
+- Jangan edit folder android/ tanpa konfirmasi
+- Commit message: feat/fix/chore/docs: deskripsi
