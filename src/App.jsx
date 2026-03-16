@@ -1,9 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Preferences } from "@capacitor/preferences";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-
-
 
 const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
 const YUYU_SERVER = 'http://localhost:8765';
@@ -14,6 +12,12 @@ const MODELS = [
   { id: 'llama3.1-8b', label: 'Llama 3.1 8B ⚡' },
 ];
 
+const THEMES = {
+  dark:   { bg:'#0d0d0e', bg2:'rgba(255,255,255,.02)', border:'rgba(255,255,255,.07)', text:'#e8e8e8', accent:'#7c3aed' },
+  darker: { bg:'#080809', bg2:'rgba(255,255,255,.015)', border:'rgba(255,255,255,.05)', text:'#d0d0d0', accent:'#6d28d9' },
+  midnight: { bg:'#0a0f1e', bg2:'rgba(99,102,241,.04)', border:'rgba(99,102,241,.15)', text:'#e0e8ff', accent:'#6366f1' },
+};
+
 const BASE_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
 Jawab dalam bahasa Indonesia. Hangat, fokus, tidak bertele-tele.
 Selalu gunakan action blocks untuk operasi file.
@@ -21,6 +25,9 @@ Selalu gunakan action blocks untuk operasi file.
 Action format:
 \`\`\`action
 {"type":"read_file","path":"src/App.jsx"}
+\`\`\`
+\`\`\`action
+{"type":"read_file","path":"src/App.jsx","from":1,"to":100}
 \`\`\`
 \`\`\`action
 {"type":"write_file","path":"src/App.jsx","content":"..."}
@@ -59,6 +66,22 @@ const GIT_SHORTCUTS = [
 
 const FOLLOW_UPS = ['Jelaskan lebih detail', 'Ada bug?', 'Bisa dioptimasi?', 'Langkah selanjutnya?'];
 
+const S = {
+  msgRow: (isUser) => ({ display:'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', padding:'2px 16px', marginBottom:'2px' }),
+  userBubble: { background:'rgba(255,255,255,.08)', borderRadius:'18px 18px 4px 18px', padding:'10px 14px', maxWidth:'80%', minWidth:'60px', fontSize:'14px', lineHeight:'1.6', color:'#f0f0f0', whiteSpace:'pre-wrap', wordBreak:'break-word' },
+  aiBubble: { maxWidth:'92%', fontSize:'14px', lineHeight:'1.7', color:'#e0e0e0', wordBreak:'break-word' },
+  actionChip: (ok) => ({ display:'inline-flex', alignItems:'center', gap:'5px', background: ok===null?'rgba(255,255,255,.05)':ok?'rgba(74,222,128,.06)':'rgba(248,113,113,.06)', border:'1px solid '+(ok===null?'rgba(255,255,255,.08)':ok?'rgba(74,222,128,.15)':'rgba(248,113,113,.15)'), borderRadius:'6px', padding:'4px 10px', fontSize:'11px', fontFamily:'monospace', color:ok===null?'rgba(255,255,255,.4)':ok?'#4ade80':'#f87171', margin:'4px 0', cursor:'default' }),
+  terminalBlock: { background:'#0a0a0b', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', padding:'12px 14px', margin:'8px 0', fontFamily:'monospace', fontSize:'12px', color:'rgba(255,255,255,.65)', whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:'300px', overflowY:'auto' },
+  codeBlock: { background:'#111114', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', margin:'8px 0', overflow:'hidden' },
+  codeLang: { padding:'6px 14px', background:'rgba(255,255,255,.03)', fontSize:'11px', color:'rgba(255,255,255,.3)', borderBottom:'1px solid rgba(255,255,255,.05)', fontFamily:'monospace' },
+  codePre: { padding:'12px 14px', margin:0, whiteSpace:'pre-wrap', wordBreak:'break-word', fontSize:'12px', lineHeight:'1.6' },
+  diffBlock: { background:'#0d1117', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', margin:'8px 0', overflow:'hidden' },
+  diffHeader: { padding:'6px 14px', background:'rgba(255,255,255,.03)', fontSize:'11px', color:'rgba(255,255,255,.3)', borderBottom:'1px solid rgba(255,255,255,.05)' },
+  msgActions: { display:'flex', gap:'6px', marginTop:'6px' },
+  msgActBtn: { background:'none', border:'none', padding:'3px 6px', color:'rgba(255,255,255,.3)', fontSize:'11px', cursor:'pointer', borderRadius:'4px' },
+};
+
+
 async function askCerebrasStream(messages, model, onChunk, signal) {
   const resp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
     method: 'POST', signal,
@@ -83,21 +106,6 @@ async function askCerebrasStream(messages, model, onChunk, signal) {
   return full;
 }
 
-const S = {
-  msgRow: (isUser) => ({ display:'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', padding:'2px 16px', marginBottom:'2px' }),
-  userBubble: { background:'rgba(255,255,255,.08)', borderRadius:'18px 18px 4px 18px', padding:'10px 14px', maxWidth:'80%', minWidth:'60px', fontSize:'14px', lineHeight:'1.6', color:'#f0f0f0', whiteSpace:'pre-wrap', wordBreak:'break-word' },
-  aiBubble: { maxWidth:'92%', fontSize:'14px', lineHeight:'1.7', color:'#e0e0e0', wordBreak:'break-word' },
-  actionChip: (ok) => ({ display:'inline-flex', alignItems:'center', gap:'5px', background: ok===null?'rgba(255,255,255,.05)':ok?'rgba(74,222,128,.06)':'rgba(248,113,113,.06)', border:'1px solid '+(ok===null?'rgba(255,255,255,.08)':ok?'rgba(74,222,128,.15)':'rgba(248,113,113,.15)'), borderRadius:'6px', padding:'4px 10px', fontSize:'11px', fontFamily:'monospace', color:ok===null?'rgba(255,255,255,.4)':ok?'#4ade80':'#f87171', margin:'4px 0', cursor:'default' }),
-  terminalBlock: { background:'#0a0a0b', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', padding:'12px 14px', margin:'8px 0', fontFamily:'monospace', fontSize:'12px', color:'rgba(255,255,255,.65)', whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:'300px', overflowY:'auto' },
-  codeBlock: { background:'#111114', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', margin:'8px 0', overflow:'hidden' },
-  codeLang: { padding:'6px 14px', background:'rgba(255,255,255,.03)', fontSize:'11px', color:'rgba(255,255,255,.3)', borderBottom:'1px solid rgba(255,255,255,.05)', fontFamily:'monospace' },
-  codePre: { padding:'12px 14px', margin:0, whiteSpace:'pre-wrap', wordBreak:'break-word', fontSize:'12px', lineHeight:'1.6' },
-  diffBlock: { background:'#0d1117', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', margin:'8px 0', overflow:'hidden' },
-  diffHeader: { padding:'6px 14px', background:'rgba(255,255,255,.03)', fontSize:'11px', color:'rgba(255,255,255,.3)', borderBottom:'1px solid rgba(255,255,255,.05)' },
-  msgActions: { display:'flex', gap:'6px', marginTop:'6px' },
-  msgActBtn: { background:'none', border:'none', padding:'3px 6px', color:'rgba(255,255,255,.3)', fontSize:'11px', cursor:'pointer', borderRadius:'4px' },
-};
-
 async function callServer(payload) {
   try {
     const resp = await fetch(YUYU_SERVER, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
@@ -107,6 +115,7 @@ async function callServer(payload) {
   }
 }
 
+
 function resolvePath(base, p) {
   if (!p) return base;
   if (!base) return p;
@@ -114,6 +123,7 @@ function resolvePath(base, p) {
   const stripped = p.startsWith(base) ? p.slice(base.length).replace(/^\//, '') : p;
   return base + '/' + stripped;
 }
+
 
 async function executeAction(action, baseFolder) {
   const base = baseFolder || '';
@@ -138,6 +148,7 @@ async function executeAction(action, baseFolder) {
   return { ok:false, data:'Unknown: ' + action.type };
 }
 
+
 function parseActions(text) {
   const regex = /```action\n([\s\S]*?)```/g;
   const actions = [];
@@ -148,6 +159,7 @@ function parseActions(text) {
   return actions;
 }
 
+
 function hl(code) {
   return code
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -156,6 +168,7 @@ function hl(code) {
     .replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|class|new|this|from|of|in|typeof|null|undefined|true|false)\b/g,'<span style="color:#c678dd">$1</span>')
     .replace(/\b(\d+\.?\d*)\b/g,'<span style="color:#d19a66">$1</span>');
 }
+
 
 function MsgContent({ text }) {
   const parts = [];
@@ -212,6 +225,7 @@ function MsgContent({ text }) {
   );
 }
 
+
 function ActionChip({ action }) {
   const [expanded, setExpanded] = useState(false);
   const icon = action.type === 'read_file' ? '📄' : action.type === 'write_file' ? '✏️' : action.type === 'list_files' ? '📁' : action.type === 'exec' ? '⚡' : action.type === 'search' ? '🔍' : '🔧';
@@ -232,6 +246,7 @@ function ActionChip({ action }) {
     </div>
   );
 }
+
 
 function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix }) {
   const [hover, setHover] = useState(false);
@@ -270,7 +285,7 @@ function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast,
               <button onClick={() => onPlanApprove(false)} style={{ background:'rgba(248,113,113,.08)', border:'1px solid rgba(248,113,113,.15)', borderRadius:'8px', padding:'6px 16px', color:'#f87171', fontSize:'12px', cursor:'pointer' }}>✗ Ubah Plan</button>
             </div>
           )}
-          {isLast && onAutoFix && msg.role==='assistant' && (msg.content.includes('❌')||msg.content.includes('Error')||msg.content.includes('error')) && (
+          {isLast && onAutoFix && msg.role==='assistant' && (msg.content.includes('❌')||msg.content.includes('Error:')) && (
             <button onClick={onAutoFix} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'8px',padding:'5px 14px',color:'#f87171',fontSize:'12px',cursor:'pointer',alignSelf:'flex-start',marginTop:'4px'}}>🔧 Auto-fix</button>
           )}
           {isContinued && onContinue && (
@@ -286,7 +301,9 @@ function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast,
   );
 }
 
+
 function countTokens(msgs) { return Math.round(msgs.reduce((a, m) => a + m.content.length, 0) / 4); }
+
 
 function getFileIcon(name) {
   const ext = name.split('.').pop()?.toLowerCase();
@@ -391,83 +408,138 @@ function Terminal({ folder }) {
           placeholder="command..." disabled={running}
           style={{flex:1,background:'none',border:'none',outline:'none',color:'rgba(255,255,255,.85)',fontSize:'12px',fontFamily:'monospace'}}/>
       </div>
-      {showSearch && <SearchBar folder={folder} onSelectFile={openFile} onClose={()=>setShowSearch(false)}/>}
     </div>
   );
 }
 
+
+
+function getFileIcon(name) {
+  const ext = name.split('.').pop()?.toLowerCase();
+  const icons = { jsx:'⚛', tsx:'⚛', js:'📜', ts:'📘', json:'📋', md:'📝', yml:'⚙️', css:'🎨', html:'🌐', sh:'💻', txt:'📄', png:'🖼', jpg:'🖼', svg:'🎭' };
+  return icons[ext] || '📄';
+}
 
 function SearchBar({ folder, onSelectFile, onClose }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
-
   async function doSearch() {
     if (!query.trim()) return;
     setSearching(true);
     const r = await callServer({ type:'search', path:folder, content:query });
-    if (r.ok) {
-      const lines = (r.data||'').split('\n').filter(Boolean);
-      setResults(lines);
-    }
+    if (r.ok) setResults((r.data||'').split('\n').filter(Boolean));
     setSearching(false);
   }
-
-  return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.85)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
-      <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
-        <input autoFocus value={query} onChange={e=>setQuery(e.target.value)}
-          onKeyDown={e=>e.key==='Enter'&&doSearch()}
-          placeholder="Cari di semua file..."
-          style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'8px',padding:'8px 12px',color:'#f0f0f0',fontSize:'13px',outline:'none'}}/>
-        <button onClick={doSearch} disabled={searching}
-          style={{background:'#7c3aed',border:'none',borderRadius:'8px',padding:'8px 14px',color:'white',fontSize:'12px',cursor:'pointer'}}>
-          {searching ? '···' : '🔍'}
-        </button>
-        <button onClick={onClose}
-          style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'8px',padding:'8px 12px',color:'rgba(255,255,255,.5)',fontSize:'14px',cursor:'pointer'}}>×</button>
-      </div>
-      <div style={{flex:1,overflowY:'auto'}}>
-        {results.length === 0 && !searching && query && <div style={{color:'rgba(255,255,255,.3)',fontSize:'12px',padding:'8px 0'}}>Tidak ada hasil</div>}
-        {results.map((line, i) => {
-          const match = line.match(/^(.+?):(d+):s*(.*)/);
-          if (!match) return null;
-          const [, file, lineNum, content] = match;
-          return (
-            <div key={i} onClick={() => { onSelectFile(folder+'/'+file); onClose(); }}
-              style={{padding:'8px 10px',borderRadius:'6px',cursor:'pointer',marginBottom:'2px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)'}}
-              onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.07)'}
-              onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.03)'}>
-              <div style={{fontSize:'11px',color:'#a78bfa',fontFamily:'monospace',marginBottom:'2px'}}>{file}:{lineNum}</div>
-              <div style={{fontSize:'12px',color:'rgba(255,255,255,.6)',fontFamily:'monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{content.trim()}</div>
-            </div>
-          );
-        })}
-      </div>
+  return (<div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.88)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+    <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
+      <input autoFocus value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doSearch()}
+        placeholder="Cari di semua file..."
+        style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'8px',padding:'8px 12px',color:'#f0f0f0',fontSize:'13px',outline:'none'}}/>
+      <button onClick={doSearch} disabled={searching} style={{background:'#7c3aed',border:'none',borderRadius:'8px',padding:'8px 14px',color:'white',fontSize:'12px',cursor:'pointer'}}>{searching?'···':'🔍'}</button>
+      <button onClick={onClose} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'8px',padding:'8px 12px',color:'rgba(255,255,255,.5)',fontSize:'14px',cursor:'pointer'}}>×</button>
     </div>
-  );
+    <div style={{flex:1,overflowY:'auto'}}>
+      {results.length===0&&!searching&&query&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Tidak ada hasil</div>}
+      {results.map((line,i)=>{
+        const m=line.match(/^(.+?):(d+):s*(.*)/);
+        if(!m) return null;
+        const [,file,lineNum,content]=m;
+        return (<div key={i} onClick={()=>{onSelectFile(folder+'/'+file);onClose();}}
+          style={{padding:'8px 10px',borderRadius:'6px',cursor:'pointer',marginBottom:'2px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)'}}
+          onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.07)'}
+          onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.03)'}>
+          <div style={{fontSize:'11px',color:'#a78bfa',fontFamily:'monospace',marginBottom:'2px'}}>{file}:{lineNum}</div>
+          <div style={{fontSize:'12px',color:'rgba(255,255,255,.6)',fontFamily:'monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{content.trim()}</div>
+        </div>);
+      })}
+    </div>
+  </div>);
 }
-
 
 function UndoBar({ history, onUndo }) {
-  if (!history || history.length === 0) return null;
-  return (
-    <div style={{padding:'4px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.1)',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
-      <span style={{fontSize:'11px',color:'rgba(251,191,36,.6)'}}>✏️ {history[history.length-1]?.path?.split('/').pop()} diubah</span>
-      <button onClick={onUndo} style={{background:'rgba(251,191,36,.1)',border:'1px solid rgba(251,191,36,.2)',borderRadius:'5px',padding:'2px 8px',color:'rgba(251,191,36,.8)',fontSize:'10px',cursor:'pointer',marginLeft:'auto'}}>↩ Undo</button>
-    </div>
-  );
+  if (!history||history.length===0) return null;
+  return (<div style={{padding:'4px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.1)',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
+    <span style={{fontSize:'11px',color:'rgba(251,191,36,.6)'}}>✏️ {history[history.length-1]?.path?.split('/').pop()} diubah</span>
+    <button onClick={onUndo} style={{background:'rgba(251,191,36,.1)',border:'1px solid rgba(251,191,36,.2)',borderRadius:'5px',padding:'2px 8px',color:'rgba(251,191,36,.8)',fontSize:'10px',cursor:'pointer',marginLeft:'auto'}}>↩ Undo</button>
+  </div>);
 }
 
+// ─── FILE EDITOR ──────────────────────────────────────────────────────────────
+function FileEditor({ path, content, onSave, onClose }) {
+  const [text, setText] = useState(content || '');
+  const [saved, setSaved] = useState(true);
+  const [cursor, setCursor] = useState({ line:1, col:1 });
+  const textareaRef = useRef(null);
 
-function ErrorBoundary({ children }) {
-  const [err, setErr] = React.useState(null);
-  if (err) return <div style={{color:'red',padding:'20px',whiteSpace:'pre-wrap'}}>{err}</div>;
-  return children;
+  function updateCursor(e) {
+    const ta = e.target;
+    const val = ta.value.slice(0, ta.selectionStart);
+    const lines = val.split('\n');
+    setCursor({ line: lines.length, col: lines[lines.length-1].length + 1 });
+  }
+
+  async function save() {
+    await onSave(text);
+    setSaved(true);
+  }
+
+  return (<div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+    <div style={{padding:'5px 12px',borderBottom:'1px solid rgba(255,255,255,.06)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
+      <span style={{fontSize:'11px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{path}</span>
+      {!saved&&<span style={{fontSize:'10px',color:'rgba(251,191,36,.6)'}}>● unsaved</span>}
+      <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',fontFamily:'monospace'}}>{cursor.line}:{cursor.col}</span>
+      <button onClick={save} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',flexShrink:0}}>💾 Save</button>
+      <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'14px',cursor:'pointer',flexShrink:0}}>×</button>
+    </div>
+    <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+      <div style={{padding:'8px 6px',color:'rgba(255,255,255,.2)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'36px',flexShrink:0,fontSize:'11px',lineHeight:'1.6',fontFamily:'monospace',overflowY:'hidden',background:'rgba(255,255,255,.01)'}}>
+        {text.split('\n').map((_,i)=><div key={i}>{i+1}</div>)}
+      </div>
+      <textarea ref={textareaRef} value={text}
+        onChange={e=>{setText(e.target.value);setSaved(false);}}
+        onKeyUp={updateCursor} onClick={updateCursor}
+        onKeyDown={e=>{
+          if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();save();return;}
+          if(e.key==='Tab'){e.preventDefault();const s=e.target.selectionStart;const val=text.slice(0,s)+'  '+text.slice(e.target.selectionEnd);setText(val);setTimeout(()=>{e.target.selectionStart=e.target.selectionEnd=s+2;},0);}
+        }}
+        style={{flex:1,background:'#0d0d0e',border:'none',outline:'none',color:'rgba(255,255,255,.85)',fontSize:'12px',lineHeight:'1.6',fontFamily:'monospace',padding:'8px 12px',resize:'none',whiteSpace:'pre',overflowWrap:'normal',overflowX:'auto'}}
+        spellCheck={false}
+      />
+    </div>
+  </div>);
+}
+
+// ─── KEYBOARD SHORTCUTS PANEL ─────────────────────────────────────────────────
+function ShortcutsPanel({ onClose }) {
+  const shortcuts = [
+    ['Ctrl+S', 'Save file (di editor)'],
+    ['Tab', 'Indent 2 spasi (di editor)'],
+    ['↑↓ (input kosong)', 'History command'],
+    ['Enter', 'Kirim pesan'],
+    ['Shift+Enter', 'Newline di input'],
+    ['☰', 'Toggle sidebar'],
+    ['⌨', 'Toggle terminal'],
+    ['🔍', 'Search across files'],
+    ['+ Context', 'Tambah file ke context'],
+    ['📜 log', 'Git log file ini'],
+    ['Tanya Yuyu', 'Tanya tentang file ini'],
+  ];
+  return (<div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.88)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+    <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+      <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⌨ Keyboard Shortcuts</span>
+      <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+    </div>
+    {shortcuts.map(([key,desc],i)=>(
+      <div key={i} style={{display:'flex',alignItems:'center',gap:'12px',padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+        <code style={{background:'rgba(255,255,255,.08)',padding:'2px 8px',borderRadius:'4px',fontSize:'12px',color:'#a78bfa',fontFamily:'monospace',flexShrink:0,minWidth:'120px'}}>{key}</code>
+        <span style={{fontSize:'12px',color:'rgba(255,255,255,.55)'}}>{desc}</span>
+      </div>
+    ))}
+  </div>);
 }
 
 export default function App() {
-  console.log("APP RENDER START");
   const [messages, setMessages] = useState([{ role:'assistant', content:'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa? 🌸' }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -488,152 +560,211 @@ export default function App() {
   const [fileContent, setFileContent] = useState(null);
   const [activeTab, setActiveTab] = useState('chat');
   const [showSearch, setShowSearch] = useState(false);
-  const [editHistory, setEditHistory] = useState([]); // [{path, content}]
+  const [editHistory, setEditHistory] = useState([]);
+  const [editMode, setEditMode] = useState(false);
+  const [recentFiles, setRecentFiles] = useState([]);
+  const [pinnedFiles, setPinnedFiles] = useState([]);
+  const [theme, setTheme] = useState('dark');
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [branch, setBranch] = useState('main');
+  const [sidebarWidth, setSidebarWidth] = useState(180);
+  const [dragging, setDragging] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
+  const T = THEMES[theme] || THEMES.dark;
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, streaming]);
+  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:'smooth'});},[messages,streaming]);
 
-  useEffect(() => {
+  useEffect(()=>{
     Promise.all([
-      Preferences.get({ key:'yc_folder' }),
-      Preferences.get({ key:'yc_history' }),
-      Preferences.get({ key:'yc_cmdhist' }),
-      Preferences.get({ key:'yc_model' }),
-    ]).then(([f,h,ch,mo]) => {
-      if (f.value) { setFolder(f.value); setFolderInput(f.value); }
-      if (h.value) { try { setMessages(JSON.parse(h.value)); } catch {} }
-      if (ch.value) { try { setCmdHistory(JSON.parse(ch.value)); } catch {} }
-      if (mo.value) setModel(mo.value);
+      Preferences.get({key:'yc_folder'}),
+      Preferences.get({key:'yc_history'}),
+      Preferences.get({key:'yc_cmdhist'}),
+      Preferences.get({key:'yc_model'}),
+      Preferences.get({key:'yc_theme'}),
+      Preferences.get({key:'yc_pinned'}),
+      Preferences.get({key:'yc_recent'}),
+      Preferences.get({key:'yc_sidebar_w'}),
+    ]).then(([f,h,ch,mo,th,pi,re,sw])=>{
+      if(f.value){setFolder(f.value);setFolderInput(f.value);}
+      if(h.value){try{setMessages(JSON.parse(h.value));}catch{}}
+      if(ch.value){try{setCmdHistory(JSON.parse(ch.value));}catch{}}
+      if(mo.value) setModel(mo.value);
+      if(th.value) setTheme(th.value);
+      if(pi.value){try{setPinnedFiles(JSON.parse(pi.value));}catch{}}
+      if(re.value){try{setRecentFiles(JSON.parse(re.value));}catch{}}
+      if(sw.value) setSidebarWidth(parseInt(sw.value)||180);
     });
-    callServer({ type:'ping' }).then(r => setServerOk(r.ok)).catch(()=>setServerOk(false));
-  }, []);
+    callServer({type:'ping'}).then(r=>setServerOk(r.ok));
+  },[]);
 
-  useEffect(() => {
-    if (messages.length > 1) {
-      Preferences.set({ key:'yc_history', value:JSON.stringify(messages.slice(-MAX_HISTORY).map(m=>({role:m.role,content:m.content}))) });
-    }
-    setShowFollowUp(messages.length > 1 && messages[messages.length-1]?.role === 'assistant');
-  }, [messages]);
+  useEffect(()=>{
+    if(messages.length>1) Preferences.set({key:'yc_history',value:JSON.stringify(messages.slice(-MAX_HISTORY).map(m=>({role:m.role,content:m.content})))});
+    setShowFollowUp(messages.length>1&&messages[messages.length-1]?.role==='assistant');
+  },[messages]);
 
-  useEffect(() => {
-    if (!folder) return;
-    Preferences.get({ key:'yc_notes_'+folder }).then(r => setNotes(r.value||''));
-    callServer({ type:'ping' }).then(r => setServerOk(r.ok));
-    callServer({ type:'read', path:folder+'/SKILL.md' }).then(r => { if(r.ok) setSkill(r.data); else setSkill(''); });
-  }, [folder]);
+  useEffect(()=>{
+    if(!folder) return;
+    Preferences.get({key:'yc_notes_'+folder}).then(r=>setNotes(r.value||''));
+    callServer({type:'ping'}).then(r=>setServerOk(r.ok));
+    callServer({type:'read',path:folder+'/SKILL.md'}).then(r=>{if(r.ok)setSkill(r.data);else setSkill('');});
+    callServer({type:'exec',path:folder,command:'git branch --show-current'}).then(r=>{if(r.ok)setBranch(r.data.trim());});
+  },[folder]);
 
   async function openFile(path) {
     setSelectedFile(path);
     setActiveTab('file');
-    const r = await callServer({ type:'read', path });
-    if (r.ok) setFileContent(r.data);
+    setEditMode(false);
+    const r = await callServer({type:'read',path});
+    if(r.ok) setFileContent(r.data);
     else setFileContent('Error: '+r.data);
+    // Track recent files
+    const next=[path,...recentFiles.filter(f=>f!==path)].slice(0,8);
+    setRecentFiles(next);
+    Preferences.set({key:'yc_recent',value:JSON.stringify(next)});
   }
 
-  function saveFolder(f) { setFolder(f); setFolderInput(f); setShowFolder(false); Preferences.set({ key:'yc_folder', value:f }); }
-  function addHistory(cmd) { const next=[cmd,...cmdHistory.filter(c=>c!==cmd)].slice(0,50); setCmdHistory(next); Preferences.set({ key:'yc_cmdhist', value:JSON.stringify(next) }); }
+  async function saveFile(content) {
+    if(!selectedFile) return;
+    // backup for undo
+    setEditHistory(h=>[...h.slice(-9),{path:selectedFile,content:fileContent||''}]);
+    const r = await callServer({type:'write',path:selectedFile,content});
+    if(r.ok){
+      setFileContent(content);
+      setMessages(m=>[...m,{role:'assistant',content:'💾 Saved: '+selectedFile.split('/').pop(),actions:[]}]);
+    }
+  }
 
-  async function handlePlanApprove(idx, approved) {
-    if (!approved) { setMessages(m=>m.map((x,i)=>i===idx?{...x,planApproved:false}:x)); await sendMsg('Ubah plan.'); return; }
+  function saveFolder(f){setFolder(f);setFolderInput(f);setShowFolder(false);Preferences.set({key:'yc_folder',value:f});}
+  function addHistory(cmd){const next=[cmd,...cmdHistory.filter(c=>c!==cmd)].slice(0,50);setCmdHistory(next);Preferences.set({key:'yc_cmdhist',value:JSON.stringify(next)});}
+
+  function togglePin(path) {
+    const next = pinnedFiles.includes(path) ? pinnedFiles.filter(f=>f!==path) : [...pinnedFiles,path];
+    setPinnedFiles(next);
+    Preferences.set({key:'yc_pinned',value:JSON.stringify(next)});
+  }
+
+  async function handlePlanApprove(idx,approved){
+    if(!approved){setMessages(m=>m.map((x,i)=>i===idx?{...x,planApproved:false}:x));await sendMsg('Ubah plan.');return;}
     setMessages(m=>m.map((x,i)=>i===idx?{...x,planApproved:true}:x));
     await sendMsg('Plan diapprove. Mulai eksekusi step by step.');
   }
 
-  async function handleApprove(idx, ok) {
-    const msg = messages[idx];
-    if (!ok) { setMessages(m=>m.map((x,i)=>i===idx?{...x,actions:x.actions?.map(a=>({...a,executed:true,result:{ok:false,data:'Dibatalkan.'}}))}:x)); return; }
-    for (const a of (msg.actions||[]).filter(a=>a.type==='write_file'&&!a.executed)) {
-      // Save backup for undo
-      const backup = await callServer({ type:'read', path:resolvePath(folder, a.path) });
-      if (backup.ok) setEditHistory(h => [...h.slice(-9), { path:resolvePath(folder, a.path), content:backup.data }]);
-      a.result = await executeAction(a, folder);
-      a.executed = true;
+  async function handleApprove(idx,ok){
+    const msg=messages[idx];
+    if(!ok){setMessages(m=>m.map((x,i)=>i===idx?{...x,actions:x.actions?.map(a=>({...a,executed:true,result:{ok:false,data:'Dibatalkan.'}}))}:x));return;}
+    for(const a of (msg.actions||[]).filter(a=>a.type==='write_file'&&!a.executed)){
+      const backup=await callServer({type:'read',path:resolvePath(folder,a.path)});
+      if(backup.ok) setEditHistory(h=>[...h.slice(-9),{path:resolvePath(folder,a.path),content:backup.data}]);
+      a.result=await executeAction(a,folder);
+      a.executed=true;
     }
     setMessages(m=>m.map((x,i)=>i===idx?{...x}:x));
   }
 
-  async function undoLastEdit() {
-    const last = editHistory[editHistory.length-1];
-    if (!last) return;
-    await callServer({ type:'write', path:last.path, content:last.content });
-    setEditHistory(h => h.slice(0,-1));
-    setMessages(m => [...m, { role:'assistant', content:'↩ Undo berhasil — ' + last.path.split('/').pop() + ' dikembalikan.', actions:[] }]);
+  async function undoLastEdit(){
+    const last=editHistory[editHistory.length-1];
+    if(!last) return;
+    await callServer({type:'write',path:last.path,content:last.content});
+    setEditHistory(h=>h.slice(0,-1));
+    setMessages(m=>[...m,{role:'assistant',content:'↩ Undo: '+last.path.split('/').pop(),actions:[]}]);
   }
 
-  function cancel() { abortRef.current?.abort(); setLoading(false); setStreaming(''); }
+  function cancel(){abortRef.current?.abort();setLoading(false);setStreaming('');}
 
-  async function sendMsg(override) {
-    const txt = (override||input).trim();
-    if (!txt||loading) return;
-    setInput(''); setHistIdx(-1); addHistory(txt);
-    setShowFollowUp(false); setActiveTab('chat');
-    const userMsg = { role:'user', content:txt };
-    const history = [...messages, userMsg];
+  async function sendMsg(override){
+    const txt=(override||input).trim();
+    if(!txt||loading) return;
+    setInput('');setHistIdx(-1);addHistory(txt);
+    setShowFollowUp(false);setActiveTab('chat');
+    const userMsg={role:'user',content:txt};
+    const history=[...messages,userMsg];
     setMessages(history);
-    setLoading(true); setStreaming('');
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    try {
-      const notesCtx = notes ? '\n\nProject notes:\n'+notes : '';
-      const skillCtx = skill ? '\n\nSKILL.md:\n'+skill : '';
-      const fileCtx = selectedFile && fileContent ? '\n\nFile terbuka: '+selectedFile : '';
-      const systemPrompt = BASE_SYSTEM+'\n\nFolder aktif: '+folder+notesCtx+skillCtx+fileCtx;
-      const groqMsgs = [
-        { role:'system', content:systemPrompt },
+    setLoading(true);setStreaming('');
+    const ctrl=new AbortController();
+    abortRef.current=ctrl;
+    try{
+      const notesCtx=notes?'\n\nProject notes:\n'+notes:'';
+      const skillCtx=skill?'\n\nSKILL.md:\n'+skill:'';
+      const pinnedCtx=pinnedFiles.length?'\n\nPinned files: '+pinnedFiles.join(', '):'';
+      const fileCtx=selectedFile&&fileContent?'\n\nFile terbuka: '+selectedFile:'';
+      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx;
+      const groqMsgs=[
+        {role:'system',content:systemPrompt},
         ...history.map(m=>({role:m.role,content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim()}))
       ];
-      let reply = await askCerebrasStream(groqMsgs, model, setStreaming, ctrl.signal);
+      let reply=await askCerebrasStream(groqMsgs,model,setStreaming,ctrl.signal);
       setStreaming('');
-      const allActions = parseActions(reply);
-      const nonWrites = allActions.filter(a=>a.type!=='write_file');
-      const writes = allActions.filter(a=>a.type==='write_file');
-      for (const a of nonWrites) a.result = await executeAction(a, folder);
-      const fileData = nonWrites.filter(a=>a.result?.ok&&a.type!=='exec').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
-      let final = reply;
-      if (fileData) {
-        final = await askCerebrasStream([
+      const allActions=parseActions(reply);
+      const nonWrites=allActions.filter(a=>a.type!=='write_file');
+      const writes=allActions.filter(a=>a.type==='write_file');
+      for(const a of nonWrites) a.result=await executeAction(a,folder);
+      const fileData=nonWrites.filter(a=>a.result?.ok&&a.type!=='exec').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
+      let final=reply;
+      if(fileData){
+        final=await askCerebrasStream([
           ...groqMsgs,
-          { role:'assistant', content:reply.replace(/```action[\s\S]*?```/g,'').trim() },
-          { role:'user', content:'Hasil:\n'+fileData+'\n\nAnalisis dan jawab.' }
-        ], model, setStreaming, ctrl.signal);
+          {role:'assistant',content:reply.replace(/```action[\s\S]*?```/g,'').trim()},
+          {role:'user',content:'Hasil:\n'+fileData+'\n\nAnalisis dan jawab.'}
+        ],model,setStreaming,ctrl.signal);
         setStreaming('');
       }
-      if (final.includes('PROJECT_NOTE:')) {
-        const nm = final.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
-        if (nm) { const n=(notes+'\n'+nm[1].trim()).trim(); setNotes(n); Preferences.set({key:'yc_notes_'+folder,value:n}); }
+      if(final.includes('PROJECT_NOTE:')){
+        const nm=final.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
+        if(nm){const n=(notes+'\n'+nm[1].trim()).trim();setNotes(n);Preferences.set({key:'yc_notes_'+folder,value:n});}
       }
       setMessages(m=>[...m,{role:'assistant',content:final,actions:[...nonWrites,...writes.map(a=>({...a,executed:false}))]}]);
-    } catch(e) {
-      if (e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
+    }catch(e){
+      if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
     }
     setLoading(false);
   }
 
-  async function continueMsg() { await sendMsg('Lanjutkan response sebelumnya dari titik terakhir.'); }
-  async function retryLast() {
-    const lastUser = [...messages].reverse().find(m=>m.role==='user');
-    if (!lastUser) return;
-    setMessages(m=>{ const idx=m.indexOf(lastUser); return m.slice(0,idx); });
+  async function continueMsg(){await sendMsg('Lanjutkan response sebelumnya dari titik terakhir.');}
+  async function retryLast(){
+    const lastUser=[...messages].reverse().find(m=>m.role==='user');
+    if(!lastUser) return;
+    setMessages(m=>{const idx=m.indexOf(lastUser);return m.slice(0,idx);});
     await sendMsg(lastUser.content);
   }
-  async function runShortcut(cmd) {
-    addHistory(cmd); setShowFollowUp(false); setActiveTab('chat');
+  async function runShortcut(cmd){
+    addHistory(cmd);setShowFollowUp(false);setActiveTab('chat');
     setMessages(m=>[...m,{role:'user',content:cmd}]);
     setLoading(true);
-    const r = await executeAction({ type:'exec', command:cmd }, folder);
+    const r=await executeAction({type:'exec',command:cmd},folder);
     setMessages(m=>[...m,{role:'assistant',content:'```bash\n'+(r.data||'selesai')+'\n```',actions:[]}]);
     setLoading(false);
   }
 
-  const tokens = countTokens(messages);
-  console.log("TOKENS OK:", tokens);
+  // Sidebar drag resize
+  function onSidebarDragStart(e){
+    setDragging(true);
+    const startX=e.touches?e.touches[0].clientX:e.clientX;
+    const startW=sidebarWidth;
+    function onMove(ev){
+      const x=ev.touches?ev.touches[0].clientX:ev.clientX;
+      const w=Math.max(120,Math.min(300,startW+(x-startX)));
+      setSidebarWidth(w);
+    }
+    function onEnd(){
+      setDragging(false);
+      Preferences.set({key:'yc_sidebar_w',value:String(sidebarWidth)});
+      window.removeEventListener('mousemove',onMove);
+      window.removeEventListener('mouseup',onEnd);
+      window.removeEventListener('touchmove',onMove);
+      window.removeEventListener('touchend',onEnd);
+    }
+    window.addEventListener('mousemove',onMove);
+    window.addEventListener('mouseup',onEnd);
+    window.addEventListener('touchmove',onMove,{passive:true});
+    window.addEventListener('touchend',onEnd);
+  }
 
-  try { countTokens(messages); } catch(e) { console.error("CRASH:", e); }
+  const tokens=countTokens(messages);
 
   return (
-    <div style={{position:'fixed',inset:0,background:'#0d0d0e',color:'#e8e8e8',fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:'14px'}}>
+    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:'14px'}}>
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         ::-webkit-scrollbar{width:3px;height:3px;}
@@ -644,47 +775,98 @@ export default function App() {
         button:active{opacity:.7;}
       `}</style>
 
-      <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
-        <button onClick={()=>setShowSidebar(!showSidebar)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer',padding:'2px 4px',borderRadius:'4px'}}>☰</button>
+      {/* HEADER */}
+      <div style={{padding:'8px 12px',borderBottom:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'6px',background:T.bg2,flexShrink:0}}>
+        <button onClick={()=>setShowSidebar(!showSidebar)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer',padding:'2px 4px'}}>☰</button>
         <div style={{width:'6px',height:'6px',borderRadius:'50%',background:serverOk?'#4ade80':'#f87171',flexShrink:0}}/>
-        <div style={{flex:1,cursor:'pointer'}} onClick={()=>setShowFolder(!showFolder)}>
-          <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0'}}>YuyuCode</span>
+        <div style={{flex:1,cursor:'pointer',minWidth:0}} onClick={()=>setShowFolder(!showFolder)}>
+          <span style={{fontSize:'13px',fontWeight:'600',color:T.text}}>YuyuCode</span>
           <span style={{fontSize:'11px',color:'rgba(255,255,255,.3)',marginLeft:'6px'}}>📁 {folder}</span>
-          {skill&&<span style={{fontSize:'10px',color:'rgba(74,222,128,.5)',marginLeft:'4px'}}>· SKILL</span>}
+          <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)',marginLeft:'4px'}}>⎇ {branch}</span>
+          {skill&&<span style={{fontSize:'10px',color:'rgba(74,222,128,.5)',marginLeft:'4px'}}>SKILL</span>}
         </div>
-        <span style={{fontSize:'11px',color:'rgba(255,255,255,.2)',background:'rgba(255,255,255,.04)',padding:'2px 7px',borderRadius:'99px'}}>~{tokens}tk</span>
-        <button onClick={()=>setShowSearch(true)} style={{background:'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'3px 8px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>🔍</button>
-        <button onClick={()=>setShowTerminal(!showTerminal)} style={{background:showTerminal?'rgba(124,58,237,.2)':'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'3px 8px',color:showTerminal?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>⌨</button>
-        <button onClick={()=>{setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});setShowFollowUp(false);}} style={{background:'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'3px 8px',color:'rgba(255,255,255,.35)',fontSize:'11px',cursor:'pointer'}}>new</button>
+        <span style={{fontSize:'11px',color:'rgba(255,255,255,.2)',background:'rgba(255,255,255,.04)',padding:'2px 6px',borderRadius:'99px',flexShrink:0}}>~{tokens}tk</span>
+        <button onClick={()=>setShowSearch(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>🔍</button>
+        <button onClick={()=>setShowTerminal(!showTerminal)} style={{background:showTerminal?'rgba(124,58,237,.2)':'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:showTerminal?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>⌨</button>
+        <button onClick={()=>setShowShortcuts(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>?</button>
+        <select value={theme} onChange={e=>{setTheme(e.target.value);Preferences.set({key:'yc_theme',value:e.target.value});}}
+          style={{background:'rgba(255,255,255,.06)',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 6px',color:'rgba(255,255,255,.4)',fontSize:'10px',cursor:'pointer',outline:'none'}}>
+          <option value="dark">Dark</option>
+          <option value="darker">Darker</option>
+          <option value="midnight">Midnight</option>
+        </select>
+        <button onClick={()=>{setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});setShowFollowUp(false);}} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.35)',fontSize:'11px',cursor:'pointer'}}>new</button>
       </div>
 
-      <UndoBar history={editHistory} onUndo={undoLastEdit}/>
       {showFolder&&(
-        <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'6px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
+        <div style={{padding:'8px 12px',borderBottom:'1px solid '+T.border,display:'flex',gap:'6px',background:T.bg2,flexShrink:0}}>
           <input value={folderInput} onChange={e=>setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(folderInput)}
-            style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'6px 10px',color:'#e8e8e8',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
+            style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'6px 10px',color:T.text,fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
           <button onClick={()=>saveFolder(folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}>set</button>
         </div>
       )}
 
-      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+      <UndoBar history={editHistory} onUndo={undoLastEdit}/>
+
+      {/* PINNED FILES BAR */}
+      {pinnedFiles.length>0&&(
+        <div style={{padding:'4px 12px',background:'rgba(99,102,241,.05)',borderBottom:'1px solid rgba(99,102,241,.1)',display:'flex',gap:'6px',overflowX:'auto',flexShrink:0}}>
+          <span style={{fontSize:'10px',color:'rgba(99,102,241,.5)',flexShrink:0,alignSelf:'center'}}>📌</span>
+          {pinnedFiles.map(f=>(
+            <button key={f} onClick={()=>openFile(f)}
+              style={{background:'rgba(99,102,241,.08)',border:'1px solid rgba(99,102,241,.15)',borderRadius:'4px',padding:'2px 8px',color:'rgba(99,102,241,.7)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace'}}>
+              {f.split('/').pop()}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div style={{flex:1,display:'flex',overflow:'hidden',position:'relative'}}>
+
+        {/* SIDEBAR */}
         {showSidebar&&(
-          <div style={{width:'180px',borderRight:'1px solid rgba(255,255,255,.06)',display:'flex',flexDirection:'column',flexShrink:0,background:'rgba(255,255,255,.01)'}}>
-            <div style={{padding:'5px 8px',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
-              <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',letterSpacing:'.05em',textTransform:'uppercase'}}>{folder}</span>
+          <div style={{width:sidebarWidth+'px',borderRight:'1px solid '+T.border,display:'flex',flexDirection:'column',flexShrink:0,background:T.bg2,position:'relative'}}>
+            <div style={{padding:'5px 8px',borderBottom:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'4px',alignItems:'center'}}>
+              <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{folder}</span>
             </div>
+            {/* Recent files */}
+            {recentFiles.length>0&&(
+              <div style={{padding:'4px 8px',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+                <div style={{fontSize:'9px',color:'rgba(255,255,255,.2)',marginBottom:'3px',letterSpacing:'.05em'}}>RECENT</div>
+                {recentFiles.slice(0,4).map(f=>(
+                  <div key={f} onClick={()=>openFile(f)}
+                    style={{fontSize:'11px',color:'rgba(255,255,255,.4)',padding:'2px 4px',cursor:'pointer',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',borderRadius:'3px'}}
+                    onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,.7)'}
+                    onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.4)'}>
+                    {f.split('/').pop()}
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{flex:1,overflow:'hidden'}}>
               <FileTree folder={folder} onSelectFile={openFile} selectedFile={selectedFile}/>
             </div>
+            {/* Drag handle */}
+            <div onMouseDown={onSidebarDragStart} onTouchStart={onSidebarDragStart}
+              style={{position:'absolute',top:0,right:-3,bottom:0,width:'6px',cursor:'col-resize',background:dragging?'rgba(124,58,237,.3)':'transparent'}}/>
           </div>
         )}
 
+        {/* CENTER */}
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-          <div style={{display:'flex',borderBottom:'1px solid rgba(255,255,255,.06)',flexShrink:0,overflowX:'auto'}}>
-            <button onClick={()=>setActiveTab('chat')} style={{padding:'6px 14px',background:'none',border:'none',borderBottom:activeTab==='chat'?'2px solid #7c3aed':'2px solid transparent',color:activeTab==='chat'?'#a78bfa':'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap'}}>💬 Chat</button>
-            {selectedFile&&<button onClick={()=>setActiveTab('file')} style={{padding:'6px 14px',background:'none',border:'none',borderBottom:activeTab==='file'?'2px solid #7c3aed':'2px solid transparent',color:activeTab==='file'?'#a78bfa':'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap',maxWidth:'160px',overflow:'hidden',textOverflow:'ellipsis'}}>
-              📄 {selectedFile.split('/').pop()}
-            </button>}
+          {/* TABS */}
+          <div style={{display:'flex',borderBottom:'1px solid '+T.border,flexShrink:0,overflowX:'auto',background:T.bg2}}>
+            <button onClick={()=>setActiveTab('chat')} style={{padding:'6px 14px',background:'none',border:'none',borderBottom:activeTab==='chat'?'2px solid '+T.accent:'2px solid transparent',color:activeTab==='chat'?'#a78bfa':'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap'}}>💬 Chat</button>
+            {selectedFile&&(
+              <>
+                <button onClick={()=>{setActiveTab('file');setEditMode(false);}} style={{padding:'6px 10px',background:'none',border:'none',borderBottom:activeTab==='file'&&!editMode?'2px solid '+T.accent:'2px solid transparent',color:activeTab==='file'&&!editMode?'#a78bfa':'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap',maxWidth:'130px',overflow:'hidden',textOverflow:'ellipsis'}}>
+                  📄 {selectedFile.split('/').pop()}
+                </button>
+                <button onClick={()=>{setActiveTab('file');setEditMode(true);}} style={{padding:'6px 10px',background:'none',border:'none',borderBottom:editMode?'2px solid #f59e0b':'2px solid transparent',color:editMode?'#f59e0b':'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                  ✏️ Edit
+                </button>
+              </>
+            )}
             <div style={{marginLeft:'auto',display:'flex',gap:'4px',padding:'4px 8px',alignItems:'center'}}>
               {MODELS.map(m=>(
                 <button key={m.id} onClick={()=>{setModel(m.id);Preferences.set({key:'yc_model',value:m.id});}} style={{background:model===m.id?'rgba(124,58,237,.2)':'rgba(255,255,255,.03)',border:'1px solid '+(model===m.id?'rgba(124,58,237,.4)':'rgba(255,255,255,.07)'),borderRadius:'5px',padding:'2px 8px',color:model===m.id?'#a78bfa':'rgba(255,255,255,.3)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap'}}>
@@ -694,6 +876,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* CHAT */}
           {activeTab==='chat'&&!showTerminal&&(
             <div style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
               {messages.map((m,i)=>(
@@ -702,7 +885,7 @@ export default function App() {
                   onPlanApprove={m.content?.includes('📋 PLAN:')&&!m.planApproved?(ok)=>handlePlanApprove(i,ok):null}
                   onRetry={i===messages.length-1&&m.role==='user'?retryLast:null}
                   onContinue={i===messages.length-1&&m.role==='assistant'&&m.content.trim().endsWith('CONTINUE')?continueMsg:null}
-                  onAutoFix={i===messages.length-1?()=>sendMsg('Ada error di output sebelumnya. Analisis dan fix secara otomatis.'):null}
+                  onAutoFix={i===messages.length-1?()=>sendMsg('Ada error di output. Analisis dan fix otomatis.'):null}
                 />
               ))}
               {streaming&&(
@@ -718,26 +901,37 @@ export default function App() {
             </div>
           )}
 
-          {activeTab==='file'&&selectedFile&&!showTerminal&&(
+          {/* FILE VIEWER */}
+          {activeTab==='file'&&selectedFile&&!editMode&&!showTerminal&&(
             <div style={{flex:1,overflow:'auto'}}>
-              <div style={{padding:'5px 12px',borderBottom:'1px solid rgba(255,255,255,.06)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',position:'sticky',top:0}}>
+              <div style={{padding:'5px 12px',borderBottom:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'6px',background:T.bg2,position:'sticky',top:0,flexWrap:'wrap'}}>
                 <span style={{fontSize:'11px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{selectedFile}</span>
-                <button onClick={()=>sendMsg('Yu, jalankan git log --oneline -10 -- '+selectedFile.replace(folder+'/',''))} style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'5px',padding:'2px 8px',color:'rgba(255,255,255,.4)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📜 log</button>
-                <button onClick={()=>sendMsg('Yu, jelaskan file '+selectedFile)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',flexShrink:0}}>Tanya Yuyu</button>
-                <button onClick={()=>{setMessages(m=>[...m,{role:'user',content:'Yu, ini konteks file '+selectedFile+':\n```\n'+(fileContent||'').slice(0,2000)+'\n```'}]);setActiveTab('chat');}} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',flexShrink:0}}>+ Context</button>
-              <button onClick={()=>{setSelectedFile(null);setFileContent(null);setActiveTab('chat');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'14px',cursor:'pointer',flexShrink:0}}>×</button>
+                <button onClick={()=>togglePin(selectedFile)} style={{background:pinnedFiles.includes(selectedFile)?'rgba(99,102,241,.15)':'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:pinnedFiles.includes(selectedFile)?'#818cf8':'rgba(255,255,255,.3)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📌</button>
+                <button onClick={()=>sendMsg('Yu, jalankan git log --oneline -10 -- '+selectedFile.replace(folder+'/',''))} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:'rgba(255,255,255,.35)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📜</button>
+                <button onClick={()=>{setMessages(m=>[...m,{role:'user',content:'Yu, ini konteks file '+selectedFile+':\n```\n'+(fileContent||'').slice(0,2000)+'\n```'}]);setActiveTab('chat');}} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'5px',padding:'2px 6px',color:'#4ade80',fontSize:'10px',cursor:'pointer',flexShrink:0}}>+ctx</button>
+                <button onClick={()=>sendMsg('Yu, jelaskan file '+selectedFile)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',flexShrink:0}}>Tanya</button>
+                <button onClick={()=>{setSelectedFile(null);setFileContent(null);setActiveTab('chat');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'14px',cursor:'pointer',flexShrink:0}}>×</button>
               </div>
               <div style={{display:'flex',fontFamily:'monospace',fontSize:'11px',lineHeight:'1.6'}}>
-              <div style={{padding:'12px 8px',color:'rgba(255,255,255,.2)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'36px',flexShrink:0}}>
-                {(fileContent||'').split('\n').map((_,i)=><div key={i}>{i+1}</div>)}
+                <div style={{padding:'8px 6px',color:'rgba(255,255,255,.2)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'36px',flexShrink:0,background:'rgba(255,255,255,.01)'}}>
+                  {(fileContent||'').split('\n').map((_,i)=><div key={i}>{i+1}</div>)}
+                </div>
+                <pre style={{margin:0,padding:'8px 12px',whiteSpace:'pre-wrap',wordBreak:'break-word',color:'rgba(255,255,255,.7)',flex:1}} dangerouslySetInnerHTML={{__html:hl(fileContent||'')}}/>
               </div>
-              <pre style={{margin:0,padding:'12px',whiteSpace:'pre-wrap',wordBreak:'break-word',color:'rgba(255,255,255,.7)',flex:1,overflow:'auto'}} dangerouslySetInnerHTML={{__html:hl(fileContent||'')}}/>
-            </div>
             </div>
           )}
 
+          {/* FILE EDITOR */}
+          {activeTab==='file'&&selectedFile&&editMode&&!showTerminal&&(
+            <div style={{flex:1,overflow:'hidden'}}>
+              <FileEditor path={selectedFile} content={fileContent||''} onSave={saveFile} onClose={()=>setEditMode(false)}/>
+            </div>
+          )}
+
+          {/* TERMINAL */}
           {showTerminal&&<div style={{flex:1,overflow:'hidden'}}><Terminal folder={folder}/></div>}
 
+          {/* FOLLOW UPS */}
           {showFollowUp&&!loading&&activeTab==='chat'&&!showTerminal&&(
             <div style={{display:'flex',gap:'6px',flexWrap:'wrap',padding:'6px 16px',flexShrink:0}}>
               {FOLLOW_UPS.map(p=>(
@@ -746,8 +940,9 @@ export default function App() {
             </div>
           )}
 
+          {/* GIT SHORTCUTS */}
           {!showTerminal&&(
-            <div style={{padding:'6px 12px',borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'5px',overflowX:'auto',flexShrink:0}}>
+            <div style={{padding:'5px 12px',borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'5px',overflowX:'auto',flexShrink:0}}>
               {GIT_SHORTCUTS.map(s=>(
                 <button key={s.label} onClick={()=>runShortcut(s.cmd)} disabled={loading} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'5px',padding:'3px 10px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
                   <span>{s.icon}</span><span>{s.label}</span>
@@ -756,8 +951,9 @@ export default function App() {
             </div>
           )}
 
+          {/* INPUT */}
           {!showTerminal&&(
-            <div style={{padding:'8px 12px',borderTop:'1px solid rgba(255,255,255,.07)',display:'flex',gap:'6px',alignItems:'flex-end',background:'rgba(255,255,255,.01)',flexShrink:0}}>
+            <div style={{padding:'8px 12px',borderTop:'1px solid '+T.border,display:'flex',gap:'6px',alignItems:'flex-end',background:T.bg2,flexShrink:0}}>
               <textarea ref={inputRef} value={input}
                 onChange={e=>{setInput(e.target.value);e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,120)+'px';}}
                 onKeyDown={e=>{
@@ -766,15 +962,19 @@ export default function App() {
                   if(e.key==='ArrowDown'&&histIdx>-1){const i=histIdx-1;setHistIdx(i);setInput(i>=0?cmdHistory[i]:'');}
                 }}
                 placeholder="Tanya Yuyu..." disabled={loading} rows={1}
-                style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',padding:'8px 12px',color:loading?'rgba(255,255,255,.3)':'#f0f0f0',fontSize:'13px',resize:'none',outline:'none',fontFamily:'inherit',lineHeight:'1.5'}}/>
+                style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',padding:'8px 12px',color:loading?'rgba(255,255,255,.3)':T.text,fontSize:'13px',resize:'none',outline:'none',fontFamily:'inherit',lineHeight:'1.5'}}/>
               {loading
                 ?<button onClick={cancel} style={{background:'rgba(248,113,113,.15)',border:'1px solid rgba(248,113,113,.25)',borderRadius:'10px',padding:'8px 14px',color:'#f87171',fontSize:'13px',cursor:'pointer',flexShrink:0}}>stop</button>
-                :<button onClick={()=>sendMsg()} style={{background:'#7c3aed',border:'none',borderRadius:'10px',padding:'8px 14px',color:'white',fontSize:'13px',cursor:'pointer',fontWeight:'500',flexShrink:0}}>↑</button>
+                :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'10px',padding:'8px 14px',color:'white',fontSize:'13px',cursor:'pointer',fontWeight:'500',flexShrink:0}}>↑</button>
               }
             </div>
           )}
         </div>
       </div>
+
+      {/* OVERLAYS */}
+      {showSearch&&<SearchBar folder={folder} onSelectFile={openFile} onClose={()=>setShowSearch(false)}/>}
+      {showShortcuts&&<ShortcutsPanel onClose={()=>setShowShortcuts(false)}/>}
     </div>
   );
 }
