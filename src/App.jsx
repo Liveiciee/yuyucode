@@ -170,13 +170,10 @@ export default function App() {
         try { setMessages(JSON.parse(r.value)); } catch {}
       }
     });
-    // Minta permission storage
-    setPermStatus('Meminta akses file...');
-    Filesystem.requestPermissions().then(r => {
-      const ok = Object.values(r).every(v => v === 'granted');
-      setPermStatus(ok ? '' : 'Akses file ditolak - beberapa fitur tidak bisa digunakan');
-      setTimeout(() => setPermStatus(''), 3000);
-    }).catch(() => setPermStatus(''));
+    // Cek YuyuServer
+    callServer({ type: 'ping' }).then(r => {
+      setPermStatus(r.ok ? '' : '⚠️ YuyuServer tidak aktif — jalankan: node ~/yuyu-server.js');
+    });
   }, []);
 
   function saveFolder(f) {
