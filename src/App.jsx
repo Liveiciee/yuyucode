@@ -82,6 +82,9 @@ async function askCerebrasStream(messages, model, onChunk, signal) {
 }
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Preferences } from "@capacitor/preferences";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
@@ -108,6 +111,12 @@ Action format:
 \`\`\`
 \`\`\`action
 {"type":"list_files","path":"src"}
+\`\`\`
+\`\`\`action
+{"type":"exec","command":"git status"}
+\`\`\`
+\`\`\`action
+{"type":"search","query":"useState","path":"src"}
 \`\`\`
 \`\`\`action
 {"type":"file_info","path":"src/App.jsx"}
