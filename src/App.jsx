@@ -4,12 +4,15 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const YUYU_SERVER = 'http://localhost:8765';
 const MAX_HISTORY = 50;
 
 const MODELS = [
-  { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥' },
-  { id: 'llama3.1-8b', label: 'Llama 3.1 8B ⚡' },
+  { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥', provider:'cerebras' },
+  { id: 'llama3.1-8b', label: 'Llama 3.1 8B ⚡', provider:'cerebras' },
+  { id: 'gemini-2.0-flash', label: 'Gemini Flash 👁', provider:'gemini', vision:true },
+  { id: 'ollama:llama3', label: 'Ollama Local 🏠', provider:'ollama' },
 ];
 
 const THEMES = {
@@ -80,6 +83,12 @@ const SLASH_COMMANDS = [
   { cmd:'/history',    desc:'Lihat file history (git log)' },
   { cmd:'/actions',    desc:'Custom actions panel' },
   { cmd:'/split',      desc:'Toggle split view' },
+  { cmd:'/scaffold',   desc:'Project template scaffold' },
+  { cmd:'/deps',       desc:'Lihat dependency graph file' },
+  { cmd:'/browse',     desc:'Browse URL via server' },
+  { cmd:'/swarm',      desc:'Jalankan agent swarm' },
+  { cmd:'/font',       desc:'Atur ukuran font' },
+  { cmd:'/theme',      desc:'Buka theme builder' },
 ];
 
 const S = {
@@ -121,6 +130,48 @@ async function askCerebrasStream(messages, model, onChunk, signal) {
     for (const line of decoder.decode(value).split('\n')) {
       if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
       try { const d = JSON.parse(line.slice(6)).choices[0].delta.content || ''; full += d; onChunk(full); } catch {}
+    }
+  }
+  return full;
+}
+
+async function askGeminiStream(messages, model, onChunk, signal, imageBase64=null) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
+  const sys = messages.find(m=>m.role==='system');
+  const chat = messages.filter(m=>m.role!=='system');
+  const contents = chat.map((m,i) => {
+    const parts = [];
+    if (imageBase64 && i===chat.length-1) parts.push({inlineData:{mimeType:'image/jpeg',data:imageBase64}});
+    parts.push({text: m.content});
+    return {role: m.role==='assistant'?'model':'user', parts};
+  });
+  const body = {contents, generationConfig:{maxOutputTokens:4000}};
+  if (sys) body.systemInstruction = {parts:[{text:sys.content}]};
+  const resp = await fetch(url, {method:'POST', signal, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  if (resp.status===429) throw new Error('RATE_LIMIT:60');
+  if (!resp.ok) throw new Error('Gemini error: HTTP '+resp.status);
+  const data = await resp.json();
+  const full = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  onChunk(full);
+  return full;
+}
+
+async function askOllamaStream(messages, model, onChunk, signal) {
+  const ollamaModel = model.replace('ollama:','');
+  const resp = await fetch('http://localhost:11434/api/chat', {
+    method:'POST', signal,
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:ollamaModel, messages, stream:true})
+  });
+  if (!resp.ok) throw new Error('Ollama error: HTTP '+resp.status+' — pastikan Ollama jalan di Termux');
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let full = '';
+  while (true) {
+    const {done,value} = await reader.read();
+    if (done) break;
+    for (const line of decoder.decode(value).split('\n').filter(Boolean)) {
+      try { const d = JSON.parse(line); if(d.message?.content){full+=d.message.content;onChunk(full);} } catch {}
     }
   }
   return full;
@@ -1036,6 +1087,44 @@ function VoiceBtn({ onResult, disabled }) {
   );
 }
 
+// ─── THEME BUILDER ────────────────────────────────────────────────────────────
+function ThemeBuilder({ current, onSave, onClose }) {
+  const [t, setT] = useState({...current});
+  const fields = [
+    {key:'bg', label:'Background'},
+    {key:'bg2', label:'Surface'},
+    {key:'text', label:'Text'},
+    {key:'accent', label:'Accent'},
+    {key:'border', label:'Border'},
+  ];
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+      <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+        <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🎨 Theme Builder</span>
+        <button onClick={()=>onSave(t)} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 10px',color:'#4ade80',fontSize:'11px',cursor:'pointer',marginRight:'8px'}}>Simpan</button>
+        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+      </div>
+      <div style={{flex:1,overflowY:'auto'}}>
+        {fields.map(f=>(
+          <div key={f.key} style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'10px'}}>
+            <span style={{fontSize:'12px',color:'rgba(255,255,255,.6)',width:'70px',flexShrink:0}}>{f.label}</span>
+            <input type="color" value={t[f.key]?.startsWith('#')?t[f.key]:'#1a1a2e'}
+              onChange={e=>setT(prev=>({...prev,[f.key]:e.target.value}))}
+              style={{width:'36px',height:'28px',border:'none',borderRadius:'4px',cursor:'pointer',padding:0,background:'none'}}/>
+            <input value={t[f.key]||''} onChange={e=>setT(prev=>({...prev,[f.key]:e.target.value}))}
+              style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'4px 8px',color:'#f0f0f0',fontSize:'11px',outline:'none',fontFamily:'monospace'}}/>
+          </div>
+        ))}
+        <div style={{marginTop:'16px',padding:'12px',borderRadius:'8px',background:t.bg,border:'1px solid '+(t.border||'rgba(255,255,255,.1)')}}>
+          <div style={{fontSize:'12px',color:t.text,marginBottom:'4px',fontWeight:'600'}}>Preview</div>
+          <div style={{fontSize:'11px',color:t.text,opacity:.6}}>Ini tampilan dengan theme-mu~</div>
+          <div style={{display:'inline-block',background:t.accent,borderRadius:'4px',padding:'2px 8px',fontSize:'10px',color:'white',marginTop:'6px'}}>Button</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [messages, setMessages] = useState([{ role:'assistant', content:'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa? 🌸' }]);
   const [input, setInput] = useState('');
@@ -1082,11 +1171,22 @@ export default function App() {
   const [slashSuggestions, setSlashSuggestions] = useState([]);
   const [showFileHistory, setShowFileHistory] = useState(false);
   const [showCustomActions, setShowCustomActions] = useState(false);
+  const [visionImage, setVisionImage] = useState(null); // base64
+  const [fontSize, setFontSize] = useState(14);
+  const [showThemeBuilder, setShowThemeBuilder] = useState(false);
+  const [customTheme, setCustomTheme] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [errorRetryCount, setErrorRetryCount] = useState({});
+  const [swarmRunning, setSwarmRunning] = useState(false);
+  const [swarmLog, setSwarmLog] = useState([]);
+  const [showDepGraph, setShowDepGraph] = useState(false);
+  const [depGraph, setDepGraph] = useState(null);
+  const fileInputRef = useRef(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
   const autoContextRef = useRef({});
-  const T = THEMES[theme] || THEMES.dark;
+  const T = customTheme || THEMES[theme] || THEMES.dark;
 
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:'smooth'});},[messages,streaming]);
 
@@ -1111,7 +1211,10 @@ export default function App() {
       Preferences.get({key:'yc_memories'}),
       Preferences.get({key:'yc_checkpoints'}),
       Preferences.get({key:'yc_hooks'}),
-    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk])=>{
+      Preferences.get({key:'yc_fontsize'}),
+      Preferences.get({key:'yc_custom_theme'}),
+      Preferences.get({key:'yc_onboarded'}),
+    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob])=>{
       if(f.value){setFolder(f.value);setFolderInput(f.value);}
       if(h.value){try{setMessages(JSON.parse(h.value));}catch{}}
       if(ch.value){try{setCmdHistory(JSON.parse(ch.value));}catch{}}
@@ -1123,6 +1226,9 @@ export default function App() {
       if(mem.value){try{setMemories(JSON.parse(mem.value));}catch{}}
       if(ckp.value){try{setCheckpoints(JSON.parse(ckp.value));}catch{}}
       if(hk.value){try{setHooks(JSON.parse(hk.value));}catch{}}
+      if(fs.value) setFontSize(parseInt(fs.value)||14);
+      if(ct.value){try{setCustomTheme(JSON.parse(ct.value));}catch{}}
+      if(!ob.value) setShowOnboarding(true);
     });
     callServer({type:'ping'}).then(r=>setServerOk(r.ok));
   },[]);
@@ -1333,6 +1439,27 @@ export default function App() {
     } else if (base==='/split') {
       setSplitView(s=>!s);
       setMessages(m=>[...m,{role:'assistant',content:'Split view '+(splitView?'dimatikan':'diaktifkan')+'~',actions:[]}]);
+    } else if (base==='/scaffold') {
+      const type = parts[1] || 'react';
+      await scaffoldProject(type);
+    } else if (base==='/deps') {
+      if (!selectedFile) { setMessages(m=>[...m,{role:'assistant',content:'Buka file dulu Papa~',actions:[]}]); return; }
+      await buildDepGraph(selectedFile);
+      setShowDepGraph(true);
+    } else if (base==='/browse') {
+      const url = parts.slice(1).join(' ');
+      if (!url) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /browse https://...',actions:[]}]); return; }
+      await browseTo(url);
+    } else if (base==='/swarm') {
+      const task = parts.slice(1).join(' ');
+      if (!task) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /swarm <deskripsi task>',actions:[]}]); return; }
+      await runAgentSwarm(task);
+    } else if (base==='/font') {
+      const size = parseInt(parts[1])||14;
+      setFontSize(size); Preferences.set({key:'yc_fontsize',value:String(size)});
+      setMessages(m=>[...m,{role:'assistant',content:'🔤 Font size diubah ke '+size+'px~',actions:[]}]);
+    } else if (base==='/theme') {
+      setShowThemeBuilder(true);
     }
   }
 
@@ -1373,6 +1500,140 @@ export default function App() {
     }
   }
 
+  // ── HAPTIC ──
+  function haptic(type='light') {
+    if (navigator.vibrate) {
+      navigator.vibrate(type==='heavy'?[50,30,50]:type==='medium'?30:10);
+    }
+  }
+
+  // ── UNIVERSAL AI ROUTER ──
+  async function callAI(msgs, onChunk, signal, imgBase64=null) {
+    const m = MODELS.find(x=>x.id===model)||MODELS[0];
+    if (m.provider==='gemini') return askGeminiStream(msgs, model, onChunk, signal, imgBase64);
+    if (m.provider==='ollama') return askOllamaStream(msgs, model, onChunk, signal);
+    return askCerebrasStream(msgs, model, onChunk, signal);
+  }
+
+  // ── BROWSER TOOL (via yuyu-server) ──
+  async function browseTo(url) {
+    setLoading(true);
+    setMessages(m=>[...m,{role:'user',content:'Browse: '+url}]);
+    const r = await callServer({type:'browse', url});
+    if (!r.ok) {
+      setMessages(m=>[...m,{role:'assistant',content:'❌ Browse gagal: '+r.data+'\n\nPastikan yuyu-server sudah update dengan dukungan browse (puppeteer/curl)',actions:[]}]);
+    } else {
+      const content = (r.data||'').slice(0,3000);
+      setMessages(m=>[...m,{role:'assistant',content:'🌐 **'+url+'**\n\n```\n'+content+'\n```',actions:[]}]);
+      setTimeout(()=>sendMsg('Analisis konten halaman ini dan ringkas hal yang relevan untuk coding.'),300);
+    }
+    setLoading(false);
+  }
+
+  // ── DEPENDENCY GRAPH ──
+  async function buildDepGraph(filePath) {
+    setShowDepGraph(true);
+    const r = await callServer({type:'read', path:filePath});
+    if (!r.ok) return;
+    const imports = [];
+    const regex = /(?:import|require)\s+.*?['"](.+?)['"]/g;
+    let m;
+    while ((m=regex.exec(r.data))!==null) imports.push(m[1]);
+    setDepGraph({file:filePath.split('/').pop(), imports});
+  }
+
+  // ── PROJECT SCAFFOLD ──
+  const TEMPLATES = {
+    react: ['src/App.jsx','src/main.jsx','src/index.css','index.html','package.json','vite.config.js'],
+    node: ['index.js','package.json','.env.example','README.md'],
+    express: ['server.js','routes/index.js','package.json','.env.example'],
+  };
+
+  async function scaffoldProject(type) {
+    setLoading(true);
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    setMessages(m=>[...m,{role:'user',content:'/scaffold '+type}]);
+    try {
+      const reply = await callAI([
+        {role:'system',content:'Generate file structure untuk project '+type+'. Untuk setiap file berikan action write_file dengan content yang lengkap dan proper. Gunakan format action block.'},
+        {role:'user',content:'Buat project '+type+' baru di folder '+folder+'/'+type+'-project. Lengkap dengan semua file dasar.'}
+      ], setStreaming, ctrl.signal);
+      setStreaming('');
+      const actions = parseActions(reply);
+      setMessages(m=>[...m,{role:'assistant',content:reply,actions:actions.filter(a=>a.type==='write_file').map(a=>({...a,executed:false}))}]);
+    } catch(e) {
+      if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
+    }
+    setLoading(false);
+  }
+
+  // ── AGENT SWARM ──
+  async function runAgentSwarm(task) {
+    setSwarmRunning(true);
+    setSwarmLog([]);
+    const log = (msg) => setSwarmLog(prev=>[...prev, msg]);
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    try {
+      log('🏗 Architect: Menganalisis task...');
+      const archReply = await callAI([
+        {role:'system',content:'Kamu adalah Software Architect. Buat rencana implementasi detail dengan pembagian tugas: Frontend, Backend, QA.'},
+        {role:'user',content:task}
+      ], ()=>{}, ctrl.signal);
+      log('✅ Architect selesai: '+archReply.slice(0,100)+'...');
+
+      log('⚛ Frontend Agent: Mulai coding UI...');
+      const feReply = await callAI([
+        {role:'system',content:'Kamu adalah Frontend Engineer. Implementasikan bagian UI/React berdasarkan rencana berikut. Gunakan action blocks untuk write_file.'},
+        {role:'user',content:'Plan:\n'+archReply+'\n\nTask: '+task+'\n\nImplementasikan bagian frontend.'}
+      ], ()=>{}, ctrl.signal);
+      log('✅ Frontend selesai');
+
+      log('⚙ Backend Agent: Mulai coding server...');
+      const beReply = await callAI([
+        {role:'system',content:'Kamu adalah Backend Engineer. Implementasikan bagian server/API berdasarkan rencana. Gunakan action blocks untuk write_file.'},
+        {role:'user',content:'Plan:\n'+archReply+'\n\nTask: '+task+'\n\nImplementasikan bagian backend.'}
+      ], ()=>{}, ctrl.signal);
+      log('✅ Backend selesai');
+
+      log('🧪 QA Agent: Review dan cari bugs...');
+      const qaReply = await callAI([
+        {role:'system',content:'Kamu adalah QA Engineer. Review kode berikut, temukan bugs, dan beri rekomendasi perbaikan.'},
+        {role:'user',content:'Frontend:\n'+feReply.slice(0,1000)+'\n\nBackend:\n'+beReply.slice(0,1000)}
+      ], ()=>{}, ctrl.signal);
+      log('✅ QA selesai');
+
+      const allActions = [...parseActions(feReply),...parseActions(beReply)];
+      const writes = allActions.filter(a=>a.type==='write_file');
+
+      setMessages(m=>[...m,{
+        role:'assistant',
+        content:`🐝 **Agent Swarm Selesai!**\n\n**Architect Plan:**\n${archReply.slice(0,400)}\n\n**QA Review:**\n${qaReply.slice(0,300)}`,
+        actions:writes.map(a=>({...a,executed:false}))
+      }]);
+      sendNotification('YuyuCode 🐝', 'Agent Swarm selesai! '+task.slice(0,30));
+      haptic('heavy');
+    } catch(e) {
+      if(e.name!=='AbortError') log('❌ Error: '+e.message);
+    }
+    setSwarmRunning(false);
+  }
+
+  // ── VISION: attach image ──
+  function handleImageAttach(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const b64 = ev.target.result.split(',')[1];
+      setVisionImage(b64);
+      haptic('light');
+    };
+    reader.readAsDataURL(file);
+  }
+
   // ── COMMIT MESSAGE GENERATOR ──
   async function generateCommitMsg() {
     setLoading(true);
@@ -1384,10 +1645,10 @@ export default function App() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
-      const reply = await askCerebrasStream([
+      const reply = await callAI([
         {role:'system',content:'Generate satu baris commit message dalam format "tipe: deskripsi singkat" berdasarkan git diff berikut. Hanya tulis commit message-nya saja, tanpa penjelasan.'},
         {role:'user',content:diff.data.slice(0,3000)}
-      ], model, setStreaming, ctrl.signal);
+      ], setStreaming, ctrl.signal);
       setStreaming('');
       const msg = reply.trim().replace(/^["'`]|["'`]$/g,'');
       setMessages(m=>[...m,{role:'assistant',content:'💬 Commit message:\n```\n'+msg+'\n```\nJalankan push?\n```action\n{"type":"exec","command":"git add -A && git commit -m \\"'+msg.replace(/"/g,'\\"')+'\\" && git push"}\n```',actions:[]}]);
@@ -1423,6 +1684,8 @@ export default function App() {
 
     setInput('');setHistIdx(-1);addHistory(txt);
     setShowFollowUp(false);setActiveTab('chat');setSlashSuggestions([]);
+    setVisionImage(null); // clear after send
+    haptic('light');
     const userMsg={role:'user',content:txt};
     const history=[...messages,userMsg];
     setMessages(history);
@@ -1435,7 +1698,8 @@ export default function App() {
       const pinnedCtx=pinnedFiles.length?'\n\nPinned files: '+pinnedFiles.join(', '):'';
       const fileCtx=selectedFile&&fileContent?'\n\nFile terbuka: '+selectedFile+'\n```\n'+fileContent.slice(0,1500)+'\n```':'';
       const memCtx=memories.length?'\n\nMemories (pola coding Papa):\n'+memories.slice(0,10).map(m=>'• '+m.text).join('\n'):'';
-      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx;
+      const visionCtx=visionImage?'\n\n[Gambar dilampirkan — analisis untuk context coding]':'';
+      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+visionCtx;
 
       // ── PARALLEL PRE-LOAD pinned files ──
       if (pinnedFiles.length) {
@@ -1450,6 +1714,7 @@ export default function App() {
       let finalContent = '';
       let finalActions = [];
       let autoContext = {...(autoContextRef.current||{})};
+      let selfOptRetry = 0;
 
       while (iter < MAX_ITER) {
         iter++;
@@ -1460,8 +1725,19 @@ export default function App() {
           ...trimHistory(allMessages).map(m=>({role:m.role,content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim()}))
         ];
 
-        let reply = await askCerebrasStream(groqMsgs, model, setStreaming, ctrl.signal);
+        let reply = await callAI(groqMsgs, setStreaming, ctrl.signal, iter===1?visionImage:null);
         setStreaming('');
+
+        // ── SELF-OPTIMIZATION: jika ada error di reply, retry dengan hint ──
+        if (reply.includes('❌') && selfOptRetry < 2) {
+          selfOptRetry++;
+          allMessages = [
+            ...allMessages,
+            {role:'assistant', content:reply.replace(/```action[\s\S]*?```/g,'').trim()},
+            {role:'user', content:'Ada error. Coba pendekatan berbeda, jangan ulangi cara yang sama. Retry ke-'+selfOptRetry+'.'}
+          ];
+          continue;
+        }
 
         const allActions = parseActions(reply);
         const writes = allActions.filter(a=>a.type==='write_file');
@@ -1605,7 +1881,7 @@ export default function App() {
   const tokens=countTokens(messages);
 
   return (
-    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:'14px'}}>
+    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:fontSize+'px'}}>
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         ::-webkit-scrollbar{width:3px;height:3px;}
@@ -1853,6 +2129,13 @@ export default function App() {
                 </div>
               )}
               <div style={{display:'flex',gap:'6px',alignItems:'flex-end'}}>
+                {visionImage&&(
+                  <div style={{position:'relative',flexShrink:0}}>
+                    <img src={'data:image/jpeg;base64,'+visionImage} alt="attached" style={{width:'40px',height:'40px',borderRadius:'6px',objectFit:'cover',border:'1px solid rgba(124,58,237,.4)'}}/>
+                    <button onClick={()=>setVisionImage(null)} style={{position:'absolute',top:'-4px',right:'-4px',background:'#f87171',border:'none',borderRadius:'50%',width:'14px',height:'14px',color:'white',fontSize:'9px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>×</button>
+                  </div>
+                )}
+                <button onClick={()=>fileInputRef.current?.click()} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'10px',padding:'8px 10px',color:'rgba(255,255,255,.3)',fontSize:'13px',cursor:'pointer',flexShrink:0}}>📎</button>
                 <textarea ref={inputRef} value={input}
                   onChange={e=>{
                     setInput(e.target.value);
@@ -1938,6 +2221,66 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* SWARM LOG PANEL */}
+      {swarmRunning&&(
+        <div style={{position:'fixed',bottom:'80px',right:'12px',background:'rgba(0,0,0,.92)',border:'1px solid rgba(124,58,237,.3)',borderRadius:'10px',padding:'12px',zIndex:98,maxWidth:'280px',maxHeight:'200px',overflowY:'auto'}}>
+          <div style={{fontSize:'11px',fontWeight:'600',color:'#a78bfa',marginBottom:'6px'}}>🐝 Agent Swarm Running···</div>
+          {swarmLog.map((l,i)=><div key={i} style={{fontSize:'10px',color:'rgba(255,255,255,.6)',marginBottom:'2px'}}>{l}</div>)}
+        </div>
+      )}
+
+      {/* DEP GRAPH PANEL */}
+      {showDepGraph&&depGraph&&(
+        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+          <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+            <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🕸 Dependency Graph — {depGraph.file}</span>
+            <button onClick={()=>setShowDepGraph(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+          </div>
+          <div style={{flex:1,overflowY:'auto'}}>
+            <div style={{fontSize:'12px',color:'rgba(255,255,255,.5)',marginBottom:'8px'}}>{depGraph.imports.length} imports ditemukan:</div>
+            {depGraph.imports.map((imp,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 10px',marginBottom:'3px',background:imp.startsWith('.')?'rgba(74,222,128,.04)':'rgba(255,255,255,.02)',border:'1px solid '+(imp.startsWith('.')?'rgba(74,222,128,.1)':'rgba(255,255,255,.05)'),borderRadius:'6px'}}>
+                <span style={{fontSize:'10px'}}>{imp.startsWith('.')?'📄':'📦'}</span>
+                <span style={{fontSize:'11px',color:imp.startsWith('.')?'#4ade80':'rgba(255,255,255,.5)',fontFamily:'monospace'}}>{imp}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* THEME BUILDER */}
+      {showThemeBuilder&&(
+        <ThemeBuilder
+          current={customTheme||THEMES[theme]}
+          onSave={t=>{setCustomTheme(t);Preferences.set({key:'yc_custom_theme',value:JSON.stringify(t)});setShowThemeBuilder(false);}}
+          onClose={()=>setShowThemeBuilder(false)}
+        />
+      )}
+
+      {/* ONBOARDING */}
+      {showOnboarding&&(
+        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.95)',zIndex:100,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px'}}>
+          <div style={{fontSize:'32px',marginBottom:'12px'}}>🌸</div>
+          <div style={{fontSize:'20px',fontWeight:'700',color:'#f0f0f0',marginBottom:'6px'}}>Halo Papa! Yuyu siap~</div>
+          <div style={{fontSize:'13px',color:'rgba(255,255,255,.5)',marginBottom:'24px',textAlign:'center'}}>Setup cepat sebelum mulai</div>
+          <div style={{width:'100%',maxWidth:'320px',display:'flex',flexDirection:'column',gap:'10px'}}>
+            <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'2px'}}>Nama folder project:</div>
+            <input value={folderInput} onChange={e=>setFolderInput(e.target.value)}
+              placeholder="contoh: yuyucode"
+              style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'8px',padding:'10px 14px',color:'#f0f0f0',fontSize:'14px',outline:'none',fontFamily:'monospace'}}/>
+            <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginTop:'4px'}}>Pastikan YuyuServer jalan:</div>
+            <div style={{background:'rgba(0,0,0,.5)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'8px 12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(74,222,128,.8)'}}>node ~/yuyu-server.js &</div>
+            <button onClick={()=>{saveFolder(folderInput);Preferences.set({key:'yc_onboarded',value:'1'});setShowOnboarding(false);haptic('medium');}}
+              style={{background:'#7c3aed',border:'none',borderRadius:'10px',padding:'12px',color:'white',fontSize:'14px',cursor:'pointer',fontWeight:'600',marginTop:'8px'}}>
+              Mulai Coding! 🚀
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* VISION IMAGE PREVIEW (hidden file input) */}
+      <input ref={fileInputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleImageAttach}/>
     </div>
   );
 }
