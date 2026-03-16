@@ -6,11 +6,7 @@ function renderMarkdown(raw) {
     .join('\n');
   t = t.replace(/^__TABLE_LINE__/gm, '');
   // Now mark table rows
-  t = t.replace(/^\|.+\|$/gm, '__TABLE_ROW__function renderMarkdown(raw) {
-  // Process tables FIRST before any other replacement
-  let t = raw.replace(/^\|.+\|$/gm, '__TABLE_ROW__$&');');
-  
-  // Group consecutive table rows
+  t = t.replace(/^\|.+\|$/gm, '__TABLE_ROW__$&');
   t = t.replace(/((__TABLE_ROW__.*\n?)+)/g, (match) => {
     const rows = match.trim().split('\n')
       .map(r => r.replace('__TABLE_ROW__', '').trim())
