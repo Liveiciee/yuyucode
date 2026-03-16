@@ -58,11 +58,11 @@ jobs:
           ./gradlew assembleDebug --parallel --build-cache
 
       - name: Rename APK
-        run: mv android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/YuyuLife.apk
+        run: mv android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/YuyuCode.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v5
         with:
-          name: YuyuLife
-          path: android/app/build/outputs/apk/debug/YuyuLife.apk
+          name: YuyuCode
+          path: android/app/build/outputs/apk/debug/YuyuCode.apk
 # updated Mon Mar 16 07:53:39 WITA 2026
