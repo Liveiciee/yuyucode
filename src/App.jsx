@@ -76,6 +76,10 @@ const SLASH_COMMANDS = [
   { cmd:'/cost',       desc:'Estimasi token terpakai' },
   { cmd:'/review',     desc:'Code review file aktif' },
   { cmd:'/clear',      desc:'Clear chat history' },
+  { cmd:'/export',     desc:'Export chat ke .md' },
+  { cmd:'/history',    desc:'Lihat file history (git log)' },
+  { cmd:'/actions',    desc:'Custom actions panel' },
+  { cmd:'/split',      desc:'Toggle split view' },
 ];
 
 const S = {
@@ -677,6 +681,7 @@ function FileEditor({ path, content, onSave, onClose }) {
   const [text, setText] = useState(content || '');
   const [saved, setSaved] = useState(true);
   const [cursor, setCursor] = useState({ line:1, col:1 });
+  const [showInlineDiff, setShowInlineDiff] = useState(false);
   const textareaRef = useRef(null);
 
   function updateCursor(e) {
@@ -691,33 +696,194 @@ function FileEditor({ path, content, onSave, onClose }) {
     setSaved(true);
   }
 
+  function computeInlineDiff() {
+    const oldLines = (content||'').split('\n');
+    const newLines = text.split('\n');
+    const result = [];
+    const maxLen = Math.max(oldLines.length, newLines.length);
+    for (let i = 0; i < maxLen; i++) {
+      const o = oldLines[i];
+      const n = newLines[i];
+      if (o === n) result.push({type:'same', text:n||''});
+      else if (o === undefined) result.push({type:'add', text:n});
+      else if (n === undefined) result.push({type:'del', text:o});
+      else { result.push({type:'del',text:o}); result.push({type:'add',text:n}); }
+    }
+    return result;
+  }
+
   return (<div style={{display:'flex',flexDirection:'column',height:'100%'}}>
     <div style={{padding:'5px 12px',borderBottom:'1px solid rgba(255,255,255,.06)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
       <span style={{fontSize:'11px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{path}</span>
       {!saved&&<span style={{fontSize:'10px',color:'rgba(251,191,36,.6)'}}>● unsaved</span>}
       <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',fontFamily:'monospace'}}>{cursor.line}:{cursor.col}</span>
+      {!saved&&<button onClick={()=>setShowInlineDiff(!showInlineDiff)} style={{background:showInlineDiff?'rgba(96,165,250,.15)':'rgba(255,255,255,.04)',border:'1px solid rgba(96,165,250,.2)',borderRadius:'5px',padding:'2px 6px',color:'rgba(96,165,250,.8)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>◐ diff</button>}
       <button onClick={save} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',flexShrink:0}}>💾 Save</button>
       <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'14px',cursor:'pointer',flexShrink:0}}>×</button>
     </div>
     <div style={{flex:1,display:'flex',overflow:'hidden'}}>
-      <div style={{padding:'8px 6px',color:'rgba(255,255,255,.2)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'36px',flexShrink:0,fontSize:'11px',lineHeight:'1.6',fontFamily:'monospace',overflowY:'hidden',background:'rgba(255,255,255,.01)'}}>
-        {text.split('\n').map((_,i)=><div key={i}>{i+1}</div>)}
-      </div>
-      <textarea ref={textareaRef} value={text}
-        onChange={e=>{setText(e.target.value);setSaved(false);}}
-        onKeyUp={updateCursor} onClick={updateCursor}
-        onKeyDown={e=>{
-          if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();save();return;}
-          if(e.key==='Tab'){e.preventDefault();const s=e.target.selectionStart;const val=text.slice(0,s)+'  '+text.slice(e.target.selectionEnd);setText(val);setTimeout(()=>{e.target.selectionStart=e.target.selectionEnd=s+2;},0);}
-        }}
-        style={{flex:1,background:'#0d0d0e',border:'none',outline:'none',color:'rgba(255,255,255,.85)',fontSize:'12px',lineHeight:'1.6',fontFamily:'monospace',padding:'8px 12px',resize:'none',whiteSpace:'pre',overflowWrap:'normal',overflowX:'auto'}}
-        spellCheck={false}
-      />
+      {showInlineDiff ? (
+        <div style={{flex:1,overflow:'auto',fontFamily:'monospace',fontSize:'11px',lineHeight:'1.6',padding:'8px 0'}}>
+          {computeInlineDiff().map((line,i)=>(
+            <div key={i} style={{display:'flex',background:line.type==='add'?'rgba(74,222,128,.06)':line.type==='del'?'rgba(248,113,113,.06)':'transparent',padding:'0 12px'}}>
+              <span style={{color:line.type==='add'?'#4ade80':line.type==='del'?'#f87171':'rgba(255,255,255,.2)',width:'14px',flexShrink:0,userSelect:'none'}}>{line.type==='add'?'+':line.type==='del'?'-':' '}</span>
+              <span style={{color:line.type==='add'?'#4ade80':line.type==='del'?'#f87171':'rgba(255,255,255,.7)',whiteSpace:'pre-wrap',wordBreak:'break-all'}}>{line.text}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div style={{padding:'8px 6px',color:'rgba(255,255,255,.2)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'36px',flexShrink:0,fontSize:'11px',lineHeight:'1.6',fontFamily:'monospace',overflowY:'hidden',background:'rgba(255,255,255,.01)'}}>
+            {text.split('\n').map((_,i)=><div key={i}>{i+1}</div>)}
+          </div>
+          <textarea ref={textareaRef} value={text}
+            onChange={e=>{setText(e.target.value);setSaved(false);}}
+            onKeyUp={updateCursor} onClick={updateCursor}
+            onKeyDown={e=>{
+              if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();save();return;}
+              if(e.key==='Tab'){e.preventDefault();const s=e.target.selectionStart;const val=text.slice(0,s)+'  '+text.slice(e.target.selectionEnd);setText(val);setTimeout(()=>{e.target.selectionStart=e.target.selectionEnd=s+2;},0);}
+            }}
+            style={{flex:1,background:'#0d0d0e',border:'none',outline:'none',color:'rgba(255,255,255,.85)',fontSize:'12px',lineHeight:'1.6',fontFamily:'monospace',padding:'8px 12px',resize:'none',whiteSpace:'pre',overflowWrap:'normal',overflowX:'auto'}}
+            spellCheck={false}
+          />
+        </>
+      )}
     </div>
   </div>);
 }
 
-// ─── KEYBOARD SHORTCUTS PANEL ─────────────────────────────────────────────────
+// ─── FILE HISTORY ─────────────────────────────────────────────────────────────
+function FileHistoryPanel({ folder, filePath, onClose }) {
+  const [commits, setCommits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [previewing, setPreviewing] = useState(null);
+
+  useEffect(() => {
+    const rel = filePath.replace(folder+'/', '');
+    callServer({type:'exec', path:folder, command:`git log --oneline -20 -- "${rel}"`}).then(r => {
+      if (r.ok && r.data) {
+        const lines = r.data.trim().split('\n').filter(Boolean).map(l => {
+          const [hash, ...rest] = l.split(' ');
+          return { hash, msg: rest.join(' ') };
+        });
+        setCommits(lines);
+      }
+      setLoading(false);
+    });
+  }, [filePath]);
+
+  async function preview(hash) {
+    const rel = filePath.replace(folder+'/', '');
+    const r = await callServer({type:'exec', path:folder, command:`git show ${hash}:"${rel}" 2>/dev/null`});
+    if (r.ok) setPreviewing({ hash, content: r.data });
+  }
+
+  async function restore(hash) {
+    const rel = filePath.replace(folder+'/', '');
+    await callServer({type:'exec', path:folder, command:`git checkout ${hash} -- "${rel}"`});
+    onClose();
+  }
+
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex'}}>
+      <div style={{width:'200px',borderRight:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',flexShrink:0}}>
+        <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center'}}>
+          <span style={{fontSize:'12px',fontWeight:'600',color:'#f0f0f0',flex:1}}>📜 File History</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'14px',cursor:'pointer'}}>×</button>
+        </div>
+        <div style={{flex:1,overflowY:'auto'}}>
+          {loading&&<div style={{padding:'8px',color:'rgba(255,255,255,.3)',fontSize:'11px'}}>Loading···</div>}
+          {commits.map(c=>(
+            <div key={c.hash} onClick={()=>preview(c.hash)}
+              style={{padding:'7px 10px',borderBottom:'1px solid rgba(255,255,255,.04)',cursor:'pointer',background:previewing?.hash===c.hash?'rgba(124,58,237,.15)':'transparent'}}
+              onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.05)'}
+              onMouseLeave={e=>e.currentTarget.style.background=previewing?.hash===c.hash?'rgba(124,58,237,.15)':'transparent'}>
+              <div style={{fontSize:'10px',color:'#a78bfa',fontFamily:'monospace'}}>{c.hash}</div>
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,.6)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.msg}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        {previewing ? (
+          <>
+            <div style={{padding:'6px 12px',borderBottom:'1px solid rgba(255,255,255,.06)',display:'flex',gap:'8px',alignItems:'center',flexShrink:0}}>
+              <span style={{fontSize:'11px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',flex:1}}>{previewing.hash}</span>
+              <button onClick={()=>restore(previewing.hash)} style={{background:'rgba(248,113,113,.1)',border:'1px solid rgba(248,113,113,.2)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer'}}>⏪ Restore</button>
+            </div>
+            <div style={{flex:1,overflow:'auto',display:'flex',fontFamily:'monospace',fontSize:'11px',lineHeight:'1.6'}}>
+              <div style={{padding:'8px 6px',color:'rgba(255,255,255,.2)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'32px',flexShrink:0}}>
+                {(previewing.content||'').split('\n').map((_,i)=><div key={i}>{i+1}</div>)}
+              </div>
+              <pre style={{margin:0,padding:'8px 12px',whiteSpace:'pre-wrap',wordBreak:'break-word',color:'rgba(255,255,255,.7)',flex:1}}>{previewing.content}</pre>
+            </div>
+          </>
+        ) : (
+          <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,.2)',fontSize:'12px'}}>Pilih commit untuk preview</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── CUSTOM ACTIONS ───────────────────────────────────────────────────────────
+function CustomActionsPanel({ folder, onRun, onClose }) {
+  const [actions, setActions] = useState([]);
+  const [newLabel, setNewLabel] = useState('');
+  const [newCmd, setNewCmd] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    Preferences.get({key:'yc_custom_actions'}).then(r => {
+      if (r.value) try { setActions(JSON.parse(r.value)); } catch {}
+    });
+  }, []);
+
+  function save(list) {
+    setActions(list);
+    Preferences.set({key:'yc_custom_actions', value:JSON.stringify(list)});
+  }
+
+  function add() {
+    if (!newLabel.trim() || !newCmd.trim()) return;
+    save([...actions, {id:Date.now(), label:newLabel.trim(), cmd:newCmd.trim()}]);
+    setNewLabel(''); setNewCmd(''); setAdding(false);
+  }
+
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+      <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+        <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⚡ Custom Actions</span>
+        <button onClick={()=>setAdding(!adding)} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>+ New</button>
+        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+      </div>
+      {adding&&(
+        <div style={{display:'flex',flexDirection:'column',gap:'6px',marginBottom:'10px',padding:'10px',background:'rgba(255,255,255,.03)',borderRadius:'8px'}}>
+          <input value={newLabel} onChange={e=>setNewLabel(e.target.value)} placeholder="Label (e.g. Deploy)"
+            style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'5px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none'}}/>
+          <input value={newCmd} onChange={e=>setNewCmd(e.target.value)} placeholder="Command (e.g. npm run deploy)"
+            style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'5px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
+          <button onClick={add} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'6px',padding:'5px',color:'#4ade80',fontSize:'11px',cursor:'pointer'}}>Simpan</button>
+        </div>
+      )}
+      <div style={{flex:1,overflowY:'auto'}}>
+        {actions.length===0&&<div style={{color:'rgba(255,255,255,.2)',fontSize:'12px'}}>Belum ada custom action. Tambah shortcut command favoritmu~</div>}
+        {actions.map(a=>(
+          <div key={a.id} style={{display:'flex',alignItems:'center',gap:'8px',padding:'8px 10px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:'7px'}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:'12px',color:'rgba(255,255,255,.8)',fontWeight:'500'}}>{a.label}</div>
+              <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)',fontFamily:'monospace'}}>{a.cmd}</div>
+            </div>
+            <button onClick={()=>{onRun(a.cmd);onClose();}} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer'}}>▶ Run</button>
+            <button onClick={()=>save(actions.filter(x=>x.id!==a.id))} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer'}}>×</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── KEYBOARD SHORTCUTS PANEL (upgraded) ─────────────────────────────────────
 function ShortcutsPanel({ onClose }) {
   const shortcuts = [
     ['Ctrl+S', 'Save file (di editor)'],
@@ -914,6 +1080,8 @@ export default function App() {
   const [showCheckpoints, setShowCheckpoints] = useState(false);
   const [hooks, setHooks] = useState({ preWrite:[], postWrite:[], postPush:[] });
   const [slashSuggestions, setSlashSuggestions] = useState([]);
+  const [showFileHistory, setShowFileHistory] = useState(false);
+  const [showCustomActions, setShowCustomActions] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
@@ -1155,6 +1323,16 @@ export default function App() {
     } else if (base==='/clear') {
       setMessages([{role:'assistant',content:'Chat dibersihkan. Mau ngerjain apa Papa? 🌸'}]);
       Preferences.remove({key:'yc_history'});
+    } else if (base==='/export') {
+      exportChat();
+    } else if (base==='/history') {
+      if (!selectedFile) { setMessages(m=>[...m,{role:'assistant',content:'Buka file dulu Papa~',actions:[]}]); return; }
+      setShowFileHistory(true);
+    } else if (base==='/actions') {
+      setShowCustomActions(true);
+    } else if (base==='/split') {
+      setSplitView(s=>!s);
+      setMessages(m=>[...m,{role:'assistant',content:'Split view '+(splitView?'dimatikan':'diaktifkan')+'~',actions:[]}]);
     }
   }
 
@@ -1173,6 +1351,26 @@ export default function App() {
     const skipped = msgs.length - 1 - tail.length;
     if (skipped > 0) tail.unshift({role:'assistant',content:'[... '+skipped+' pesan lama dipotong ...]'});
     return [msgs[0], ...tail];
+  }
+
+  // ── EXPORT CHAT ──
+  function exportChat() {
+    const md = messages.map(m=>`**${m.role==='user'?'Papa':'Yuyu'}:** ${m.content.replace(/```action[\s\S]*?```/g,'').trim()}`).join('\n\n---\n\n');
+    const blob = new Blob([md], {type:'text/markdown'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `yuyucode-chat-${Date.now()}.md`; a.click();
+    URL.revokeObjectURL(url);
+    setMessages(m=>[...m,{role:'assistant',content:'📤 Chat diekspor ke .md~',actions:[]}]);
+  }
+
+  // ── NOTIFICATION ──
+  function sendNotification(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {body, icon:'/favicon.ico'});
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission().then(p=>{ if(p==='granted') new Notification(title,{body}); });
+    }
   }
 
   // ── COMMIT MESSAGE GENERATOR ──
@@ -1325,6 +1523,7 @@ export default function App() {
       }
 
       setAgentRunning(false);
+      if (iter > 1) sendNotification('YuyuCode ✅', 'Agent selesai! '+txt.slice(0,40));
 
       if(finalContent.includes('PROJECT_NOTE:')){
         const nm=finalContent.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
@@ -1558,6 +1757,7 @@ export default function App() {
                 <button onClick={()=>togglePin(selectedFile)} style={{background:pinnedFiles.includes(selectedFile)?'rgba(99,102,241,.15)':'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:pinnedFiles.includes(selectedFile)?'#818cf8':'rgba(255,255,255,.3)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📌</button>
                 <button onClick={()=>sendMsg('Yu, jalankan git log --oneline -10 -- '+selectedFile.replace(folder+'/',''))} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:'rgba(255,255,255,.35)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📜</button>
                 <button onClick={()=>setShowBlame(true)} style={{background:'rgba(99,102,241,.06)',border:'1px solid rgba(99,102,241,.15)',borderRadius:'5px',padding:'2px 6px',color:'rgba(99,102,241,.7)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>👁 blame</button>
+                <button onClick={()=>setShowFileHistory(true)} style={{background:'rgba(251,191,36,.06)',border:'1px solid rgba(251,191,36,.12)',borderRadius:'5px',padding:'2px 6px',color:'rgba(251,191,36,.6)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📜 history</button>
                 <button onClick={()=>{setMessages(m=>[...m,{role:'user',content:'Yu, ini konteks file '+selectedFile+':\n```\n'+(fileContent||'').slice(0,2000)+'\n```'}]);setActiveTab('chat');}} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'5px',padding:'2px 6px',color:'#4ade80',fontSize:'10px',cursor:'pointer',flexShrink:0}}>+ctx</button>
                 <button onClick={()=>sendMsg('Yu, jelaskan file '+selectedFile)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',flexShrink:0}}>Tanya</button>
                 <button onClick={()=>{setSelectedFile(null);setFileContent(null);setActiveTab('chat');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'14px',cursor:'pointer',flexShrink:0}}>×</button>
@@ -1573,8 +1773,24 @@ export default function App() {
 
           {/* FILE EDITOR */}
           {activeTab==='file'&&selectedFile&&editMode&&!showTerminal&&(
-            <div style={{flex:1,overflow:'hidden'}}>
-              <FileEditor path={selectedFile} content={fileContent||''} onSave={saveFile} onClose={()=>setEditMode(false)}/>
+            <div style={{flex:1,overflow:'hidden',display:'flex'}}>
+              {splitView ? (
+                <>
+                  <div style={{flex:1,overflow:'hidden',borderRight:'1px solid rgba(255,255,255,.07)'}}>
+                    <FileEditor path={selectedFile} content={fileContent||''} onSave={saveFile} onClose={()=>setEditMode(false)}/>
+                  </div>
+                  <div style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
+                    {messages.slice(-10).map((m,i)=>(
+                      <div key={i} style={{padding:'4px 12px'}}>
+                        <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)',marginBottom:'2px'}}>{m.role==='user'?'Papa':'Yuyu'}</div>
+                        <div style={{fontSize:'12px',color:'rgba(255,255,255,.7)',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>{m.content.replace(/```action[\s\S]*?```/g,'').slice(0,300)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <FileEditor path={selectedFile} content={fileContent||''} onSave={saveFile} onClose={()=>setEditMode(false)}/>
+              )}
             </div>
           )}
 
@@ -1609,6 +1825,12 @@ export default function App() {
               </button>
               <button onClick={()=>setShowSnippets(true)} style={{background:'rgba(251,191,36,.06)',border:'1px solid rgba(251,191,36,.12)',borderRadius:'5px',padding:'3px 10px',color:'rgba(251,191,36,.6)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
                 <span>✂</span><span>snip</span>
+              </button>
+              <button onClick={()=>setShowCustomActions(true)} style={{background:'rgba(124,58,237,.06)',border:'1px solid rgba(124,58,237,.12)',borderRadius:'5px',padding:'3px 10px',color:'rgba(124,58,237,.7)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
+                <span>⚡</span><span>actions</span>
+              </button>
+              <button onClick={exportChat} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'5px',padding:'3px 10px',color:'rgba(255,255,255,.3)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
+                <span>📤</span><span>export</span>
               </button>
             </div>
           )}
@@ -1667,6 +1889,8 @@ export default function App() {
       {showDiff&&<GitDiffPanel folder={folder} onClose={()=>setShowDiff(false)}/>}
       {showBlame&&selectedFile&&<GitBlamePanel folder={folder} filePath={selectedFile} onClose={()=>setShowBlame(false)}/>}
       {showSnippets&&<SnippetLibrary onInsert={code=>{setInput(i=>i?i+'\n'+code:code);setShowSnippets(false);inputRef.current?.focus();}} onClose={()=>setShowSnippets(false)}/>}
+      {showFileHistory&&selectedFile&&<FileHistoryPanel folder={folder} filePath={selectedFile} onClose={()=>setShowFileHistory(false)}/>}
+      {showCustomActions&&<CustomActionsPanel folder={folder} onRun={cmd=>runShortcut(cmd)} onClose={()=>setShowCustomActions(false)}/>}
 
       {/* MEMORY PANEL */}
       {showMemory&&(
