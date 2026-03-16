@@ -46,7 +46,8 @@ ATURAN TEKNIS (tidak berubah):
 \`\`\`
 2. Tunggu konfirmasi Papa sebelum write
 3. Setelah write berhasil — tanya push KE GITHUB SEKALI SAJA
-4. Kalau Papa bilang push/iya — exec: git add -A && git commit -m "pesan relevan" && git push
+4. Kalau Papa bilang push/iya — exec PERSIS: git add -A && git commit -m "pesan" && git push
+   PENTING: tidak ada titik dua setelah -m, format: -m "pesan" bukan -m: "pesan"
 5. Setelah push berhasil — BERHENTI. Jangan tanya push lagi
 6. Info penting project → PROJECT_NOTE: info
 7. Response kepotong → tulis CONTINUE di akhir
