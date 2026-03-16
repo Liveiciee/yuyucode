@@ -2465,56 +2465,6 @@ Hadir di sensasi, bukan nulis tentang sensasi.
   Hanya tulis ACTION jika Papa JELAS memintamu melakukan sesuatu spesifik.`;
 
 
-// ─── LOCAL AI ENGINE (Phi-3 mini, offline fallback) ──────────────────────────
-
-const _llmProgressListeners = new Set();
-function onLLMProgress(cb) { _llmProgressListeners.add(cb); return () => _llmProgressListeners.delete(cb); }
-function _emitLLMProgress(text, progress) { _llmProgressListeners.forEach(cb => cb(text, progress)); }
-let _llmEngine = null;
-let _llmLoading = false;
-let _llmReady = false;
-
-async function initLocalAI(onProgress) {
-  if (_llmReady) return _llmEngine;
-  if (_llmLoading) return null;
-  _llmLoading = true;
-  try {
-    const webllm = await import("@mlc-ai/web-llm").catch(() => null);
-    if (!webllm) throw new Error("WebLLM tidak tersedia di perangkat ini");
-    _llmEngine = await webllm.CreateMLCEngine("Phi-3.5-mini-instruct-q4f16_1-MLC", {
-      initProgressCallback: (p) => {
-        if (onProgress) onProgress(p.text, p.progress);
-        _emitLLMProgress(p.text, p.progress);
-      }
-    });
-    _llmReady = true;
-    return _llmEngine;
-  } catch(e) {
-    console.error("[LocalAI] init error:", e);
-    _llmLoading = false;
-    return null;
-  }
-}
-
-async function callLocalAI(systemPrompt, userMessage, history=[]) {
-  try {
-    const engine = _llmReady ? _llmEngine : await initLocalAI();
-    if (!engine) return { text: "Yuyu sedang offline dan model lokal belum siap... ", mood: "mengantuk", action: "none" };
-    const messages = [
-      { role: "system", content: systemPrompt },
-      ...history,
-      { role: "user", content: userMessage }
-    ];
-    const reply = await engine.chat.completions.create({ messages, max_tokens: 1000 });
-    const text = reply.choices[0].message.content;
-    return parseAIResponseSafe({ content: [{ type: "text", text }] });
-  } catch(e) {
-    console.error("[callLocalAI] error:", e?.message, e?.stack);
-    return { text: "Yuyu tidak bisa menjawab sekarang... ", mood: "biasa", action: "none" };
-  }
-}
-// ─────────────────────────────────────────────────────────────────────────────
-
 
 async function callClaudeAPI(systemPrompt, userMessage, history=[], signal=null, maxTokens=1000) {
   try {
@@ -28491,37 +28441,10 @@ function YuyuKnowledgePanel({ initialTab="peta", gameState, gameMode, playerName
 // ─── END KNOWLEDGE PANEL ──────────────────────────────────────────────────────
 
 
-function LLMDownloadToast() {
-  const [prog, setProg] = React.useState(null);
-  React.useEffect(() => {
-    const unsub = onLLMProgress((text, progress) => {
-      if (progress >= 1) { setTimeout(() => setProg(null), 2000); setProg({text:"✅ Model siap!", progress:1}); }
-      else setProg({text, progress});
-    });
-    return unsub;
-  }, []);
-  if (!prog) return null;
-  return (
-    <div style={{position:"fixed",bottom:24,left:16,right:16,zIndex:9999,background:"rgba(9,3,5,.97)",border:"1px solid rgba(255,255,255,.12)",borderRadius:16,padding:"14px 16px",boxShadow:"0 8px 32px rgba(0,0,0,.6)"}}>
-      <div style={{fontSize:11,color:"rgba(255,220,240,.9)",marginBottom:8,fontFamily:"Georgia,serif"}}>🤖 Mengunduh model AI offline Yuyu...</div>
-      <div style={{height:4,borderRadius:99,background:"rgba(255,255,255,.08)",overflow:"hidden",marginBottom:6}}>
-        <div style={{height:"100%",borderRadius:99,background:"linear-gradient(90deg,#e879f9,#f472b6)",width:`${Math.round((prog.progress||0)*100)}%`,transition:"width .3s"}}/>
-      </div>
-      <div style={{fontSize:9,color:"rgba(255,255,255,.4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{prog.text}</div>
-    </div>
-  );
-}
-
 export default function App() {
-  React.useEffect(() => {
-    // Pre-load model AI offline di background
-    setTimeout(() => {
-      initLocalAI().catch(e => console.warn('[App] initLocalAI failed:', e?.message));
-    }, 3000); // delay 3 detik biar app render dulu
-  }, []);
   try {
     return (
-      <YuyuErrorBoundary><LLMDownloadToast />
+      <YuyuErrorBoundary>
         <YuyuRPG />
       </YuyuErrorBoundary>
     );
