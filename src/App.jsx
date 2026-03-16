@@ -8,7 +8,7 @@ const YUYU_SERVER = 'http://localhost:8765';
 const MAX_HISTORY = 30;
 const MODELS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', fast: false },
-  { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B', fast: true },
+  { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B ⚡', fast: true },
   { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', fast: false },
   { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro 🔥', fast: false, gemini: true },
   { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Lite ⚡', fast: true, gemini: true },
@@ -17,7 +17,7 @@ const MODELS = [
   { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Lite ⚡', fast: true, gemini: true },
 ];
 
-const YUYU_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
+const BASE_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
 Jawab dalam bahasa Indonesia. Hangat, fokus, tidak bertele-tele.
 Selalu gunakan action blocks untuk operasi file — jangan karang isi file.
 
@@ -34,10 +34,20 @@ Action format:
 \`\`\`action
 {"type":"exec","command":"git status"}
 \`\`\`
+\`\`\`action
+{"type":"search","query":"useState","path":"src"}
+\`\`\`
+\`\`\`action
+{"type":"file_info","path":"src/App.jsx"}
+\`\`\`
 
-Untuk write_file: tampilkan diff dulu, tunggu konfirmasi Papa.
-Info penting project → tulis: PROJECT_NOTE: ...
-Kalau response kepotong karena panjang, tulis CONTINUE di akhir.`;
+ATURAN PENTING:
+- Untuk write_file: tampilkan diff dulu, tunggu konfirmasi Papa
+- Setelah write_file berhasil: SELALU tanya "Mau Yuyu push ke GitHub sekarang?"
+- Kalau Papa bilang iya/yes/push: jalankan exec dengan command "git add -A && git commit -m \\"[pesan relevan]\\" && git push"
+- Info penting tentang project → tulis: PROJECT_NOTE: info
+- Kalau response kepotong → tulis CONTINUE di akhir
+- Saat mulai chat baru di folder, coba baca SKILL.md dulu jika ada`;
 
 const GIT_SHORTCUTS = [
   { label: 'status', icon: '◎', cmd: 'git status' },
@@ -54,7 +64,6 @@ const FOLLOW_UP_PROMPTS = [
   'Apa langkah selanjutnya?',
 ];
 
-// ─── STYLES ───────────────────────────────────────────────────────────────────
 const S = {
   root: { position:'fixed', inset:0, background:'#0f0f10', color:'#e8e8e8', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif', display:'flex', flexDirection:'column', fontSize:'14px' },
   header: { padding:'12px 16px', borderBottom:'1px solid rgba(255,255,255,.07)', display:'flex', alignItems:'center', gap:'10px', background:'rgba(255,255,255,.02)' },
@@ -63,57 +72,41 @@ const S = {
   serverDot: (ok) => ({ width:'6px', height:'6px', borderRadius:'50%', background: ok ? '#4ade80' : '#f87171', flexShrink:0 }),
   tokenBadge: { fontSize:'11px', color:'rgba(255,255,255,.2)', background:'rgba(255,255,255,.04)', padding:'2px 8px', borderRadius:'99px' },
   newBtn: { background:'none', border:'1px solid rgba(255,255,255,.1)', borderRadius:'8px', padding:'5px 12px', color:'rgba(255,255,255,.4)', fontSize:'12px', cursor:'pointer' },
-  
   folderBar: { padding:'8px 16px', borderBottom:'1px solid rgba(255,255,255,.05)', display:'flex', gap:'8px' },
   folderInput: { flex:1, background:'rgba(255,255,255,.05)', border:'1px solid rgba(255,255,255,.08)', borderRadius:'8px', padding:'7px 12px', color:'#e8e8e8', fontSize:'12px', outline:'none', fontFamily:'monospace' },
   folderBtn: { background:'rgba(255,255,255,.08)', border:'none', borderRadius:'8px', padding:'7px 14px', color:'rgba(255,255,255,.7)', fontSize:'12px', cursor:'pointer' },
-
   notesBar: { padding:'5px 16px', background:'rgba(147,51,234,.06)', borderBottom:'1px solid rgba(147,51,234,.1)', fontSize:'11px', color:'rgba(147,51,234,.6)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' },
-
+  skillBar: { padding:'5px 16px', background:'rgba(74,222,128,.04)', borderBottom:'1px solid rgba(74,222,128,.08)', fontSize:'11px', color:'rgba(74,222,128,.5)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' },
   shortcuts: { padding:'8px 16px', borderBottom:'1px solid rgba(255,255,255,.05)', display:'flex', gap:'6px', overflowX:'auto' },
   shortcutBtn: { background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.07)', borderRadius:'6px', padding:'4px 12px', color:'rgba(255,255,255,.4)', fontSize:'11px', cursor:'pointer', whiteSpace:'nowrap', fontFamily:'monospace', display:'flex', alignItems:'center', gap:'5px' },
-
   messages: { flex:1, overflowY:'auto', padding:'20px 0' },
   msgRow: (isUser) => ({ display:'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', padding:'2px 16px', marginBottom:'2px' }),
-  
   userBubble: { background:'rgba(255,255,255,.08)', borderRadius:'18px 18px 4px 18px', padding:'10px 14px', maxWidth:'80%', fontSize:'14px', lineHeight:'1.6', color:'#f0f0f0', whiteSpace:'pre-wrap', wordBreak:'break-word' },
-  
   aiBubble: { maxWidth:'92%', fontSize:'14px', lineHeight:'1.7', color:'#e0e0e0', wordBreak:'break-word' },
-
   actionChip: (ok) => ({ display:'inline-flex', alignItems:'center', gap:'5px', background: ok === null ? 'rgba(255,255,255,.05)' : ok ? 'rgba(74,222,128,.06)' : 'rgba(248,113,113,.06)', border:`1px solid ${ok === null ? 'rgba(255,255,255,.08)' : ok ? 'rgba(74,222,128,.15)' : 'rgba(248,113,113,.15)'}`, borderRadius:'6px', padding:'4px 10px', fontSize:'11px', fontFamily:'monospace', color: ok === null ? 'rgba(255,255,255,.4)' : ok ? '#4ade80' : '#f87171', margin:'4px 0', cursor:'default' }),
-
   terminalBlock: { background:'#0a0a0b', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', padding:'12px 14px', margin:'8px 0', fontFamily:'monospace', fontSize:'12px', color:'rgba(255,255,255,.65)', whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:'300px', overflowY:'auto', lineHeight:'1.5' },
-
   codeBlock: { background:'#111114', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', margin:'8px 0', overflow:'hidden' },
   codeLang: { padding:'6px 14px', background:'rgba(255,255,255,.03)', fontSize:'11px', color:'rgba(255,255,255,.3)', borderBottom:'1px solid rgba(255,255,255,.05)', fontFamily:'monospace' },
   codePre: { padding:'12px 14px', margin:0, whiteSpace:'pre-wrap', wordBreak:'break-word', fontSize:'12px', lineHeight:'1.6', overflowX:'auto' },
-
   diffBlock: { background:'#0d1117', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', margin:'8px 0', fontFamily:'monospace', fontSize:'12px', overflow:'hidden' },
   diffHeader: { padding:'6px 14px', background:'rgba(255,255,255,.03)', fontSize:'11px', color:'rgba(255,255,255,.3)', borderBottom:'1px solid rgba(255,255,255,.05)' },
-
   approveBar: { display:'flex', gap:'8px', margin:'8px 0' },
   approveBtn: { background:'rgba(74,222,128,.1)', border:'1px solid rgba(74,222,128,.2)', borderRadius:'8px', padding:'6px 16px', color:'#4ade80', fontSize:'12px', cursor:'pointer' },
   rejectBtn: { background:'rgba(248,113,113,.08)', border:'1px solid rgba(248,113,113,.15)', borderRadius:'8px', padding:'6px 16px', color:'#f87171', fontSize:'12px', cursor:'pointer' },
-
-  msgActions: { display:'flex', gap:'6px', marginTop:'6px', opacity:0, transition:'opacity .15s' },
+  msgActions: { display:'flex', gap:'6px', marginTop:'6px' },
   msgActBtn: { background:'none', border:'none', padding:'3px 6px', color:'rgba(255,255,255,.3)', fontSize:'11px', cursor:'pointer', borderRadius:'4px' },
-
   followUps: { display:'flex', gap:'6px', flexWrap:'wrap', margin:'10px 0 4px', padding:'0 16px' },
   followUpBtn: { background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.07)', borderRadius:'8px', padding:'5px 12px', color:'rgba(255,255,255,.45)', fontSize:'12px', cursor:'pointer' },
-
-  streamingBubble: { maxWidth:'92%', fontSize:'14px', lineHeight:'1.7', color:'#e0e0e0', wordBreak:'break-word', padding:'0' },
+  streamingBubble: { maxWidth:'92%', fontSize:'14px', lineHeight:'1.7', color:'#e0e0e0', wordBreak:'break-word' },
   cursor: { display:'inline-block', width:'2px', height:'14px', background:'rgba(255,255,255,.6)', marginLeft:'2px', verticalAlign:'middle', animation:'blink 1s infinite' },
-
   inputArea: { padding:'12px 16px', borderTop:'1px solid rgba(255,255,255,.07)', display:'flex', gap:'8px', alignItems:'flex-end', background:'rgba(255,255,255,.01)' },
   textarea: { flex:1, background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:'12px', padding:'10px 14px', color:'#f0f0f0', fontSize:'14px', resize:'none', outline:'none', lineHeight:'1.5', fontFamily:'inherit', maxHeight:'160px' },
   sendBtn: { background:'#7c3aed', border:'none', borderRadius:'10px', padding:'10px 18px', color:'white', fontSize:'13px', cursor:'pointer', fontWeight:'500', flexShrink:0 },
   stopBtn: { background:'rgba(248,113,113,.15)', border:'1px solid rgba(248,113,113,.25)', borderRadius:'10px', padding:'10px 18px', color:'#f87171', fontSize:'13px', cursor:'pointer', flexShrink:0 },
-
   modelPicker: { padding:'8px 16px', borderBottom:'1px solid rgba(255,255,255,.05)', display:'flex', gap:'6px', overflowX:'auto' },
   modelBtn: (active) => ({ background: active ? 'rgba(124,58,237,.2)' : 'rgba(255,255,255,.03)', border:`1px solid ${active ? 'rgba(124,58,237,.4)' : 'rgba(255,255,255,.07)'}`, borderRadius:'6px', padding:'4px 12px', color: active ? '#a78bfa' : 'rgba(255,255,255,.35)', fontSize:'11px', cursor:'pointer', whiteSpace:'nowrap' }),
 };
 
-// ─── SERVER ───────────────────────────────────────────────────────────────────
 async function callServer(payload) {
   try {
     const resp = await fetch(YUYU_SERVER, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
@@ -126,9 +119,7 @@ async function callServer(payload) {
 function resolvePath(base, p) {
   if (!p) return base;
   if (!base) return p;
-  // Hindari double path
   if (p === base || p.startsWith(base + '/')) return p;
-  // Kalau p sudah include base di awal, strip dulu
   const stripped = p.startsWith(base) ? p.slice(base.length).replace(/^\//, '') : p;
   return base + '/' + stripped;
 }
@@ -166,7 +157,6 @@ function parseActions(text) {
   return actions;
 }
 
-// ─── GROQ STREAMING ───────────────────────────────────────────────────────────
 async function askGroqStream(messages, model, onChunk, signal) {
   const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method:'POST', signal,
@@ -188,8 +178,6 @@ async function askGroqStream(messages, model, onChunk, signal) {
   return full;
 }
 
-
-// ─── GEMINI STREAMING ─────────────────────────────────────────────────────────
 async function askGeminiStream(messages, model, onChunk, signal) {
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GEMINI_KEY;
   const systemMsg = messages.find(m => m.role === 'system');
@@ -205,17 +193,15 @@ async function askGeminiStream(messages, model, onChunk, signal) {
   return full;
 }
 
-// ─── SYNTAX HIGHLIGHT ─────────────────────────────────────────────────────────
 function hl(code) {
   return code
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/(\/\/.*$|\/\*[\s\S]*?\*\/)/gm,'<span style="color:#6a737d">$1</span>')
-    .replace(/(["'`])(?:(?!\1)[^\\]|\\.)*\1/g,'<span style="color:#98c379">$&</span>')
+    .replace(/(\/{2}.*$|\/\*[\s\S]*?\*\/)/gm,'<span style="color:#6a737d">$1</span>')
+    .replace(/(["`'])(?:(?!\1)[^\\]|\\.)*\1/g,'<span style="color:#98c379">$&</span>')
     .replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|class|new|this|from|of|in|typeof|null|undefined|true|false)\b/g,'<span style="color:#c678dd">$1</span>')
     .replace(/\b(\d+\.?\d*)\b/g,'<span style="color:#d19a66">$1</span>');
 }
 
-// ─── RENDER MESSAGE CONTENT ───────────────────────────────────────────────────
 function MsgContent({ text }) {
   const parts = [];
   const regex = /```(\w+)?\n?([\s\S]*?)```/g;
@@ -229,7 +215,6 @@ function MsgContent({ text }) {
     last = m.index + m[0].length;
   }
   if (last < text.length) parts.push({ t:'text', c:text.slice(last) });
-
   return (
     <div>
       {parts.map((p, i) => {
@@ -247,9 +232,7 @@ function MsgContent({ text }) {
             <div style={S.diffHeader}>diff</div>
             <div style={{ padding:'10px 14px' }}>
               {p.c.split('\n').map((line, j) => (
-                <div key={j} style={{ color: line.startsWith('+') ? '#4ade80' : line.startsWith('-') ? '#f87171' : 'rgba(255,255,255,.4)', fontFamily:'monospace', fontSize:'12px', lineHeight:'1.6' }}>
-                  {line}
-                </div>
+                <div key={j} style={{ color: line.startsWith('+') ? '#4ade80' : line.startsWith('-') ? '#f87171' : 'rgba(255,255,255,.4)', fontFamily:'monospace', fontSize:'12px', lineHeight:'1.6' }}>{line}</div>
               ))}
             </div>
           </div>
@@ -265,33 +248,27 @@ function MsgContent({ text }) {
   );
 }
 
-// ─── ACTION CHIP ──────────────────────────────────────────────────────────────
 function ActionChip({ action }) {
   const [expanded, setExpanded] = useState(false);
-  const icon = action.type === 'read_file' ? '📄' : action.type === 'write_file' ? '✏️' : action.type === 'list_files' ? '📁' : action.type === 'exec' ? '⚡' : '🔧';
+  const icon = action.type === 'read_file' ? '📄' : action.type === 'write_file' ? '✏️' : action.type === 'list_files' ? '📁' : action.type === 'exec' ? '⚡' : action.type === 'search' ? '🔍' : '🔧';
   const label = action.type === 'exec' ? (action.command || '').slice(0, 40) : (action.path || action.type);
   const ok = action.result ? action.result.ok : null;
-
   return (
     <div style={{ margin:'4px 0' }}>
       <div style={S.actionChip(ok)} onClick={() => action.result && setExpanded(!expanded)}>
-        <span>{icon}</span>
-        <span>{label}</span>
+        <span>{icon}</span><span>{label}</span>
         {ok === null && <span style={{ opacity:.5 }}>···</span>}
         {ok === true && <span>✓</span>}
         {ok === false && <span>✗</span>}
         {action.result && <span style={{ opacity:.4 }}>{expanded ? '▲' : '▼'}</span>}
       </div>
       {expanded && action.result && (
-        <div style={S.terminalBlock}>
-          {typeof action.result.data === 'string' ? action.result.data : JSON.stringify(action.result.data, null, 2)}
-        </div>
+        <div style={S.terminalBlock}>{typeof action.result.data === 'string' ? action.result.data : JSON.stringify(action.result.data, null, 2)}</div>
       )}
     </div>
   );
 }
 
-// ─── MESSAGE BUBBLE ───────────────────────────────────────────────────────────
 function MsgBubble({ msg, onApprove, onRetry, onContinue, isLast }) {
   const [hover, setHover] = useState(false);
   const isUser = msg.role === 'user';
@@ -300,9 +277,7 @@ function MsgBubble({ msg, onApprove, onRetry, onContinue, isLast }) {
   const hasPendingWrite = actions.some(a => a.type === 'write_file' && !a.executed);
   const isContinued = msg.content.trim().endsWith('CONTINUE');
 
-  function copyMsg() {
-    navigator.clipboard?.writeText(cleanText).catch(() => {});
-  }
+  function copyMsg() { navigator.clipboard?.writeText(cleanText).catch(() => {}); }
 
   return (
     <div style={S.msgRow(isUser)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
@@ -316,9 +291,7 @@ function MsgBubble({ msg, onApprove, onRetry, onContinue, isLast }) {
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:'2px', width:'100%' }}>
-          <div style={S.aiBubble}>
-            <MsgContent text={cleanText} />
-          </div>
+          <div style={S.aiBubble}><MsgContent text={cleanText} /></div>
           {actions.map((a, i) => <ActionChip key={i} action={a} />)}
           {hasPendingWrite && onApprove && (
             <div style={S.approveBar}>
@@ -327,9 +300,7 @@ function MsgBubble({ msg, onApprove, onRetry, onContinue, isLast }) {
             </div>
           )}
           {isContinued && onContinue && (
-            <button onClick={onContinue} style={{ background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.2)', borderRadius:'8px', padding:'5px 14px', color:'#a78bfa', fontSize:'12px', cursor:'pointer', alignSelf:'flex-start', marginTop:'4px' }}>
-              ↓ Lanjutkan
-            </button>
+            <button onClick={onContinue} style={{ background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.2)', borderRadius:'8px', padding:'5px 14px', color:'#a78bfa', fontSize:'12px', cursor:'pointer', alignSelf:'flex-start', marginTop:'4px' }}>↓ Lanjutkan</button>
           )}
           <div style={{ ...S.msgActions, opacity: hover ? 1 : 0 }}>
             <button style={S.msgActBtn} onClick={copyMsg}>copy</button>
@@ -341,12 +312,8 @@ function MsgBubble({ msg, onApprove, onRetry, onContinue, isLast }) {
   );
 }
 
-// ─── TOKEN COUNTER ────────────────────────────────────────────────────────────
-function countTokens(msgs) {
-  return Math.round(msgs.reduce((a, m) => a + m.content.length, 0) / 4);
-}
+function countTokens(msgs) { return Math.round(msgs.reduce((a, m) => a + m.content.length, 0) / 4); }
 
-// ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [messages, setMessages] = useState([{ role:'assistant', content:'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa? 🌸' }]);
   const [input, setInput] = useState('');
@@ -357,6 +324,7 @@ export default function App() {
   const [showFolder, setShowFolder] = useState(false);
   const [serverOk, setServerOk] = useState(true);
   const [notes, setNotes] = useState('');
+  const [skill, setSkill] = useState('');
   const [cmdHistory, setCmdHistory] = useState([]);
   const [histIdx, setHistIdx] = useState(-1);
   const [model, setModel] = useState(MODELS[0].id);
@@ -393,6 +361,11 @@ export default function App() {
     if (!folder) return;
     Preferences.get({ key:'yc_notes_' + folder }).then(r => setNotes(r.value || ''));
     callServer({ type:'ping' }).then(r => setServerOk(r.ok));
+    // Load SKILL.md kalau ada
+    callServer({ type:'read', path: folder + '/SKILL.md' }).then(r => {
+      if (r.ok) setSkill(r.data);
+      else setSkill('');
+    });
   }, [folder]);
 
   function saveFolder(f) {
@@ -437,8 +410,11 @@ export default function App() {
 
     try {
       const notesCtx = notes ? '\n\nProject notes:\n' + notes : '';
+      const skillCtx = skill ? '\n\nSKILL.md (baca dan ikuti):\n' + skill : '';
+      const systemPrompt = BASE_SYSTEM + '\n\nFolder aktif: ' + folder + notesCtx + skillCtx;
+
       const groqMsgs = [
-        { role:'system', content:YUYU_SYSTEM + '\n\nFolder aktif: ' + folder + notesCtx },
+        { role:'system', content:systemPrompt },
         ...history.map(m => ({ role:m.role, content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim() }))
       ];
 
@@ -458,11 +434,15 @@ export default function App() {
 
       let final = reply;
       if (fileData) {
-        final = await askGroqStream([
-          ...groqMsgs,
+        const followMsgs = [
+          { role:'system', content:systemPrompt },
+          ...groqMsgs.slice(1),
           { role:'assistant', content:reply.replace(/```action[\s\S]*?```/g,'').trim() },
           { role:'user', content:'Hasil:\n' + fileData + '\n\nAnalisis dan jawab.' }
-        ], model, setStreaming, ctrl.signal);
+        ];
+        final = isGemini
+          ? await askGeminiStream(followMsgs, model, setStreaming, ctrl.signal)
+          : await askGroqStream(followMsgs, model, setStreaming, ctrl.signal);
         setStreaming('');
       }
 
@@ -478,31 +458,24 @@ export default function App() {
     setLoading(false);
   }
 
-  async function continueMsg() {
-    await sendMsg('Lanjutkan response sebelumnya dari titik terakhir.');
-  }
-
+  async function continueMsg() { await sendMsg('Lanjutkan response sebelumnya dari titik terakhir.'); }
   async function retryLast() {
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
     if (!lastUser) return;
-    setMessages(m => m.filter((_, i) => i < m.lastIndexOf(lastUser)));
+    setMessages(m => { const idx = m.lastIndexOf(lastUser); return m.slice(0, idx); });
     await sendMsg(lastUser.content);
   }
 
   async function runShortcut(cmd) {
-    addHistory(cmd);
-    setShowFollowUp(false);
-    const userMsg = { role:'user', content:cmd };
-    setMessages(m => [...m, userMsg]);
+    addHistory(cmd); setShowFollowUp(false);
+    setMessages(m => [...m, { role:'user', content:cmd }]);
     setLoading(true);
     const r = await executeAction({ type:'exec', command:cmd }, folder);
-    const result = r.ok ? (r.data || '(selesai)') : ('❌ ' + r.data);
-    setMessages(m => [...m, { role:'assistant', content:'```bash\n' + result + '\n```', actions:[] }]);
+    setMessages(m => [...m, { role:'assistant', content:'```bash\n' + (r.data || 'selesai') + '\n```', actions:[] }]);
     setLoading(false);
   }
 
   const tokens = countTokens(messages);
-  const lastMsg = messages[messages.length - 1];
 
   return (
     <div style={S.root}>
@@ -511,42 +484,38 @@ export default function App() {
         ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:2px; }
         textarea { scrollbar-width:none; }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-        .msg-actions { opacity:0 } .msg-row:hover .msg-actions { opacity:1 }
         button:active { opacity:.7; }
       `}</style>
 
-      {/* Header */}
       <div style={S.header}>
         <div style={S.serverDot(serverOk)} />
         <div style={{ flex:1 }} onClick={() => setShowFolder(!showFolder)}>
           <div style={S.headerTitle}>YuyuCode</div>
-          <div style={S.headerSub}>📁 {folder}</div>
+          <div style={S.headerSub}>📁 {folder}{skill ? ' · 📋 SKILL.md' : ''}</div>
         </div>
         <div style={S.tokenBadge}>~{tokens}tk</div>
         <button style={S.newBtn} onClick={() => { setMessages([{ role:'assistant', content:'Chat baru. Mau ngerjain apa Papa? 🌸' }]); Preferences.remove({ key:'yc_history' }); setShowFollowUp(false); }}>new</button>
       </div>
 
-      {/* Folder picker */}
       {showFolder && (
         <div style={S.folderBar}>
-          <input value={folderInput} onChange={e => setFolderInput(e.target.value)} placeholder="nama folder" style={S.folderInput} onKeyDown={e => e.key === 'Enter' && saveFolder(folderInput)} />
+          <input value={folderInput} onChange={e => setFolderInput(e.target.value)} placeholder="nama folder project"
+            style={S.folderInput} onKeyDown={e => e.key === 'Enter' && saveFolder(folderInput)} />
           <button style={S.folderBtn} onClick={() => saveFolder(folderInput)}>set</button>
         </div>
       )}
 
-      {/* Notes */}
       {notes && <div style={S.notesBar}>📝 {notes.slice(0, 100)}</div>}
+      {skill && <div style={S.skillBar}>📋 SKILL.md loaded — {skill.split('\n').length} baris</div>}
 
-      {/* Model picker */}
       <div style={S.modelPicker}>
         {MODELS.map(m => (
           <button key={m.id} style={S.modelBtn(model === m.id)} onClick={() => { setModel(m.id); Preferences.set({ key:'yc_model', value:m.id }); }}>
-            {m.label}{m.fast ? ' ⚡' : ''}
+            {m.label}
           </button>
         ))}
       </div>
 
-      {/* Git shortcuts */}
       <div style={S.shortcuts}>
         {GIT_SHORTCUTS.map(s => (
           <button key={s.label} style={S.shortcutBtn} onClick={() => runShortcut(s.cmd)} disabled={loading}>
@@ -555,39 +524,30 @@ export default function App() {
         ))}
       </div>
 
-      {/* Messages */}
       <div style={S.messages}>
         {messages.map((m, i) => (
-          <MsgBubble
-            key={i} msg={m}
-            isLast={i === messages.length - 1}
+          <MsgBubble key={i} msg={m} isLast={i === messages.length - 1}
             onApprove={m.actions?.some(a => a.type === 'write_file' && !a.executed) ? (ok) => handleApprove(i, ok) : null}
             onRetry={i === messages.length - 1 && m.role === 'user' ? retryLast : null}
             onContinue={i === messages.length - 1 && m.role === 'assistant' && m.content.trim().endsWith('CONTINUE') ? continueMsg : null}
           />
         ))}
-
-        {/* Streaming */}
         {streaming && (
-          <div style={{ ...S.msgRow(false) }}>
+          <div style={S.msgRow(false)}>
             <div style={S.streamingBubble}>
               <MsgContent text={streaming} />
               <span style={S.cursor} />
             </div>
           </div>
         )}
-
-        {/* Loading */}
         {loading && !streaming && (
           <div style={S.msgRow(false)}>
             <div style={{ color:'rgba(255,255,255,.3)', fontSize:'13px' }}>Yuyu lagi mikir···</div>
           </div>
         )}
-
         <div ref={bottomRef} />
       </div>
 
-      {/* Follow-up suggestions */}
       {showFollowUp && !loading && (
         <div style={S.followUps}>
           {FOLLOW_UP_PROMPTS.map(p => (
@@ -596,11 +556,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Input */}
       <div style={S.inputArea}>
-        <textarea
-          ref={inputRef}
-          value={input}
+        <textarea ref={inputRef} value={input}
           onChange={e => { setInput(e.target.value); e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight, 160)+'px'; }}
           onKeyDown={e => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); return; }
@@ -608,8 +565,7 @@ export default function App() {
             if (e.key === 'ArrowDown' && histIdx > -1) { const idx = histIdx-1; setHistIdx(idx); setInput(idx >= 0 ? cmdHistory[idx] : ''); }
           }}
           placeholder="Tanya Yuyu..."
-          disabled={loading}
-          rows={1}
+          disabled={loading} rows={1}
           style={{ ...S.textarea, opacity: loading ? 0.5 : 1 }}
         />
         {loading
