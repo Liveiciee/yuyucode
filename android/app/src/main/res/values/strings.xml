@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">YuyuLife</string>
-    <string name="title_activity_main">YuyuLife</string>
-    <string name="package_name">com.liveiciee.yuyulife</string>
-    <string name="custom_url_scheme">com.liveiciee.yuyulife</string>
+    <string name="app_name">YuyuCode</string>
+    <string name="title_activity_main">YuyuCode</string>
+    <string name="package_name">com.liveiciee.yuyucode</string>
+    <string name="custom_url_scheme">com.liveiciee.yuyucode</string>
 </resources>

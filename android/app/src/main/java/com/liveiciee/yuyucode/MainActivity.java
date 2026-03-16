@@ -1,4 +1,4 @@
-package com.liveiciee.yuyulife;
+package com.liveiciee.yuyucode;
 
 import android.os.Bundle;
 import android.webkit.WebSettings;
