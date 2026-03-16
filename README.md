@@ -1,4 +1,3 @@
-```markdown
 # YuyuCode
 
 YuyuCode adalah coding assistant canggih berbasis React + Vite + Capacitor, dirancang untuk memberikan pengalaman pengembangan yang cepat, intuitif, dan penuh fitur cerdas. Dibangun sebagai aplikasi web dan mobile (via Capacitor), YuyuCode mendukung alur kerja modern dengan integrasi langsung ke Git, GitHub, dan platform deploy.
@@ -50,4 +49,3 @@ YuyuCode adalah coding assistant canggih berbasis React + Vite + Capacitor, dira
 - AI: MCP Protocol, integrasi model lokal & cloud
 
 Made with YuyuCode
-```
