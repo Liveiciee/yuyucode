@@ -1,31 +1,31 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
 const YUYU_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
-Kamu bisa membaca, menulis, dan mengedit file kode via tool calls.
+Kamu BISA dan HARUS membaca file sungguhan via action blocks.
 Jawab dalam bahasa Indonesia, hangat tapi fokus ke task.
-Kalau Papa minta edit file — langsung kerjakan.
 
-Untuk file operations, gunakan format JSON di dalam blok \`\`\`action:
+Untuk operasi file, WAJIB gunakan format ini:
 \`\`\`action
-{"type": "read_file", "path": "path/ke/file"}
+{"type": "read_file", "path": "folder/file.jsx"}
 \`\`\`
 \`\`\`action
-{"type": "write_file", "path": "path/ke/file", "content": "isi file"}
+{"type": "write_file", "path": "folder/file.jsx", "content": "isi baru"}
 \`\`\`
 \`\`\`action
-{"type": "list_files", "path": "path/folder"}
+{"type": "list_files", "path": "folder"}
 \`\`\`
-\`\`\`action
-{"type": "git", "command": "git add -A && git commit -m 'pesan' && git push"}
-\`\`\``;
 
-async function askGroq(messages) {
+PENTING: Jangan karang isi file. Selalu gunakan action untuk baca file sungguhan.
+Setelah baca file, analisis isinya yang sebenarnya.`;
+
+async function askGroq(messages, signal) {
   const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
     body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, max_tokens: 4000 })
   });
@@ -34,11 +34,12 @@ async function askGroq(messages) {
   return data.choices[0].message.content;
 }
 
-async function executeAction(action) {
+async function executeAction(action, baseFolder) {
   try {
+    const basePath = baseFolder ? baseFolder + '/' : '';
     if (action.type === 'read_file') {
       const result = await Filesystem.readFile({
-        path: action.path,
+        path: basePath + action.path,
         directory: Directory.ExternalStorage,
         encoding: Encoding.UTF8
       });
@@ -46,26 +47,28 @@ async function executeAction(action) {
     }
     if (action.type === 'write_file') {
       await Filesystem.writeFile({
-        path: action.path,
+        path: basePath + action.path,
         data: action.content,
         directory: Directory.ExternalStorage,
         encoding: Encoding.UTF8,
         recursive: true
       });
-      return { ok: true, data: 'File berhasil ditulis!' };
+      return { ok: true, data: '✅ File berhasil ditulis: ' + action.path };
     }
     if (action.type === 'list_files') {
       const result = await Filesystem.readdir({
-        path: action.path,
+        path: basePath + action.path,
         directory: Directory.ExternalStorage
       });
-      return { ok: true, data: result.files.map(f => f.name).join('\n') };
+      const files = result.files.map(f => (f.type === 'directory' ? '📁 ' : '📄 ') + f.name).join('\n');
+      return { ok: true, data: files || '(folder kosong)' };
     }
     if (action.type === 'git') {
-      return { ok: false, data: 'Git command akan dijalankan via Termux — copy perintah ini:\n' + action.command };
+      return { ok: false, data: '📋 Copy ke Termux:\n' + action.command };
     }
+    return { ok: false, data: 'Unknown action: ' + action.type };
   } catch(e) {
-    return { ok: false, data: 'Error: ' + e.message };
+    return { ok: false, data: '❌ Error: ' + e.message };
   }
 }
 
@@ -74,35 +77,65 @@ function parseActions(text) {
   const actions = [];
   let match;
   while ((match = regex.exec(text)) !== null) {
-    try { actions.push(JSON.parse(match[1])); } catch {}
+    try { actions.push(JSON.parse(match[1].trim())); } catch {}
   }
   return actions;
+}
+
+function CodeBlock({ text }) {
+  const codeRegex = /```(\w+)?\n([\s\S]*?)```/g;
+  const parts = [];
+  let last = 0, match;
+  while ((match = codeRegex.exec(text)) !== null) {
+    if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) });
+    if (match[1] !== 'action') parts.push({ type: 'code', lang: match[1] || '', content: match[2] });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push({ type: 'text', content: text.slice(last) });
+
+  return (
+    <div>
+      {parts.map((p, i) => p.type === 'text'
+        ? <span key={i} style={{ whiteSpace: 'pre-wrap' }}>{p.content}</span>
+        : <div key={i} style={{ background: 'rgba(0,0,0,.4)', border: '1px solid rgba(255,255,255,.08)', borderRadius: '8px', padding: '10px 12px', margin: '6px 0', fontFamily: 'monospace', fontSize: '11px', overflowX: 'auto', color: 'rgba(200,255,200,.9)' }}>
+            {p.lang && <div style={{ fontSize: '9px', color: 'rgba(255,255,255,.3)', marginBottom: '4px' }}>{p.lang}</div>}
+            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{p.content}</pre>
+          </div>
+      )}
+    </div>
+  );
 }
 
 function MessageBubble({ msg }) {
   const isUser = msg.role === 'user';
   const cleanText = msg.content.replace(/```action[\s\S]*?```/g, '').trim();
-  const actions = parseActions(msg.content);
+  const actions = msg.actions || [];
 
   return (
-    <div style={{ alignSelf: isUser ? 'flex-end' : 'flex-start', maxWidth: '90%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div style={{ alignSelf: isUser ? 'flex-end' : 'flex-start', maxWidth: '92%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div style={{
         background: isUser ? 'rgba(232,121,249,.15)' : 'rgba(255,255,255,.06)',
         border: `1px solid ${isUser ? 'rgba(232,121,249,.3)' : 'rgba(255,255,255,.08)'}`,
         borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
         padding: '10px 14px', fontSize: '13px', lineHeight: '1.6',
-        whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'rgba(255,255,255,.85)'
+        wordBreak: 'break-word', color: 'rgba(255,255,255,.85)'
       }}>
-        {cleanText}
+        {isUser ? <span style={{ whiteSpace: 'pre-wrap' }}>{cleanText}</span> : <CodeBlock text={cleanText} />}
       </div>
       {actions.map((a, i) => (
         <div key={i} style={{
-          background: 'rgba(100,200,100,.08)', border: '1px solid rgba(100,200,100,.2)',
-          borderRadius: '8px', padding: '8px 12px', fontSize: '11px',
-          color: 'rgba(150,255,150,.8)', fontFamily: 'monospace'
+          background: a.result?.ok ? 'rgba(100,200,100,.06)' : 'rgba(255,150,50,.06)',
+          border: `1px solid ${a.result?.ok ? 'rgba(100,200,100,.2)' : 'rgba(255,150,50,.2)'}`,
+          borderRadius: '8px', padding: '8px 12px', fontSize: '11px', fontFamily: 'monospace'
         }}>
-          🔧 {a.type}: {a.path || a.command || ''}
-          {a.result && <div style={{ marginTop: 4, color: 'rgba(255,255,255,.5)' }}>{a.result}</div>}
+          <div style={{ color: 'rgba(200,255,200,.7)', marginBottom: a.result ? '4px' : 0 }}>
+            🔧 {a.type}: {a.path || a.command || ''}
+          </div>
+          {a.result && (
+            <div style={{ color: 'rgba(255,255,255,.45)', whiteSpace: 'pre-wrap', maxHeight: '120px', overflowY: 'auto' }}>
+              {a.result.data}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -115,14 +148,33 @@ export default function App() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [path, setPath] = useState('yuyucamp');
-  const [showPath, setShowPath] = useState(false);
+  const [folder, setFolder] = useState('yuyucamp');
+  const [showFolder, setShowFolder] = useState(false);
+  const [folderInput, setFolderInput] = useState('yuyucamp');
   const bottomRef = useRef(null);
-  const inputRef = useRef(null);
+  const abortRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    Preferences.get({ key: 'yuyucode_folder' }).then(r => {
+      if (r.value) { setFolder(r.value); setFolderInput(r.value); }
+    });
+  }, []);
+
+  function saveFolder(f) {
+    setFolder(f);
+    setFolderInput(f);
+    setShowFolder(false);
+    Preferences.set({ key: 'yuyucode_folder', value: f });
+  }
+
+  function cancel() {
+    if (abortRef.current) abortRef.current.abort();
+    setLoading(false);
+  }
 
   async function send() {
     if (!input.trim() || loading) return;
@@ -132,40 +184,45 @@ export default function App() {
     setInput('');
     setLoading(true);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      const contextMsg = path ? `[Konteks: Papa lagi kerja di folder ${path}]\n` : '';
       const groqMessages = [
-        { role: 'system', content: YUYU_SYSTEM },
-        ...history.map(m => m.role === 'user' && m === history[history.length-1]
-          ? { ...m, content: contextMsg + m.content }
-          : m
-        )
+        { role: 'system', content: YUYU_SYSTEM + `\n\nFolder aktif: ${folder}` },
+        ...history.map(m => ({ role: m.role, content: m.content.replace(/```action[\s\S]*?```/g, '').trim() }))
       ];
 
-      let reply = await askGroq(groqMessages);
-
-      // Execute actions kalau ada
+      let reply = await askGroq(groqMessages, controller.signal);
       const actions = parseActions(reply);
-      if (actions.length > 0) {
-        const results = await Promise.all(actions.map(executeAction));
-        results.forEach((r, i) => { actions[i].result = r.data; });
 
-        // Kalau ada hasil file, kasih ke Yuyu lagi
-        const fileResults = results.filter(r => r.ok).map(r => r.data).join('\n\n');
-        if (fileResults) {
+      // Execute actions sungguhan
+      let actionResults = [];
+      if (actions.length > 0) {
+        actionResults = await Promise.all(actions.map(a => executeAction(a, folder)));
+        actions.forEach((a, i) => { a.result = actionResults[i]; });
+
+        // Kasih hasil ke Groq untuk analisis
+        const fileContents = actionResults
+          .filter(r => r.ok && r.data.length > 0)
+          .map((r, i) => `=== ${actions[i].path || actions[i].type} ===\n${r.data}`)
+          .join('\n\n');
+
+        if (fileContents) {
           const followUp = await askGroq([
-            { role: 'system', content: YUYU_SYSTEM },
             ...groqMessages,
-            { role: 'assistant', content: reply },
-            { role: 'user', content: 'Hasil operasi file:\n' + fileResults + '\n\nLanjutkan.' }
-          ]);
-          reply = reply + '\n\n' + followUp;
+            { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
+            { role: 'user', content: `Hasil baca file:\n${fileContents}\n\nAnalisis dan jawab pertanyaan Papa.` }
+          ], controller.signal);
+          reply = followUp;
         }
       }
 
-      setMessages(m => [...m, { role: 'assistant', content: reply }]);
+      setMessages(m => [...m, { role: 'assistant', content: reply, actions }]);
     } catch(e) {
-      setMessages(m => [...m, { role: 'assistant', content: 'Yuyu tidak bisa connect sekarang... 🌙\n' + e.message }]);
+      if (e.name !== 'AbortError') {
+        setMessages(m => [...m, { role: 'assistant', content: '🌙 ' + e.message }]);
+      }
     }
     setLoading(false);
   }
@@ -175,35 +232,30 @@ export default function App() {
       {/* Header */}
       <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,.08)', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <div style={{ fontSize: '20px' }}>🌸</div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1 }} onClick={() => setShowFolder(!showFolder)}>
           <div style={{ fontSize: '14px', color: 'rgba(255,220,240,.9)' }}>YuyuCode</div>
-          <div
-            onClick={() => setShowPath(!showPath)}
-            style={{ fontSize: '10px', color: 'rgba(255,255,255,.4)', cursor: 'pointer' }}
-          >
-            📁 {path || 'tap untuk set folder'}
-          </div>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,.35)', cursor: 'pointer' }}>📁 {folder}</div>
         </div>
         <button
-          onClick={() => setMessages([{ role: 'assistant', content: 'Chat baru dimulai. Mau ngerjain apa Papa? 🌸' }])}
-          style={{ background: 'none', border: '1px solid rgba(255,255,255,.1)', borderRadius: '8px', padding: '4px 10px', color: 'rgba(255,255,255,.4)', fontSize: '11px', cursor: 'pointer' }}
+          onClick={() => setMessages([{ role: 'assistant', content: 'Chat baru. Mau ngerjain apa Papa? 🌸' }])}
+          style={{ background: 'none', border: '1px solid rgba(255,255,255,.1)', borderRadius: '8px', padding: '4px 10px', color: 'rgba(255,255,255,.35)', fontSize: '11px', cursor: 'pointer' }}
         >
           baru
         </button>
       </div>
 
-      {/* Path input */}
-      {showPath && (
+      {/* Folder picker */}
+      {showFolder && (
         <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,.06)', display: 'flex', gap: '8px' }}>
           <input
-            value={path}
-            onChange={e => setPath(e.target.value)}
-            placeholder="nama folder project (misal: yuyucamp)"
+            value={folderInput}
+            onChange={e => setFolderInput(e.target.value)}
+            placeholder="nama folder (misal: yuyucamp)"
             style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: '8px', padding: '8px 12px', color: 'rgba(255,255,255,.85)', fontSize: '12px', outline: 'none', fontFamily: 'monospace' }}
           />
           <button
-            onClick={() => setShowPath(false)}
-            style={{ background: 'rgba(232,121,249,.2)', border: '1px solid rgba(232,121,249,.3)', borderRadius: '8px', padding: '8px 12px', color: 'rgba(232,121,249,.9)', fontSize: '12px', cursor: 'pointer' }}
+            onClick={() => saveFolder(folderInput)}
+            style={{ background: 'rgba(232,121,249,.2)', border: '1px solid rgba(232,121,249,.3)', borderRadius: '8px', padding: '8px 14px', color: 'rgba(232,121,249,.9)', fontSize: '12px', cursor: 'pointer' }}
           >
             set
           </button>
@@ -214,31 +266,28 @@ export default function App() {
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {messages.map((m, i) => <MessageBubble key={i} msg={m} />)}
         {loading && (
-          <div style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.08)', borderRadius: '16px 16px 16px 4px', padding: '10px 14px', fontSize: '13px', color: 'rgba(255,255,255,.4)' }}>
-            Yuyu lagi mikir...
+          <div style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)', borderRadius: '16px 16px 16px 4px', padding: '10px 14px', fontSize: '12px', color: 'rgba(255,255,255,.35)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>Yuyu lagi mikir...</span>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
       {/* Input */}
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,.08)', display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+      <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,.08)', display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
         <textarea
-          ref={inputRef}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="Tanya Yuyu..."
-          rows={1}
-          style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: '12px', padding: '10px 14px', color: 'rgba(255,255,255,.85)', fontSize: '13px', fontFamily: 'Georgia,serif', resize: 'none', outline: 'none' }}
-        />
-        <button
-          onClick={send}
+          placeholder={loading ? 'Yuyu lagi mikir...' : 'Tanya Yuyu...'}
           disabled={loading}
-          style={{ background: 'rgba(232,121,249,.2)', border: '1px solid rgba(232,121,249,.3)', borderRadius: '12px', padding: '10px 16px', color: 'rgba(232,121,249,.9)', fontSize: '13px', cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
-        >
-          kirim
-        </button>
+          rows={1}
+          style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: '12px', padding: '10px 14px', color: loading ? 'rgba(255,255,255,.3)' : 'rgba(255,255,255,.85)', fontSize: '13px', fontFamily: 'Georgia,serif', resize: 'none', outline: 'none', cursor: loading ? 'not-allowed' : 'text' }}
+        />
+        {loading
+          ? <button onClick={cancel} style={{ background: 'rgba(255,100,100,.15)', border: '1px solid rgba(255,100,100,.3)', borderRadius: '12px', padding: '10px 16px', color: 'rgba(255,150,150,.9)', fontSize: '13px', cursor: 'pointer' }}>stop</button>
+          : <button onClick={send} style={{ background: 'rgba(232,121,249,.2)', border: '1px solid rgba(232,121,249,.3)', borderRadius: '12px', padding: '10px 16px', color: 'rgba(232,121,249,.9)', fontSize: '13px', cursor: 'pointer' }}>kirim</button>
+        }
       </div>
     </div>
   );
