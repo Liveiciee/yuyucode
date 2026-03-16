@@ -413,12 +413,6 @@ function Terminal({ folder }) {
 }
 
 
-
-  const ext = name.split('.').pop()?.toLowerCase();
-  const icons = { jsx:'⚛', tsx:'⚛', js:'📜', ts:'📘', json:'📋', md:'📝', yml:'⚙️', css:'🎨', html:'🌐', sh:'💻', txt:'📄', png:'🖼', jpg:'🖼', svg:'🎭' };
-  return icons[ext] || '📄';
-}
-
 function SearchBar({ folder, onSelectFile, onClose }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
