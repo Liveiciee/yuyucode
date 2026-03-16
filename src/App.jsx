@@ -3,12 +3,15 @@ import { Preferences } from "@capacitor/preferences";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const YUYU_SERVER = 'http://localhost:8765';
 const MAX_HISTORY = 30;
 const MODELS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', fast: false },
   { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B', fast: true },
   { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', fast: false },
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', fast: false, gemini: true },
+  { id: 'gemini-2.5-flash-lite-preview-06-17', label: 'Gemini Lite ⚡', fast: true, gemini: true },
 ];
 
 const YUYU_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
@@ -179,6 +182,35 @@ async function askGroqStream(messages, model, onChunk, signal) {
   return full;
 }
 
+
+// ─── GEMINI STREAMING ─────────────────────────────────────────────────────────
+async function askGeminiStream(messages, model, onChunk, signal) {
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':streamGenerateContent?alt=sse&key=' + GEMINI_KEY;
+  const systemMsg = messages.find(m => m.role === 'system');
+  const chatMsgs = messages.filter(m => m.role !== 'system');
+  const contents = chatMsgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+  const body = { contents, generationConfig: { maxOutputTokens: 8192 } };
+  if (systemMsg) body.systemInstruction = { parts: [{ text: systemMsg.content }] };
+  const resp = await fetch(url, { method:'POST', signal, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  if (!resp.ok) throw new Error('Gemini HTTP ' + resp.status);
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let full = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    for (const line of decoder.decode(value).split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      try {
+        const d = JSON.parse(line.slice(6));
+        const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (text) { full += text; onChunk(full); }
+      } catch {}
+    }
+  }
+  return full;
+}
+
 // ─── SYNTAX HIGHLIGHT ─────────────────────────────────────────────────────────
 function hl(code) {
   return code
@@ -326,8 +358,8 @@ export default function App() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState('');
-  const [folder, setFolder] = useState('yuyucode');
-  const [folderInput, setFolderInput] = useState('yuyucode');
+  const [folder, setFolder] = useState('yuyucamp');
+  const [folderInput, setFolderInput] = useState('yuyucamp');
   const [showFolder, setShowFolder] = useState(false);
   const [serverOk, setServerOk] = useState(true);
   const [notes, setNotes] = useState('');
@@ -416,7 +448,10 @@ export default function App() {
         ...history.map(m => ({ role:m.role, content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim() }))
       ];
 
-      let reply = await askGroqStream(groqMsgs, model, setStreaming, ctrl.signal);
+      const isGemini = MODELS.find(m => m.id === model)?.gemini;
+      let reply = isGemini
+        ? await askGeminiStream(groqMsgs, model, setStreaming, ctrl.signal)
+        : await askGroqStream(groqMsgs, model, setStreaming, ctrl.signal);
       setStreaming('');
 
       const allActions = parseActions(reply);
