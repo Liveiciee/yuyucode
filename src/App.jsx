@@ -376,6 +376,12 @@ function Terminal({ folder }) {
 }
 
 
+function ErrorBoundary({ children }) {
+  const [err, setErr] = React.useState(null);
+  if (err) return <div style={{color:'red',padding:'20px',whiteSpace:'pre-wrap'}}>{err}</div>;
+  return children;
+}
+
 export default function App() {
   const [messages, setMessages] = useState([{ role:'assistant', content:'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa? 🌸' }]);
   const [input, setInput] = useState('');
@@ -414,7 +420,7 @@ export default function App() {
       if (ch.value) { try { setCmdHistory(JSON.parse(ch.value)); } catch {} }
       if (mo.value) setModel(mo.value);
     });
-    callServer({ type:'ping' }).then(r => setServerOk(r.ok));
+    callServer({ type:'ping' }).then(r => setServerOk(r.ok)).catch(()=>setServerOk(false));
   }, []);
 
   useEffect(() => {
