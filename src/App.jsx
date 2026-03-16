@@ -304,9 +304,20 @@ function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast,
           <div style={S.aiBubble}><MsgContent text={cleanText} /></div>
           {actions.map((a, i) => <ActionChip key={i} action={a} />)}
           {hasPendingWrite && onApprove && (
-            <div style={S.approveBar}>
-              <button style={S.approveBtn} onClick={() => onApprove(true)}>✓ Tulis file</button>
-              <button style={S.rejectBtn} onClick={() => onApprove(false)}>✗ Batal</button>
+            <div style={{margin:'8px 0'}}>
+              {actions.filter(a=>a.type==='write_file'&&!a.executed).map((a,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'7px',padding:'5px 10px'}}>
+                  <span style={{fontSize:'11px',color:'rgba(255,255,255,.5)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>✏️ {a.path}</span>
+                  <button onClick={()=>onApprove(true,a.path)} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer'}}>✓</button>
+                  <button onClick={()=>onApprove(false,a.path)} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer'}}>✗</button>
+                </div>
+              ))}
+              {actions.filter(a=>a.type==='write_file'&&!a.executed).length>1&&(
+                <div style={{display:'flex',gap:'6px',marginTop:'4px'}}>
+                  <button onClick={()=>onApprove(true,'__all__')} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'7px',padding:'5px 14px',color:'#4ade80',fontSize:'11px',cursor:'pointer'}}>✓ Tulis semua</button>
+                  <button onClick={()=>onApprove(false,'__all__')} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'7px',padding:'5px 14px',color:'#f87171',fontSize:'11px',cursor:'pointer'}}>✗ Batal semua</button>
+                </div>
+              )}
             </div>
           )}
           {hasPlan && onPlanApprove && (
@@ -744,10 +755,16 @@ export default function App() {
     await sendMsg('Plan diapprove. Mulai eksekusi step by step.');
   }
 
-  async function handleApprove(idx,ok){
+  async function handleApprove(idx, ok, targetPath){
     const msg=messages[idx];
-    if(!ok){setMessages(m=>m.map((x,i)=>i===idx?{...x,actions:x.actions?.map(a=>({...a,executed:true,result:{ok:false,data:'Dibatalkan.'}}))}:x));return;}
-    for(const a of (msg.actions||[]).filter(a=>a.type==='write_file'&&!a.executed)){
+    const targets = targetPath==='__all__'
+      ? (msg.actions||[]).filter(a=>a.type==='write_file'&&!a.executed)
+      : (msg.actions||[]).filter(a=>a.type==='write_file'&&!a.executed&&(targetPath?a.path===targetPath:true));
+    if(!ok){
+      setMessages(m=>m.map((x,i)=>i===idx?{...x,actions:x.actions?.map(a=>targets.includes(a)?{...a,executed:true,result:{ok:false,data:'Dibatalkan.'}}:a)}:x));
+      return;
+    }
+    for(const a of targets){
       const backup=await callServer({type:'read',path:resolvePath(folder,a.path)});
       if(backup.ok) setEditHistory(h=>[...h.slice(-9),{path:resolvePath(folder,a.path),content:backup.data}]);
       a.result=await executeAction(a,folder);
@@ -765,6 +782,66 @@ export default function App() {
   }
 
   function cancel(){abortRef.current?.abort();setLoading(false);setStreaming('');}
+
+  // ── CONTEXT WINDOW MANAGEMENT ──
+  function trimHistory(msgs) {
+    const MAX_CHARS = 80000; // ~20k tokens
+    let total = msgs.reduce((a,m)=>a+m.content.length,0);
+    if (total <= MAX_CHARS) return msgs;
+    // Keep first (welcome) + last N messages
+    const trimmed = [msgs[0]];
+    let i = msgs.length - 1;
+    let chars = msgs[0].content.length;
+    const tail = [];
+    while (i > 0 && chars < MAX_CHARS) {
+      chars += msgs[i].content.length;
+      tail.unshift(msgs[i]);
+      i--;
+    }
+    if (i > 0) tail.unshift({role:'assistant',content:'[... '+i+' pesan sebelumnya dipotong untuk hemat token ...]'});
+    return [...trimmed, ...tail];
+  }
+
+  // ── COMMIT MESSAGE GENERATOR ──
+  async function generateCommitMsg() {
+    setLoading(true);
+    const diff = await callServer({type:'exec',path:folder,command:'git diff HEAD'});
+    if (!diff.ok || !diff.data.trim()) {
+      setMessages(m=>[...m,{role:'assistant',content:'Tidak ada perubahan untuk di-commit~',actions:[]}]);
+      setLoading(false); return;
+    }
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    try {
+      const reply = await askCerebrasStream([
+        {role:'system',content:'Generate satu baris commit message dalam format "tipe: deskripsi singkat" berdasarkan git diff berikut. Hanya tulis commit message-nya saja, tanpa penjelasan.'},
+        {role:'user',content:diff.data.slice(0,3000)}
+      ], model, setStreaming, ctrl.signal);
+      setStreaming('');
+      const msg = reply.trim().replace(/^["'`]|["'`]$/g,'');
+      setMessages(m=>[...m,{role:'assistant',content:'💬 Commit message:\n```\n'+msg+'\n```\nJalankan push?\n```action\n{"type":"exec","command":"git add -A && git commit -m \\"'+msg.replace(/"/g,'\\"')+'\\" && git push"}\n```',actions:[]}]);
+    } catch(e) {
+      if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
+    }
+    setLoading(false);
+  }
+
+  // ── TEST RUNNER ──
+  async function runTests() {
+    setLoading(true);
+    setMessages(m=>[...m,{role:'user',content:'Jalankan test & lint'}]);
+    // Try npm test then lint
+    const lint = await callServer({type:'exec',path:folder,command:'npm run lint 2>&1 || echo "no lint script"'});
+    const test = await callServer({type:'exec',path:folder,command:'npm test -- --watchAll=false 2>&1 || echo "no test script"'});
+    const combined = '=== LINT ===\n'+(lint.data||'ok')+'\n\n=== TEST ===\n'+(test.data||'ok');
+    setMessages(m=>[...m,{role:'assistant',content:'```bash\n'+combined+'\n```',actions:[]}]);
+    // If errors found, auto-feed to AI
+    const hasError = combined.toLowerCase().includes('error') || combined.includes('FAIL');
+    if (hasError) {
+      setTimeout(()=>sendMsg('Ada error di test/lint:\n'+combined.slice(0,600)+'\nDiagnosa dan fix.'),300);
+    }
+    setLoading(false);
+  }
 
   async function sendMsg(override){
     const txt=(override||input).trim();
@@ -798,7 +875,7 @@ export default function App() {
 
         const groqMsgs=[
           {role:'system',content:systemPrompt+(Object.keys(autoContext).length?'\n\nAuto-loaded context:\n'+Object.entries(autoContext).map(([p,c])=>'=== '+p+' ===\n'+c.slice(0,800)).join('\n\n'):'')},
-          ...allMessages.map(m=>({role:m.role,content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim()}))
+          ...trimHistory(allMessages).map(m=>({role:m.role,content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim()}))
         ];
 
         let reply = await askCerebrasStream(groqMsgs, model, setStreaming, ctrl.signal);
@@ -974,6 +1051,7 @@ export default function App() {
       {!netOnline&&<div style={{padding:'5px 12px',background:'rgba(248,113,113,.08)',borderBottom:'1px solid rgba(248,113,113,.15)',fontSize:'11px',color:'#f87171',flexShrink:0}}>📡 Tidak ada koneksi internet</div>}
       {rateLimitTimer>0&&<div style={{padding:'5px 12px',background:'rgba(251,191,36,.06)',borderBottom:'1px solid rgba(251,191,36,.1)',fontSize:'11px',color:'rgba(251,191,36,.7)',flexShrink:0}}>⏳ Rate limit — lanjut dalam {rateLimitTimer}d</div>}
       {agentRunning&&<div style={{padding:'5px 12px',background:'rgba(124,58,237,.06)',borderBottom:'1px solid rgba(124,58,237,.12)',fontSize:'11px',color:'#a78bfa',flexShrink:0}}>🤖 Yuyu lagi jalan sendiri···</div>}
+      {countTokens(messages)>15000&&<div style={{padding:'5px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.08)',fontSize:'11px',color:'rgba(251,191,36,.6)',flexShrink:0}}>⚠️ Context besar (~{countTokens(messages)}tk) — Yuyu auto-trim history lama</div>}
 
       {/* PINNED FILES BAR */}
       {pinnedFiles.length>0&&(
@@ -1117,6 +1195,12 @@ export default function App() {
               ))}
               <button onClick={()=>setShowDiff(true)} style={{background:'rgba(96,165,250,.06)',border:'1px solid rgba(96,165,250,.15)',borderRadius:'5px',padding:'3px 10px',color:'rgba(96,165,250,.7)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
                 <span>◐</span><span>diff</span>
+              </button>
+              <button onClick={runTests} disabled={loading} style={{background:'rgba(251,191,36,.06)',border:'1px solid rgba(251,191,36,.15)',borderRadius:'5px',padding:'3px 10px',color:'rgba(251,191,36,.7)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
+                <span>▶</span><span>test</span>
+              </button>
+              <button onClick={generateCommitMsg} disabled={loading} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'5px',padding:'3px 10px',color:'rgba(74,222,128,.7)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
+                <span>✦</span><span>commit</span>
               </button>
             </div>
           )}
