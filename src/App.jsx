@@ -1,3 +1,44 @@
+function renderMarkdown(raw) {
+  // Process tables FIRST before any other replacement
+  let t = raw.replace(/^\|.+\|$/gm, '__TABLE_ROW__');
+  
+  // Group consecutive table rows
+  t = t.replace(/((__TABLE_ROW__.*\n?)+)/g, (match) => {
+    const rows = match.trim().split('\n')
+      .map(r => r.replace('__TABLE_ROW__', '').trim())
+      .filter(r => r && !/^\|[-:\s|]+\|$/.test(r));
+    if (rows.length === 0) return '';
+    const html = rows.map((row, i) => {
+      const cells = row.slice(1, -1).split('|').map(c => c.trim());
+      const tag = i === 0 ? 'th' : 'td';
+      const s = i === 0
+        ? 'padding:6px 12px;font-size:11px;color:rgba(255,255,255,.45);font-weight:600;border-bottom:1px solid rgba(255,255,255,.1);text-align:left;white-space:nowrap'
+        : 'padding:6px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top';
+      return '<tr>' + cells.map(c => '<' + tag + ' style="' + s + '">' + c + '</' + tag + '>').join('') + '</tr>';
+    }).join('');
+    return '<div style="overflow-x:auto;margin:8px 0"><table style="width:100%;border-collapse:collapse;background:rgba(255,255,255,.02);border-radius:8px;overflow:hidden">' + html + '</table></div>';
+  });
+
+  // Remove leftover __TABLE_ROW__ markers
+  t = t.replace(/__TABLE_ROW__/g, '');
+
+  // Now do other markdown
+  t = t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^### (.*?)$/gm,'<div style="font-size:13px;font-weight:700;color:#e8e8e8;margin:10px 0 4px">$1</div>')
+    .replace(/^## (.*?)$/gm,'<div style="font-size:14px;font-weight:700;color:#f0f0f0;margin:12px 0 5px">$1</div>')
+    .replace(/^# (.*?)$/gm,'<div style="font-size:15px;font-weight:700;color:#f0f0f0;margin:14px 0 6px">$1</div>')
+    .replace(/\*\*([^*\n]+)\*\*/g,'<strong style="color:#f0f0f0">$1</strong>')
+    .replace(/\*([^*\n]+)\*/g,'<em style="color:rgba(255,255,255,.7)">$1</em>')
+    .replace(/`([^`\n]+)`/g,'<code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px;color:#e8e8e8">$1</code>')
+    .replace(/^---$/gm,'<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:10px 0">')
+    .replace(/^- (.*?)$/gm,'<div style="display:flex;gap:6px;margin:2px 0 2px 4px"><span style="color:rgba(255,255,255,.35);flex-shrink:0">•</span><span>$1</span></div>')
+    .replace(/^\d+\. (.*?)$/gm,'<div style="margin:2px 0 2px 4px">$1</div>')
+    .replace(/\n\n/g,'<div style="height:6px"></div>')
+    .replace(/\n/g,'<br>');
+
+  return t;
+}
 // ─── CEREBRAS STREAMING ──────────────────────────────────────────────────────
 async function askCerebrasStream(messages, model, onChunk, signal) {
   const resp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
@@ -104,7 +145,7 @@ const FOLLOW_UP_PROMPTS = [
 ];
 
 const S = {
-  root: { position:'fixed', inset:0, background:'#0d0d0e', color:'#e8e8e8', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif', display:'flex', flexDirection:'column', fontSize:'14px' },
+  root: { position:'fixed', inset:0, background:'#0f0f10', color:'#e8e8e8', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif', display:'flex', flexDirection:'column', fontSize:'14px' },
   header: { padding:'12px 16px', borderBottom:'1px solid rgba(255,255,255,.07)', display:'flex', alignItems:'center', gap:'10px', background:'rgba(255,255,255,.02)' },
   headerTitle: { fontSize:'15px', fontWeight:'600', color:'#f0f0f0', letterSpacing:'-0.3px' },
   headerSub: { fontSize:'11px', color:'rgba(255,255,255,.35)', marginTop:'1px', cursor:'pointer' },
@@ -120,7 +161,7 @@ const S = {
   shortcutBtn: { background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.07)', borderRadius:'6px', padding:'4px 12px', color:'rgba(255,255,255,.4)', fontSize:'11px', cursor:'pointer', whiteSpace:'nowrap', fontFamily:'monospace', display:'flex', alignItems:'center', gap:'5px' },
   messages: { flex:1, overflowY:'auto', padding:'20px 0' },
   msgRow: (isUser) => ({ display:'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', padding:'2px 16px', marginBottom:'2px' }),
-  userBubble: { background:'rgba(255,255,255,.07)', borderRadius:'16px 16px 4px 16px', padding:'10px 14px', maxWidth:'80%', fontSize:'14px', lineHeight:'1.6', color:'#f0f0f0', whiteSpace:'pre-wrap', wordBreak:'break-word' },
+  userBubble: { background:'rgba(255,255,255,.08)', borderRadius:'18px 18px 4px 18px', padding:'10px 14px', maxWidth:'80%', fontSize:'14px', lineHeight:'1.6', color:'#f0f0f0', whiteSpace:'pre-wrap', wordBreak:'break-word' },
   aiBubble: { maxWidth:'92%', fontSize:'14px', lineHeight:'1.7', color:'#e0e0e0', wordBreak:'break-word' },
   actionChip: (ok) => ({ display:'inline-flex', alignItems:'center', gap:'5px', background: ok === null ? 'rgba(255,255,255,.05)' : ok ? 'rgba(74,222,128,.06)' : 'rgba(248,113,113,.06)', border:`1px solid ${ok === null ? 'rgba(255,255,255,.08)' : ok ? 'rgba(74,222,128,.15)' : 'rgba(248,113,113,.15)'}`, borderRadius:'6px', padding:'4px 10px', fontSize:'11px', fontFamily:'monospace', color: ok === null ? 'rgba(255,255,255,.4)' : ok ? '#4ade80' : '#f87171', margin:'4px 0', cursor:'default' }),
   terminalBlock: { background:'#0a0a0b', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', padding:'12px 14px', margin:'8px 0', fontFamily:'monospace', fontSize:'12px', color:'rgba(255,255,255,.65)', whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:'300px', overflowY:'auto', lineHeight:'1.5' },
@@ -205,86 +246,51 @@ function hl(code) {
     .replace(/\b(\d+\.?\d*)\b/g,'<span style="color:#d19a66">$1</span>');
 }
 
-function renderMarkdown(raw) {
-  let t = raw
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-    .replace(/^### (.*?)$/gm,"<div style=\"font-size:13px;font-weight:700;color:#e8e8e8;margin:10px 0 4px\">$1</div>")
-    .replace(/^## (.*?)$/gm,"<div style=\"font-size:14px;font-weight:700;color:#f0f0f0;margin:12px 0 5px\">$1</div>")
-    .replace(/^# (.*?)$/gm,"<div style=\"font-size:15px;font-weight:700;color:#f0f0f0;margin:14px 0 6px\">$1</div>")
-    .replace(/\*\*([^*\n]+)\*\*/g,"<strong>$1</strong>")
-    .replace(/\*([^*\n]+)\*/g,"<em>$1</em>")
-    .replace(/`([^`\n]+)`/g,"<code style=\"background:rgba(255,255,255,.1);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px\">$1</code>")
-    .replace(/^---$/gm,"<hr style=\"border:none;border-top:1px solid rgba(255,255,255,.08);margin:10px 0\">")
-    .replace(/^- (.*?)$/gm,"<div style=\"display:flex;gap:6px;margin:1px 0\"><span style=\"color:rgba(255,255,255,.35)\">•</span><span>$1</span></div>")
-    .replace(/\n\n/g,"<div style=\"height:6px\"></div>")
-    .replace(/\n/g,"<br>");
-
-  // Table rendering - process setelah replace lain
-  t = t.replace(/(&lt;br&gt;\|[^&]+\|(&lt;br&gt;)?)+/g, (match) => {
-    const rows = match.split('&lt;br&gt;').filter(r => r.startsWith('|') || r.startsWith('\|'));
-    if (rows.length < 2) return match;
-    const html = rows
-      .filter(r => !/^\|[-\s|]+\|$/.test(r.replace(/&lt;br&gt;/g,'')))
-      .map((row, i) => {
-        const cells = row.replace(/^\|(.*)\|$/, '$1').split('|').map(c => c.trim());
-        const tag = i === 0 ? 'th' : 'td';
-        const s = i === 0
-          ? 'padding:5px 12px;font-size:11px;color:rgba(255,255,255,.5);font-weight:600;border-bottom:1px solid rgba(255,255,255,.1);text-align:left'
-          : 'padding:5px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.05)';
-        return '<tr>' + cells.map(c => '<' + tag + ' style="' + s + '">' + c + '</' + tag + '>').join('') + '</tr>';
-      }).join('');
-    return '<table style="width:100%;border-collapse:collapse;margin:8px 0;background:rgba(255,255,255,.02);border-radius:6px;overflow:hidden">' + html + '</table>';
-  });
-
-  return t;
-}
-
 function MsgContent({ text }) {
   const parts = [];
-  const re = /```(\w+)?\n?([\s\S]*?)```/g;
+  const regex = /```(\w+)?\n?([\s\S]*?)```/g;
   let last = 0, m;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) parts.push({ t:'md', c:text.slice(last, m.index) });
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) parts.push({ t:'text', c:text.slice(last, m.index) });
     const lang = m[1] || '';
     if (lang === 'action') { last = m.index + m[0].length; continue; }
     if (lang === 'diff') parts.push({ t:'diff', c:m[2] });
     else parts.push({ t:'code', lang, c:m[2] });
     last = m.index + m[0].length;
   }
-  if (last < text.length) parts.push({ t:'md', c:text.slice(last) });
-
+  if (last < text.length) parts.push({ t:'text', c:text.slice(last) });
   return (
     <div>
       {parts.map((p, i) => {
-        if (p.t === 'md') return <div key={i} dangerouslySetInnerHTML={{ __html: renderMarkdown(p.c) }} />;
+        if (p.t === 'text') return (
+          <span key={i} style={{ whiteSpace:'pre-wrap' }}
+            dangerouslySetInnerHTML={{ __html: p.c
+              .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+              .replace(/`([^`]+)`/g,'<code style="background:rgba(255,255,255,.08);padding:1px 6px;borderRadius:4px;fontFamily:monospace;fontSize:13px">$1</code>')
+              .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+            }}
+          />
+        );
         if (p.t === 'diff') return (
-          <div key={i} style={{ background:'#0d1117', border:'1px solid rgba(255,255,255,.08)', borderRadius:'8px', margin:'8px 0', overflow:'hidden' }}>
-            <div style={{ padding:'5px 12px', background:'rgba(255,255,255,.03)', fontSize:'10px', color:'rgba(255,255,255,.3)', fontFamily:'monospace', borderBottom:'1px solid rgba(255,255,255,.05)' }}>diff</div>
-            <div style={{ padding:'10px 12px' }}>
+          <div key={i} style={S.diffBlock}>
+            <div style={S.diffHeader}>diff</div>
+            <div style={{ padding:'10px 14px' }}>
               {p.c.split('\n').map((line, j) => (
-                <div key={j} style={{ fontFamily:'monospace', fontSize:'12px', lineHeight:'1.7', color: line.startsWith('+') ? '#4ade80' : line.startsWith('-') ? '#f87171' : 'rgba(255,255,255,.45)', background: line.startsWith('+') ? 'rgba(74,222,128,.06)' : line.startsWith('-') ? 'rgba(248,113,113,.06)' : 'transparent', padding:'0 4px', borderRadius:'2px' }}>
-                  {line || ' '}
-                </div>
+                <div key={j} style={{ color: line.startsWith('+') ? '#4ade80' : line.startsWith('-') ? '#f87171' : 'rgba(255,255,255,.4)', fontFamily:'monospace', fontSize:'12px', lineHeight:'1.6' }}>{line}</div>
               ))}
             </div>
           </div>
         );
         return (
-          <div key={i} style={{ background:'#111114', border:'1px solid rgba(255,255,255,.07)', borderRadius:'8px', margin:'8px 0', overflow:'hidden' }}>
-            {p.lang && (
-              <div style={{ padding:'5px 12px 4px', background:'rgba(255,255,255,.03)', fontSize:'10px', color:'rgba(255,255,255,.3)', fontFamily:'monospace', borderBottom:'1px solid rgba(255,255,255,.05)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <span>{p.lang}</span>
-                <button onClick={() => navigator.clipboard?.writeText(p.c)} style={{ background:'none', border:'none', color:'rgba(255,255,255,.25)', fontSize:'10px', cursor:'pointer', padding:'0' }}>copy</button>
-              </div>
-            )}
-            <pre style={{ margin:0, padding:'10px 12px', whiteSpace:'pre-wrap', wordBreak:'break-word', fontSize:'12px', lineHeight:'1.6', fontFamily:'monospace' }} dangerouslySetInnerHTML={{ __html: hl(p.c) }} />
+          <div key={i} style={S.codeBlock}>
+            {p.lang && <div style={S.codeLang}>{p.lang}</div>}
+            <pre style={S.codePre} dangerouslySetInnerHTML={{ __html: hl(p.c) }} />
           </div>
         );
       })}
     </div>
   );
 }
-
 
 function ActionChip({ action }) {
   const [expanded, setExpanded] = useState(false);
