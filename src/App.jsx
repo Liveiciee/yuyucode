@@ -146,6 +146,7 @@ export default function App() {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa hari ini? 🌸' }
   ]);
+  const [permStatus, setPermStatus] = useState('');
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [folder, setFolder] = useState('yuyucamp');
@@ -156,12 +157,29 @@ export default function App() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Save history
+    if (messages.length > 1) {
+      const toSave = messages.slice(-30).map(m => ({ role: m.role, content: m.content }));
+      Preferences.set({ key: 'yuyucode_history', value: JSON.stringify(toSave) });
+    }
   }, [messages]);
 
   useEffect(() => {
     Preferences.get({ key: 'yuyucode_folder' }).then(r => {
       if (r.value) { setFolder(r.value); setFolderInput(r.value); }
     });
+    Preferences.get({ key: 'yuyucode_history' }).then(r => {
+      if (r.value) {
+        try { setMessages(JSON.parse(r.value)); } catch {}
+      }
+    });
+    // Minta permission storage
+    setPermStatus('Meminta akses file...');
+    Filesystem.requestPermissions().then(r => {
+      const ok = Object.values(r).every(v => v === 'granted');
+      setPermStatus(ok ? '' : 'Akses file ditolak - beberapa fitur tidak bisa digunakan');
+      setTimeout(() => setPermStatus(''), 3000);
+    }).catch(() => setPermStatus(''));
   }, []);
 
   function saveFolder(f) {
@@ -237,12 +255,23 @@ export default function App() {
           <div style={{ fontSize: '10px', color: 'rgba(255,255,255,.35)', cursor: 'pointer' }}>📁 {folder}</div>
         </div>
         <button
-          onClick={() => setMessages([{ role: 'assistant', content: 'Chat baru. Mau ngerjain apa Papa? 🌸' }])}
+          onClick={() => {
+            const fresh = [{ role: 'assistant', content: 'Chat baru. Mau ngerjain apa Papa? 🌸' }];
+            setMessages(fresh);
+            Preferences.remove({ key: 'yuyucode_history' });
+          }}
           style={{ background: 'none', border: '1px solid rgba(255,255,255,.1)', borderRadius: '8px', padding: '4px 10px', color: 'rgba(255,255,255,.35)', fontSize: '11px', cursor: 'pointer' }}
         >
           baru
         </button>
       </div>
+
+      {/* Permission status */}
+      {permStatus ? (
+        <div style={{ padding: '6px 16px', background: 'rgba(255,150,50,.08)', borderBottom: '1px solid rgba(255,150,50,.15)', fontSize: '11px', color: 'rgba(255,200,100,.8)' }}>
+          {permStatus}
+        </div>
+      ) : null}
 
       {/* Folder picker */}
       {showFolder && (
@@ -277,7 +306,11 @@ export default function App() {
       <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,.08)', display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
         <textarea
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={e => {
+            setInput(e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+          }}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
           placeholder={loading ? 'Yuyu lagi mikir...' : 'Tanya Yuyu...'}
           disabled={loading}
