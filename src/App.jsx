@@ -424,16 +424,29 @@ function Terminal({ folder, cmdHistory, addHistory }) {
   return (
     <div className='flex flex-col h-full bg-black text-xs font-mono p-2 border-t border-gray-800'>
       <div className='flex-1 overflow-auto mb-2 text-gray-300'>{output}{loading && '...'}</div>
-      <div className='relative flex items-center gap-2 border-t border-gray-900 pt-2'>
+      
+    <div className='relative flex items-center gap-2 border-t border-gray-800 bg-[#1c2128] p-2'>
         {suggestions.length > 0 && (
-          <div className='absolute bottom-full left-0 w-full bg-gray-900 border border-gray-700 rounded mb-1 shadow-xl'>
+          <div className='absolute bottom-full left-0 w-full bg-[#2d333b] border border-[#444c56] rounded-t-md shadow-2xl overflow-hidden'>
             {suggestions.map((s, i) => (
-              <div key={i} className={'px-2 py-1 ' + (i === selIdx ? 'bg-blue-600 text-white' : 'text-gray-500')}>{s}</div>
+              <div 
+                key={i} 
+                className={'px-3 py-2 text-[11px] cursor-pointer border-b border-[#444c56] last:border-0 ' + (i === selIdx ? 'bg-[#316dca] text-white' : 'text-gray-400')}
+                onClick={() => {setCmd(s); setSuggestions([]);}}
+              >
+                <span className='opacity-50 mr-2'>❯</span>{s}
+              </div>
             ))}
           </div>
         )}
-        <span className='text-green-500'>➜</span>
-        <input className='bg-transparent outline-none flex-1 text-white' value={cmd} onChange={e=>onTextChange(e.target.value)} onKeyDown={handleKeyDown} />
+        <span className='text-green-500 ml-1'>➜</span>
+        <input 
+          className='bg-transparent outline-none flex-1 text-gray-200 placeholder-gray-600' 
+          value={cmd} 
+          onChange={e=>onTextChange(e.target.value)} 
+          onKeyDown={handleKeyDown} 
+          placeholder='Type command...'
+        />
       </div>
     </div>
   );
