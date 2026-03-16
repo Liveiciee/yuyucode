@@ -59,7 +59,7 @@ ATURAN:
 const GIT_SHORTCUTS = [
   { label: 'status', icon: '◎', cmd: 'git status' },
   { label: 'log', icon: '◈', cmd: 'git log --oneline -10' },
-  { label: 'diff', icon: '◐', cmd: 'git diff' },
+
   { label: 'pull', icon: '↓', cmd: 'git pull' },
   { label: 'push', icon: '↑', cmd: 'git add -A && git commit -m "update" && git push' },
 ];
