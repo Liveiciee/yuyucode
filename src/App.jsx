@@ -26,10 +26,13 @@ Action format:
 {"type":"read_file","path":"src/App.jsx"}
 \`\`\`
 \`\`\`action
-{"type":"write_file","path":"src/App.jsx","content":"..."}
+{"type":"read_file","path":"src/App.jsx","from":1,"to":100}
 \`\`\`
 \`\`\`action
-{"type":"list_files","path":""}
+{"type":"write_file","path":"src/App.jsx","content":"...isi lengkap..."}
+\`\`\`
+\`\`\`action
+{"type":"list_files","path":"src"}
 \`\`\`
 \`\`\`action
 {"type":"exec","command":"git status"}
@@ -37,21 +40,35 @@ Action format:
 \`\`\`action
 {"type":"search","query":"useState","path":"src"}
 \`\`\`
+\`\`\`action
+{"type":"file_info","path":"src/App.jsx"}
+\`\`\`
 
-ATURAN TEKNIS (tidak berubah):
-1. Untuk write_file — tampilkan diff dulu dalam format code block:
+PLAN MODE — untuk task kompleks (edit multi-file, refactor, fitur baru):
+1. Tulis PLAN dulu sebelum eksekusi:
+   📋 PLAN:
+   - Step 1: baca file X
+   - Step 2: edit bagian Y
+   - Step 3: update file Z
+   - Step 4: push
+2. Tunggu Papa approve plan → baru eksekusi step by step
+3. Untuk task sederhana (satu file, satu edit) — tidak perlu plan
+
+ATURAN TEKNIS:
+1. write_file — tampilkan diff dulu:
 \`\`\`diff
-- baris lama
-+ baris baru
+- baris yang dihapus
++ baris yang ditambah
 \`\`\`
 2. Tunggu konfirmasi Papa sebelum write
-3. Setelah write berhasil — tanya push KE GITHUB SEKALI SAJA
-4. Kalau Papa bilang push/iya — exec PERSIS: git add -A && git commit -m "pesan" && git push
-   PENTING: tidak ada titik dua setelah -m, format: -m "pesan" bukan -m: "pesan"
-5. Setelah push berhasil — BERHENTI. Jangan tanya push lagi
-6. Info penting project → PROJECT_NOTE: info
-7. Response kepotong → tulis CONTINUE di akhir
-8. SKILL.md berisi konteks project — baca dan ikuti`;
+3. Setelah write berhasil — tanya push SEKALI SAJA
+4. Format push: git add -A && git commit -m "tipe: pesan" && git push
+   (TIDAK ADA titik dua setelah -m, format: -m "pesan" bukan -m: "pesan")
+5. Setelah push berhasil — BERHENTI, jangan tanya lagi
+6. File besar (>8KB) — baca per chunk dengan from/to
+7. Info penting project → PROJECT_NOTE: info
+8. Response kepotong → tulis CONTINUE di akhir
+9. SKILL.md = konteks project, baca dan ikuti`;
 
 const GIT_SHORTCUTS = [
   { label: 'status', icon: '◎', cmd: 'git status' },
@@ -281,13 +298,14 @@ function ActionChip({ action }) {
   );
 }
 
-function MsgBubble({ msg, onApprove, onRetry, onContinue, isLast }) {
+function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast }) {
   const [hover, setHover] = useState(false);
   const isUser = msg.role === 'user';
   const cleanText = msg.content.replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim();
   const actions = msg.actions || [];
   const hasPendingWrite = actions.some(a => a.type === 'write_file' && !a.executed);
   const isContinued = msg.content.trim().endsWith('CONTINUE');
+  const hasPlan = !msg.planApproved && msg.content.includes('📋 PLAN:');
 
   function copyMsg() { navigator.clipboard?.writeText(cleanText).catch(() => {}); }
 
@@ -309,6 +327,12 @@ function MsgBubble({ msg, onApprove, onRetry, onContinue, isLast }) {
             <div style={S.approveBar}>
               <button style={S.approveBtn} onClick={() => onApprove(true)}>✓ Tulis file</button>
               <button style={S.rejectBtn} onClick={() => onApprove(false)}>✗ Batal</button>
+            </div>
+          )}
+          {hasPlan && onPlanApprove && (
+            <div style={{ display:'flex', gap:'8px', margin:'8px 0' }}>
+              <button onClick={() => onPlanApprove(true)} style={{ background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.3)', borderRadius:'8px', padding:'6px 16px', color:'#a78bfa', fontSize:'12px', cursor:'pointer' }}>✓ Approve Plan</button>
+              <button onClick={() => onPlanApprove(false)} style={{ background:'rgba(248,113,113,.08)', border:'1px solid rgba(248,113,113,.15)', borderRadius:'8px', padding:'6px 16px', color:'#f87171', fontSize:'12px', cursor:'pointer' }}>✗ Ubah Plan</button>
             </div>
           )}
           {isContinued && onContinue && (
@@ -399,6 +423,16 @@ export default function App() {
     const next = [cmd, ...cmdHistory.filter(c => c !== cmd)].slice(0, 50);
     setCmdHistory(next);
     Preferences.set({ key:'yc_cmdhist', value:JSON.stringify(next) });
+  }
+
+  async function handlePlanApprove(idx, approved) {
+    if (!approved) {
+      setMessages(m => m.map((x, i) => i === idx ? { ...x, planApproved: false } : x));
+      await sendMsg('Ubah plan — jelaskan apa yang perlu diubah');
+      return;
+    }
+    setMessages(m => m.map((x, i) => i === idx ? { ...x, planApproved: true } : x));
+    await sendMsg('Plan diapprove. Mulai eksekusi step by step.');
   }
 
   async function handleApprove(idx, ok) {
@@ -577,6 +611,7 @@ export default function App() {
         {messages.map((m, i) => (
           <MsgBubble key={i} msg={m} isLast={i === messages.length - 1}
             onApprove={m.actions?.some(a => a.type === 'write_file' && !a.executed) ? (ok) => handleApprove(i, ok) : null}
+            onPlanApprove={m.content?.includes('📋 PLAN:') && !m.planApproved ? (ok) => handlePlanApprove(i, ok) : null}
             onRetry={i === messages.length - 1 && m.role === 'user' ? retryLast : null}
             onContinue={i === messages.length - 1 && m.role === 'assistant' && m.content.trim().endsWith('CONTINUE') ? continueMsg : null}
           />
