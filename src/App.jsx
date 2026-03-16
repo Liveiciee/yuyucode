@@ -32,8 +32,7 @@ const YUYU_SERVER = 'http://localhost:8765';
 const MAX_HISTORY = 30;
 const MODELS = [
   { id: 'llama-3.3-70b', label: 'Llama 3.3 70B 🔥', fast: false },
-  { id: 'llama-3.1-8b', label: 'Llama 3.1 8B ⚡', fast: true },
-  { id: 'llama-3.1-70b', label: 'Llama 3.1 70B', fast: false },
+  { id: 'llama3.1-8b', label: 'Llama 3.1 8B ⚡', fast: true },
 ];
 
 const BASE_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
