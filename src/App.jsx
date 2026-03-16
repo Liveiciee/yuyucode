@@ -167,7 +167,11 @@ async function askGroqStream(messages, model, onChunk, signal) {
     headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + GROQ_KEY },
     body:JSON.stringify({ model, messages, max_tokens:4000, stream:true })
   });
-  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  if (resp.status === 429) {
+    const retry = parseInt(resp.headers.get('retry-after') || '60');
+    throw new Error('RATE_LIMIT:' + retry);
+  }
+  if (!resp.ok) throw new Error('Groq error: HTTP ' + resp.status);
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let full = '';
@@ -190,7 +194,11 @@ async function askGeminiStream(messages, model, onChunk, signal) {
   const body = { contents, generationConfig: { maxOutputTokens: 8192 } };
   if (systemMsg) body.systemInstruction = { parts: [{ text: systemMsg.content }] };
   const resp = await fetch(url, { method:'POST', signal, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-  if (!resp.ok) throw new Error('Gemini HTTP ' + resp.status);
+  if (resp.status === 429) {
+    const retry = parseInt(resp.headers.get('retry-after') || '60');
+    throw new Error('RATE_LIMIT:' + retry);
+  }
+  if (!resp.ok) throw new Error('Gemini error: HTTP ' + resp.status);
   const data = await resp.json();
   const full = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
   onChunk(full);
@@ -333,11 +341,21 @@ export default function App() {
   const [histIdx, setHistIdx] = useState(-1);
   const [model, setModel] = useState(MODELS[0].id);
   const [showFollowUp, setShowFollowUp] = useState(false);
+  const [netOnline, setNetOnline] = useState(navigator.onLine);
+  const [rateLimitTimer, setRateLimitTimer] = useState(0);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, streaming]);
+
+  useEffect(() => {
+    const on = () => setNetOnline(true);
+    const off = () => setNetOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -457,7 +475,23 @@ export default function App() {
 
       setMessages(m => [...m, { role:'assistant', content:final, actions:[...nonWrites, ...writes.map(a => ({ ...a, executed:false }))] }]);
     } catch(e) {
-      if (e.name !== 'AbortError') setMessages(m => [...m, { role:'assistant', content:'❌ ' + e.message }]);
+      if (e.name !== 'AbortError') {
+        if (e.message.startsWith('RATE_LIMIT:')) {
+          const secs = parseInt(e.message.split(':')[1]);
+          setRateLimitTimer(secs);
+          const interval = setInterval(() => {
+            setRateLimitTimer(t => {
+              if (t <= 1) { clearInterval(interval); return 0; }
+              return t - 1;
+            });
+          }, 1000);
+          setMessages(m => [...m, { role:'assistant', content:'⏳ Rate limit — Yuyu tunggu ' + secs + ' detik ya Papa~' }]);
+        } else if (!navigator.onLine) {
+          setMessages(m => [...m, { role:'assistant', content:'📡 Internet terputus, cek koneksi dulu ya Papa~' }]);
+        } else {
+          setMessages(m => [...m, { role:'assistant', content:'❌ ' + e.message }]);
+        }
+      }
     }
     setLoading(false);
   }
@@ -500,6 +534,17 @@ export default function App() {
         <div style={S.tokenBadge}>~{tokens}tk</div>
         <button style={S.newBtn} onClick={() => { setMessages([{ role:'assistant', content:'Chat baru. Mau ngerjain apa Papa? 🌸' }]); Preferences.remove({ key:'yc_history' }); setShowFollowUp(false); }}>new</button>
       </div>
+
+      {!netOnline && (
+        <div style={{ padding:'6px 16px', background:'rgba(248,113,113,.08)', borderBottom:'1px solid rgba(248,113,113,.15)', fontSize:'11px', color:'#f87171' }}>
+          📡 Tidak ada koneksi internet
+        </div>
+      )}
+      {rateLimitTimer > 0 && (
+        <div style={{ padding:'6px 16px', background:'rgba(251,191,36,.06)', borderBottom:'1px solid rgba(251,191,36,.1)', fontSize:'11px', color:'rgba(251,191,36,.7)' }}>
+          ⏳ Rate limit — lanjut dalam {rateLimitTimer}d
+        </div>
+      )}
 
       {showFolder && (
         <div style={S.folderBar}>
