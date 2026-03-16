@@ -224,13 +224,22 @@ function MsgContent({ text }) {
     <div>
       {parts.map((p, i) => {
         if (p.t === 'text') return (
-          <span key={i} style={{ whiteSpace:'pre-wrap' }}
-            dangerouslySetInnerHTML={{ __html: p.c
-              .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-              .replace(/`([^`]+)`/g,'<code style="background:rgba(255,255,255,.08);padding:1px 6px;borderRadius:4px;fontFamily:monospace;fontSize:13px">$1</code>')
-              .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
-            }}
-          />
+          <div key={i} style={{ lineHeight:'1.7', wordBreak:'break-word' }}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}
+              components={{
+                table: ({node,...props}) => <div style={{overflowX:'auto',margin:'8px 0'}}><table style={{width:'100%',borderCollapse:'collapse',background:'rgba(255,255,255,.02)',borderRadius:'8px'}} {...props} /></div>,
+                th: ({node,...props}) => <th style={{padding:'6px 12px',fontSize:'11px',color:'rgba(255,255,255,.45)',fontWeight:'600',borderBottom:'1px solid rgba(255,255,255,.12)',textAlign:'left'}} {...props} />,
+                td: ({node,...props}) => <td style={{padding:'6px 12px',fontSize:'12px',borderBottom:'1px solid rgba(255,255,255,.04)',verticalAlign:'top'}} {...props} />,
+                h1: ({node,...props}) => <div style={{fontSize:'15px',fontWeight:'700',color:'#f0f0f0',margin:'14px 0 6px'}} {...props} />,
+                h2: ({node,...props}) => <div style={{fontSize:'14px',fontWeight:'700',color:'#f0f0f0',margin:'12px 0 5px'}} {...props} />,
+                h3: ({node,...props}) => <div style={{fontSize:'13px',fontWeight:'700',color:'#e8e8e8',margin:'10px 0 4px'}} {...props} />,
+                code: ({node,inline,...props}) => inline ? <code style={{background:'rgba(255,255,255,.1)',padding:'1px 5px',borderRadius:'3px',fontFamily:'monospace',fontSize:'12px',color:'#e8e8e8'}} {...props} /> : <pre style={{background:'#111114',padding:'10px 12px',borderRadius:'8px',overflow:'auto',fontSize:'12px',margin:'6px 0'}} {...props} />,
+                hr: ({node,...props}) => <hr style={{border:'none',borderTop:'1px solid rgba(255,255,255,.08)',margin:'10px 0'}} />,
+                strong: ({node,...props}) => <strong style={{color:'#f0f0f0'}} {...props} />,
+                li: ({node,...props}) => <li style={{margin:'2px 0',color:'#e0e0e0'}} {...props} />,
+              }}
+            >{p.c}</ReactMarkdown>
+          </div>
         );
         if (p.t === 'diff') return (
           <div key={i} style={S.diffBlock}>
