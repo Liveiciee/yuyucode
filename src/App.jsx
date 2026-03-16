@@ -45,6 +45,19 @@ Action format:
 {"type":"search","query":"useState","path":"src"}
 \`\`\`
 
+\`\`\`action
+{"type":"mcp","tool":"github","action":"issues","params":{"owner":"user","repo":"repo","token":"ghp_..."}}
+\`\`\`
+\`\`\`action
+{"type":"mcp","tool":"sqlite","action":"query","params":{"dbPath":"data.db","query":"SELECT * FROM users LIMIT 10"}}
+\`\`\`
+\`\`\`action
+{"type":"mcp","tool":"fetch","action":"browse","params":{"url":"https://docs.example.com"}}
+\`\`\`
+\`\`\`action
+{"type":"mcp","tool":"system","action":"memory","params":{}}
+\`\`\`
+
 PLAN MODE:
 📋 PLAN:
 - Step 1: ...
@@ -89,6 +102,10 @@ const SLASH_COMMANDS = [
   { cmd:'/swarm',      desc:'Jalankan agent swarm' },
   { cmd:'/font',       desc:'Atur ukuran font' },
   { cmd:'/theme',      desc:'Buka theme builder' },
+  { cmd:'/mcp',        desc:'MCP tools panel' },
+  { cmd:'/github',     desc:'GitHub issues & PRs' },
+  { cmd:'/deploy',     desc:'Deploy project' },
+  { cmd:'/db',         desc:'Query SQLite database' },
 ];
 
 const S = {
@@ -218,6 +235,9 @@ async function executeAction(action, baseFolder) {
   if (action.type === 'delete_file') return callServer({ type:'delete', path:resolvePath(base, action.path) });
   if (action.type === 'find_symbol') {
     return await callServer({ type:'search', path:resolvePath(base, action.path||''), content:action.symbol });
+  }
+  if (action.type === 'mcp') {
+    return callServer({ type:'mcp', tool:action.tool, action:action.action, params:action.params||{} });
   }
   if (action.type === 'create_structure') {
     const results = [];
@@ -1181,7 +1201,19 @@ export default function App() {
   const [swarmLog, setSwarmLog] = useState([]);
   const [showDepGraph, setShowDepGraph] = useState(false);
   const [depGraph, setDepGraph] = useState(null);
+  const [showMCP, setShowMCP] = useState(false);
+  const [mcpTools, setMcpTools] = useState({});
+  const [showGitHub, setShowGitHub] = useState(false);
+  const [githubToken, setGithubToken] = useState('');
+  const [githubRepo, setGithubRepo] = useState('');
+  const [githubData, setGithubData] = useState(null);
+  const [showDeploy, setShowDeploy] = useState(false);
+  const [deployLog, setDeployLog] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const [reconnectTimer, setReconnectTimer] = useState(0);
+  const [openTabs, setOpenTabs] = useState([]);
   const fileInputRef = useRef(null);
+  const chatRef = useRef(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
@@ -1214,7 +1246,9 @@ export default function App() {
       Preferences.get({key:'yc_fontsize'}),
       Preferences.get({key:'yc_custom_theme'}),
       Preferences.get({key:'yc_onboarded'}),
-    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob])=>{
+      Preferences.get({key:'yc_gh_token'}),
+      Preferences.get({key:'yc_gh_repo'}),
+    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr])=>{
       if(f.value){setFolder(f.value);setFolderInput(f.value);}
       if(h.value){try{setMessages(JSON.parse(h.value));}catch{}}
       if(ch.value){try{setCmdHistory(JSON.parse(ch.value));}catch{}}
@@ -1229,8 +1263,27 @@ export default function App() {
       if(fs.value) setFontSize(parseInt(fs.value)||14);
       if(ct.value){try{setCustomTheme(JSON.parse(ct.value));}catch{}}
       if(!ob.value) setShowOnboarding(true);
+      if(ght.value) setGithubToken(ght.value);
+      if(ghr.value) setGithubRepo(ghr.value);
     });
-    callServer({type:'ping'}).then(r=>setServerOk(r.ok));
+    callServer({type:'ping'}).then(r=>{
+      setServerOk(r.ok);
+      if (r.mcp) setMcpTools(r.mcp);
+    });
+  },[]);
+
+  // ── AUTO-RECONNECT ──
+  useEffect(()=>{
+    const interval = setInterval(async ()=>{
+      const r = await callServer({type:'ping'});
+      setServerOk(r.ok);
+      if (!r.ok) {
+        setReconnectTimer(t=>t+5);
+      } else {
+        setReconnectTimer(0);
+      }
+    }, 5000);
+    return ()=>clearInterval(interval);
   },[]);
 
   useEffect(()=>{
@@ -1460,6 +1513,19 @@ export default function App() {
       setMessages(m=>[...m,{role:'assistant',content:'🔤 Font size diubah ke '+size+'px~',actions:[]}]);
     } else if (base==='/theme') {
       setShowThemeBuilder(true);
+    } else if (base==='/mcp') {
+      setShowMCP(true);
+    } else if (base==='/github') {
+      setShowGitHub(true);
+    } else if (base==='/deploy') {
+      setShowDeploy(true);
+    } else if (base==='/db') {
+      const q = parts.slice(1).join(' ');
+      if (!q) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /db SELECT * FROM table',actions:[]}]); return; }
+      setLoading(true);
+      const r = await callServer({type:'mcp',tool:'sqlite',action:'query',params:{dbPath:folder+'/data.db',query:q}});
+      setMessages(m=>[...m,{role:'assistant',content:'🗄 Query result:\n```\n'+(r.data||'kosong')+'\n```',actions:[]}]);
+      setLoading(false);
     }
   }
 
@@ -1632,6 +1698,65 @@ export default function App() {
       haptic('light');
     };
     reader.readAsDataURL(file);
+  }
+
+  // ── DRAG & DROP ──
+  function handleDrop(e) {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = ev => { setVisionImage(ev.target.result.split(',')[1]); haptic('light'); };
+      reader.readAsDataURL(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = ev => { setInput(i=>i+'\n```\n'+ev.target.result.slice(0,3000)+'\n```'); };
+      reader.readAsText(file);
+    }
+  }
+
+  // ── GITHUB ──
+  async function fetchGitHub(action) {
+    if (!githubRepo) return;
+    const [owner, repo] = githubRepo.split('/');
+    setLoading(true);
+    const r = await callServer({type:'mcp', tool:'github', action, params:{owner, repo, token:githubToken}});
+    try { setGithubData({action, data:JSON.parse(r.data)}); }
+    catch { setGithubData({action, data:r.data}); }
+    setLoading(false);
+  }
+
+  async function createIssue(title, body) {
+    const [owner, repo] = githubRepo.split('/');
+    const r = await callServer({type:'mcp', tool:'github', action:'create_issue', params:{owner,repo,token:githubToken,title,body}});
+    setMessages(m=>[...m,{role:'assistant',content:'✅ Issue dibuat: '+title,actions:[]}]);
+    return r;
+  }
+
+  // ── DEPLOY ──
+  async function runDeploy(platform) {
+    setDeployLog('🚀 Starting deploy ke '+platform+'...\n');
+    setLoading(true);
+    const cmds = {
+      vercel: 'vercel --prod --yes 2>&1 || echo "Install dulu: npm i -g vercel"',
+      netlify: 'netlify deploy --prod 2>&1 || echo "Install dulu: npm i -g netlify-cli"',
+      github: 'git add -A && git commit -m "deploy: '+new Date().toLocaleDateString('id')+'" && git push',
+      railway: 'railway up 2>&1 || echo "Install dulu: npm i -g @railway/cli"',
+    };
+    const r = await callServer({type:'exec', path:folder, command:cmds[platform]||'echo "Platform tidak dikenal"'});
+    setDeployLog(r.data||'selesai');
+    setLoading(false);
+    sendNotification('YuyuCode 🚀', 'Deploy '+platform+' selesai!');
+    haptic('heavy');
+  }
+
+  // ── MULTI-TAB: open file in new tab ──
+  function openInTab(filePath) {
+    if (!openTabs.find(t=>t.path===filePath)) {
+      setOpenTabs(prev=>[...prev, {path:filePath, content:null}]);
+    }
+    openFile(filePath);
   }
 
   // ── COMMIT MESSAGE GENERATOR ──
@@ -1879,9 +2004,18 @@ export default function App() {
   }
 
   const tokens=countTokens(messages);
+  // Virtual scroll: only render last N messages for performance
+  const VIRTUAL_LIMIT = 60;
+  const visibleMessages = messages.length > VIRTUAL_LIMIT
+    ? [{role:'assistant',content:`[... ${messages.length-VIRTUAL_LIMIT} pesan sebelumnya tersembunyi untuk performa. /clear untuk bersihkan]`}, ...messages.slice(-VIRTUAL_LIMIT)]
+    : messages;
 
   return (
-    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:fontSize+'px'}}>
+    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:fontSize+'px'}}
+      onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+      onDragLeave={()=>setDragOver(false)}
+      onDrop={handleDrop}>
+      {dragOver&&<div style={{position:'absolute',inset:0,background:'rgba(124,58,237,.15)',border:'2px dashed rgba(124,58,237,.5)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:'#a78bfa'}}>Drop file di sini~</span></div>}
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         ::-webkit-scrollbar{width:3px;height:3px;}
@@ -1906,6 +2040,9 @@ export default function App() {
         <button onClick={()=>setShowSearch(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>🔍</button>
         <button onClick={()=>setShowMemory(true)} style={{background:memories.length?'rgba(124,58,237,.1)':'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:memories.length?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}} title="Memories">🧠{memories.length>0&&<span style={{fontSize:'9px',marginLeft:'2px'}}>{memories.length}</span>}</button>
         <button onClick={()=>setShowCheckpoints(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}} title="Checkpoints">📍</button>
+        <button onClick={()=>setShowMCP(true)} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'6px',padding:'3px 7px',color:'rgba(74,222,128,.7)',fontSize:'11px',cursor:'pointer'}} title="MCP Tools">🔌</button>
+        <button onClick={()=>setShowGitHub(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}} title="GitHub">⑂</button>
+        <button onClick={()=>setShowDeploy(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}} title="Deploy">🚀</button>
         <button onClick={()=>setShowTerminal(!showTerminal)} style={{background:showTerminal?'rgba(124,58,237,.2)':'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:showTerminal?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>⌨</button>
         <button onClick={()=>setShowShortcuts(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>?</button>
         <select value={theme} onChange={e=>{setTheme(e.target.value);Preferences.set({key:'yc_theme',value:e.target.value});}}
@@ -1930,6 +2067,7 @@ export default function App() {
       {!netOnline&&<div style={{padding:'5px 12px',background:'rgba(248,113,113,.08)',borderBottom:'1px solid rgba(248,113,113,.15)',fontSize:'11px',color:'#f87171',flexShrink:0}}>📡 Tidak ada koneksi internet</div>}
       {rateLimitTimer>0&&<div style={{padding:'5px 12px',background:'rgba(251,191,36,.06)',borderBottom:'1px solid rgba(251,191,36,.1)',fontSize:'11px',color:'rgba(251,191,36,.7)',flexShrink:0}}>⏳ Rate limit — lanjut dalam {rateLimitTimer}d</div>}
       {agentRunning&&<div style={{padding:'5px 12px',background:'rgba(124,58,237,.06)',borderBottom:'1px solid rgba(124,58,237,.12)',fontSize:'11px',color:'#a78bfa',flexShrink:0}}>🤖 Yuyu lagi jalan sendiri···</div>}
+      {reconnectTimer>0&&!serverOk&&<div style={{padding:'5px 12px',background:'rgba(248,113,113,.06)',borderBottom:'1px solid rgba(248,113,113,.12)',fontSize:'11px',color:'#f87171',flexShrink:0}}>🔄 YuyuServer mati — coba reconnect... ({reconnectTimer}d)</div>}
       {countTokens(messages)>15000&&<div style={{padding:'5px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.08)',fontSize:'11px',color:'rgba(251,191,36,.6)',flexShrink:0}}>⚠️ Context besar (~{countTokens(messages)}tk) — Yuyu auto-trim history lama</div>}
 
       {/* PINNED FILES BAR */}
@@ -2002,8 +2140,8 @@ export default function App() {
 
           {/* CHAT */}
           {activeTab==='chat'&&!showTerminal&&(
-            <div style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
-              {messages.map((m,i)=>(
+            <div ref={chatRef} style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
+              {visibleMessages.map((m,i)=>(
                 <MsgBubble key={i} msg={m} isLast={i===messages.length-1}
                   onApprove={m.actions?.some(a=>a.type==='write_file'&&!a.executed)?(ok,path)=>handleApprove(i,ok,path):null}
                   onPlanApprove={m.content?.includes('📋 PLAN:')&&!m.planApproved?(ok)=>handlePlanApprove(i,ok):null}
@@ -2281,6 +2419,95 @@ export default function App() {
 
       {/* VISION IMAGE PREVIEW (hidden file input) */}
       <input ref={fileInputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleImageAttach}/>
+
+      {/* MCP PANEL */}
+      {showMCP&&(
+        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+          <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+            <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔌 MCP Tools</span>
+            <button onClick={()=>setShowMCP(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+          </div>
+          <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'12px'}}>Model Context Protocol — connect Yuyu ke tools external</div>
+          {['git','fetch','sqlite','github','system','filesystem'].map(tool=>(
+            <div key={tool} style={{padding:'10px 12px',marginBottom:'6px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(74,222,128,.1)',borderRadius:'8px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+                <span style={{fontSize:'13px',color:'#4ade80',fontFamily:'monospace',fontWeight:'600'}}>{tool}</span>
+                <span style={{fontSize:'10px',color:'rgba(255,255,255,.3)'}}>{tool==='git'?'status,log,diff,blame':tool==='fetch'?'browse,fetch_json':tool==='sqlite'?'query,tables,schema':tool==='github'?'issues,pulls,create_issue':tool==='system'?'disk,memory,processes':'read,write,list'}</span>
+              </div>
+              <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+                {(tool==='git'?['status','log','diff']:tool==='fetch'?['browse']:tool==='sqlite'?['tables']:tool==='github'?['issues','pulls']:tool==='system'?['disk','memory']:['list']).map(act=>(
+                  <button key={act} onClick={async()=>{
+                    const r = await callServer({type:'mcp',tool,action:act,params:{path:folder}});
+                    setMessages(m=>[...m,{role:'assistant',content:`🔌 MCP ${tool}/${act}:\n\`\`\`\n${(r.data||'').slice(0,1000)}\n\`\`\``,actions:[]}]);
+                    setShowMCP(false);
+                  }} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'4px',padding:'2px 8px',color:'rgba(74,222,128,.8)',fontSize:'10px',cursor:'pointer',fontFamily:'monospace'}}>
+                    {act}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div style={{marginTop:'8px',fontSize:'11px',color:'rgba(255,255,255,.3)'}}>Tip: Yuyu bisa pakai MCP tools otomatis via action blocks saat coding~</div>
+        </div>
+      )}
+
+      {/* GITHUB PANEL */}
+      {showGitHub&&(
+        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+          <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+            <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⑂ GitHub</span>
+            <button onClick={()=>setShowGitHub(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'12px'}}>
+            <input value={githubRepo} onChange={e=>setGithubRepo(e.target.value)} placeholder="owner/repo (e.g. vercel/next.js)"
+              style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
+            <input value={githubToken} onChange={e=>{setGithubToken(e.target.value);Preferences.set({key:'yc_gh_token',value:e.target.value});}} placeholder="GitHub token (ghp_...)" type="password"
+              style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
+            <div style={{display:'flex',gap:'6px'}}>
+              <button onClick={()=>fetchGitHub('issues')} style={{background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.2)',borderRadius:'6px',padding:'5px 12px',color:'#818cf8',fontSize:'11px',cursor:'pointer',flex:1}}>📋 Issues</button>
+              <button onClick={()=>fetchGitHub('pulls')} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'6px',padding:'5px 12px',color:'#4ade80',fontSize:'11px',cursor:'pointer',flex:1}}>🔀 PRs</button>
+              <button onClick={()=>fetchGitHub('repo_info')} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'5px 12px',color:'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer',flex:1}}>ℹ Info</button>
+            </div>
+          </div>
+          <div style={{flex:1,overflowY:'auto'}}>
+            {githubData&&Array.isArray(githubData.data)&&githubData.data.map((item,i)=>(
+              <div key={i} style={{padding:'8px 10px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:'7px'}}>
+                <div style={{fontSize:'12px',color:'rgba(255,255,255,.8)',marginBottom:'2px'}}>#{item.number} {item.title}</div>
+                <div style={{fontSize:'10px',color:'rgba(255,255,255,.35)'}}>{item.state} · {item.user?.login} · {new Date(item.created_at).toLocaleDateString('id')}</div>
+                <button onClick={()=>{setMessages(m=>[...m,{role:'user',content:'Bantu aku fix issue: #'+item.number+' '+item.title+'\n\n'+item.body?.slice(0,300)}]);setShowGitHub(false);}}
+                  style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'4px',padding:'2px 7px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',marginTop:'4px'}}>Ask Yuyu</button>
+              </div>
+            ))}
+            {githubData&&!Array.isArray(githubData.data)&&(
+              <pre style={{fontSize:'10px',color:'rgba(255,255,255,.5)',whiteSpace:'pre-wrap',wordBreak:'break-all'}}>{typeof githubData.data==='string'?githubData.data:JSON.stringify(githubData.data,null,2)}</pre>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* DEPLOY PANEL */}
+      {showDeploy&&(
+        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+          <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+            <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🚀 Deploy</span>
+            <button onClick={()=>setShowDeploy(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+          </div>
+          <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}}>
+            {['github','vercel','netlify','railway'].map(p=>(
+              <button key={p} onClick={()=>runDeploy(p)} disabled={loading}
+                style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'8px',padding:'8px 16px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',fontWeight:'500'}}>
+                {p==='github'?'📤 Git Push':p==='vercel'?'▲ Vercel':p==='netlify'?'◈ Netlify':'🚂 Railway'}
+              </button>
+            ))}
+          </div>
+          {deployLog&&(
+            <div style={{flex:1,background:'#0a0a0b',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px',padding:'12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(255,255,255,.7)',overflowY:'auto',whiteSpace:'pre-wrap'}}>
+              {deployLog}
+            </div>
+          )}
+          {!deployLog&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Pilih platform untuk deploy project saat ini~</div>}
+        </div>
+      )}
     </div>
   );
 }
