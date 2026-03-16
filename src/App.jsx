@@ -450,6 +450,34 @@ export default function App() {
       ];
 
             let reply = await askCerebrasStream(groqMsgs, model, setStreaming, ctrl.signal);
+      setStreaming('');
+
+      const allActions = parseActions(reply);
+      const nonWrites = allActions.filter(a => a.type !== 'write_file');
+      const writes = allActions.filter(a => a.type === 'write_file');
+      for (const a of nonWrites) a.result = await executeAction(a, folder);
+
+      const fileData = nonWrites.filter(a => a.result?.ok && a.type !== 'exec').map(a => '=== ' + a.path + ' ===\n' + a.result.data).join('\n\n');
+      let final = reply;
+      if (fileData) {
+        const followMsgs = [
+          { role:'system', content:systemPrompt },
+          ...groqMsgs.slice(1),
+          { role:'assistant', content:reply.replace(/```action[\s\S]*?```/g,'').trim() },
+          { role:'user', content:'Hasil:\n' + fileData + '\n\nAnalisis dan jawab.' }
+        ];
+        final = await askCerebrasStream(followMsgs, model, setStreaming, ctrl.signal);
+        setStreaming('');
+      }
+
+      if (final.includes('PROJECT_NOTE:')) {
+        const nm = final.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
+        if (nm) { const n = (notes + '\n' + nm[1].trim()).trim(); setNotes(n); Preferences.set({ key:'yc_notes_' + folder, value:n }); }
+      }
+
+      setMessages(m => [...m, { role:'assistant', content:final, actions:[...nonWrites, ...writes.map(a => ({ ...a, executed:false }))] }]);
+    } catch(e) {
+      if (e.name !== 'AbortError') setMessages(m => [...m, { role:'assistant', content:'❌ ' + e.message }]);
     }
     setLoading(false);
   }
