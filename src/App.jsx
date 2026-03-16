@@ -414,7 +414,6 @@ function Terminal({ folder }) {
 
 
 
-function getFileIcon(name) {
   const ext = name.split('.').pop()?.toLowerCase();
   const icons = { jsx:'⚛', tsx:'⚛', js:'📜', ts:'📘', json:'📋', md:'📝', yml:'⚙️', css:'🎨', html:'🌐', sh:'💻', txt:'📄', png:'🖼', jpg:'🖼', svg:'🎭' };
   return icons[ext] || '📄';
