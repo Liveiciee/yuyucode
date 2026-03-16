@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 
 const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
 const YUYU_SERVER = 'http://localhost:8765';
-const MAX_HISTORY = 40;
+const MAX_HISTORY = 50;
 
 const MODELS = [
   { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥' },
