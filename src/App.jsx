@@ -1,26 +1,39 @@
+// ─── CEREBRAS STREAMING ──────────────────────────────────────────────────────
+async function askCerebrasStream(messages, model, onChunk, signal) {
+  const resp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+    method: 'POST', signal,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + CEREBRAS_KEY,
+    },
+    body: JSON.stringify({ model, messages, max_tokens: 4000, stream: true })
+  });
+  if (!resp.ok) throw new Error('Cerebras HTTP ' + resp.status);
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let full = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    for (const line of decoder.decode(value).split('\n')) {
+      if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+      try { const d = JSON.parse(line.slice(6)).choices[0].delta.content || ''; full += d; onChunk(full); } catch {}
+    }
+  }
+  return full;
+}
+
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Preferences } from "@capacitor/preferences";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
-const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-const OR_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
+const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
 const YUYU_SERVER = 'http://localhost:8765';
 const MAX_HISTORY = 30;
 const MODELS = [
-  { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', fast: false },
-  { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B ⚡', fast: true },
-  { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', fast: false },
-  { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro 🔥', fast: false, gemini: true },
-  { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Lite ⚡', fast: true, gemini: true },
-  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', fast: false, gemini: true },
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', fast: false, gemini: true },
-  { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Lite ⚡', fast: true, gemini: true },
-  { id: 'or:meta-llama/llama-3.3-70b-instruct:free', label: 'OR Llama 70B 🆓', fast: false, openrouter: true },
-  { id: 'or:meta-llama/llama-3.1-8b-instruct:free', label: 'OR Llama 8B ⚡🆓', fast: true, openrouter: true },
-  { id: 'or:mistralai/mistral-7b-instruct:free', label: 'OR Mistral 7B 🆓', fast: true, openrouter: true },
-  { id: 'or:google/gemma-3-27b-it:free', label: 'OR Gemma 27B 🆓', fast: false, openrouter: true },
-  { id: 'or:deepseek/deepseek-r1:free', label: 'OR DeepSeek R1 🆓', fast: false, openrouter: true },
+  { id: 'llama-3.3-70b', label: 'Llama 3.3 70B 🔥', fast: false },
+  { id: 'llama-3.1-8b', label: 'Llama 3.1 8B ⚡', fast: true },
+  { id: 'llama-3.1-70b', label: 'Llama 3.1 70B', fast: false },
 ];
 
 const BASE_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
@@ -182,79 +195,6 @@ function parseActions(text) {
     try { actions.push(JSON.parse(m[1].trim())); } catch {}
   }
   return actions;
-}
-
-async function askGroqStream(messages, model, onChunk, signal) {
-  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method:'POST', signal,
-    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + GROQ_KEY },
-    body:JSON.stringify({ model, messages, max_tokens:4000, stream:true })
-  });
-  if (resp.status === 429) {
-    const retry = parseInt(resp.headers.get('retry-after') || '60');
-    throw new Error('RATE_LIMIT:' + retry);
-  }
-  if (!resp.ok) throw new Error('Groq error: HTTP ' + resp.status);
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let full = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    for (const line of decoder.decode(value).split('\n')) {
-      if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
-      try { const d = JSON.parse(line.slice(6)).choices[0].delta.content || ''; full += d; onChunk(full); } catch {}
-    }
-  }
-  return full;
-}
-
-async function askGeminiStream(messages, model, onChunk, signal) {
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GEMINI_KEY;
-  const systemMsg = messages.find(m => m.role === 'system');
-  const chatMsgs = messages.filter(m => m.role !== 'system');
-  const contents = chatMsgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-  const body = { contents, generationConfig: { maxOutputTokens: 8192 } };
-  if (systemMsg) body.systemInstruction = { parts: [{ text: systemMsg.content }] };
-  const resp = await fetch(url, { method:'POST', signal, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-  if (resp.status === 429) {
-    const retry = parseInt(resp.headers.get('retry-after') || '60');
-    throw new Error('RATE_LIMIT:' + retry);
-  }
-  if (!resp.ok) throw new Error('Gemini error: HTTP ' + resp.status);
-  const data = await resp.json();
-  const full = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  onChunk(full);
-  return full;
-}
-
-
-// ─── OPENROUTER STREAMING ─────────────────────────────────────────────────────
-async function askOpenRouterStream(messages, model, onChunk, signal) {
-  const modelId = model.replace('or:', '');
-  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST', signal,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + OR_KEY,
-      'HTTP-Referer': 'https://github.com/Liveiciee/yuyucode',
-      'X-Title': 'YuyuCode'
-    },
-    body: JSON.stringify({ model: modelId, messages, max_tokens: 4000, stream: true })
-  });
-  if (!resp.ok) throw new Error('OpenRouter HTTP ' + resp.status);
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let full = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    for (const line of decoder.decode(value).split('\n')) {
-      if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
-      try { const d = JSON.parse(line.slice(6)).choices[0].delta.content || ''; full += d; onChunk(full); } catch {}
-    }
-  }
-  return full;
 }
 
 function hl(code) {
@@ -509,67 +449,7 @@ export default function App() {
         ...history.map(m => ({ role:m.role, content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim() }))
       ];
 
-      const selectedModel = MODELS.find(m => m.id === model);
-      let reply;
-      if (selectedModel?.openrouter) {
-        reply = await askOpenRouterStream(groqMsgs, model, setStreaming, ctrl.signal);
-      } else if (selectedModel?.gemini) {
-        reply = await askGeminiStream(groqMsgs, model, setStreaming, ctrl.signal);
-      } else {
-        reply = await askGroqStream(groqMsgs, model, setStreaming, ctrl.signal);
-      }
-      setStreaming('');
-
-      const allActions = parseActions(reply);
-      const nonWrites = allActions.filter(a => a.type !== 'write_file');
-      const writes = allActions.filter(a => a.type === 'write_file');
-
-      for (const a of nonWrites) a.result = await executeAction(a, folder);
-
-      const fileData = nonWrites.filter(a => a.result?.ok && a.type !== 'exec').map(a => '=== ' + a.path + ' ===\n' + a.result.data).join('\n\n');
-
-      let final = reply;
-      if (fileData) {
-        const followMsgs = [
-          { role:'system', content:systemPrompt },
-          ...groqMsgs.slice(1),
-          { role:'assistant', content:reply.replace(/```action[\s\S]*?```/g,'').trim() },
-          { role:'user', content:'Hasil:\n' + fileData + '\n\nAnalisis dan jawab.' }
-        ];
-        if (selectedModel?.openrouter) {
-          final = await askOpenRouterStream(followMsgs, model, setStreaming, ctrl.signal);
-        } else if (selectedModel?.gemini) {
-          final = await askGeminiStream(followMsgs, model, setStreaming, ctrl.signal);
-        } else {
-          final = await askGroqStream(followMsgs, model, setStreaming, ctrl.signal);
-        }
-        setStreaming('');
-      }
-
-      if (final.includes('PROJECT_NOTE:')) {
-        const nm = final.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
-        if (nm) { const n = (notes + '\n' + nm[1].trim()).trim(); setNotes(n); Preferences.set({ key:'yc_notes_' + folder, value:n }); }
-      }
-
-      setMessages(m => [...m, { role:'assistant', content:final, actions:[...nonWrites, ...writes.map(a => ({ ...a, executed:false }))] }]);
-    } catch(e) {
-      if (e.name !== 'AbortError') {
-        if (e.message.startsWith('RATE_LIMIT:')) {
-          const secs = parseInt(e.message.split(':')[1]);
-          setRateLimitTimer(secs);
-          const interval = setInterval(() => {
-            setRateLimitTimer(t => {
-              if (t <= 1) { clearInterval(interval); return 0; }
-              return t - 1;
-            });
-          }, 1000);
-          setMessages(m => [...m, { role:'assistant', content:'⏳ Rate limit — Yuyu tunggu ' + secs + ' detik ya Papa~' }]);
-        } else if (!navigator.onLine) {
-          setMessages(m => [...m, { role:'assistant', content:'📡 Internet terputus, cek koneksi dulu ya Papa~' }]);
-        } else {
-          setMessages(m => [...m, { role:'assistant', content:'❌ ' + e.message }]);
-        }
-      }
+            let reply = await askCerebrasStream(groqMsgs, model, setStreaming, ctrl.signal);
     }
     setLoading(false);
   }
