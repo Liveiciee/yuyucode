@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const YUYU_SERVER = 'http://localhost:8765';
+const DEFAULT_OLLAMA_HOST = 'http://localhost:11434';
 const MAX_HISTORY = 50;
 
 const MODELS = [
@@ -106,6 +107,8 @@ const SLASH_COMMANDS = [
   { cmd:'/github',     desc:'GitHub issues & PRs' },
   { cmd:'/deploy',     desc:'Deploy project' },
   { cmd:'/db',         desc:'Query SQLite database' },
+  { cmd:'/ollama',     desc:'Set Ollama host URL' },
+  { cmd:'/self-edit',  desc:'AI edit App.jsx sendiri' },
 ];
 
 const S = {
@@ -173,9 +176,9 @@ async function askGeminiStream(messages, model, onChunk, signal, imageBase64=nul
   return full;
 }
 
-async function askOllamaStream(messages, model, onChunk, signal) {
+async function askOllamaStream(messages, model, onChunk, signal, host=DEFAULT_OLLAMA_HOST) {
   const ollamaModel = model.replace('ollama:','');
-  const resp = await fetch('http://localhost:11434/api/chat', {
+  const resp = await fetch((host||DEFAULT_OLLAMA_HOST)+'/api/chat', {
     method:'POST', signal,
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({model:ollamaModel, messages, stream:true})
@@ -627,29 +630,28 @@ function Terminal({ folder, cmdHistory, addHistory }) {
     } catch (e) { setOutput(e.message); } finally { setLoading(false); }
   }
   return (
-    <div className='flex flex-col h-full bg-black text-xs font-mono p-2 border-t border-gray-800'>
-      <div className='flex-1 overflow-auto mb-2 text-gray-300'>{output}{loading && '...'}</div>
-      
-    <div className='relative flex items-center gap-2 border-t border-gray-800 bg-[#1c2128] p-2'>
-        {suggestions.length > 0 && (
-          <div className='absolute bottom-full left-0 w-full bg-[#2d333b] border border-[#444c56] rounded-t-md shadow-2xl overflow-hidden'>
-            {suggestions.map((s, i) => (
-              <div 
-                key={i} 
-                className={'px-3 py-2 text-[11px] cursor-pointer border-b border-[#444c56] last:border-0 ' + (i === selIdx ? 'bg-[#316dca] text-white' : 'text-gray-400')}
-                onClick={() => {setCmd(s); setSuggestions([]);}}
-              >
-                <span className='opacity-50 mr-2'>❯</span>{s}
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#0a0a0c',fontSize:'12px',fontFamily:'monospace',padding:'8px',borderTop:'1px solid rgba(255,255,255,.08)'}}>
+      <div style={{flex:1,overflowY:'auto',marginBottom:'8px',color:'rgba(255,255,255,.65)',whiteSpace:'pre-wrap',wordBreak:'break-word',lineHeight:'1.6'}}>
+        {output}{loading&&<span style={{opacity:.5}}>···</span>}
+      </div>
+      <div style={{position:'relative',display:'flex',alignItems:'center',gap:'8px',borderTop:'1px solid rgba(255,255,255,.07)',background:'rgba(255,255,255,.03)',padding:'6px 8px',borderRadius:'6px'}}>
+        {suggestions.length>0&&(
+          <div style={{position:'absolute',bottom:'100%',left:0,right:0,background:'#1e2028',border:'1px solid rgba(255,255,255,.1)',borderRadius:'8px 8px 0 0',boxShadow:'0 -8px 24px rgba(0,0,0,.5)',overflow:'hidden',marginBottom:'2px'}}>
+            {suggestions.map((s,i)=>(
+              <div key={i}
+                style={{padding:'7px 12px',fontSize:'11px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.05)',background:i===selIdx?'rgba(49,109,202,.5)':'transparent',color:i===selIdx?'#fff':'rgba(255,255,255,.5)'}}
+                onClick={()=>{setCmd(s);setSuggestions([]);}}>
+                <span style={{opacity:.5,marginRight:'8px'}}>❯</span>{s}
               </div>
             ))}
           </div>
         )}
-        <span className='text-green-500 ml-1'>➜</span>
-        <input 
-          className='bg-transparent outline-none flex-1 text-gray-200 placeholder-gray-600' 
-          value={cmd} 
-          onChange={e=>onTextChange(e.target.value)} 
-          onKeyDown={handleKeyDown} 
+        <span style={{color:'#4ade80'}}>➜</span>
+        <input
+          style={{background:'transparent',border:'none',outline:'none',flex:1,color:'rgba(255,255,255,.85)',fontSize:'12px',fontFamily:'monospace'}}
+          value={cmd}
+          onChange={e=>onTextChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder='Type command...'
         />
       </div>
@@ -1308,6 +1310,10 @@ export default function App() {
   const [githubData, setGithubData] = useState(null);
   const [showDeploy, setShowDeploy] = useState(false);
   const [deployLog, setDeployLog] = useState('');
+  const [ollamaHost, setOllamaHost] = useState(DEFAULT_OLLAMA_HOST);
+  const [showOllamaConfig, setShowOllamaConfig] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const ttsRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
   const [reconnectTimer, setReconnectTimer] = useState(0);
   const [openTabs, setOpenTabs] = useState([]);
@@ -1348,7 +1354,8 @@ export default function App() {
       Preferences.get({key:'yc_onboarded'}),
       Preferences.get({key:'yc_gh_token'}),
       Preferences.get({key:'yc_gh_repo'}),
-    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr])=>{
+      Preferences.get({key:'yc_ollama_host'}),
+    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr,oh])=>{
       if(f.value){setFolder(f.value);setFolderInput(f.value);}
       if(h.value){try{setMessages(JSON.parse(h.value));}catch{}}
       if(ch.value){try{setCmdHistory(JSON.parse(ch.value));}catch{}}
@@ -1365,6 +1372,7 @@ export default function App() {
       if(!ob.value) setShowOnboarding(true);
       if(ght.value) setGithubToken(ght.value);
       if(ghr.value) setGithubRepo(ghr.value);
+      if(oh.value) setOllamaHost(oh.value);
     });
     callServer({type:'ping'}).then(r=>{
       setServerOk(r.ok);
@@ -1626,6 +1634,29 @@ export default function App() {
       const r = await callServer({type:'mcp',tool:'sqlite',action:'query',params:{dbPath:folder+'/data.db',query:q}});
       setMessages(m=>[...m,{role:'assistant',content:'🗄 Query result:\n```\n'+(r.data||'kosong')+'\n```',actions:[]}]);
       setLoading(false);
+    } else if (base==='/ollama') {
+      const newHost = parts.slice(1).join(' ').trim();
+      if (!newHost) {
+        setMessages(m=>[...m,{role:'assistant',content:`🏠 Ollama host sekarang: \`${ollamaHost}\`\n\nUsage: \`/ollama http://192.168.1.x:11434\``,actions:[]}]);
+        return;
+      }
+      setOllamaHost(newHost);
+      Preferences.set({key:'yc_ollama_host', value:newHost});
+      setMessages(m=>[...m,{role:'assistant',content:`✅ Ollama host diubah ke: \`${newHost}\``,actions:[]}]);
+    } else if (base==='/self-edit') {
+      const task = parts.slice(1).join(' ').trim() || 'Fix bugs, hapus dead code, optimasi performa';
+      setLoading(true);
+      const appPath = folder + '/src/App.jsx';
+      const r = await callServer({type:'read', path:appPath, from:1, to:50});
+      if (!r.ok) {
+        setMessages(m=>[...m,{role:'assistant',content:`❌ Tidak bisa baca \`${appPath}\`\n\nPastikan folder project sudah benar.`,actions:[]}]);
+        setLoading(false); return;
+      }
+      setMessages(m=>[...m,{role:'assistant',content:`🔧 **Self-edit dimulai...**\n\nTask: _${task}_`,actions:[]}]);
+      setLoading(false);
+      await sendMsg(
+        `MODE: SELF-EDIT\n\nTask: ${task}\n\nBaca src/App.jsx secara bertahap dengan read_file (from/to 100 baris per request). Setelah baca bagian yang relevan, gunakan write_file untuk patch minimal. Jangan tulis ulang seluruh file.`
+      );
     }
   }
 
@@ -1673,11 +1704,33 @@ export default function App() {
     }
   }
 
+  // ── VOICE TTS ──
+  function speakText(text) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const clean = text
+      .replace(/```[sS]*?```/g, '')
+      .replace(/[#*`_~>]/g, '')
+      .replace(/[([^]]+)]([^)]+)/g, '$1')
+      .replace(/s+/g, ' ').trim().slice(0, 500);
+    if (!clean) return;
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.lang = 'id-ID'; utt.rate = 1.05; utt.pitch = 1.1;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v=>v.lang.startsWith('id')&&v.name.toLowerCase().includes('female'))
+      || voices.find(v=>v.lang.startsWith('id'))
+      || voices.find(v=>v.lang.startsWith('en')&&v.name.toLowerCase().includes('female'));
+    if (preferred) utt.voice = preferred;
+    ttsRef.current = utt;
+    window.speechSynthesis.speak(utt);
+  }
+  function stopTts() { window.speechSynthesis?.cancel(); }
+
   // ── UNIVERSAL AI ROUTER ──
   async function callAI(msgs, onChunk, signal, imgBase64=null) {
     const m = MODELS.find(x=>x.id===model)||MODELS[0];
     if (m.provider==='gemini') return askGeminiStream(msgs, model, onChunk, signal, imgBase64);
-    if (m.provider==='ollama') return askOllamaStream(msgs, model, onChunk, signal);
+    if (m.provider==='ollama') return askOllamaStream(msgs, model, onChunk, signal, ollamaHost);
     return askCerebrasStream(msgs, model, onChunk, signal);
   }
 
@@ -2041,6 +2094,9 @@ export default function App() {
       // ── AUTO MEMORY (background) ──
       extractMemories(txt, finalContent);
 
+      // ── TTS ──
+      if (ttsEnabled && finalContent) speakText(finalContent);
+
     }catch(e){
       setAgentRunning(false);
       if(e.name!=='AbortError'){
@@ -2148,6 +2204,13 @@ export default function App() {
           style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'99px',padding:'3px 9px',color:'rgba(255,255,255,.45)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>
           {MODELS.find(m=>m.id===model)?.label||'AI'}
         </button>
+        {/* Ollama indicator */}
+        {MODELS.find(m=>m.id===model)?.provider==='ollama'&&(
+          <button onClick={()=>setShowOllamaConfig(v=>!v)} title={ollamaHost}
+            style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'99px',padding:'2px 7px',color:'rgba(74,222,128,.7)',fontSize:'9px',cursor:'pointer',flexShrink:0,fontFamily:'monospace',maxWidth:'90px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            🏠 {ollamaHost.replace(/https?:///,'')}
+          </button>
+        )}
         {/* Token badge */}
         <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)',flexShrink:0}}>~{tokens}tk</span>
         {/* Command palette trigger */}
@@ -2170,6 +2233,19 @@ export default function App() {
         </div>
       )}
 
+      {showOllamaConfig&&(
+        <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(74,222,128,.15)',display:'flex',gap:'6px',alignItems:'center',background:'rgba(74,222,128,.03)',flexShrink:0}}>
+          <span style={{fontSize:'11px',color:'rgba(74,222,128,.7)',flexShrink:0}}>🏠</span>
+          <input value={ollamaHost}
+            onChange={e=>setOllamaHost(e.target.value)}
+            onBlur={()=>Preferences.set({key:'yc_ollama_host',value:ollamaHost})}
+            onKeyDown={e=>{if(e.key==='Enter'){Preferences.set({key:'yc_ollama_host',value:ollamaHost});setShowOllamaConfig(false);}}}
+            placeholder="http://192.168.1.x:11434"
+            style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'6px',padding:'4px 8px',color:'#f0f0f0',fontSize:'11px',outline:'none',fontFamily:'monospace'}}/>
+          <button onClick={()=>{Preferences.set({key:'yc_ollama_host',value:ollamaHost});setShowOllamaConfig(false);}}
+            style={{background:'rgba(74,222,128,.12)',border:'none',borderRadius:'5px',padding:'4px 10px',color:'#4ade80',fontSize:'11px',cursor:'pointer'}}>set</button>
+        </div>
+      )}
       <UndoBar history={editHistory} onUndo={undoLastEdit}/>
 
       {/* ── STATUS BANNERS (thin) ── */}
@@ -2309,7 +2385,7 @@ export default function App() {
           )}
 
           {/* TERMINAL */}
-          {showTerminal&&<div style={{flex:1,overflow:'hidden'}}><Terminal folder={folder}/></div>}
+          {showTerminal&&<div style={{flex:1,overflow:'hidden'}}><Terminal folder={folder} cmdHistory={cmdHistory} addHistory={addHistory}/></div>}
 
           {/* FOLLOW UPS */}
           {showFollowUp&&!loading&&activeTab==='chat'&&!showTerminal&&(
@@ -2392,6 +2468,11 @@ export default function App() {
                   :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'10px',padding:'9px 16px',color:'white',fontSize:'14px',cursor:'pointer',fontWeight:'600',flexShrink:0}}>↑</button>
                 }
                 <VoiceBtn disabled={loading} onResult={txt=>{setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}} />
+                <button onClick={()=>{if(ttsEnabled){stopTts();setTtsEnabled(false);}else setTtsEnabled(true);}}
+                  title={ttsEnabled?'Matikan suara':'Aktifkan suara AI'}
+                  style={{background:ttsEnabled?'rgba(124,58,237,.2)':'rgba(255,255,255,.04)',border:'1px solid '+(ttsEnabled?'rgba(124,58,237,.4)':'rgba(255,255,255,.08)'),borderRadius:'10px',padding:'8px 10px',color:ttsEnabled?'#a78bfa':'rgba(255,255,255,.3)',fontSize:'13px',cursor:'pointer',flexShrink:0,transition:'all .2s'}}>
+                  {ttsEnabled?'🔊':'🔇'}
+                </button>
               </div>
             </div>
           )}
