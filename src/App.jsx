@@ -113,12 +113,6 @@ Action format:
 {"type":"list_files","path":"src"}
 \`\`\`
 \`\`\`action
-{"type":"exec","command":"git status"}
-\`\`\`
-\`\`\`action
-{"type":"search","query":"useState","path":"src"}
-\`\`\`
-\`\`\`action
 {"type":"file_info","path":"src/App.jsx"}
 \`\`\`
 
