@@ -218,6 +218,24 @@ function renderMarkdown(raw) {
     .replace(/^- (.*?)$/gm,"<div style=\"display:flex;gap:6px;margin:1px 0\"><span style=\"color:rgba(255,255,255,.35)\">•</span><span>$1</span></div>")
     .replace(/\n\n/g,"<div style=\"height:6px\"></div>")
     .replace(/\n/g,"<br>");
+
+  // Table rendering - process setelah replace lain
+  t = t.replace(/(&lt;br&gt;\|[^&]+\|(&lt;br&gt;)?)+/g, (match) => {
+    const rows = match.split('&lt;br&gt;').filter(r => r.startsWith('|') || r.startsWith('\|'));
+    if (rows.length < 2) return match;
+    const html = rows
+      .filter(r => !/^\|[-\s|]+\|$/.test(r.replace(/&lt;br&gt;/g,'')))
+      .map((row, i) => {
+        const cells = row.replace(/^\|(.*)\|$/, '$1').split('|').map(c => c.trim());
+        const tag = i === 0 ? 'th' : 'td';
+        const s = i === 0
+          ? 'padding:5px 12px;font-size:11px;color:rgba(255,255,255,.5);font-weight:600;border-bottom:1px solid rgba(255,255,255,.1);text-align:left'
+          : 'padding:5px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.05)';
+        return '<tr>' + cells.map(c => '<' + tag + ' style="' + s + '">' + c + '</' + tag + '>').join('') + '</tr>';
+      }).join('');
+    return '<table style="width:100%;border-collapse:collapse;margin:8px 0;background:rgba(255,255,255,.02);border-radius:6px;overflow:hidden">' + html + '</table>';
+  });
+
   return t;
 }
 
