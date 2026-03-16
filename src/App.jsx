@@ -124,8 +124,11 @@ async function callServer(payload) {
 function resolvePath(base, p) {
   if (!p) return base;
   if (!base) return p;
+  // Hindari double path
   if (p === base || p.startsWith(base + '/')) return p;
-  return base + '/' + p;
+  // Kalau p sudah include base di awal, strip dulu
+  const stripped = p.startsWith(base) ? p.slice(base.length).replace(/^\//, '') : p;
+  return base + '/' + stripped;
 }
 
 async function executeAction(action, baseFolder) {
