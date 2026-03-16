@@ -110,7 +110,7 @@ async function callServer(payload) {
   try {
     const resp = await fetch(YUYU_SERVER, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     return await resp.json();
-  } catch(e) {
+  } catch(_e) {
     return { ok:false, data:'YuyuServer tidak aktif. Jalankan: node ~/yuyu-server.js' };
   }
 }
@@ -216,16 +216,16 @@ function MsgContent({ text }) {
           <div key={i} style={{ lineHeight:'1.7', wordBreak:'break-word' }}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}
               components={{
-                table: ({node,...props}) => <div style={{overflowX:'auto',margin:'8px 0'}}><table style={{width:'100%',borderCollapse:'collapse',background:'rgba(255,255,255,.02)',borderRadius:'8px'}} {...props} /></div>,
-                th: ({node,...props}) => <th style={{padding:'6px 12px',fontSize:'11px',color:'rgba(255,255,255,.45)',fontWeight:'600',borderBottom:'1px solid rgba(255,255,255,.12)',textAlign:'left',whiteSpace:'nowrap',minWidth:'120px'}} {...props} />,
-                td: ({node,...props}) => <td style={{padding:'6px 12px',fontSize:'12px',borderBottom:'1px solid rgba(255,255,255,.04)',verticalAlign:'top',minWidth:'120px'}} {...props} />,
-                h1: ({node,...props}) => <div style={{fontSize:'15px',fontWeight:'700',color:'#f0f0f0',margin:'14px 0 6px'}} {...props} />,
-                h2: ({node,...props}) => <div style={{fontSize:'14px',fontWeight:'700',color:'#f0f0f0',margin:'12px 0 5px'}} {...props} />,
-                h3: ({node,...props}) => <div style={{fontSize:'13px',fontWeight:'700',color:'#e8e8e8',margin:'10px 0 4px'}} {...props} />,
-                code: ({node,inline,...props}) => inline ? <code style={{background:'rgba(255,255,255,.1)',padding:'1px 5px',borderRadius:'3px',fontFamily:'monospace',fontSize:'12px',color:'#e8e8e8'}} {...props} /> : <pre style={{background:'#111114',padding:'10px 12px',borderRadius:'8px',overflow:'auto',fontSize:'12px',margin:'6px 0'}} {...props} />,
-                hr: ({node,...props}) => <hr style={{border:'none',borderTop:'1px solid rgba(255,255,255,.08)',margin:'10px 0'}} />,
-                strong: ({node,...props}) => <strong style={{color:'#f0f0f0'}} {...props} />,
-                li: ({node,...props}) => <li style={{margin:'2px 0',color:'#e0e0e0'}} {...props} />,
+                table: ({node: _node,...props}) => <div style={{overflowX:'auto',margin:'8px 0'}}><table style={{width:'100%',borderCollapse:'collapse',background:'rgba(255,255,255,.02)',borderRadius:'8px'}} {...props} /></div>,
+                th: ({node: _node,...props}) => <th style={{padding:'6px 12px',fontSize:'11px',color:'rgba(255,255,255,.45)',fontWeight:'600',borderBottom:'1px solid rgba(255,255,255,.12)',textAlign:'left',whiteSpace:'nowrap',minWidth:'120px'}} {...props} />,
+                td: ({node: _node,...props}) => <td style={{padding:'6px 12px',fontSize:'12px',borderBottom:'1px solid rgba(255,255,255,.04)',verticalAlign:'top',minWidth:'120px'}} {...props} />,
+                h1: ({node: _node,...props}) => <div style={{fontSize:'15px',fontWeight:'700',color:'#f0f0f0',margin:'14px 0 6px'}} {...props} />,
+                h2: ({node: _node,...props}) => <div style={{fontSize:'14px',fontWeight:'700',color:'#f0f0f0',margin:'12px 0 5px'}} {...props} />,
+                h3: ({node: _node,...props}) => <div style={{fontSize:'13px',fontWeight:'700',color:'#e8e8e8',margin:'10px 0 4px'}} {...props} />,
+                code: ({node: _node, inline,...props}) => inline ? <code style={{background:'rgba(255,255,255,.1)',padding:'1px 5px',borderRadius:'3px',fontFamily:'monospace',fontSize:'12px',color:'#e8e8e8'}} {...props} /> : <pre style={{background:'#111114',padding:'10px 12px',borderRadius:'8px',overflow:'auto',fontSize:'12px',margin:'6px 0'}} {...props} />,
+                hr: ({node: _node,...props}) => <hr style={{border:'none',borderTop:'1px solid rgba(255,255,255,.08)',margin:'10px 0'}} />,
+                strong: ({node: _node,...props}) => <strong style={{color:'#f0f0f0'}} {...props} />,
+                li: ({node: _node,...props}) => <li style={{margin:'2px 0',color:'#e0e0e0'}} {...props} />,
               }}
             >{p.c}</ReactMarkdown>
           </div>
@@ -400,7 +400,7 @@ function Terminal({ folder }) {
   const bottomRef = useRef(null);
   useEffect(() => { bottomRef.current?.scrollIntoView({behavior:'smooth'}); }, [history]);
 
-  async function run() {
+    async function run() {
     const cmd = input.trim();
     if (!cmd) return;
     setInput(''); setHistIdx(-1);
@@ -408,7 +408,7 @@ function Terminal({ folder }) {
     setHistory(h => [...h, {type:'cmd',text:'$ '+cmd}]);
     setRunning(true);
     const r = await callServer({ type:'exec', path:folder||'', command:cmd });
-    setHistory(h => [...h, {type:r.ok?'out':'err', text:r.data||'(selesai)'}]);
+    setHistory(h => [...h, {type:r.ok?'out':'err', text:r.data?.trim() || (r.ok ? '✔ done' : '✘ error')}]);
     setRunning(false);
   }
 
@@ -734,7 +734,7 @@ export default function App() {
         if(nm){const n=(notes+'\n'+nm[1].trim()).trim();setNotes(n);Preferences.set({key:'yc_notes_'+folder,value:n});}
       }
       setMessages(m=>[...m,{role:'assistant',content:final,actions:[...nonWrites,...writes.map(a=>({...a,executed:false}))]}]);
-    }catch(e){
+    }catch(_e){
       if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
     }
     setLoading(false);
