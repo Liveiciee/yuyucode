@@ -1,4 +1,62 @@
-// ─── CEREBRAS STREAMING ──────────────────────────────────────────────────────
+import React, { useState, useRef, useEffect } from "react";
+import { Preferences } from "@capacitor/preferences";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
+const YUYU_SERVER = 'http://localhost:8765';
+const MAX_HISTORY = 40;
+
+const MODELS = [
+  { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥' },
+  { id: 'llama3.1-8b', label: 'Llama 3.1 8B ⚡' },
+];
+
+const BASE_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
+Jawab dalam bahasa Indonesia. Hangat, fokus, tidak bertele-tele.
+Selalu gunakan action blocks untuk operasi file.
+
+Action format:
+\`\`\`action
+{"type":"read_file","path":"src/App.jsx"}
+\`\`\`
+\`\`\`action
+{"type":"write_file","path":"src/App.jsx","content":"..."}
+\`\`\`
+\`\`\`action
+{"type":"list_files","path":"src"}
+\`\`\`
+\`\`\`action
+{"type":"exec","command":"git status"}
+\`\`\`
+\`\`\`action
+{"type":"search","query":"useState","path":"src"}
+\`\`\`
+
+PLAN MODE:
+📋 PLAN:
+- Step 1: ...
+Tunggu Papa approve baru eksekusi.
+
+ATURAN:
+1. write_file → diff dulu, tunggu konfirmasi
+2. Setelah write → tanya push SEKALI
+3. Setelah push → BERHENTI
+4. File besar → baca per chunk
+5. PROJECT_NOTE: info
+6. Kepotong → CONTINUE
+7. Ikuti SKILL.md`;
+
+const GIT_SHORTCUTS = [
+  { label: 'status', icon: '◎', cmd: 'git status' },
+  { label: 'log', icon: '◈', cmd: 'git log --oneline -10' },
+  { label: 'diff', icon: '◐', cmd: 'git diff' },
+  { label: 'pull', icon: '↓', cmd: 'git pull' },
+  { label: 'push', icon: '↑', cmd: 'git add -A && git commit -m "update" && git push' },
+];
+
+const FOLLOW_UPS = ['Jelaskan lebih detail', 'Ada bug?', 'Bisa dioptimasi?', 'Langkah selanjutnya?'];
+
 async function askCerebrasStream(messages, model, onChunk, signal) {
   const resp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
     method: 'POST', signal,
@@ -335,6 +393,115 @@ function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast 
 
 function countTokens(msgs) { return Math.round(msgs.reduce((a, m) => a + m.content.length, 0) / 4); }
 
+
+function getFileIcon(name) {
+  const ext = name.split('.').pop()?.toLowerCase();
+  const icons = { jsx:'⚛', tsx:'⚛', js:'📜', ts:'📘', json:'📋', md:'📝', yml:'⚙️', css:'🎨', html:'🌐', sh:'💻', txt:'📄', png:'🖼', jpg:'🖼', svg:'🎭' };
+  return icons[ext] || '📄';
+}
+
+function FileTree({ folder, onSelectFile, selectedFile }) {
+  const [tree, setTree] = useState(null);
+  const [expanded, setExpanded] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!folder) return;
+    setLoading(true);
+    callServer({ type:'list', path:folder }).then(r => {
+      if (r.ok && Array.isArray(r.data)) setTree(r.data);
+      setLoading(false);
+    });
+  }, [folder]);
+
+  async function toggleDir(fullPath) {
+    if (expanded[fullPath]) { setExpanded(e => ({ ...e, [fullPath]:null })); return; }
+    const r = await callServer({ type:'list', path:fullPath });
+    if (r.ok && Array.isArray(r.data)) setExpanded(e => ({ ...e, [fullPath]:r.data }));
+  }
+
+  function renderItems(items, basePath, depth) {
+    const skip = ['node_modules','.git','dist','.gradle','build'];
+    return [...items]
+      .sort((a,b) => (a.isDir&&!b.isDir)?-1:(!a.isDir&&b.isDir)?1:a.name.localeCompare(b.name))
+      .filter(item => !skip.includes(item.name))
+      .map(item => {
+        const fullPath = basePath + '/' + item.name;
+        const isSelected = selectedFile === fullPath;
+        const isExp = expanded[fullPath];
+        return (
+          <div key={item.name}>
+            <div onClick={() => item.isDir ? toggleDir(fullPath) : onSelectFile(fullPath)}
+              style={{ display:'flex', alignItems:'center', gap:'4px', padding:'3px 6px 3px '+(8+depth*12)+'px', cursor:'pointer', borderRadius:'4px', background:isSelected?'rgba(124,58,237,.2)':'transparent', color:isSelected?'#a78bfa':item.isDir?'rgba(255,255,255,.7)':'rgba(255,255,255,.55)', fontSize:'12px', userSelect:'none' }}
+              onMouseEnter={e => !isSelected&&(e.currentTarget.style.background='rgba(255,255,255,.04)')}
+              onMouseLeave={e => !isSelected&&(e.currentTarget.style.background='transparent')}>
+              <span style={{fontSize:'9px',flexShrink:0,width:'10px'}}>{item.isDir?(isExp?'▾':'▸'):''}</span>
+              <span style={{fontSize:'11px',flexShrink:0}}>{item.isDir?'📁':getFileIcon(item.name)}</span>
+              <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</span>
+            </div>
+            {item.isDir && isExp && renderItems(isExp, fullPath, depth+1)}
+          </div>
+        );
+      });
+  }
+
+  return (
+    <div style={{height:'100%',overflowY:'auto',padding:'4px 0'}}>
+      {loading && <div style={{padding:'8px 12px',fontSize:'11px',color:'rgba(255,255,255,.3)'}}>Loading...</div>}
+      {tree && renderItems(tree, folder, 0)}
+    </div>
+  );
+}
+
+
+function Terminal({ folder }) {
+  const [history, setHistory] = useState([{type:'info',text:'$ YuyuTerminal'}]);
+  const [input, setInput] = useState('');
+  const [cmdHist, setCmdHist] = useState([]);
+  const [histIdx, setHistIdx] = useState(-1);
+  const [running, setRunning] = useState(false);
+  const bottomRef = useRef(null);
+  useEffect(() => { bottomRef.current?.scrollIntoView({behavior:'smooth'}); }, [history]);
+
+  async function run() {
+    const cmd = input.trim();
+    if (!cmd) return;
+    setInput(''); setHistIdx(-1);
+    setCmdHist(h => [cmd,...h.filter(c=>c!==cmd)].slice(0,50));
+    setHistory(h => [...h, {type:'cmd',text:'$ '+cmd}]);
+    setRunning(true);
+    const r = await callServer({ type:'exec', path:folder||'', command:cmd });
+    setHistory(h => [...h, {type:r.ok?'out':'err', text:r.data||'(selesai)'}]);
+    setRunning(false);
+  }
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#0a0a0b',fontFamily:'monospace'}}>
+      <div style={{flex:1,overflowY:'auto',padding:'8px 12px'}}>
+        {history.map((h,i) => (
+          <div key={i} style={{fontSize:'12px',lineHeight:'1.5',whiteSpace:'pre-wrap',wordBreak:'break-word',color:h.type==='cmd'?'#a78bfa':h.type==='err'?'#f87171':h.type==='info'?'rgba(255,255,255,.3)':'rgba(255,255,255,.7)'}}>
+            {h.text}
+          </div>
+        ))}
+        {running && <div style={{fontSize:'12px',color:'rgba(255,255,255,.3)'}}>running...</div>}
+        <div ref={bottomRef}/>
+      </div>
+      <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderTop:'1px solid rgba(255,255,255,.06)',gap:'6px'}}>
+        <span style={{fontSize:'12px',color:'#4ade80',flexShrink:0}}>$</span>
+        <input value={input} onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{
+            if(e.key==='Enter'){run();return;}
+            if(e.key==='ArrowUp'){const idx=Math.min(histIdx+1,cmdHist.length-1);setHistIdx(idx);setInput(cmdHist[idx]||'');}
+            if(e.key==='ArrowDown'){const idx=histIdx-1;setHistIdx(idx);setInput(idx>=0?cmdHist[idx]:'');}
+          }}
+          placeholder="command..." disabled={running}
+          style={{flex:1,background:'none',border:'none',outline:'none',color:'rgba(255,255,255,.85)',fontSize:'12px',fontFamily:'monospace'}}/>
+      </div>
+    </div>
+  );
+}
+
+
 export default function App() {
   const [messages, setMessages] = useState([{ role:'assistant', content:'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa? 🌸' }]);
   const [input, setInput] = useState('');
@@ -350,8 +517,11 @@ export default function App() {
   const [histIdx, setHistIdx] = useState(-1);
   const [model, setModel] = useState(MODELS[0].id);
   const [showFollowUp, setShowFollowUp] = useState(false);
-  const [netOnline, setNetOnline] = useState(navigator.onLine);
-  const [rateLimitTimer, setRateLimitTimer] = useState(0);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [showTerminal, setShowTerminal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileContent, setFileContent] = useState(null);
+  const [activeTab, setActiveTab] = useState('chat');
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
@@ -359,20 +529,12 @@ export default function App() {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, streaming]);
 
   useEffect(() => {
-    const on = () => setNetOnline(true);
-    const off = () => setNetOnline(false);
-    window.addEventListener('online', on);
-    window.addEventListener('offline', off);
-    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
-  }, []);
-
-  useEffect(() => {
     Promise.all([
       Preferences.get({ key:'yc_folder' }),
       Preferences.get({ key:'yc_history' }),
       Preferences.get({ key:'yc_cmdhist' }),
       Preferences.get({ key:'yc_model' }),
-    ]).then(([f, h, ch, mo]) => {
+    ]).then(([f,h,ch,mo]) => {
       if (f.value) { setFolder(f.value); setFolderInput(f.value); }
       if (h.value) { try { setMessages(JSON.parse(h.value)); } catch {} }
       if (ch.value) { try { setCmdHistory(JSON.parse(ch.value)); } catch {} }
@@ -383,294 +545,256 @@ export default function App() {
 
   useEffect(() => {
     if (messages.length > 1) {
-      Preferences.set({ key:'yc_history', value:JSON.stringify(messages.slice(-MAX_HISTORY).map(m => ({ role:m.role, content:m.content }))) });
+      Preferences.set({ key:'yc_history', value:JSON.stringify(messages.slice(-MAX_HISTORY).map(m=>({role:m.role,content:m.content}))) });
     }
     setShowFollowUp(messages.length > 1 && messages[messages.length-1]?.role === 'assistant');
   }, [messages]);
 
   useEffect(() => {
     if (!folder) return;
-    Preferences.get({ key:'yc_notes_' + folder }).then(r => setNotes(r.value || ''));
+    Preferences.get({ key:'yc_notes_'+folder }).then(r => setNotes(r.value||''));
     callServer({ type:'ping' }).then(r => setServerOk(r.ok));
-    // Load SKILL.md kalau ada
-    callServer({ type:'read', path: folder + '/SKILL.md' }).then(r => {
-      if (r.ok) setSkill(r.data);
-      else setSkill('');
-    });
+    callServer({ type:'read', path:folder+'/SKILL.md' }).then(r => { if(r.ok) setSkill(r.data); else setSkill(''); });
   }, [folder]);
 
-  function saveFolder(f) {
-    setFolder(f); setFolderInput(f); setShowFolder(false);
-    Preferences.set({ key:'yc_folder', value:f });
+  async function openFile(path) {
+    setSelectedFile(path);
+    setActiveTab('file');
+    const r = await callServer({ type:'read', path });
+    if (r.ok) setFileContent(r.data);
+    else setFileContent('Error: '+r.data);
   }
 
-  function addHistory(cmd) {
-    const next = [cmd, ...cmdHistory.filter(c => c !== cmd)].slice(0, 50);
-    setCmdHistory(next);
-    Preferences.set({ key:'yc_cmdhist', value:JSON.stringify(next) });
-  }
+  function saveFolder(f) { setFolder(f); setFolderInput(f); setShowFolder(false); Preferences.set({ key:'yc_folder', value:f }); }
+  function addHistory(cmd) { const next=[cmd,...cmdHistory.filter(c=>c!==cmd)].slice(0,50); setCmdHistory(next); Preferences.set({ key:'yc_cmdhist', value:JSON.stringify(next) }); }
 
   async function handlePlanApprove(idx, approved) {
-    if (!approved) {
-      setMessages(m => m.map((x, i) => i === idx ? { ...x, planApproved: false } : x));
-      await sendMsg('Ubah plan — jelaskan apa yang perlu diubah');
-      return;
-    }
-    setMessages(m => m.map((x, i) => i === idx ? { ...x, planApproved: true } : x));
+    if (!approved) { setMessages(m=>m.map((x,i)=>i===idx?{...x,planApproved:false}:x)); await sendMsg('Ubah plan.'); return; }
+    setMessages(m=>m.map((x,i)=>i===idx?{...x,planApproved:true}:x));
     await sendMsg('Plan diapprove. Mulai eksekusi step by step.');
   }
 
   async function handleApprove(idx, ok) {
     const msg = messages[idx];
-    if (!ok) {
-      setMessages(m => m.map((x, i) => i === idx ? { ...x, actions:x.actions?.map(a => ({ ...a, executed:true, result:{ ok:false, data:'Dibatalkan.' } })) } : x));
-      return;
-    }
-    for (const a of (msg.actions || []).filter(a => a.type === 'write_file' && !a.executed)) {
-      a.result = await executeAction(a, folder);
-      a.executed = true;
-    }
-    setMessages(m => m.map((x, i) => i === idx ? { ...x } : x));
+    if (!ok) { setMessages(m=>m.map((x,i)=>i===idx?{...x,actions:x.actions?.map(a=>({...a,executed:true,result:{ok:false,data:'Dibatalkan.'}}))}:x)); return; }
+    for (const a of (msg.actions||[]).filter(a=>a.type==='write_file'&&!a.executed)) { a.result=await executeAction(a,folder); a.executed=true; }
+    setMessages(m=>m.map((x,i)=>i===idx?{...x}:x));
   }
 
   function cancel() { abortRef.current?.abort(); setLoading(false); setStreaming(''); }
 
   async function sendMsg(override) {
-    const txt = (override || input).trim();
-    if (!txt || loading) return;
+    const txt = (override||input).trim();
+    if (!txt||loading) return;
     setInput(''); setHistIdx(-1); addHistory(txt);
-    setShowFollowUp(false);
-
+    setShowFollowUp(false); setActiveTab('chat');
     const userMsg = { role:'user', content:txt };
     const history = [...messages, userMsg];
     setMessages(history);
     setLoading(true); setStreaming('');
-
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-
     try {
-      const notesCtx = notes ? '\n\nProject notes:\n' + notes : '';
-      const skillCtx = skill ? '\n\nSKILL.md (baca dan ikuti):\n' + skill : '';
-      const systemPrompt = BASE_SYSTEM + '\n\nFolder aktif: ' + folder + notesCtx + skillCtx;
-
+      const notesCtx = notes ? '\n\nProject notes:\n'+notes : '';
+      const skillCtx = skill ? '\n\nSKILL.md:\n'+skill : '';
+      const fileCtx = selectedFile && fileContent ? '\n\nFile terbuka: '+selectedFile+'\n('+fileContent.length+' chars)' : '';
+      const systemPrompt = BASE_SYSTEM+'\n\nFolder aktif: '+folder+notesCtx+skillCtx+fileCtx;
       const groqMsgs = [
         { role:'system', content:systemPrompt },
-        ...history.map(m => ({ role:m.role, content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim() }))
+        ...history.map(m=>({role:m.role,content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim()}))
       ];
-
-            let reply = await askCerebrasStream(groqMsgs, model, setStreaming, ctrl.signal);
+      let reply = await askCerebrasStream(groqMsgs, model, setStreaming, ctrl.signal);
       setStreaming('');
-
       const allActions = parseActions(reply);
-      const nonWrites = allActions.filter(a => a.type !== 'write_file');
-      const writes = allActions.filter(a => a.type === 'write_file');
+      const nonWrites = allActions.filter(a=>a.type!=='write_file');
+      const writes = allActions.filter(a=>a.type==='write_file');
       for (const a of nonWrites) a.result = await executeAction(a, folder);
-
-      const fileData = nonWrites.filter(a => a.result?.ok && a.type !== 'exec').map(a => '=== ' + a.path + ' ===\n' + a.result.data).join('\n\n');
+      const fileData = nonWrites.filter(a=>a.result?.ok&&a.type!=='exec').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
       let final = reply;
       if (fileData) {
-        const followMsgs = [
-          { role:'system', content:systemPrompt },
-          ...groqMsgs.slice(1),
+        final = await askCerebrasStream([
+          ...groqMsgs,
           { role:'assistant', content:reply.replace(/```action[\s\S]*?```/g,'').trim() },
-          { role:'user', content:'Hasil:\n' + fileData + '\n\nAnalisis dan jawab.' }
-        ];
-        final = await askCerebrasStream(followMsgs, model, setStreaming, ctrl.signal);
+          { role:'user', content:'Hasil:\n'+fileData+'\n\nAnalisis dan jawab.' }
+        ], model, setStreaming, ctrl.signal);
         setStreaming('');
       }
-
       if (final.includes('PROJECT_NOTE:')) {
         const nm = final.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
-        if (nm) { const n = (notes + '\n' + nm[1].trim()).trim(); setNotes(n); Preferences.set({ key:'yc_notes_' + folder, value:n }); }
+        if (nm) { const n=(notes+'\n'+nm[1].trim()).trim(); setNotes(n); Preferences.set({key:'yc_notes_'+folder,value:n}); }
       }
-
-      setMessages(m => [...m, { role:'assistant', content:final, actions:[...nonWrites, ...writes.map(a => ({ ...a, executed:false }))] }]);
+      setMessages(m=>[...m,{role:'assistant',content:final,actions:[...nonWrites,...writes.map(a=>({...a,executed:false}))]}]);
     } catch(e) {
-      if (e.name !== 'AbortError') setMessages(m => [...m, { role:'assistant', content:'❌ ' + e.message }]);
+      if (e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
     }
     setLoading(false);
   }
 
   async function continueMsg() { await sendMsg('Lanjutkan response sebelumnya dari titik terakhir.'); }
   async function retryLast() {
-    const lastUser = [...messages].reverse().find(m => m.role === 'user');
+    const lastUser = [...messages].reverse().find(m=>m.role==='user');
     if (!lastUser) return;
-    setMessages(m => { const idx = m.lastIndexOf(lastUser); return m.slice(0, idx); });
+    setMessages(m=>{ const idx=m.indexOf(lastUser); return m.slice(0,idx); });
     await sendMsg(lastUser.content);
   }
-
   async function runShortcut(cmd) {
-    addHistory(cmd); setShowFollowUp(false);
-    setMessages(m => [...m, { role:'user', content:cmd }]);
+    addHistory(cmd); setShowFollowUp(false); setActiveTab('chat');
+    setMessages(m=>[...m,{role:'user',content:cmd}]);
     setLoading(true);
     const r = await executeAction({ type:'exec', command:cmd }, folder);
-    setMessages(m => [...m, { role:'assistant', content:'```bash\n' + (r.data || 'selesai') + '\n```', actions:[] }]);
+    setMessages(m=>[...m,{role:'assistant',content:'\`\`\`bash\n'+(r.data||'selesai')+'\n\`\`\`',actions:[]}]);
     setLoading(false);
   }
 
   const tokens = countTokens(messages);
 
   return (
-    <div style={S.root}>
+    <div style={{position:'fixed',inset:0,background:'#0d0d0e',color:'#e8e8e8',fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:'14px'}}>
       <style>{`
-        * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-        ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:2px; }
-        textarea { scrollbar-width:none; }
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-        button:active { opacity:.7; }
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+        ::-webkit-scrollbar{width:3px;height:3px;}
+        ::-webkit-scrollbar-track{background:transparent;}
+        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+        textarea,input{scrollbar-width:none;}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+        button:active{opacity:.7;}
       `}</style>
 
-      <div style={S.header}>
-        <div style={S.serverDot(serverOk)} />
-        <div style={{ flex:1 }} onClick={() => setShowFolder(!showFolder)}>
-          <div style={S.headerTitle}>YuyuCode</div>
-          <div style={S.headerSub}>📁 {folder}{skill ? ' · 📋 SKILL.md' : ''}</div>
+      {/* HEADER */}
+      <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
+        <button onClick={()=>setShowSidebar(!showSidebar)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer',padding:'2px 4px',borderRadius:'4px'}}>☰</button>
+        <div style={{width:'6px',height:'6px',borderRadius:'50%',background:serverOk?'#4ade80':'#f87171',flexShrink:0}}/>
+        <div style={{flex:1,cursor:'pointer'}} onClick={()=>setShowFolder(!showFolder)}>
+          <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0'}}>YuyuCode</span>
+          <span style={{fontSize:'11px',color:'rgba(255,255,255,.3)',marginLeft:'6px'}}>📁 {folder}</span>
+          {skill&&<span style={{fontSize:'10px',color:'rgba(74,222,128,.5)',marginLeft:'4px'}}>· SKILL</span>}
         </div>
-        <div style={S.tokenBadge}>~{tokens}tk</div>
-        <button style={S.newBtn} onClick={() => { setMessages([{ role:'assistant', content:'Chat baru. Mau ngerjain apa Papa? 🌸' }]); Preferences.remove({ key:'yc_history' }); setShowFollowUp(false); }}>new</button>
+        <span style={{fontSize:'11px',color:'rgba(255,255,255,.2)',background:'rgba(255,255,255,.04)',padding:'2px 7px',borderRadius:'99px'}}>~{tokens}tk</span>
+        <button onClick={()=>setShowTerminal(!showTerminal)} style={{background:showTerminal?'rgba(124,58,237,.2)':'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'3px 8px',color:showTerminal?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>⌨</button>
+        <button onClick={()=>{setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});setShowFollowUp(false);}} style={{background:'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'3px 8px',color:'rgba(255,255,255,.35)',fontSize:'11px',cursor:'pointer'}}>new</button>
       </div>
 
-      {!netOnline && (
-        <div style={{ padding:'6px 16px', background:'rgba(248,113,113,.08)', borderBottom:'1px solid rgba(248,113,113,.15)', fontSize:'11px', color:'#f87171' }}>
-          📡 Tidak ada koneksi internet
-        </div>
-      )}
-      {rateLimitTimer > 0 && (
-        <div style={{ padding:'6px 16px', background:'rgba(251,191,36,.06)', borderBottom:'1px solid rgba(251,191,36,.1)', fontSize:'11px', color:'rgba(251,191,36,.7)' }}>
-          ⏳ Rate limit — lanjut dalam {rateLimitTimer}d
-        </div>
-      )}
-
-      {showFolder && (
-        <div style={S.folderBar}>
-          <input value={folderInput} onChange={e => setFolderInput(e.target.value)} placeholder="nama folder project"
-            style={S.folderInput} onKeyDown={e => e.key === 'Enter' && saveFolder(folderInput)} />
-          <button style={S.folderBtn} onClick={() => saveFolder(folderInput)}>set</button>
+      {/* FOLDER PICKER */}
+      {showFolder&&(
+        <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'6px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
+          <input value={folderInput} onChange={e=>setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(folderInput)}
+            style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'6px 10px',color:'#e8e8e8',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
+          <button onClick={()=>saveFolder(folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}>set</button>
         </div>
       )}
 
-      {notes && <div style={S.notesBar}>📝 {notes.slice(0, 100)}</div>}
-      {skill && <div style={S.skillBar}>📋 SKILL.md loaded — {skill.split('\n').length} baris</div>}
-
-      <div style={S.modelPicker}>
-        {MODELS.map(m => (
-          <button key={m.id} style={S.modelBtn(model === m.id)} onClick={() => { setModel(m.id); Preferences.set({ key:'yc_model', value:m.id }); }}>
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={S.shortcuts}>
-        {GIT_SHORTCUTS.map(s => (
-          <button key={s.label} style={S.shortcutBtn} onClick={() => runShortcut(s.cmd)} disabled={loading}>
-            <span>{s.icon}</span><span>{s.label}</span>
-          </button>
-        ))}
-      </div>
-
-      <div style={S.messages}>
-        {messages.map((m, i) => (
-          <MsgBubble key={i} msg={m} isLast={i === messages.length - 1}
-            onApprove={m.actions?.some(a => a.type === 'write_file' && !a.executed) ? (ok) => handleApprove(i, ok) : null}
-            onPlanApprove={m.content?.includes('📋 PLAN:') && !m.planApproved ? (ok) => handlePlanApprove(i, ok) : null}
-            onRetry={i === messages.length - 1 && m.role === 'user' ? retryLast : null}
-            onContinue={i === messages.length - 1 && m.role === 'assistant' && m.content.trim().endsWith('CONTINUE') ? continueMsg : null}
-          />
-        ))}
-        {streaming && (
-          <div style={S.msgRow(false)}>
-            <div style={S.streamingBubble}>
-              <MsgContent text={streaming} />
-              <span style={S.cursor} />
+      {/* MAIN */}
+      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+        
+        {/* SIDEBAR */}
+        {showSidebar&&(
+          <div style={{width:'180px',borderRight:'1px solid rgba(255,255,255,.06)',display:'flex',flexDirection:'column',flexShrink:0,background:'rgba(255,255,255,.01)'}}>
+            <div style={{padding:'5px 8px',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
+              <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',letterSpacing:'.05em',textTransform:'uppercase'}}>{folder}</span>
+            </div>
+            <div style={{flex:1,overflow:'hidden'}}>
+              <FileTree folder={folder} onSelectFile={openFile} selectedFile={selectedFile}/>
             </div>
           </div>
         )}
-        {loading && !streaming && (
-          <div style={S.msgRow(false)}>
-            <div style={{ color:'rgba(255,255,255,.3)', fontSize:'13px' }}>Yuyu lagi mikir···</div>
+
+        {/* CENTER */}
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          
+          {/* TABS */}
+          <div style={{display:'flex',borderBottom:'1px solid rgba(255,255,255,.06)',flexShrink:0,overflowX:'auto'}}>
+            <button onClick={()=>setActiveTab('chat')} style={{padding:'6px 14px',background:'none',border:'none',borderBottom:activeTab==='chat'?'2px solid #7c3aed':'2px solid transparent',color:activeTab==='chat'?'#a78bfa':'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap'}}>💬 Chat</button>
+            {selectedFile&&<button onClick={()=>setActiveTab('file')} style={{padding:'6px 14px',background:'none',border:'none',borderBottom:activeTab==='file'?'2px solid #7c3aed':'2px solid transparent',color:activeTab==='file'?'#a78bfa':'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap',maxWidth:'160px',overflow:'hidden',textOverflow:'ellipsis'}}>
+              📄 {selectedFile.split('/').pop()}
+            </button>}
+            <div style={{marginLeft:'auto',display:'flex',gap:'4px',padding:'4px 8px',alignItems:'center'}}>
+              {MODELS.map(m=>(
+                <button key={m.id} onClick={()=>{setModel(m.id);Preferences.set({key:'yc_model',value:m.id});}} style={{background:model===m.id?'rgba(124,58,237,.2)':'rgba(255,255,255,.03)',border:'1px solid '+(model===m.id?'rgba(124,58,237,.4)':'rgba(255,255,255,.07)'),borderRadius:'5px',padding:'2px 8px',color:model===m.id?'#a78bfa':'rgba(255,255,255,.3)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
 
-      {showFollowUp && !loading && (
-        <div style={S.followUps}>
-          {FOLLOW_UP_PROMPTS.map(p => (
-            <button key={p} style={S.followUpBtn} onClick={() => sendMsg(p)}>{p}</button>
-          ))}
+          {/* CHAT */}
+          {activeTab==='chat'&&!showTerminal&&(
+            <div style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
+              {messages.map((m,i)=>(
+                <MsgBubble key={i} msg={m} isLast={i===messages.length-1}
+                  onApprove={m.actions?.some(a=>a.type==='write_file'&&!a.executed)?(ok)=>handleApprove(i,ok):null}
+                  onPlanApprove={m.content?.includes('📋 PLAN:')&&!m.planApproved?(ok)=>handlePlanApprove(i,ok):null}
+                  onRetry={i===messages.length-1&&m.role==='user'?retryLast:null}
+                  onContinue={i===messages.length-1&&m.role==='assistant'&&m.content.trim().endsWith('CONTINUE')?continueMsg:null}
+                />
+              ))}
+              {streaming&&(
+                <div style={{padding:'2px 16px'}}>
+                  <div style={{maxWidth:'92%',fontSize:'14px',lineHeight:'1.7',color:'#e0e0e0'}}>
+                    <MsgContent text={streaming}/>
+                    <span style={{display:'inline-block',width:'2px',height:'14px',background:'rgba(255,255,255,.6)',marginLeft:'2px',verticalAlign:'middle',animation:'blink 1s infinite'}}/>
+                  </div>
+                </div>
+              )}
+              {loading&&!streaming&&<div style={{padding:'2px 16px'}}><div style={{color:'rgba(255,255,255,.3)',fontSize:'13px'}}>Yuyu lagi mikir···</div></div>}
+              <div ref={bottomRef}/>
+            </div>
+          )}
+
+          {/* FILE VIEW */}
+          {activeTab==='file'&&selectedFile&&!showTerminal&&(
+            <div style={{flex:1,overflow:'auto'}}>
+              <div style={{padding:'5px 12px',borderBottom:'1px solid rgba(255,255,255,.06)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',position:'sticky',top:0}}>
+                <span style={{fontSize:'11px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{selectedFile}</span>
+                <button onClick={()=>sendMsg('Yu, jelaskan file '+selectedFile)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',flexShrink:0}}>Tanya Yuyu</button>
+                <button onClick={()=>{setSelectedFile(null);setFileContent(null);setActiveTab('chat');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'14px',cursor:'pointer',flexShrink:0}}>×</button>
+              </div>
+              <pre style={{margin:0,padding:'12px',fontSize:'11px',lineHeight:'1.6',fontFamily:'monospace',color:'rgba(255,255,255,.7)',whiteSpace:'pre-wrap',wordBreak:'break-word'}} dangerouslySetInnerHTML={{__html:hl(fileContent||'')}}/>
+            </div>
+          )}
+
+          {/* TERMINAL */}
+          {showTerminal&&<div style={{flex:1,overflow:'hidden'}}><Terminal folder={folder}/></div>}
+
+          {/* FOLLOW UPS */}
+          {showFollowUp&&!loading&&activeTab==='chat'&&!showTerminal&&(
+            <div style={{display:'flex',gap:'6px',flexWrap:'wrap',padding:'6px 16px',flexShrink:0}}>
+              {FOLLOW_UPS.map(p=>(
+                <button key={p} onClick={()=>sendMsg(p)} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px',padding:'4px 10px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>{p}</button>
+              ))}
+            </div>
+          )}
+
+          {/* GIT SHORTCUTS */}
+          {!showTerminal&&(
+            <div style={{padding:'6px 12px',borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'5px',overflowX:'auto',flexShrink:0}}>
+              {GIT_SHORTCUTS.map(s=>(
+                <button key={s.label} onClick={()=>runShortcut(s.cmd)} disabled={loading} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'5px',padding:'3px 10px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
+                  <span>{s.icon}</span><span>{s.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* INPUT */}
+          {!showTerminal&&(
+            <div style={{padding:'8px 12px',borderTop:'1px solid rgba(255,255,255,.07)',display:'flex',gap:'6px',alignItems:'flex-end',background:'rgba(255,255,255,.01)',flexShrink:0}}>
+              <textarea ref={inputRef} value={input}
+                onChange={e=>{setInput(e.target.value);e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,120)+'px';}}
+                onKeyDown={e=>{
+                  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();return;}
+                  if(e.key==='ArrowUp'&&!input){const idx=Math.min(histIdx+1,cmdHistory.length-1);setHistIdx(idx);setInput(cmdHistory[idx]||'');}
+                  if(e.key==='ArrowDown'&&histIdx>-1){const idx=histIdx-1;setHistIdx(idx);setInput(idx>=0?cmdHistory[idx]:'');}
+                }}
+                placeholder="Tanya Yuyu..." disabled={loading} rows={1}
+                style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',padding:'8px 12px',color:loading?'rgba(255,255,255,.3)':'#f0f0f0',fontSize:'13px',resize:'none',outline:'none',fontFamily:'inherit',lineHeight:'1.5'}}/>
+              {loading
+                ?<button onClick={cancel} style={{background:'rgba(248,113,113,.15)',border:'1px solid rgba(248,113,113,.25)',borderRadius:'10px',padding:'8px 14px',color:'#f87171',fontSize:'13px',cursor:'pointer',flexShrink:0}}>stop</button>
+                :<button onClick={()=>sendMsg()} style={{background:'#7c3aed',border:'none',borderRadius:'10px',padding:'8px 14px',color:'white',fontSize:'13px',cursor:'pointer',fontWeight:'500',flexShrink:0}}>↑</button>
+              }
+            </div>
+          )}
         </div>
-      )}
-
-      <div style={S.inputArea}>
-        <textarea ref={inputRef} value={input}
-          onChange={e => { setInput(e.target.value); e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight, 160)+'px'; }}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); return; }
-            if (e.key === 'ArrowUp' && !input) { const idx = Math.min(histIdx+1, cmdHistory.length-1); setHistIdx(idx); setInput(cmdHistory[idx]||''); }
-            if (e.key === 'ArrowDown' && histIdx > -1) { const idx = histIdx-1; setHistIdx(idx); setInput(idx >= 0 ? cmdHistory[idx] : ''); }
-          }}
-          placeholder="Tanya Yuyu..."
-          disabled={loading} rows={1}
-          style={{ ...S.textarea, opacity: loading ? 0.5 : 1 }}
-        />
-        {loading
-          ? <button style={S.stopBtn} onClick={cancel}>stop</button>
-          : <button style={S.sendBtn} onClick={() => sendMsg()}>↑</button>
-        }
       </div>
     </div>
   );
-}function renderMarkdown(raw) {
-  const lines = raw.split('\n');
-  const out = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    // Table block
-    if (/^\|/.test(line)) {
-      const tableLines = [];
-      while (i < lines.length && /^\|/.test(lines[i])) {
-        tableLines.push(lines[i]);
-        i++;
-      }
-      const dataRows = tableLines.filter(r => !/^\|[-:\s|]+\|/.test(r));
-      if (dataRows.length > 0) {
-        const rows = dataRows.map((row, ri) => {
-          const cells = row.slice(1,-1).split('|').map(c => c.trim());
-          const tag = ri === 0 ? 'th' : 'td';
-          const s = ri === 0
-            ? 'padding:6px 12px;font-size:11px;color:rgba(255,255,255,.45);font-weight:600;border-bottom:1px solid rgba(255,255,255,.12);text-align:left'
-            : 'padding:6px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top';
-          return '<tr>' + cells.map(c => '<' + tag + ' style="' + s + '">' + inlineRender(c) + '</' + tag + '>').join('') + '</tr>';
-        }).join('');
-        out.push('<div style="overflow-x:auto;margin:8px 0"><table style="width:100%;border-collapse:collapse;background:rgba(255,255,255,.02);border-radius:8px;overflow:hidden">' + rows + '</table></div>');
-      }
-      continue;
-    }
-    // Headings
-    if (line.startsWith('### ')) { out.push('<div style="font-size:13px;font-weight:700;color:#e8e8e8;margin:10px 0 4px">' + inlineRender(line.slice(4)) + '</div>'); i++; continue; }
-    if (line.startsWith('## ')) { out.push('<div style="font-size:14px;font-weight:700;color:#f0f0f0;margin:12px 0 5px">' + inlineRender(line.slice(3)) + '</div>'); i++; continue; }
-    if (line.startsWith('# ')) { out.push('<div style="font-size:15px;font-weight:700;color:#f0f0f0;margin:14px 0 6px">' + inlineRender(line.slice(2)) + '</div>'); i++; continue; }
-    // HR
-    if (line === '---') { out.push('<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:10px 0">'); i++; continue; }
-    // List
-    if (line.startsWith('- ')) { out.push('<div style="display:flex;gap:6px;margin:2px 0 2px 4px"><span style="color:rgba(255,255,255,.35)">•</span><span>' + inlineRender(line.slice(2)) + '</span></div>'); i++; continue; }
-    // Empty line
-    if (line.trim() === '') { out.push('<div style="height:6px"></div>'); i++; continue; }
-    // Normal text
-    out.push('<div>' + inlineRender(line) + '</div>');
-    i++;
-  }
-  return out.join('');
 }
-
-function inlineRender(t) {
-  return t
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#f0f0f0">$1</strong>')
-    .replace(/\*([^*]+)\*/g,'<em>$1</em>')
-    .replace(/`([^`]+)`/g,'<code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px;color:#e8e8e8">$1</code>');
-}
-
-
