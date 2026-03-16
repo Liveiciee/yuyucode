@@ -233,7 +233,7 @@ function ActionChip({ action }) {
   );
 }
 
-function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast }) {
+function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix }) {
   const [hover, setHover] = useState(false);
   const isUser = msg.role === 'user';
   const cleanText = msg.content.replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim();
@@ -269,6 +269,9 @@ function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast 
               <button onClick={() => onPlanApprove(true)} style={{ background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.3)', borderRadius:'8px', padding:'6px 16px', color:'#a78bfa', fontSize:'12px', cursor:'pointer' }}>✓ Approve Plan</button>
               <button onClick={() => onPlanApprove(false)} style={{ background:'rgba(248,113,113,.08)', border:'1px solid rgba(248,113,113,.15)', borderRadius:'8px', padding:'6px 16px', color:'#f87171', fontSize:'12px', cursor:'pointer' }}>✗ Ubah Plan</button>
             </div>
+          )}
+          {isLast && onAutoFix && msg.role==='assistant' && (msg.content.includes('❌')||msg.content.includes('Error')||msg.content.includes('error')) && (
+            <button onClick={onAutoFix} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'8px',padding:'5px 14px',color:'#f87171',fontSize:'12px',cursor:'pointer',alignSelf:'flex-start',marginTop:'4px'}}>🔧 Auto-fix</button>
           )}
           {isContinued && onContinue && (
             <button onClick={onContinue} style={{ background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.2)', borderRadius:'8px', padding:'5px 14px', color:'#a78bfa', fontSize:'12px', cursor:'pointer', alignSelf:'flex-start', marginTop:'4px' }}>↓ Lanjutkan</button>
@@ -446,6 +449,17 @@ function SearchBar({ folder, onSelectFile, onClose }) {
 }
 
 
+function UndoBar({ history, onUndo }) {
+  if (!history || history.length === 0) return null;
+  return (
+    <div style={{padding:'4px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.1)',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
+      <span style={{fontSize:'11px',color:'rgba(251,191,36,.6)'}}>✏️ {history[history.length-1]?.path?.split('/').pop()} diubah</span>
+      <button onClick={onUndo} style={{background:'rgba(251,191,36,.1)',border:'1px solid rgba(251,191,36,.2)',borderRadius:'5px',padding:'2px 8px',color:'rgba(251,191,36,.8)',fontSize:'10px',cursor:'pointer',marginLeft:'auto'}}>↩ Undo</button>
+    </div>
+  );
+}
+
+
 function ErrorBoundary({ children }) {
   const [err, setErr] = React.useState(null);
   if (err) return <div style={{color:'red',padding:'20px',whiteSpace:'pre-wrap'}}>{err}</div>;
@@ -474,6 +488,7 @@ export default function App() {
   const [fileContent, setFileContent] = useState(null);
   const [activeTab, setActiveTab] = useState('chat');
   const [showSearch, setShowSearch] = useState(false);
+  const [editHistory, setEditHistory] = useState([]); // [{path, content}]
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
@@ -529,8 +544,22 @@ export default function App() {
   async function handleApprove(idx, ok) {
     const msg = messages[idx];
     if (!ok) { setMessages(m=>m.map((x,i)=>i===idx?{...x,actions:x.actions?.map(a=>({...a,executed:true,result:{ok:false,data:'Dibatalkan.'}}))}:x)); return; }
-    for (const a of (msg.actions||[]).filter(a=>a.type==='write_file'&&!a.executed)) { a.result=await executeAction(a,folder); a.executed=true; }
+    for (const a of (msg.actions||[]).filter(a=>a.type==='write_file'&&!a.executed)) {
+      // Save backup for undo
+      const backup = await callServer({ type:'read', path:resolvePath(folder, a.path) });
+      if (backup.ok) setEditHistory(h => [...h.slice(-9), { path:resolvePath(folder, a.path), content:backup.data }]);
+      a.result = await executeAction(a, folder);
+      a.executed = true;
+    }
     setMessages(m=>m.map((x,i)=>i===idx?{...x}:x));
+  }
+
+  async function undoLastEdit() {
+    const last = editHistory[editHistory.length-1];
+    if (!last) return;
+    await callServer({ type:'write', path:last.path, content:last.content });
+    setEditHistory(h => h.slice(0,-1));
+    setMessages(m => [...m, { role:'assistant', content:'↩ Undo berhasil — ' + last.path.split('/').pop() + ' dikembalikan.', actions:[] }]);
   }
 
   function cancel() { abortRef.current?.abort(); setLoading(false); setStreaming(''); }
@@ -629,6 +658,7 @@ export default function App() {
         <button onClick={()=>{setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});setShowFollowUp(false);}} style={{background:'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'3px 8px',color:'rgba(255,255,255,.35)',fontSize:'11px',cursor:'pointer'}}>new</button>
       </div>
 
+      <UndoBar history={editHistory} onUndo={undoLastEdit}/>
       {showFolder&&(
         <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'6px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
           <input value={folderInput} onChange={e=>setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(folderInput)}
@@ -672,6 +702,7 @@ export default function App() {
                   onPlanApprove={m.content?.includes('📋 PLAN:')&&!m.planApproved?(ok)=>handlePlanApprove(i,ok):null}
                   onRetry={i===messages.length-1&&m.role==='user'?retryLast:null}
                   onContinue={i===messages.length-1&&m.role==='assistant'&&m.content.trim().endsWith('CONTINUE')?continueMsg:null}
+                  onAutoFix={i===messages.length-1?()=>sendMsg('Ada error di output sebelumnya. Analisis dan fix secara otomatis.'):null}
                 />
               ))}
               {streaming&&(
@@ -691,8 +722,10 @@ export default function App() {
             <div style={{flex:1,overflow:'auto'}}>
               <div style={{padding:'5px 12px',borderBottom:'1px solid rgba(255,255,255,.06)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',position:'sticky',top:0}}>
                 <span style={{fontSize:'11px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{selectedFile}</span>
+                <button onClick={()=>sendMsg('Yu, jalankan git log --oneline -10 -- '+selectedFile.replace(folder+'/',''))} style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'5px',padding:'2px 8px',color:'rgba(255,255,255,.4)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📜 log</button>
                 <button onClick={()=>sendMsg('Yu, jelaskan file '+selectedFile)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',flexShrink:0}}>Tanya Yuyu</button>
-                <button onClick={()=>{setSelectedFile(null);setFileContent(null);setActiveTab('chat');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'14px',cursor:'pointer',flexShrink:0}}>×</button>
+                <button onClick={()=>{setMessages(m=>[...m,{role:'user',content:'Yu, ini konteks file '+selectedFile+':\n```\n'+(fileContent||'').slice(0,2000)+'\n```'}]);setActiveTab('chat');}} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',flexShrink:0}}>+ Context</button>
+              <button onClick={()=>{setSelectedFile(null);setFileContent(null);setActiveTab('chat');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'14px',cursor:'pointer',flexShrink:0}}>×</button>
               </div>
               <div style={{display:'flex',fontFamily:'monospace',fontSize:'11px',lineHeight:'1.6'}}>
               <div style={{padding:'12px 8px',color:'rgba(255,255,255,.2)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'36px',flexShrink:0}}>
