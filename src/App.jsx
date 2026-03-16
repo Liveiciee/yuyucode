@@ -326,8 +326,8 @@ export default function App() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState('');
-  const [folder, setFolder] = useState('yuyucamp');
-  const [folderInput, setFolderInput] = useState('yuyucamp');
+  const [folder, setFolder] = useState('yuyucode');
+  const [folderInput, setFolderInput] = useState('yuyucode');
   const [showFolder, setShowFolder] = useState(false);
   const [serverOk, setServerOk] = useState(true);
   const [notes, setNotes] = useState('');
