@@ -209,8 +209,8 @@ function renderMarkdown(raw) {
   let t = raw
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-  // Tables - process before other replacements
-    const tableRegex = /(\|.+\|\n)+/g;
+  const tableRegex = new RegExp('(\\|.+\\|\\n)+', 'g');
+
 )+/g;
   t = t.replace(tableRegex, (match) => {
     const rows = match.trim().split('
