@@ -263,13 +263,7 @@ function MsgContent({ text }) {
     <div>
       {parts.map((p, i) => {
         if (p.t === 'text') return (
-          <span key={i} style={{ whiteSpace:'pre-wrap' }}
-            dangerouslySetInnerHTML={{ __html: p.c
-              .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-              .replace(/`([^`]+)`/g,'<code style="background:rgba(255,255,255,.08);padding:1px 6px;borderRadius:4px;fontFamily:monospace;fontSize:13px">$1</code>')
-              .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
-            }}
-          />
+          <div key={i} dangerouslySetInnerHTML={{ __html: renderMarkdown(p.c) }} />
         );
         if (p.t === 'diff') return (
           <div key={i} style={S.diffBlock}>
