@@ -1,52 +1,3 @@
-function renderMarkdown(raw) {
-  // Escape HTML dulu KECUALI table rows
-  let t = raw
-    .split('\n')
-    .map(line => /^\|/.test(line) ? '__TABLE_LINE__' + line : line.replace(/&(?!amp;|lt;|gt;)/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'))
-    .join('\n');
-  t = t.replace(/^__TABLE_LINE__/gm, '');
-  // Now mark table rows
-  t = t.replace(/^\|.+\|$/gm, '__TABLE_ROW__$&');
-  t = t.replace(/((__TABLE_ROW__.*\n?)+)/g, (match) => {
-    const rows = match.trim().split('\n')
-      .map(r => r.replace('__TABLE_ROW__', '').trim())
-      .filter(r => r && !/^\|[-:\s|]+\|$/.test(r));
-    if (rows.length === 0) return '';
-    const html = rows.map((row, i) => {
-      const cells = row.slice(1, -1).split('|').map(c => c.trim());
-      const tag = i === 0 ? 'th' : 'td';
-      const s = i === 0
-        ? 'padding:6px 12px;font-size:11px;color:rgba(255,255,255,.45);font-weight:600;border-bottom:1px solid rgba(255,255,255,.1);text-align:left;white-space:nowrap'
-        : 'padding:6px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top';
-      return '<tr>' + cells.map(c => '<' + tag + ' style="' + s + '">' + c + '</' + tag + '>').join('') + '</tr>';
-    }).join('');
-    return '<div style="overflow-x:auto;margin:8px 0"><table style="width:100%;border-collapse:collapse;background:rgba(255,255,255,.02);border-radius:8px;overflow:hidden">' + html + '</table></div>';
-  });
-
-  // Remove leftover __TABLE_ROW__ markers
-  t = t.replace(/__TABLE_ROW__/g, '');
-
-  // Now do other markdown
-  // Escape HTML only in non-table parts
-  t = t.replace(/((?:<(?:div|table|tr|td|th)[^>]*>[sS]*?</(?:div|table|tr|td|th)>)|([^<]*))/g, (m, tag, text) => {
-    if (tag) return tag; // keep HTML as-is
-    return (text||'').replace(/&(?!amp;|lt;|gt;)/g,'&amp;');
-  });
-  t = t
-    .replace(/^### (.*?)$/gm,'<div style="font-size:13px;font-weight:700;color:#e8e8e8;margin:10px 0 4px">$1</div>')
-    .replace(/^## (.*?)$/gm,'<div style="font-size:14px;font-weight:700;color:#f0f0f0;margin:12px 0 5px">$1</div>')
-    .replace(/^# (.*?)$/gm,'<div style="font-size:15px;font-weight:700;color:#f0f0f0;margin:14px 0 6px">$1</div>')
-    .replace(/\*\*([^*\n]+)\*\*/g,'<strong style="color:#f0f0f0">$1</strong>')
-    .replace(/\*([^*\n]+)\*/g,'<em style="color:rgba(255,255,255,.7)">$1</em>')
-    .replace(/`([^`\n]+)`/g,'<code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px;color:#e8e8e8">$1</code>')
-    .replace(/^---$/gm,'<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:10px 0">')
-    .replace(/^- (.*?)$/gm,'<div style="display:flex;gap:6px;margin:2px 0 2px 4px"><span style="color:rgba(255,255,255,.35);flex-shrink:0">•</span><span>$1</span></div>')
-    .replace(/^\d+\. (.*?)$/gm,'<div style="margin:2px 0 2px 4px">$1</div>')
-    .replace(/\n\n/g,'<div style="height:6px"></div>')
-    .replace(/\n/g,'<br>');
-
-  return t;
-}
 // ─── CEREBRAS STREAMING ──────────────────────────────────────────────────────
 async function askCerebrasStream(messages, model, onChunk, signal) {
   const resp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
@@ -263,7 +214,6 @@ function MsgContent({ text }) {
     const lang = m[1] || '';
     if (lang === 'action') { last = m.index + m[0].length; continue; }
     if (lang === 'diff') parts.push({ t:'diff', c:m[2] });
-    else if (lang === 'markdown' || lang === 'md') parts.push({ t:'md', c:m[2] });
     else parts.push({ t:'code', lang, c:m[2] });
     last = m.index + m[0].length;
   }
@@ -272,7 +222,471 @@ function MsgContent({ text }) {
     <div>
       {parts.map((p, i) => {
         if (p.t === 'text') return (
-          <div key={i} dangerouslySetInnerHTML={{ __html: renderMarkdown(p.c) }} />
+          <span key={i} style={{ whiteSpace:'pre-wrap' }}
+            dangerouslySetInnerHTML={{ __html: p.c
+              .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+              .replace(/`([^`]+)`/g,'<code style="background:rgba(255,255,255,.08);padding:1px 6px;borderRadius:4px;fontFamily:monospace;fontSize:13px">$1</code>')
+              .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+            }}
+          />
+        );
+        if (p.t === 'diff') return (
+          <div key={i} style={S.diffBlock}>
+            <div style={S.diffHeader}>diff</div>
+            <div style={{ padding:'10px 14px' }}>
+              {p.c.split('\n').map((line, j) => (
+                <div key={j} style={{ color: line.startsWith('+') ? '#4ade80' : line.startsWith('-') ? '#f87171' : 'rgba(255,255,255,.4)', fontFamily:'monospace', fontSize:'12px', lineHeight:'1.6' }}>{line}</div>
+              ))}
+            </div>
+          </div>
+        );
+        return (
+          <div key={i} style={S.codeBlock}>
+            {p.lang && <div style={S.codeLang}>{p.lang}</div>}
+            <pre style={S.codePre} dangerouslySetInnerHTML={{ __html: hl(p.c) }} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ActionChip({ action }) {
+  const [expanded, setExpanded] = useState(false);
+  const icon = action.type === 'read_file' ? '📄' : action.type === 'write_file' ? '✏️' : action.type === 'list_files' ? '📁' : action.type === 'exec' ? '⚡' : action.type === 'search' ? '🔍' : '🔧';
+  const label = action.type === 'exec' ? (action.command || '').slice(0, 40) : (action.path || action.type);
+  const ok = action.result ? action.result.ok : null;
+  return (
+    <div style={{ margin:'4px 0' }}>
+      <div style={S.actionChip(ok)} onClick={() => action.result && setExpanded(!expanded)}>
+        <span>{icon}</span><span>{label}</span>
+        {ok === null && <span style={{ opacity:.5 }}>···</span>}
+        {ok === true && <span>✓</span>}
+        {ok === false && <span>✗</span>}
+        {action.result && <span style={{ opacity:.4 }}>{expanded ? '▲' : '▼'}</span>}
+      </div>
+      {expanded && action.result && (
+        <div style={S.terminalBlock}>{typeof action.result.data === 'string' ? action.result.data : JSON.stringify(action.result.data, null, 2)}</div>
+      )}
+    </div>
+  );
+}
+
+function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast }) {
+  const [hover, setHover] = useState(false);
+  const isUser = msg.role === 'user';
+  const cleanText = msg.content.replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim();
+  const actions = msg.actions || [];
+  const hasPendingWrite = actions.some(a => a.type === 'write_file' && !a.executed);
+  const isContinued = msg.content.trim().endsWith('CONTINUE');
+  const hasPlan = !msg.planApproved && msg.content.includes('📋 PLAN:');
+
+  function copyMsg() { navigator.clipboard?.writeText(cleanText).catch(() => {}); }
+
+  return (
+    <div style={S.msgRow(isUser)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      {isUser ? (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px' }}>
+          <div style={S.userBubble}>{cleanText}</div>
+          <div style={{ ...S.msgActions, opacity: hover ? 1 : 0 }}>
+            <button style={S.msgActBtn} onClick={copyMsg}>copy</button>
+            {onRetry && <button style={S.msgActBtn} onClick={onRetry}>retry</button>}
+          </div>
+        </div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:'2px', width:'100%' }}>
+          <div style={S.aiBubble}><MsgContent text={cleanText} /></div>
+          {actions.map((a, i) => <ActionChip key={i} action={a} />)}
+          {hasPendingWrite && onApprove && (
+            <div style={S.approveBar}>
+              <button style={S.approveBtn} onClick={() => onApprove(true)}>✓ Tulis file</button>
+              <button style={S.rejectBtn} onClick={() => onApprove(false)}>✗ Batal</button>
+            </div>
+          )}
+          {hasPlan && onPlanApprove && (
+            <div style={{ display:'flex', gap:'8px', margin:'8px 0' }}>
+              <button onClick={() => onPlanApprove(true)} style={{ background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.3)', borderRadius:'8px', padding:'6px 16px', color:'#a78bfa', fontSize:'12px', cursor:'pointer' }}>✓ Approve Plan</button>
+              <button onClick={() => onPlanApprove(false)} style={{ background:'rgba(248,113,113,.08)', border:'1px solid rgba(248,113,113,.15)', borderRadius:'8px', padding:'6px 16px', color:'#f87171', fontSize:'12px', cursor:'pointer' }}>✗ Ubah Plan</button>
+            </div>
+          )}
+          {isContinued && onContinue && (
+            <button onClick={onContinue} style={{ background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.2)', borderRadius:'8px', padding:'5px 14px', color:'#a78bfa', fontSize:'12px', cursor:'pointer', alignSelf:'flex-start', marginTop:'4px' }}>↓ Lanjutkan</button>
+          )}
+          <div style={{ ...S.msgActions, opacity: hover ? 1 : 0 }}>
+            <button style={S.msgActBtn} onClick={copyMsg}>copy</button>
+            {isLast && onRetry && <button style={S.msgActBtn} onClick={onRetry}>retry</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function countTokens(msgs) { return Math.round(msgs.reduce((a, m) => a + m.content.length, 0) / 4); }
+
+export default function App() {
+  const [messages, setMessages] = useState([{ role:'assistant', content:'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa? 🌸' }]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState('');
+  const [folder, setFolder] = useState('yuyucode');
+  const [folderInput, setFolderInput] = useState('yuyucode');
+  const [showFolder, setShowFolder] = useState(false);
+  const [serverOk, setServerOk] = useState(true);
+  const [notes, setNotes] = useState('');
+  const [skill, setSkill] = useState('');
+  const [cmdHistory, setCmdHistory] = useState([]);
+  const [histIdx, setHistIdx] = useState(-1);
+  const [model, setModel] = useState(MODELS[0].id);
+  const [showFollowUp, setShowFollowUp] = useState(false);
+  const [netOnline, setNetOnline] = useState(navigator.onLine);
+  const [rateLimitTimer, setRateLimitTimer] = useState(0);
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
+  const abortRef = useRef(null);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, streaming]);
+
+  useEffect(() => {
+    const on = () => setNetOnline(true);
+    const off = () => setNetOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+
+  useEffect(() => {
+    Promise.all([
+      Preferences.get({ key:'yc_folder' }),
+      Preferences.get({ key:'yc_history' }),
+      Preferences.get({ key:'yc_cmdhist' }),
+      Preferences.get({ key:'yc_model' }),
+    ]).then(([f, h, ch, mo]) => {
+      if (f.value) { setFolder(f.value); setFolderInput(f.value); }
+      if (h.value) { try { setMessages(JSON.parse(h.value)); } catch {} }
+      if (ch.value) { try { setCmdHistory(JSON.parse(ch.value)); } catch {} }
+      if (mo.value) setModel(mo.value);
+    });
+    callServer({ type:'ping' }).then(r => setServerOk(r.ok));
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 1) {
+      Preferences.set({ key:'yc_history', value:JSON.stringify(messages.slice(-MAX_HISTORY).map(m => ({ role:m.role, content:m.content }))) });
+    }
+    setShowFollowUp(messages.length > 1 && messages[messages.length-1]?.role === 'assistant');
+  }, [messages]);
+
+  useEffect(() => {
+    if (!folder) return;
+    Preferences.get({ key:'yc_notes_' + folder }).then(r => setNotes(r.value || ''));
+    callServer({ type:'ping' }).then(r => setServerOk(r.ok));
+    // Load SKILL.md kalau ada
+    callServer({ type:'read', path: folder + '/SKILL.md' }).then(r => {
+      if (r.ok) setSkill(r.data);
+      else setSkill('');
+    });
+  }, [folder]);
+
+  function saveFolder(f) {
+    setFolder(f); setFolderInput(f); setShowFolder(false);
+    Preferences.set({ key:'yc_folder', value:f });
+  }
+
+  function addHistory(cmd) {
+    const next = [cmd, ...cmdHistory.filter(c => c !== cmd)].slice(0, 50);
+    setCmdHistory(next);
+    Preferences.set({ key:'yc_cmdhist', value:JSON.stringify(next) });
+  }
+
+  async function handlePlanApprove(idx, approved) {
+    if (!approved) {
+      setMessages(m => m.map((x, i) => i === idx ? { ...x, planApproved: false } : x));
+      await sendMsg('Ubah plan — jelaskan apa yang perlu diubah');
+      return;
+    }
+    setMessages(m => m.map((x, i) => i === idx ? { ...x, planApproved: true } : x));
+    await sendMsg('Plan diapprove. Mulai eksekusi step by step.');
+  }
+
+  async function handleApprove(idx, ok) {
+    const msg = messages[idx];
+    if (!ok) {
+      setMessages(m => m.map((x, i) => i === idx ? { ...x, actions:x.actions?.map(a => ({ ...a, executed:true, result:{ ok:false, data:'Dibatalkan.' } })) } : x));
+      return;
+    }
+    for (const a of (msg.actions || []).filter(a => a.type === 'write_file' && !a.executed)) {
+      a.result = await executeAction(a, folder);
+      a.executed = true;
+    }
+    setMessages(m => m.map((x, i) => i === idx ? { ...x } : x));
+  }
+
+  function cancel() { abortRef.current?.abort(); setLoading(false); setStreaming(''); }
+
+  async function sendMsg(override) {
+    const txt = (override || input).trim();
+    if (!txt || loading) return;
+    setInput(''); setHistIdx(-1); addHistory(txt);
+    setShowFollowUp(false);
+
+    const userMsg = { role:'user', content:txt };
+    const history = [...messages, userMsg];
+    setMessages(history);
+    setLoading(true); setStreaming('');
+
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    try {
+      const notesCtx = notes ? '\n\nProject notes:\n' + notes : '';
+      const skillCtx = skill ? '\n\nSKILL.md (baca dan ikuti):\n' + skill : '';
+      const systemPrompt = BASE_SYSTEM + '\n\nFolder aktif: ' + folder + notesCtx + skillCtx;
+
+      const groqMsgs = [
+        { role:'system', content:systemPrompt },
+        ...history.map(m => ({ role:m.role, content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim() }))
+      ];
+
+            let reply = await askCerebrasStream(groqMsgs, model, setStreaming, ctrl.signal);
+      setStreaming('');
+
+      const allActions = parseActions(reply);
+      const nonWrites = allActions.filter(a => a.type !== 'write_file');
+      const writes = allActions.filter(a => a.type === 'write_file');
+      for (const a of nonWrites) a.result = await executeAction(a, folder);
+
+      const fileData = nonWrites.filter(a => a.result?.ok && a.type !== 'exec').map(a => '=== ' + a.path + ' ===\n' + a.result.data).join('\n\n');
+      let final = reply;
+      if (fileData) {
+        const followMsgs = [
+          { role:'system', content:systemPrompt },
+          ...groqMsgs.slice(1),
+          { role:'assistant', content:reply.replace(/```action[\s\S]*?```/g,'').trim() },
+          { role:'user', content:'Hasil:\n' + fileData + '\n\nAnalisis dan jawab.' }
+        ];
+        final = await askCerebrasStream(followMsgs, model, setStreaming, ctrl.signal);
+        setStreaming('');
+      }
+
+      if (final.includes('PROJECT_NOTE:')) {
+        const nm = final.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
+        if (nm) { const n = (notes + '\n' + nm[1].trim()).trim(); setNotes(n); Preferences.set({ key:'yc_notes_' + folder, value:n }); }
+      }
+
+      setMessages(m => [...m, { role:'assistant', content:final, actions:[...nonWrites, ...writes.map(a => ({ ...a, executed:false }))] }]);
+    } catch(e) {
+      if (e.name !== 'AbortError') setMessages(m => [...m, { role:'assistant', content:'❌ ' + e.message }]);
+    }
+    setLoading(false);
+  }
+
+  async function continueMsg() { await sendMsg('Lanjutkan response sebelumnya dari titik terakhir.'); }
+  async function retryLast() {
+    const lastUser = [...messages].reverse().find(m => m.role === 'user');
+    if (!lastUser) return;
+    setMessages(m => { const idx = m.lastIndexOf(lastUser); return m.slice(0, idx); });
+    await sendMsg(lastUser.content);
+  }
+
+  async function runShortcut(cmd) {
+    addHistory(cmd); setShowFollowUp(false);
+    setMessages(m => [...m, { role:'user', content:cmd }]);
+    setLoading(true);
+    const r = await executeAction({ type:'exec', command:cmd }, folder);
+    setMessages(m => [...m, { role:'assistant', content:'```bash\n' + (r.data || 'selesai') + '\n```', actions:[] }]);
+    setLoading(false);
+  }
+
+  const tokens = countTokens(messages);
+
+  return (
+    <div style={S.root}>
+      <style>{`
+        * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:2px; }
+        textarea { scrollbar-width:none; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+        button:active { opacity:.7; }
+      `}</style>
+
+      <div style={S.header}>
+        <div style={S.serverDot(serverOk)} />
+        <div style={{ flex:1 }} onClick={() => setShowFolder(!showFolder)}>
+          <div style={S.headerTitle}>YuyuCode</div>
+          <div style={S.headerSub}>📁 {folder}{skill ? ' · 📋 SKILL.md' : ''}</div>
+        </div>
+        <div style={S.tokenBadge}>~{tokens}tk</div>
+        <button style={S.newBtn} onClick={() => { setMessages([{ role:'assistant', content:'Chat baru. Mau ngerjain apa Papa? 🌸' }]); Preferences.remove({ key:'yc_history' }); setShowFollowUp(false); }}>new</button>
+      </div>
+
+      {!netOnline && (
+        <div style={{ padding:'6px 16px', background:'rgba(248,113,113,.08)', borderBottom:'1px solid rgba(248,113,113,.15)', fontSize:'11px', color:'#f87171' }}>
+          📡 Tidak ada koneksi internet
+        </div>
+      )}
+      {rateLimitTimer > 0 && (
+        <div style={{ padding:'6px 16px', background:'rgba(251,191,36,.06)', borderBottom:'1px solid rgba(251,191,36,.1)', fontSize:'11px', color:'rgba(251,191,36,.7)' }}>
+          ⏳ Rate limit — lanjut dalam {rateLimitTimer}d
+        </div>
+      )}
+
+      {showFolder && (
+        <div style={S.folderBar}>
+          <input value={folderInput} onChange={e => setFolderInput(e.target.value)} placeholder="nama folder project"
+            style={S.folderInput} onKeyDown={e => e.key === 'Enter' && saveFolder(folderInput)} />
+          <button style={S.folderBtn} onClick={() => saveFolder(folderInput)}>set</button>
+        </div>
+      )}
+
+      {notes && <div style={S.notesBar}>📝 {notes.slice(0, 100)}</div>}
+      {skill && <div style={S.skillBar}>📋 SKILL.md loaded — {skill.split('\n').length} baris</div>}
+
+      <div style={S.modelPicker}>
+        {MODELS.map(m => (
+          <button key={m.id} style={S.modelBtn(model === m.id)} onClick={() => { setModel(m.id); Preferences.set({ key:'yc_model', value:m.id }); }}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={S.shortcuts}>
+        {GIT_SHORTCUTS.map(s => (
+          <button key={s.label} style={S.shortcutBtn} onClick={() => runShortcut(s.cmd)} disabled={loading}>
+            <span>{s.icon}</span><span>{s.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div style={S.messages}>
+        {messages.map((m, i) => (
+          <MsgBubble key={i} msg={m} isLast={i === messages.length - 1}
+            onApprove={m.actions?.some(a => a.type === 'write_file' && !a.executed) ? (ok) => handleApprove(i, ok) : null}
+            onPlanApprove={m.content?.includes('📋 PLAN:') && !m.planApproved ? (ok) => handlePlanApprove(i, ok) : null}
+            onRetry={i === messages.length - 1 && m.role === 'user' ? retryLast : null}
+            onContinue={i === messages.length - 1 && m.role === 'assistant' && m.content.trim().endsWith('CONTINUE') ? continueMsg : null}
+          />
+        ))}
+        {streaming && (
+          <div style={S.msgRow(false)}>
+            <div style={S.streamingBubble}>
+              <MsgContent text={streaming} />
+              <span style={S.cursor} />
+            </div>
+          </div>
+        )}
+        {loading && !streaming && (
+          <div style={S.msgRow(false)}>
+            <div style={{ color:'rgba(255,255,255,.3)', fontSize:'13px' }}>Yuyu lagi mikir···</div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {showFollowUp && !loading && (
+        <div style={S.followUps}>
+          {FOLLOW_UP_PROMPTS.map(p => (
+            <button key={p} style={S.followUpBtn} onClick={() => sendMsg(p)}>{p}</button>
+          ))}
+        </div>
+      )}
+
+      <div style={S.inputArea}>
+        <textarea ref={inputRef} value={input}
+          onChange={e => { setInput(e.target.value); e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight, 160)+'px'; }}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); return; }
+            if (e.key === 'ArrowUp' && !input) { const idx = Math.min(histIdx+1, cmdHistory.length-1); setHistIdx(idx); setInput(cmdHistory[idx]||''); }
+            if (e.key === 'ArrowDown' && histIdx > -1) { const idx = histIdx-1; setHistIdx(idx); setInput(idx >= 0 ? cmdHistory[idx] : ''); }
+          }}
+          placeholder="Tanya Yuyu..."
+          disabled={loading} rows={1}
+          style={{ ...S.textarea, opacity: loading ? 0.5 : 1 }}
+        />
+        {loading
+          ? <button style={S.stopBtn} onClick={cancel}>stop</button>
+          : <button style={S.sendBtn} onClick={() => sendMsg()}>↑</button>
+        }
+      </div>
+    </div>
+  );
+}function renderMarkdown(raw) {
+  const lines = raw.split('\n');
+  const out = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    // Table block
+    if (/^\|/.test(line)) {
+      const tableLines = [];
+      while (i < lines.length && /^\|/.test(lines[i])) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      const dataRows = tableLines.filter(r => !/^\|[-:\s|]+\|/.test(r));
+      if (dataRows.length > 0) {
+        const rows = dataRows.map((row, ri) => {
+          const cells = row.slice(1,-1).split('|').map(c => c.trim());
+          const tag = ri === 0 ? 'th' : 'td';
+          const s = ri === 0
+            ? 'padding:6px 12px;font-size:11px;color:rgba(255,255,255,.45);font-weight:600;border-bottom:1px solid rgba(255,255,255,.12);text-align:left'
+            : 'padding:6px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top';
+          return '<tr>' + cells.map(c => '<' + tag + ' style="' + s + '">' + inlineRender(c) + '</' + tag + '>').join('') + '</tr>';
+        }).join('');
+        out.push('<div style="overflow-x:auto;margin:8px 0"><table style="width:100%;border-collapse:collapse;background:rgba(255,255,255,.02);border-radius:8px;overflow:hidden">' + rows + '</table></div>');
+      }
+      continue;
+    }
+    // Headings
+    if (line.startsWith('### ')) { out.push('<div style="font-size:13px;font-weight:700;color:#e8e8e8;margin:10px 0 4px">' + inlineRender(line.slice(4)) + '</div>'); i++; continue; }
+    if (line.startsWith('## ')) { out.push('<div style="font-size:14px;font-weight:700;color:#f0f0f0;margin:12px 0 5px">' + inlineRender(line.slice(3)) + '</div>'); i++; continue; }
+    if (line.startsWith('# ')) { out.push('<div style="font-size:15px;font-weight:700;color:#f0f0f0;margin:14px 0 6px">' + inlineRender(line.slice(2)) + '</div>'); i++; continue; }
+    // HR
+    if (line === '---') { out.push('<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:10px 0">'); i++; continue; }
+    // List
+    if (line.startsWith('- ')) { out.push('<div style="display:flex;gap:6px;margin:2px 0 2px 4px"><span style="color:rgba(255,255,255,.35)">•</span><span>' + inlineRender(line.slice(2)) + '</span></div>'); i++; continue; }
+    // Empty line
+    if (line.trim() === '') { out.push('<div style="height:6px"></div>'); i++; continue; }
+    // Normal text
+    out.push('<div>' + inlineRender(line) + '</div>');
+    i++;
+  }
+  return out.join('');
+}
+
+function inlineRender(t) {
+  return t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#f0f0f0">$1</strong>')
+    .replace(/\*([^*]+)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px;color:#e8e8e8">$1</code>');
+}
+
+
+function MsgContent({ text }) {
+  const parts = [];
+  const regex = /```(\w+)?\n?([\s\S]*?)```/g;
+  let last = 0, m;
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) parts.push({ t:'text', c:text.slice(last, m.index) });
+    const lang = m[1] || '';
+    if (lang === 'action') { last = m.index + m[0].length; continue; }
+    if (lang === 'diff') parts.push({ t:'diff', c:m[2] });
+    else parts.push({ t:'code', lang, c:m[2] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({ t:'text', c:text.slice(last) });
+  return (
+    <div>
+      {parts.map((p, i) => {
+        if (p.t === 'text') return (
+          <span key={i} style={{ whiteSpace:'pre-wrap' }}
+            dangerouslySetInnerHTML={{ __html: p.c
+              .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+              .replace(/`([^`]+)`/g,'<code style="background:rgba(255,255,255,.08);padding:1px 6px;borderRadius:4px;fontFamily:monospace;fontSize:13px">$1</code>')
+              .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+            }}
+          />
         );
         if (p.t === 'diff') return (
           <div key={i} style={S.diffBlock}>
