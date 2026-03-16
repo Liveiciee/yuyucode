@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 
@@ -34,42 +33,40 @@ async function askGroq(messages, signal) {
   return data.choices[0].message.content;
 }
 
-async function executeAction(action, baseFolder) {
+const YUYU_SERVER = 'http://localhost:8765';
+
+async function callServer(payload) {
   try {
-    const basePath = baseFolder ? baseFolder + '/' : '';
-    if (action.type === 'read_file') {
-      const result = await Filesystem.readFile({
-        path: basePath + action.path,
-        directory: Directory.ExternalStorage,
-        encoding: Encoding.UTF8
-      });
-      return { ok: true, data: result.data };
-    }
-    if (action.type === 'write_file') {
-      await Filesystem.writeFile({
-        path: basePath + action.path,
-        data: action.content,
-        directory: Directory.ExternalStorage,
-        encoding: Encoding.UTF8,
-        recursive: true
-      });
-      return { ok: true, data: '✅ File berhasil ditulis: ' + action.path };
-    }
-    if (action.type === 'list_files') {
-      const result = await Filesystem.readdir({
-        path: basePath + action.path,
-        directory: Directory.ExternalStorage
-      });
-      const files = result.files.map(f => (f.type === 'directory' ? '📁 ' : '📄 ') + f.name).join('\n');
-      return { ok: true, data: files || '(folder kosong)' };
-    }
-    if (action.type === 'git') {
-      return { ok: false, data: '📋 Copy ke Termux:\n' + action.command };
-    }
-    return { ok: false, data: 'Unknown action: ' + action.type };
+    const resp = await fetch(YUYU_SERVER, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await resp.json();
   } catch(e) {
-    return { ok: false, data: '❌ Error: ' + e.message };
+    return { ok: false, data: 'YuyuServer tidak aktif. Jalankan: node ~/yuyu-server.js di Termux' };
   }
+}
+
+async function executeAction(action, baseFolder) {
+  const base = baseFolder || '';
+  if (action.type === 'read_file') {
+    return callServer({ type: 'read', path: base + '/' + action.path });
+  }
+  if (action.type === 'write_file') {
+    return callServer({ type: 'write', path: base + '/' + action.path, content: action.content });
+  }
+  if (action.type === 'list_files') {
+    const r = await callServer({ type: 'list', path: base + (action.path ? '/' + action.path : '') });
+    if (r.ok && Array.isArray(r.data)) {
+      r.data = r.data.map(f => (f.isDir ? '📁 ' : '📄 ') + f.name).join('\n');
+    }
+    return r;
+  }
+  if (action.type === 'git' || action.type === 'exec') {
+    return callServer({ type: 'exec', path: base, command: action.command || action.type });
+  }
+  return { ok: false, data: 'Unknown action: ' + action.type };
 }
 
 function parseActions(text) {
