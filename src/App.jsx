@@ -1,6 +1,14 @@
 function renderMarkdown(raw) {
+  // Escape HTML dulu KECUALI table rows
+  let t = raw
+    .split('\n')
+    .map(line => /^\|/.test(line) ? '__TABLE_LINE__' + line : line.replace(/&(?!amp;|lt;|gt;)/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'))
+    .join('\n');
+  t = t.replace(/^__TABLE_LINE__/gm, '');
+  // Now mark table rows
+  t = t.replace(/^\|.+\|$/gm, '__TABLE_ROW__function renderMarkdown(raw) {
   // Process tables FIRST before any other replacement
-  let t = raw.replace(/^\|.+\|$/gm, '__TABLE_ROW__$&');
+  let t = raw.replace(/^\|.+\|$/gm, '__TABLE_ROW__$&');');
   
   // Group consecutive table rows
   t = t.replace(/((__TABLE_ROW__.*\n?)+)/g, (match) => {
