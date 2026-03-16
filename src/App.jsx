@@ -91,7 +91,11 @@ async function askCerebrasStream(messages, model, onChunk, signal) {
     },
     body: JSON.stringify({ model, messages, max_tokens: 4000, stream: true })
   });
-  if (!resp.ok) throw new Error('Cerebras HTTP ' + resp.status);
+  if (resp.status === 429) {
+    const retry = parseInt(resp.headers.get('retry-after') || '60');
+    throw new Error('RATE_LIMIT:' + retry);
+  }
+  if (!resp.ok) throw new Error('Cerebras error: HTTP ' + resp.status);
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let full = '';
@@ -498,7 +502,51 @@ function UndoBar({ history, onUndo }) {
   </div>);
 }
 
-// ─── FILE EDITOR ──────────────────────────────────────────────────────────────
+// ─── GIT DIFF VIEWER ──────────────────────────────────────────────────────────
+function GitDiffPanel({ folder, onClose }) {
+  const [diff, setDiff] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [staged, setStaged] = useState(false);
+
+  async function load(s) {
+    setLoading(true);
+    const cmd = s ? 'git diff --cached' : 'git diff';
+    const r = await callServer({ type:'exec', path:folder, command:cmd });
+    setDiff(r.data || '(tidak ada perubahan)');
+    setLoading(false);
+  }
+
+  useEffect(() => { load(false); }, []);
+
+  function renderDiff(text) {
+    return text.split('\n').map((line, i) => {
+      let color = 'rgba(255,255,255,.5)';
+      let bg = 'transparent';
+      if (line.startsWith('+++') || line.startsWith('---')) color = 'rgba(255,255,255,.3)';
+      else if (line.startsWith('+')) { color = '#4ade80'; bg = 'rgba(74,222,128,.04)'; }
+      else if (line.startsWith('-')) { color = '#f87171'; bg = 'rgba(248,113,113,.04)'; }
+      else if (line.startsWith('@@')) { color = '#a78bfa'; bg = 'rgba(124,58,237,.06)'; }
+      else if (line.startsWith('diff ')) { color = '#60a5fa'; bg = 'rgba(96,165,250,.04)'; }
+      return <div key={i} style={{ color, background:bg, fontFamily:'monospace', fontSize:'11px', lineHeight:'1.6', padding:'0 12px', whiteSpace:'pre-wrap', wordBreak:'break-all' }}>{line||' '}</div>;
+    });
+  }
+
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column'}}>
+      <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
+        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>◐ Git Diff</span>
+        <button onClick={()=>{setStaged(false);load(false);}} style={{background:!staged?'rgba(255,255,255,.1)':'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'5px',padding:'2px 8px',color:!staged?'#f0f0f0':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>unstaged</button>
+        <button onClick={()=>{setStaged(true);load(true);}} style={{background:staged?'rgba(255,255,255,.1)':'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'5px',padding:'2px 8px',color:staged?'#f0f0f0':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>staged</button>
+        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+      </div>
+      <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
+        {loading ? <div style={{padding:'16px',color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Loading···</div> : renderDiff(diff)}
+      </div>
+    </div>
+  );
+}
+
+
 function FileEditor({ path, content, onSave, onClose }) {
   const [text, setText] = useState(content || '');
   const [saved, setSaved] = useState(true);
@@ -602,12 +650,24 @@ export default function App() {
   const [branch, setBranch] = useState('main');
   const [sidebarWidth, setSidebarWidth] = useState(180);
   const [dragging, setDragging] = useState(false);
+  const [netOnline, setNetOnline] = useState(navigator.onLine);
+  const [rateLimitTimer, setRateLimitTimer] = useState(0);
+  const [showDiff, setShowDiff] = useState(false);
+  const [agentRunning, setAgentRunning] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
   const T = THEMES[theme] || THEMES.dark;
 
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:'smooth'});},[messages,streaming]);
+
+  useEffect(()=>{
+    const on=()=>setNetOnline(true);
+    const off=()=>setNetOnline(false);
+    window.addEventListener('online',on);
+    window.addEventListener('offline',off);
+    return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};
+  },[]);
 
   useEffect(()=>{
     Promise.all([
@@ -721,35 +781,101 @@ export default function App() {
       const notesCtx=notes?'\n\nProject notes:\n'+notes:'';
       const skillCtx=skill?'\n\nSKILL.md:\n'+skill:'';
       const pinnedCtx=pinnedFiles.length?'\n\nPinned files: '+pinnedFiles.join(', '):'';
-      const fileCtx=selectedFile&&fileContent?'\n\nFile terbuka: '+selectedFile:'';
+      const fileCtx=selectedFile&&fileContent?'\n\nFile terbuka: '+selectedFile+'\n```\n'+fileContent.slice(0,1500)+'\n```':'';
       const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx;
-      const groqMsgs=[
-        {role:'system',content:systemPrompt},
-        ...history.map(m=>({role:m.role,content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim()}))
-      ];
-      let reply=await askCerebrasStream(groqMsgs,model,setStreaming,ctrl.signal);
-      setStreaming('');
-      const allActions=parseActions(reply);
-      const nonWrites=allActions.filter(a=>a.type!=='write_file');
-      const writes=allActions.filter(a=>a.type==='write_file');
-      for(const a of nonWrites) a.result=await executeAction(a,folder);
-      const fileData=nonWrites.filter(a=>a.result?.ok&&a.type!=='exec').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
-      let final=reply;
-      if(fileData){
-        final=await askCerebrasStream([
-          ...groqMsgs,
-          {role:'assistant',content:reply.replace(/```action[\s\S]*?```/g,'').trim()},
-          {role:'user',content:'Hasil:\n'+fileData+'\n\nAnalisis dan jawab.'}
-        ],model,setStreaming,ctrl.signal);
+
+      // ── AGENTIC LOOP ──
+      const MAX_ITER = 6;
+      let iter = 0;
+      let allMessages = [...history];
+      let finalContent = '';
+      let finalActions = [];
+      let autoContext = {}; // path → content, auto-loaded files
+
+      while (iter < MAX_ITER) {
+        iter++;
+        if (iter > 1) setAgentRunning(true);
+
+        const groqMsgs=[
+          {role:'system',content:systemPrompt+(Object.keys(autoContext).length?'\n\nAuto-loaded context:\n'+Object.entries(autoContext).map(([p,c])=>'=== '+p+' ===\n'+c.slice(0,800)).join('\n\n'):'')},
+          ...allMessages.map(m=>({role:m.role,content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim()}))
+        ];
+
+        let reply = await askCerebrasStream(groqMsgs, model, setStreaming, ctrl.signal);
         setStreaming('');
+
+        const allActions = parseActions(reply);
+        const writes = allActions.filter(a=>a.type==='write_file');
+        const nonWrites = allActions.filter(a=>a.type!=='write_file');
+
+        // Execute non-write actions
+        for(const a of nonWrites) {
+          a.result = await executeAction(a, folder);
+          // ── AUTO CONTEXT: scan imports dari file yang dibaca ──
+          if (a.type==='read_file' && a.result?.ok && a.path) {
+            const content = a.result.data || '';
+            const importRegex = /(?:import|require)\s+.*?['"](.+?)['"]/g;
+            let im;
+            while ((im = importRegex.exec(content)) !== null) {
+              const imp = im[1];
+              if (!imp.startsWith('.')) continue;
+              const base = a.path.split('/').slice(0,-1).join('/');
+              const candidates = [imp, imp+'.jsx', imp+'.js', imp+'.ts', imp+'.tsx'].map(s=>base+'/'+s.replace('./','/').replace('//','/'));
+              for (const cand of candidates) {
+                if (autoContext[cand]) continue;
+                const r = await callServer({type:'read', path:resolvePath(folder, cand)});
+                if (r.ok) { autoContext[cand] = r.data; break; }
+              }
+            }
+          }
+        }
+
+        const fileData = nonWrites.filter(a=>a.result?.ok&&a.type!=='exec').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
+
+        // If no file reads and no writes — done
+        if (!fileData && writes.length === 0) {
+          finalContent = reply;
+          finalActions = nonWrites;
+          break;
+        }
+
+        // If writes found — pause for approval
+        if (writes.length > 0) {
+          finalContent = reply;
+          finalActions = [...nonWrites, ...writes.map(a=>({...a,executed:false}))];
+          break;
+        }
+
+        // Feed file data back for next iteration
+        const agentNote = iter < MAX_ITER ? '' : '\n\n(Ini iterasi terakhir, berikan jawaban final.)';
+        allMessages = [
+          ...allMessages,
+          {role:'assistant', content:reply.replace(/```action[\s\S]*?```/g,'').trim()},
+          {role:'user', content:'Hasil aksi:\n'+fileData+'\n\nLanjutkan analisis dan jawab.'+agentNote}
+        ];
       }
-      if(final.includes('PROJECT_NOTE:')){
-        const nm=final.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
+
+      setAgentRunning(false);
+
+      if(finalContent.includes('PROJECT_NOTE:')){
+        const nm=finalContent.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
         if(nm){const n=(notes+'\n'+nm[1].trim()).trim();setNotes(n);Preferences.set({key:'yc_notes_'+folder,value:n});}
       }
-      setMessages(m=>[...m,{role:'assistant',content:final,actions:[...nonWrites,...writes.map(a=>({...a,executed:false}))]}]);
+      setMessages(m=>[...m,{role:'assistant',content:finalContent,actions:finalActions}]);
     }catch(e){
-      if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
+      setAgentRunning(false);
+      if(e.name!=='AbortError'){
+        if(e.message.startsWith('RATE_LIMIT:')){
+          const secs=parseInt(e.message.split(':')[1]);
+          setRateLimitTimer(secs);
+          const iv=setInterval(()=>setRateLimitTimer(t=>{if(t<=1){clearInterval(iv);return 0;}return t-1;}),1000);
+          setMessages(m=>[...m,{role:'assistant',content:'⏳ Rate limit — tunggu '+secs+' detik ya Papa~'}]);
+        } else if(!navigator.onLine){
+          setMessages(m=>[...m,{role:'assistant',content:'📡 Internet terputus, cek koneksi dulu~'}]);
+        } else {
+          setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
+        }
+      }
     }
     setLoading(false);
   }
@@ -844,6 +970,10 @@ export default function App() {
       )}
 
       <UndoBar history={editHistory} onUndo={undoLastEdit}/>
+
+      {!netOnline&&<div style={{padding:'5px 12px',background:'rgba(248,113,113,.08)',borderBottom:'1px solid rgba(248,113,113,.15)',fontSize:'11px',color:'#f87171',flexShrink:0}}>📡 Tidak ada koneksi internet</div>}
+      {rateLimitTimer>0&&<div style={{padding:'5px 12px',background:'rgba(251,191,36,.06)',borderBottom:'1px solid rgba(251,191,36,.1)',fontSize:'11px',color:'rgba(251,191,36,.7)',flexShrink:0}}>⏳ Rate limit — lanjut dalam {rateLimitTimer}d</div>}
+      {agentRunning&&<div style={{padding:'5px 12px',background:'rgba(124,58,237,.06)',borderBottom:'1px solid rgba(124,58,237,.12)',fontSize:'11px',color:'#a78bfa',flexShrink:0}}>🤖 Yuyu lagi jalan sendiri···</div>}
 
       {/* PINNED FILES BAR */}
       {pinnedFiles.length>0&&(
@@ -985,6 +1115,9 @@ export default function App() {
                   <span>{s.icon}</span><span>{s.label}</span>
                 </button>
               ))}
+              <button onClick={()=>setShowDiff(true)} style={{background:'rgba(96,165,250,.06)',border:'1px solid rgba(96,165,250,.15)',borderRadius:'5px',padding:'3px 10px',color:'rgba(96,165,250,.7)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
+                <span>◐</span><span>diff</span>
+              </button>
             </div>
           )}
 
@@ -1012,6 +1145,7 @@ export default function App() {
       {/* OVERLAYS */}
       {showSearch&&<SearchBar folder={folder} onSelectFile={openFile} onClose={()=>setShowSearch(false)}/>}
       {showShortcuts&&<ShortcutsPanel onClose={()=>setShowShortcuts(false)}/>}
+      {showDiff&&<GitDiffPanel folder={folder} onClose={()=>setShowDiff(false)}/>}
     </div>
   );
 }
