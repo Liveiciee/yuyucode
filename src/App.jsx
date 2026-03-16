@@ -189,7 +189,7 @@ async function askGroqStream(messages, model, onChunk, signal) {
 
 // ─── GEMINI STREAMING ─────────────────────────────────────────────────────────
 async function askGeminiStream(messages, model, onChunk, signal) {
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':streamGenerateContent?alt=sse&key=' + GEMINI_KEY;
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GEMINI_KEY;
   const systemMsg = messages.find(m => m.role === 'system');
   const chatMsgs = messages.filter(m => m.role !== 'system');
   const contents = chatMsgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
@@ -197,21 +197,9 @@ async function askGeminiStream(messages, model, onChunk, signal) {
   if (systemMsg) body.systemInstruction = { parts: [{ text: systemMsg.content }] };
   const resp = await fetch(url, { method:'POST', signal, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
   if (!resp.ok) throw new Error('Gemini HTTP ' + resp.status);
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let full = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    for (const line of decoder.decode(value).split('\n')) {
-      if (!line.startsWith('data: ')) continue;
-      try {
-        const d = JSON.parse(line.slice(6));
-        const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (text) { full += text; onChunk(full); }
-      } catch {}
-    }
-  }
+  const data = await resp.json();
+  const full = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  onChunk(full);
   return full;
 }
 
