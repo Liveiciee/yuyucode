@@ -126,14 +126,24 @@ function resolvePath(base, p) {
 
 async function executeAction(action, baseFolder) {
   const base = baseFolder || '';
-  if (action.type === 'read_file') return callServer({ type:'read', path:resolvePath(base, action.path) });
+  if (action.type === 'read_file') {
+    const payload = { type:'read', path:resolvePath(base, action.path) };
+    if (action.from) payload.from = action.from;
+    if (action.to) payload.to = action.to;
+    const r = await callServer(payload);
+    if (r.ok && r.meta) r.data = `[Lines ${action.from||1}-${action.to||r.meta.totalLines} of ${r.meta.totalLines} | ${Math.round(r.meta.totalChars/1000)}KB]\n` + r.data;
+    return r;
+  }
   if (action.type === 'write_file') return callServer({ type:'write', path:resolvePath(base, action.path), content:action.content });
   if (action.type === 'list_files') {
     const r = await callServer({ type:'list', path:resolvePath(base, action.path) });
-    if (r.ok && Array.isArray(r.data)) r.data = r.data.map(f => (f.isDir ? '📁 ' : '📄 ') + f.name).join('\n');
+    if (r.ok && Array.isArray(r.data)) r.data = r.data.map(f => (f.isDir ? '📁 ' : '📄 ') + f.name + (f.size ? ` (${Math.round(f.size/1024)}KB)` : '')).join('\n');
     return r;
   }
   if (action.type === 'exec') return callServer({ type:'exec', path:base, command:action.command });
+  if (action.type === 'search') return callServer({ type:'search', path:resolvePath(base, action.path||''), content:action.query });
+  if (action.type === 'file_info') return callServer({ type:'info', path:resolvePath(base, action.path) });
+  if (action.type === 'delete_file') return callServer({ type:'delete', path:resolvePath(base, action.path) });
   return { ok:false, data:'Unknown: ' + action.type };
 }
 
