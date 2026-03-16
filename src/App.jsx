@@ -10,8 +10,9 @@ const MODELS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', fast: false },
   { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B', fast: true },
   { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', fast: false },
+  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', fast: false, gemini: true },
+  { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Lite ⚡', fast: true, gemini: true },
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', fast: false, gemini: true },
-  { id: 'gemini-2.5-flash-lite', label: 'Gemini Lite ⚡', fast: true, gemini: true },
 ];
 
 const YUYU_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
