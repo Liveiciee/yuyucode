@@ -27,8 +27,12 @@ function renderMarkdown(raw) {
   t = t.replace(/__TABLE_ROW__/g, '');
 
   // Now do other markdown
+  // Escape HTML only in non-table parts
+  t = t.replace(/((?:<(?:div|table|tr|td|th)[^>]*>[sS]*?</(?:div|table|tr|td|th)>)|([^<]*))/g, (m, tag, text) => {
+    if (tag) return tag; // keep HTML as-is
+    return (text||'').replace(/&(?!amp;|lt;|gt;)/g,'&amp;');
+  });
   t = t
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/^### (.*?)$/gm,'<div style="font-size:13px;font-weight:700;color:#e8e8e8;margin:10px 0 4px">$1</div>')
     .replace(/^## (.*?)$/gm,'<div style="font-size:14px;font-weight:700;color:#f0f0f0;margin:12px 0 5px">$1</div>')
     .replace(/^# (.*?)$/gm,'<div style="font-size:15px;font-weight:700;color:#f0f0f0;margin:14px 0 6px">$1</div>')
