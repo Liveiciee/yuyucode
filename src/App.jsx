@@ -11,7 +11,7 @@ const MODELS = [
   { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B', fast: true },
   { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', fast: false },
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', fast: false, gemini: true },
-  { id: 'gemini-2.5-flash-lite-preview-06-17', label: 'Gemini Lite ⚡', fast: true, gemini: true },
+  { id: 'gemini-2.5-flash-lite', label: 'Gemini Lite ⚡', fast: true, gemini: true },
 ];
 
 const YUYU_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
