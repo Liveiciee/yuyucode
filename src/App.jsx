@@ -190,12 +190,45 @@ function parseActions(text) {
 }
 
 
-function hl(code) {
-  return code
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+function hl(code, lang='') {
+  let s = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const L = lang.toLowerCase();
+  if (L==='json') {
+    return s
+      .replace(/("(?:[^"\\]|\\.)*")(\s*:)/g,'<span style="color:#79b8ff">$1</span>$2')
+      .replace(/:\s*("(?:[^"\\]|\\.)*")/g,': <span style="color:#98c379">$1</span>')
+      .replace(/\b(true|false|null)\b/g,'<span style="color:#f97583">$1</span>')
+      .replace(/\b(\d+\.?\d*)\b/g,'<span style="color:#d19a66">$1</span>');
+  }
+  if (L==='bash'||L==='sh') {
+    return s
+      .replace(/(#.*$)/gm,'<span style="color:#6a737d">$1</span>')
+      .replace(/\b(echo|cd|ls|git|npm|node|export|source|if|then|fi|for|do|done|while|function|return)\b/g,'<span style="color:#c678dd">$1</span>')
+      .replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,'<span style="color:#98c379">$1</span>')
+      .replace(/(\$\w+|\$\{[^}]+\})/g,'<span style="color:#79b8ff">$1</span>');
+  }
+  if (L==='python'||L==='py') {
+    return s
+      .replace(/(#.*$)/gm,'<span style="color:#6a737d">$1</span>')
+      .replace(/("""[\s\S]*?"""|'''[\s\S]*?''')/g,'<span style="color:#98c379">$1</span>')
+      .replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,'<span style="color:#98c379">$1</span>')
+      .replace(/\b(def|class|import|from|return|if|elif|else|for|while|try|except|with|as|in|not|and|or|True|False|None|lambda|yield|async|await)\b/g,'<span style="color:#c678dd">$1</span>')
+      .replace(/\b(\d+\.?\d*)\b/g,'<span style="color:#d19a66">$1</span>');
+  }
+  if (L==='css') {
+    return s
+      .replace(/(\/\*[\s\S]*?\*\/)/g,'<span style="color:#6a737d">$1</span>')
+      .replace(/([.#]?[\w-]+)\s*\{/g,'<span style="color:#79b8ff">$1</span>{')
+      .replace(/([\w-]+)\s*:/g,'<span style="color:#b392f0">$1</span>:')
+      .replace(/:\s*([^;{]+)/g,': <span style="color:#98c379">$1</span>');
+  }
+  // default JS/JSX/TS
+  return s
     .replace(/(\/{2}.*$|\/\*[\s\S]*?\*\/)/gm,'<span style="color:#6a737d">$1</span>')
-    .replace(/(["`'])(?:(?!\1)[^\\]|\\.)*\1/g,'<span style="color:#98c379">$&</span>')
-    .replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|class|new|this|from|of|in|typeof|null|undefined|true|false)\b/g,'<span style="color:#c678dd">$1</span>')
+    .replace(/(`(?:[^`\\]|\\.)*`)/g,'<span style="color:#98c379">$1</span>')
+    .replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,'<span style="color:#98c379">$1</span>')
+    .replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|finally|class|new|this|from|of|in|typeof|instanceof|null|undefined|true|false|throw|switch|case|break|continue|extends|super|static|get|set)\b/g,'<span style="color:#c678dd">$1</span>')
+    .replace(/\b([A-Z][a-zA-Z0-9]*)\b/g,'<span style="color:#79b8ff">$1</span>')
     .replace(/\b(\d+\.?\d*)\b/g,'<span style="color:#d19a66">$1</span>');
 }
 
@@ -247,7 +280,7 @@ function MsgContent({ text }) {
         return (
           <div key={i} style={S.codeBlock}>
             {p.lang && <div style={S.codeLang}>{p.lang}</div>}
-            <pre style={S.codePre} dangerouslySetInnerHTML={{ __html: hl(p.c) }} />
+            <pre style={S.codePre} dangerouslySetInnerHTML={{ __html: hl(p.c, p.lang) }} />
           </div>
         );
       })}
@@ -352,24 +385,54 @@ function getFileIcon(name) {
   return icons[ext] || '📄';
 }
 
-function FileTree({ folder, onSelectFile, selectedFile }) {
+function FileTree({ folder, onSelectFile, selectedFile, onRefresh }) {
   const [tree, setTree] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [loading, setLoading] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState(null); // {path, isDir, x, y}
+  const [renaming, setRenaming] = useState(null);
+  const [creating, setCreating] = useState(null); // {parentPath, isDir}
+  const [newName, setNewName] = useState('');
 
-  useEffect(() => {
+  async function load() {
     if (!folder) return;
     setLoading(true);
-    callServer({ type:'list', path:folder }).then(r => {
-      if (r.ok && Array.isArray(r.data)) setTree(r.data);
-      setLoading(false);
-    });
-  }, [folder]);
+    const r = await callServer({ type:'list', path:folder });
+    if (r.ok && Array.isArray(r.data)) setTree(r.data);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, [folder]);
 
   async function toggleDir(fullPath) {
     if (expanded[fullPath]) { setExpanded(e => ({ ...e, [fullPath]:null })); return; }
     const r = await callServer({ type:'list', path:fullPath });
     if (r.ok && Array.isArray(r.data)) setExpanded(e => ({ ...e, [fullPath]:r.data }));
+  }
+
+  async function doRename(oldPath) {
+    if (!newName.trim()) { setRenaming(null); return; }
+    const parentPath = oldPath.split('/').slice(0,-1).join('/');
+    const newPath = parentPath + '/' + newName.trim();
+    await callServer({type:'exec', path:folder, command:`mv "${oldPath}" "${newPath}"`});
+    setRenaming(null); setNewName(''); load();
+  }
+
+  async function doCreate(parentPath) {
+    if (!newName.trim()) { setCreating(null); return; }
+    const newPath = parentPath + '/' + newName.trim();
+    if (creating.isDir) {
+      await callServer({type:'exec', path:folder, command:`mkdir -p "${newPath}"`});
+    } else {
+      await callServer({type:'write', path:newPath, content:''});
+    }
+    setCreating(null); setNewName(''); load();
+    if (!creating.isDir) onSelectFile(newPath);
+  }
+
+  async function doDelete(path) {
+    await callServer({type:'exec', path:folder, command:`rm -rf "${path}"`});
+    setCtxMenu(null); load();
   }
 
   function renderItems(items, basePath, depth) {
@@ -383,24 +446,64 @@ function FileTree({ folder, onSelectFile, selectedFile }) {
         const isExp = expanded[fullPath];
         return (
           <div key={item.name}>
-            <div onClick={() => item.isDir ? toggleDir(fullPath) : onSelectFile(fullPath)}
-              style={{ display:'flex', alignItems:'center', gap:'4px', padding:'3px 6px 3px '+(8+depth*12)+'px', cursor:'pointer', borderRadius:'4px', background:isSelected?'rgba(124,58,237,.2)':'transparent', color:isSelected?'#a78bfa':item.isDir?'rgba(255,255,255,.7)':'rgba(255,255,255,.55)', fontSize:'12px', userSelect:'none' }}
-              onMouseEnter={e => !isSelected&&(e.currentTarget.style.background='rgba(255,255,255,.04)')}
-              onMouseLeave={e => !isSelected&&(e.currentTarget.style.background='transparent')}>
-              <span style={{fontSize:'9px',flexShrink:0,width:'10px'}}>{item.isDir?(isExp?'▾':'▸'):''}</span>
-              <span style={{fontSize:'11px',flexShrink:0}}>{item.isDir?'📁':getFileIcon(item.name)}</span>
-              <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</span>
-            </div>
+            {renaming === fullPath ? (
+              <div style={{padding:'2px 6px 2px '+(8+depth*12)+'px',display:'flex',gap:'4px'}}>
+                <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter')doRename(fullPath);if(e.key==='Escape'){setRenaming(null);setNewName('');}}}
+                  style={{flex:1,background:'rgba(255,255,255,.1)',border:'1px solid rgba(124,58,237,.4)',borderRadius:'3px',padding:'1px 5px',color:'#f0f0f0',fontSize:'11px',outline:'none',fontFamily:'monospace'}}/>
+              </div>
+            ) : (
+              <div onClick={() => item.isDir ? toggleDir(fullPath) : onSelectFile(fullPath)}
+                onContextMenu={e=>{e.preventDefault();setCtxMenu({path:fullPath,isDir:item.isDir,x:e.clientX,y:e.clientY});}}
+                style={{ display:'flex', alignItems:'center', gap:'4px', padding:'3px 6px 3px '+(8+depth*12)+'px', cursor:'pointer', borderRadius:'4px', background:isSelected?'rgba(124,58,237,.2)':'transparent', color:isSelected?'#a78bfa':item.isDir?'rgba(255,255,255,.7)':'rgba(255,255,255,.55)', fontSize:'12px', userSelect:'none' }}
+                onMouseEnter={e => !isSelected&&(e.currentTarget.style.background='rgba(255,255,255,.04)')}
+                onMouseLeave={e => !isSelected&&(e.currentTarget.style.background=isSelected?'rgba(124,58,237,.2)':'transparent')}>
+                <span style={{fontSize:'9px',flexShrink:0,width:'10px'}}>{item.isDir?(isExp?'▾':'▸'):''}</span>
+                <span style={{fontSize:'11px',flexShrink:0}}>{item.isDir?'📁':getFileIcon(item.name)}</span>
+                <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</span>
+              </div>
+            )}
             {item.isDir && isExp && renderItems(isExp, fullPath, depth+1)}
+            {creating && creating.parentPath === fullPath && (
+              <div style={{padding:'2px 6px 2px '+(8+(depth+1)*12)+'px',display:'flex',gap:'4px'}}>
+                <span style={{fontSize:'11px'}}>{creating.isDir?'📁':'📄'}</span>
+                <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)} placeholder={creating.isDir?'folder name':'file name'}
+                  onKeyDown={e=>{if(e.key==='Enter')doCreate(fullPath);if(e.key==='Escape'){setCreating(null);setNewName('');}}}
+                  style={{flex:1,background:'rgba(255,255,255,.1)',border:'1px solid rgba(74,222,128,.4)',borderRadius:'3px',padding:'1px 5px',color:'#f0f0f0',fontSize:'11px',outline:'none',fontFamily:'monospace'}}/>
+              </div>
+            )}
           </div>
         );
       });
   }
 
   return (
-    <div style={{height:'100%',overflowY:'auto',padding:'4px 0'}}>
+    <div style={{height:'100%',overflowY:'auto',padding:'4px 0',position:'relative'}} onClick={()=>ctxMenu&&setCtxMenu(null)}>
+      {/* New file/folder buttons */}
+      <div style={{padding:'3px 8px',display:'flex',gap:'4px',borderBottom:'1px solid rgba(255,255,255,.04)',marginBottom:'2px'}}>
+        <button onClick={()=>{setCreating({parentPath:folder,isDir:false});setNewName('');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'11px',cursor:'pointer',padding:'1px 4px'}}>+ file</button>
+        <button onClick={()=>{setCreating({parentPath:folder,isDir:true});setNewName('');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'11px',cursor:'pointer',padding:'1px 4px'}}>+ folder</button>
+        <button onClick={load} style={{background:'none',border:'none',color:'rgba(255,255,255,.2)',fontSize:'10px',cursor:'pointer',padding:'1px 4px',marginLeft:'auto'}}>↺</button>
+      </div>
+      {creating && creating.parentPath === folder && (
+        <div style={{padding:'2px 8px',display:'flex',gap:'4px',alignItems:'center'}}>
+          <span style={{fontSize:'11px'}}>{creating.isDir?'📁':'📄'}</span>
+          <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)} placeholder={creating.isDir?'folder name':'file name'}
+            onKeyDown={e=>{if(e.key==='Enter')doCreate(folder);if(e.key==='Escape'){setCreating(null);setNewName('');}}}
+            style={{flex:1,background:'rgba(255,255,255,.1)',border:'1px solid rgba(74,222,128,.4)',borderRadius:'3px',padding:'2px 6px',color:'#f0f0f0',fontSize:'11px',outline:'none',fontFamily:'monospace'}}/>
+        </div>
+      )}
       {loading && <div style={{padding:'8px 12px',fontSize:'11px',color:'rgba(255,255,255,.3)'}}>Loading...</div>}
       {tree && renderItems(tree, folder, 0)}
+      {/* Context Menu */}
+      {ctxMenu && (
+        <div style={{position:'fixed',top:ctxMenu.y,left:ctxMenu.x,background:'#1a1a1e',border:'1px solid rgba(255,255,255,.12)',borderRadius:'8px',padding:'4px',zIndex:999,minWidth:'140px',boxShadow:'0 8px 24px rgba(0,0,0,.5)'}}>
+          {ctxMenu.isDir&&<div onClick={()=>{setCreating({parentPath:ctxMenu.path,isDir:false});setNewName('');setCtxMenu(null);}} style={{padding:'6px 12px',fontSize:'12px',color:'rgba(255,255,255,.7)',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>📄 New file</div>}
+          {ctxMenu.isDir&&<div onClick={()=>{setCreating({parentPath:ctxMenu.path,isDir:true});setNewName('');setCtxMenu(null);}} style={{padding:'6px 12px',fontSize:'12px',color:'rgba(255,255,255,.7)',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>📁 New folder</div>}
+          <div onClick={()=>{setRenaming(ctxMenu.path);setNewName(ctxMenu.path.split('/').pop());setCtxMenu(null);}} style={{padding:'6px 12px',fontSize:'12px',color:'rgba(255,255,255,.7)',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>✏️ Rename</div>
+          <div onClick={()=>doDelete(ctxMenu.path)} style={{padding:'6px 12px',fontSize:'12px',color:'#f87171',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(248,113,113,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>🗑 Delete</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -631,6 +734,130 @@ function ShortcutsPanel({ onClose }) {
   </div>);
 }
 
+// ─── GIT BLAME ────────────────────────────────────────────────────────────────
+function GitBlamePanel({ folder, filePath, onClose }) {
+  const [blame, setBlame] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const rel = filePath.replace(folder+'/', '');
+    callServer({type:'exec', path:folder, command:`git blame --line-porcelain "${rel}" 2>/dev/null | grep -E "^(author |author-time |summary )" | paste - - - | head -200`}).then(r => {
+      if (!r.ok || !r.data) { setLoading(false); return; }
+      const lines = r.data.trim().split('\n').map(line => {
+        const parts = line.split('\t');
+        const author = (parts[0]||'').replace('author ','');
+        const time = new Date(parseInt((parts[1]||'').replace('author-time ',''))*1000).toLocaleDateString('id');
+        const summary = (parts[2]||'').replace('summary ','').slice(0,30);
+        return { author, time, summary };
+      });
+      setBlame(lines);
+      setLoading(false);
+    });
+  }, [filePath]);
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column'}}>
+      <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',background:'rgba(255,255,255,.02)',flexShrink:0}}>
+        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>👁 Git Blame — {filePath.split('/').pop()}</span>
+        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+      </div>
+      <div style={{flex:1,overflowY:'auto',fontFamily:'monospace',fontSize:'11px'}}>
+        {loading && <div style={{padding:'16px',color:'rgba(255,255,255,.3)'}}>Loading···</div>}
+        {blame.map((b,i) => (
+          <div key={i} style={{display:'flex',gap:'8px',padding:'2px 12px',borderBottom:'1px solid rgba(255,255,255,.03)'}}>
+            <span style={{color:'rgba(99,102,241,.7)',minWidth:'70px',flexShrink:0}}>{b.time}</span>
+            <span style={{color:'rgba(74,222,128,.6)',minWidth:'80px',flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.author}</span>
+            <span style={{color:'rgba(255,255,255,.35)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.summary}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── SNIPPET LIBRARY ──────────────────────────────────────────────────────────
+function SnippetLibrary({ onInsert, onClose }) {
+  const [snippets, setSnippets] = useState([]);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCode, setNewCode] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    Preferences.get({key:'yc_snippets'}).then(r => {
+      if (r.value) try { setSnippets(JSON.parse(r.value)); } catch {}
+    });
+  }, []);
+
+  function save(list) {
+    setSnippets(list);
+    Preferences.set({key:'yc_snippets', value:JSON.stringify(list)});
+  }
+
+  function addSnippet() {
+    if (!newTitle.trim() || !newCode.trim()) return;
+    save([...snippets, {id:Date.now(), title:newTitle.trim(), code:newCode.trim()}]);
+    setNewTitle(''); setNewCode(''); setAdding(false);
+  }
+
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column'}}>
+      <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
+        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>✦ Snippet Library</span>
+        <button onClick={()=>setAdding(!adding)} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'11px',cursor:'pointer'}}>+ New</button>
+        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+      </div>
+      {adding && (
+        <div style={{padding:'10px 12px',borderBottom:'1px solid rgba(255,255,255,.06)',display:'flex',flexDirection:'column',gap:'6px',flexShrink:0}}>
+          <input value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Snippet title..."
+            style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'5px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none'}}/>
+          <textarea value={newCode} onChange={e=>setNewCode(e.target.value)} placeholder="Code..." rows={4}
+            style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'5px 10px',color:'#f0f0f0',fontSize:'11px',outline:'none',fontFamily:'monospace',resize:'none'}}/>
+          <button onClick={addSnippet} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'6px',padding:'5px',color:'#4ade80',fontSize:'11px',cursor:'pointer'}}>Simpan</button>
+        </div>
+      )}
+      <div style={{flex:1,overflowY:'auto',padding:'8px'}}>
+        {snippets.length===0 && <div style={{color:'rgba(255,255,255,.2)',fontSize:'12px',padding:'8px'}}>Belum ada snippet~</div>}
+        {snippets.map(s => (
+          <div key={s.id} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px',padding:'8px 10px',marginBottom:'6px'}}>
+            <div style={{display:'flex',alignItems:'center',marginBottom:'4px'}}>
+              <span style={{fontSize:'12px',color:'rgba(255,255,255,.7)',fontWeight:'500',flex:1}}>{s.title}</span>
+              <button onClick={()=>onInsert(s.code)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'4px',padding:'1px 7px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',marginRight:'4px'}}>insert</button>
+              <button onClick={()=>save(snippets.filter(x=>x.id!==s.id))} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer'}}>×</button>
+            </div>
+            <pre style={{margin:0,fontSize:'10px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',whiteSpace:'pre-wrap',wordBreak:'break-all',maxHeight:'60px',overflow:'hidden'}}>{s.code}</pre>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── VOICE INPUT ──────────────────────────────────────────────────────────────
+function VoiceBtn({ onResult, disabled }) {
+  const [listening, setListening] = useState(false);
+  const recogRef = useRef(null);
+
+  function toggle() {
+    if (listening) { recogRef.current?.stop(); setListening(false); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Speech recognition tidak tersedia di browser ini'); return; }
+    const r = new SR();
+    r.lang = 'id-ID';
+    r.interimResults = false;
+    r.onresult = e => { onResult(e.results[0][0].transcript); setListening(false); };
+    r.onerror = () => setListening(false);
+    r.onend = () => setListening(false);
+    recogRef.current = r;
+    r.start();
+    setListening(true);
+  }
+
+  return (
+    <button onClick={toggle} disabled={disabled}
+      style={{background:listening?'rgba(248,113,113,.2)':'rgba(255,255,255,.04)',border:'1px solid '+(listening?'rgba(248,113,113,.4)':'rgba(255,255,255,.08)'),borderRadius:'10px',padding:'8px 10px',color:listening?'#f87171':'rgba(255,255,255,.3)',fontSize:'13px',cursor:'pointer',flexShrink:0,transition:'all .2s'}}>
+      {listening ? '⏹' : '🎤'}
+    </button>
+  );
+}
+
 export default function App() {
   const [messages, setMessages] = useState([{ role:'assistant', content:'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa? 🌸' }]);
   const [input, setInput] = useState('');
@@ -665,6 +892,10 @@ export default function App() {
   const [rateLimitTimer, setRateLimitTimer] = useState(0);
   const [showDiff, setShowDiff] = useState(false);
   const [agentRunning, setAgentRunning] = useState(false);
+  const [showBlame, setShowBlame] = useState(false);
+  const [showSnippets, setShowSnippets] = useState(false);
+  const [splitView, setSplitView] = useState(false);
+  const [offlineCache, setOfflineCache] = useState('');
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
@@ -939,6 +1170,12 @@ export default function App() {
         if(nm){const n=(notes+'\n'+nm[1].trim()).trim();setNotes(n);Preferences.set({key:'yc_notes_'+folder,value:n});}
       }
       setMessages(m=>[...m,{role:'assistant',content:finalContent,actions:finalActions}]);
+      // ── OFFLINE CACHE: simpan response terakhir ──
+      if (finalContent) {
+        const cache = JSON.stringify({q:txt, a:finalContent, t:Date.now()});
+        Preferences.set({key:'yc_offline_cache', value:cache});
+        setOfflineCache(finalContent);
+      }
     }catch(e){
       setAgentRunning(false);
       if(e.name!=='AbortError'){
@@ -1126,7 +1363,7 @@ export default function App() {
             <div style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
               {messages.map((m,i)=>(
                 <MsgBubble key={i} msg={m} isLast={i===messages.length-1}
-                  onApprove={m.actions?.some(a=>a.type==='write_file'&&!a.executed)?(ok)=>handleApprove(i,ok):null}
+                  onApprove={m.actions?.some(a=>a.type==='write_file'&&!a.executed)?(ok,path)=>handleApprove(i,ok,path):null}
                   onPlanApprove={m.content?.includes('📋 PLAN:')&&!m.planApproved?(ok)=>handlePlanApprove(i,ok):null}
                   onRetry={i===messages.length-1&&m.role==='user'?retryLast:null}
                   onContinue={i===messages.length-1&&m.role==='assistant'&&m.content.trim().endsWith('CONTINUE')?continueMsg:null}
@@ -1153,6 +1390,7 @@ export default function App() {
                 <span style={{fontSize:'11px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{selectedFile}</span>
                 <button onClick={()=>togglePin(selectedFile)} style={{background:pinnedFiles.includes(selectedFile)?'rgba(99,102,241,.15)':'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:pinnedFiles.includes(selectedFile)?'#818cf8':'rgba(255,255,255,.3)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📌</button>
                 <button onClick={()=>sendMsg('Yu, jalankan git log --oneline -10 -- '+selectedFile.replace(folder+'/',''))} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:'rgba(255,255,255,.35)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📜</button>
+                <button onClick={()=>setShowBlame(true)} style={{background:'rgba(99,102,241,.06)',border:'1px solid rgba(99,102,241,.15)',borderRadius:'5px',padding:'2px 6px',color:'rgba(99,102,241,.7)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>👁 blame</button>
                 <button onClick={()=>{setMessages(m=>[...m,{role:'user',content:'Yu, ini konteks file '+selectedFile+':\n```\n'+(fileContent||'').slice(0,2000)+'\n```'}]);setActiveTab('chat');}} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'5px',padding:'2px 6px',color:'#4ade80',fontSize:'10px',cursor:'pointer',flexShrink:0}}>+ctx</button>
                 <button onClick={()=>sendMsg('Yu, jelaskan file '+selectedFile)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',flexShrink:0}}>Tanya</button>
                 <button onClick={()=>{setSelectedFile(null);setFileContent(null);setActiveTab('chat');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'14px',cursor:'pointer',flexShrink:0}}>×</button>
@@ -1161,7 +1399,7 @@ export default function App() {
                 <div style={{padding:'8px 6px',color:'rgba(255,255,255,.2)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'36px',flexShrink:0,background:'rgba(255,255,255,.01)'}}>
                   {(fileContent||'').split('\n').map((_,i)=><div key={i}>{i+1}</div>)}
                 </div>
-                <pre style={{margin:0,padding:'8px 12px',whiteSpace:'pre-wrap',wordBreak:'break-word',color:'rgba(255,255,255,.7)',flex:1}} dangerouslySetInnerHTML={{__html:hl(fileContent||'')}}/>
+                <pre style={{margin:0,padding:'8px 12px',whiteSpace:'pre-wrap',wordBreak:'break-word',color:'rgba(255,255,255,.7)',flex:1}} dangerouslySetInnerHTML={{__html:hl(fileContent||'', selectedFile?.split('.').pop()||'')}}/>
               </div>
             </div>
           )}
@@ -1202,6 +1440,9 @@ export default function App() {
               <button onClick={generateCommitMsg} disabled={loading} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'5px',padding:'3px 10px',color:'rgba(74,222,128,.7)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
                 <span>✦</span><span>commit</span>
               </button>
+              <button onClick={()=>setShowSnippets(true)} style={{background:'rgba(251,191,36,.06)',border:'1px solid rgba(251,191,36,.12)',borderRadius:'5px',padding:'3px 10px',color:'rgba(251,191,36,.6)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
+                <span>✂</span><span>snip</span>
+              </button>
             </div>
           )}
 
@@ -1221,6 +1462,7 @@ export default function App() {
                 ?<button onClick={cancel} style={{background:'rgba(248,113,113,.15)',border:'1px solid rgba(248,113,113,.25)',borderRadius:'10px',padding:'8px 14px',color:'#f87171',fontSize:'13px',cursor:'pointer',flexShrink:0}}>stop</button>
                 :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'10px',padding:'8px 14px',color:'white',fontSize:'13px',cursor:'pointer',fontWeight:'500',flexShrink:0}}>↑</button>
               }
+              <VoiceBtn disabled={loading} onResult={txt=>{setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}} />
             </div>
           )}
         </div>
@@ -1230,6 +1472,8 @@ export default function App() {
       {showSearch&&<SearchBar folder={folder} onSelectFile={openFile} onClose={()=>setShowSearch(false)}/>}
       {showShortcuts&&<ShortcutsPanel onClose={()=>setShowShortcuts(false)}/>}
       {showDiff&&<GitDiffPanel folder={folder} onClose={()=>setShowDiff(false)}/>}
+      {showBlame&&selectedFile&&<GitBlamePanel folder={folder} filePath={selectedFile} onClose={()=>setShowBlame(false)}/>}
+      {showSnippets&&<SnippetLibrary onInsert={code=>{setInput(i=>i?i+'\n'+code:code);setShowSnippets(false);inputRef.current?.focus();}} onClose={()=>setShowSnippets(false)}/>}
     </div>
   );
 }
