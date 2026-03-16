@@ -145,6 +145,32 @@ async function executeAction(action, baseFolder) {
   if (action.type === 'search') return callServer({ type:'search', path:resolvePath(base, action.path||''), content:action.query });
   if (action.type === 'file_info') return callServer({ type:'info', path:resolvePath(base, action.path) });
   if (action.type === 'delete_file') return callServer({ type:'delete', path:resolvePath(base, action.path) });
+  if (action.type === 'find_symbol') {
+    return await callServer({ type:'search', path:resolvePath(base, action.path||''), content:action.symbol });
+  }
+  if (action.type === 'create_structure') {
+    const results = [];
+    for (const item of (action.files||[])) {
+      const r = await callServer({ type:'write', path:resolvePath(base, item.path), content:item.content||'' });
+      results.push((r.ok?'✅':'❌') + ' ' + item.path);
+    }
+    return { ok:true, data:results.join('\n') };
+  }
+  if (action.type === 'lint') {
+    const r = await callServer({ type:'read', path:resolvePath(base, action.path) });
+    if (!r.ok) return r;
+    const issues = [];
+    const lines = r.data.split('\n');
+    let opens=0, closes=0;
+    lines.forEach((line,i) => {
+      opens += (line.match(/[{[(]/g)||[]).length;
+      closes += (line.match(/[}\])]/g)||[]).length;
+      if (line.includes('console.log') && !action.allowLogs) issues.push('Line '+(i+1)+': console.log ditemukan');
+      if (line.length > 200) issues.push('Line '+(i+1)+': baris terlalu panjang');
+    });
+    if (opens !== closes) issues.push('Bracket tidak balance');
+    return { ok:true, data: issues.length ? issues.join('\n') : '✅ Clean' };
+  }
   return { ok:false, data:'Unknown: ' + action.type };
 }
 
@@ -726,8 +752,12 @@ export default function App() {
     setMessages(m=>[...m,{role:'user',content:cmd}]);
     setLoading(true);
     const r=await executeAction({type:'exec',command:cmd},folder);
-    setMessages(m=>[...m,{role:'assistant',content:'```bash\n'+(r.data||'selesai')+'\n```',actions:[]}]);
+    const output=r.data||'selesai';
+    setMessages(m=>[...m,{role:'assistant',content:'```bash\n'+output+'\n```',actions:[]}]);
     setLoading(false);
+    if ((output.toLowerCase().includes('error') || output.includes('❌')) && !cmd.includes('git')) {
+      setTimeout(() => sendMsg('Ada error di terminal:\n' + output.slice(0,300) + '\nDiagnosa dan fix.'), 500);
+    }
   }
 
   // Sidebar drag resize
