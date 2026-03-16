@@ -255,6 +255,7 @@ function MsgContent({ text }) {
     const lang = m[1] || '';
     if (lang === 'action') { last = m.index + m[0].length; continue; }
     if (lang === 'diff') parts.push({ t:'diff', c:m[2] });
+    else if (lang === 'markdown' || lang === 'md') parts.push({ t:'md', c:m[2] });
     else parts.push({ t:'code', lang, c:m[2] });
     last = m.index + m[0].length;
   }
