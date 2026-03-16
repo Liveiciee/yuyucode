@@ -57,7 +57,7 @@ async function executeAction(action, baseFolder) {
     return callServer({ type: 'write', path: base + '/' + action.path, content: action.content });
   }
   if (action.type === 'list_files') {
-    const r = await callServer({ type: 'list', path: base + (action.path ? '/' + action.path : '') });
+    const r = await callServer({ type: 'list', path: action.path ? base + '/' + action.path : base });
     if (r.ok && Array.isArray(r.data)) {
       r.data = r.data.map(f => (f.isDir ? '📁 ' : '📄 ') + f.name).join('\n');
     }
