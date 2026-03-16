@@ -391,48 +391,49 @@ function FileTree({ folder, onSelectFile, selectedFile }) {
 }
 
 
-function Terminal({ folder }) {
-  const [history, setHistory] = useState([{type:'info',text:'$ YuyuTerminal'}]);
-  const [input, setInput] = useState('');
-  const [cmdHist, setCmdHist] = useState([]);
-  const [histIdx, setHistIdx] = useState(-1);
-  const [running, setRunning] = useState(false);
-  const bottomRef = useRef(null);
-  useEffect(() => { bottomRef.current?.scrollIntoView({behavior:'smooth'}); }, [history]);
-
-    async function run() {
-    const cmd = input.trim();
-    if (!cmd) return;
-    setInput(''); setHistIdx(-1);
-    setCmdHist(h => [cmd,...h.filter(c=>c!==cmd)].slice(0,50));
-    setHistory(h => [...h, {type:'cmd',text:'$ '+cmd}]);
-    setRunning(true);
-    const r = await callServer({ type:'exec', path:folder||'', command:cmd });
-    setHistory(h => [...h, {type:r.ok?'out':'err', text:r.data?.trim() || (r.ok ? '✔ done' : '✘ error')}]);
-    setRunning(false);
+function Terminal({ folder, cmdHistory, addHistory }) {
+  const [cmd, setCmd] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [selIdx, setSelIdx] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [output, setOutput] = useState('');
+  const presets = ['npm run lint', 'git status', 'git push', 'ls -la'];
+  const handleKeyDown = (e) => {
+    if (suggestions.length > 0) {
+      if (e.key === 'ArrowDown') { setSelIdx(s => (s + 1) % suggestions.length); e.preventDefault(); }
+      else if (e.key === 'ArrowUp') { setSelIdx(s => (s - 1 + suggestions.length) % suggestions.length); e.preventDefault(); }
+      else if (e.key === 'Tab') { setCmd(suggestions[selIdx]); setSuggestions([]); e.preventDefault(); }
+    }
+    if (e.key === 'Enter' && cmd.trim()) run();
+  };
+  const onTextChange = (v) => {
+    setCmd(v);
+    const matches = [...new Set([...presets, ...(cmdHistory||[])])].filter(x => x.startsWith(v) && x !== v).slice(0, 5);
+    setSuggestions(v ? matches : []);
+    setSelIdx(0);
+  };
+  async function run() {
+    setLoading(true); setSuggestions([]);
+    try {
+      if (addHistory) addHistory(cmd);
+      const res = await callServer({ action: 'terminal', cmd, folder });
+      setOutput(res.output || res.error || 'Done.');
+      setCmd('');
+    } catch (e) { setOutput(e.message); } finally { setLoading(false); }
   }
-
   return (
-    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#0a0a0b',fontFamily:'monospace'}}>
-      <div style={{flex:1,overflowY:'auto',padding:'8px 12px'}}>
-        {history.map((h,i) => (
-          <div key={i} style={{fontSize:'12px',lineHeight:'1.5',whiteSpace:'pre-wrap',wordBreak:'break-word',color:h.type==='cmd'?'#a78bfa':h.type==='err'?'#f87171':h.type==='info'?'rgba(255,255,255,.3)':'rgba(255,255,255,.7)'}}>
-            {h.text}
+    <div className='flex flex-col h-full bg-black text-xs font-mono p-2 border-t border-gray-800'>
+      <div className='flex-1 overflow-auto mb-2 text-gray-300'>{output}{loading && '...'}</div>
+      <div className='relative flex items-center gap-2 border-t border-gray-900 pt-2'>
+        {suggestions.length > 0 && (
+          <div className='absolute bottom-full left-0 w-full bg-gray-900 border border-gray-700 rounded mb-1 shadow-xl'>
+            {suggestions.map((s, i) => (
+              <div key={i} className={'px-2 py-1 ' + (i === selIdx ? 'bg-blue-600 text-white' : 'text-gray-500')}>{s}</div>
+            ))}
           </div>
-        ))}
-        {running && <div style={{fontSize:'12px',color:'rgba(255,255,255,.3)'}}>running...</div>}
-        <div ref={bottomRef}/>
-      </div>
-      <div style={{display:'flex',alignItems:'center',padding:'6px 12px',borderTop:'1px solid rgba(255,255,255,.06)',gap:'6px'}}>
-        <span style={{fontSize:'12px',color:'#4ade80',flexShrink:0}}>$</span>
-        <input value={input} onChange={e=>setInput(e.target.value)}
-          onKeyDown={e=>{
-            if(e.key==='Enter'){run();return;}
-            if(e.key==='ArrowUp'){const idx=Math.min(histIdx+1,cmdHist.length-1);setHistIdx(idx);setInput(cmdHist[idx]||'');}
-            if(e.key==='ArrowDown'){const idx=histIdx-1;setHistIdx(idx);setInput(idx>=0?cmdHist[idx]:'');}
-          }}
-          placeholder="command..." disabled={running}
-          style={{flex:1,background:'none',border:'none',outline:'none',color:'rgba(255,255,255,.85)',fontSize:'12px',fontFamily:'monospace'}}/>
+        )}
+        <span className='text-green-500'>➜</span>
+        <input className='bg-transparent outline-none flex-1 text-white' value={cmd} onChange={e=>onTextChange(e.target.value)} onKeyDown={handleKeyDown} />
       </div>
     </div>
   );
