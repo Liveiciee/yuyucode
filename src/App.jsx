@@ -31,9 +31,8 @@ const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
 const YUYU_SERVER = 'http://localhost:8765';
 const MAX_HISTORY = 30;
 const MODELS = [
-  { id: 'gpt-oss-120b', label: 'GPT OSS 120B 🔥', fast: false },
-  { id: 'llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout ⚡', fast: true },
-  { id: 'llama3.1-8b', label: 'Llama 3.1 8B', fast: true },
+  { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥', fast: false },
+  { id: 'llama3.1-8b', label: 'Llama 3.1 8B ⚡', fast: true },
 ];
 
 const BASE_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
