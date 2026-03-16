@@ -207,39 +207,17 @@ function hl(code) {
 
 function renderMarkdown(raw) {
   let t = raw
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-  const tableRegex = new RegExp('(\\|.+\\|\\n)+', 'g');
-
-  t = t.replace(tableRegex, (match) => {
-    const rows = match.trim().split('
-').filter(r => !/^|[s-|]+|$/.test(r));
-    const html = rows.map((row, i) => {
-      const cells = row.slice(1,-1).split('|').map(c => c.trim());
-      const tag = i === 0 ? 'th' : 'td';
-      const cellStyle = i === 0
-        ? 'padding:5px 12px;font-size:11px;color:rgba(255,255,255,.5);font-weight:600;border-bottom:1px solid rgba(255,255,255,.1);text-align:left'
-        : 'padding:5px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.05)';
-      return '<tr>' + cells.map(c => `<${tag} style="${cellStyle}">${c}</${tag}>`).join('') + '</tr>';
-    }).join('');
-    return `<table style="width:100%;border-collapse:collapse;margin:8px 0;background:rgba(255,255,255,.02);border-radius:6px;overflow:hidden">${html}</table>`;
-  });
-
-  t = t
-    .replace(/^### (.*?)$/gm,'<div style="font-size:13px;font-weight:700;color:#e8e8e8;margin:10px 0 4px;letter-spacing:-.2px">$1</div>')
-    .replace(/^## (.*?)$/gm,'<div style="font-size:14px;font-weight:700;color:#f0f0f0;margin:12px 0 5px;letter-spacing:-.3px">$1</div>')
-    .replace(/^# (.*?)$/gm,'<div style="font-size:15px;font-weight:700;color:#f0f0f0;margin:14px 0 6px;letter-spacing:-.4px">$1</div>')
-    .replace(/**([^*
-]+)**/g,'<strong style="color:#f0f0f0">$1</strong>')
-    .replace(/*([^*
-]+)*/g,'<em style="color:rgba(255,255,255,.7)">$1</em>')
-    .replace(/`([^`
-]+)`/g,'<code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px;color:#e8e8e8">$1</code>')
-    .replace(/^---$/gm,'<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:10px 0">')
-    .replace(/^- (.*?)$/gm,'<div style="display:flex;gap:6px;margin:1px 0 1px 4px"><span style="color:rgba(255,255,255,.35);flex-shrink:0;margin-top:1px">•</span><span>$1</span></div>')
-    .replace(/^\d+\. (.*?)$/gm,'<div style="margin:2px 0 2px 4px">$1</div>')
-    .replace(/\n\n/g,'<div style="height:6px"></div>')
-    .replace(/\n/g,'<br>');
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/^### (.*?)$/gm,"<div style=\"font-size:13px;font-weight:700;color:#e8e8e8;margin:10px 0 4px\">$1</div>")
+    .replace(/^## (.*?)$/gm,"<div style=\"font-size:14px;font-weight:700;color:#f0f0f0;margin:12px 0 5px\">$1</div>")
+    .replace(/^# (.*?)$/gm,"<div style=\"font-size:15px;font-weight:700;color:#f0f0f0;margin:14px 0 6px\">$1</div>")
+    .replace(/\*\*([^*\n]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/\*([^*\n]+)\*/g,"<em>$1</em>")
+    .replace(/`([^`\n]+)`/g,"<code style=\"background:rgba(255,255,255,.1);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px\">$1</code>")
+    .replace(/^---$/gm,"<hr style=\"border:none;border-top:1px solid rgba(255,255,255,.08);margin:10px 0\">")
+    .replace(/^- (.*?)$/gm,"<div style=\"display:flex;gap:6px;margin:1px 0\"><span style=\"color:rgba(255,255,255,.35)\">•</span><span>$1</span></div>")
+    .replace(/\n\n/g,"<div style=\"height:6px\"></div>")
+    .replace(/\n/g,"<br>");
   return t;
 }
 
