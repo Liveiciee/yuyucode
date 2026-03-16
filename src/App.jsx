@@ -3,6 +3,14 @@ import { Preferences } from "@capacitor/preferences";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+
+window.onerror = function(msg, src, line, col, err) {
+  document.body.innerHTML = '<div style="color:red;padding:20px;font-size:12px;white-space:pre-wrap">ERROR:\n' + msg + '\nLine: ' + line + '\n' + (err?.stack||'') + '</div>';
+};
+window.onunhandledrejection = function(e) {
+  document.body.innerHTML = '<div style="color:orange;padding:20px;font-size:12px;white-space:pre-wrap">PROMISE ERROR:\n' + e.reason + '</div>';
+};
+
 const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
 const YUYU_SERVER = 'http://localhost:8765';
 const MAX_HISTORY = 40;
