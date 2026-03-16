@@ -211,7 +211,6 @@ function renderMarkdown(raw) {
 
   const tableRegex = new RegExp('(\\|.+\\|\\n)+', 'g');
 
-)+/g;
   t = t.replace(tableRegex, (match) => {
     const rows = match.trim().split('
 ').filter(r => !/^|[s-|]+|$/.test(r));
