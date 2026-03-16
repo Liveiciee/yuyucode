@@ -1145,6 +1145,105 @@ function ThemeBuilder({ current, onSave, onClose }) {
   );
 }
 
+// ─── COMMAND PALETTE ──────────────────────────────────────────────────────────
+function CommandPalette({ onClose, onRun, folder, memories, checkpoints, model, models,
+  onModelChange, onNewChat, theme, onThemeChange, showSidebar, onToggleSidebar,
+  onShowMemory, onShowCheckpoints, onShowMCP, onShowGitHub, onShowDeploy,
+  onShowDiff, onShowSearch, onShowSnippets, onShowCustomActions,
+  runTests, generateCommitMsg, exportChat, compactContext }) {
+  const [q, setQ] = useState('');
+  const inputRef = useRef(null);
+  useEffect(()=>{ setTimeout(()=>inputRef.current?.focus(),50); }, []);
+
+  const sections = [
+    { label: 'Chat', items: [
+      { icon:'💬', label:'New chat', sub:'Mulai sesi baru', action:()=>{ onNewChat(); onClose(); } },
+      { icon:'📤', label:'Export chat', sub:'Simpan ke .md', action:()=>{ exportChat(); onClose(); } },
+      { icon:'📦', label:'Compact context', sub:'Kompres history', action:()=>{ compactContext(); onClose(); } },
+    ]},
+    { label: 'Git', items: [
+      { icon:'◐', label:'Git diff', sub:'Lihat perubahan', action:()=>{ onShowDiff(); onClose(); } },
+      { icon:'✦', label:'Generate commit', sub:'AI-powered commit msg', action:()=>{ generateCommitMsg(); onClose(); } },
+      { icon:'▶', label:'Run tests', sub:'npm test + lint', action:()=>{ runTests(); onClose(); } },
+    ]},
+    { label: 'Tools', items: [
+      { icon:'🔌', label:'MCP Tools', sub:'Model Context Protocol', action:()=>{ onShowMCP(); onClose(); } },
+      { icon:'⑂', label:'GitHub', sub:'Issues & PRs', action:()=>{ onShowGitHub(); onClose(); } },
+      { icon:'🚀', label:'Deploy', sub:'Vercel / Netlify / Railway', action:()=>{ onShowDeploy(); onClose(); } },
+      { icon:'✂', label:'Snippets', sub:'Code snippet library', action:()=>{ onShowSnippets(); onClose(); } },
+      { icon:'⚡', label:'Custom actions', sub:'Shortcut commands', action:()=>{ onShowCustomActions(); onClose(); } },
+    ]},
+    { label: 'Memory', items: [
+      { icon:'🧠', label:`Memories (${memories.length})`, sub:'Auto-learned patterns', action:()=>{ onShowMemory(); onClose(); } },
+      { icon:'📍', label:`Checkpoints (${checkpoints.length})`, sub:'Session snapshots', action:()=>{ onShowCheckpoints(); onClose(); } },
+    ]},
+    { label: 'View', items: [
+      { icon:'🔍', label:'Search files', sub:'Grep across project', action:()=>{ onShowSearch(); onClose(); } },
+      { icon:'☰', label:'Toggle sidebar', sub: showSidebar?'Sembunyikan':'Tampilkan', action:()=>{ onToggleSidebar(); onClose(); } },
+      { icon:'🎨', label:'Theme: '+theme, sub:'dark / darker / midnight', action:()=>{ const themes=['dark','darker','midnight']; const i=themes.indexOf(theme); onThemeChange(themes[(i+1)%3]); onClose(); } },
+    ]},
+    { label: 'AI Model', items: models.map(m=>({
+      icon: model===m.id ? '●' : '○',
+      label: m.label,
+      sub: m.provider||'cerebras',
+      action:()=>{ onModelChange(m.id); onClose(); }
+    }))}
+  ];
+
+  const allItems = sections.flatMap(s=>s.items.map(i=>({...i,_section:s.label})));
+  const filtered = q ? allItems.filter(i=>
+    i.label.toLowerCase().includes(q.toLowerCase()) ||
+    i.sub.toLowerCase().includes(q.toLowerCase())
+  ) : null;
+
+  const display = filtered
+    ? [{label:'Results', items:filtered}]
+    : sections;
+
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(8px)',zIndex:200,display:'flex',flexDirection:'column',alignItems:'center',paddingTop:'60px'}}
+      onClick={onClose}>
+      <div style={{width:'100%',maxWidth:'480px',background:'#111113',border:'1px solid rgba(255,255,255,.1)',borderRadius:'12px',overflow:'hidden',boxShadow:'0 24px 60px rgba(0,0,0,.8)'}}
+        onClick={e=>e.stopPropagation()}>
+        <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 14px',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
+          <span style={{fontSize:'13px',color:'rgba(255,255,255,.3)'}}>⌘</span>
+          <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Escape') onClose(); }}
+            placeholder="Cari action atau ketik command..."
+            style={{flex:1,background:'none',border:'none',outline:'none',color:'#f0f0f0',fontSize:'13px',fontFamily:'inherit'}}/>
+          {q && <button onClick={()=>setQ('')} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',cursor:'pointer',fontSize:'12px'}}>✕</button>}
+        </div>
+        <div style={{maxHeight:'60vh',overflowY:'auto',padding:'6px'}}>
+          {display.map(section=>(
+            <div key={section.label}>
+              {!q && <div style={{padding:'6px 10px 3px',fontSize:'9px',letterSpacing:'.08em',color:'rgba(255,255,255,.25)',textTransform:'uppercase',fontWeight:'600'}}>{section.label}</div>}
+              {section.items.map((item,i)=>(
+                <div key={i} onClick={item.action}
+                  style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px 10px',borderRadius:'7px',cursor:'pointer'}}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <span style={{fontSize:'14px',width:'20px',textAlign:'center',flexShrink:0}}>{item.icon}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:'12px',color:'#e8e8e8',fontWeight:'500'}}>{item.label}</div>
+                    <div style={{fontSize:'10px',color:'rgba(255,255,255,.35)',marginTop:'1px'}}>{item.sub}</div>
+                  </div>
+                  {item._section&&q&&<span style={{fontSize:'9px',color:'rgba(255,255,255,.2)',flexShrink:0}}>{item._section}</span>}
+                </div>
+              ))}
+            </div>
+          ))}
+          {filtered&&filtered.length===0&&<div style={{padding:'16px',textAlign:'center',color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Tidak ada hasil untuk "{q}"</div>}
+        </div>
+        <div style={{padding:'6px 14px',borderTop:'1px solid rgba(255,255,255,.06)',display:'flex',gap:'12px'}}>
+          <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)'}}>↵ pilih</span>
+          <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)'}}>esc tutup</span>
+          <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)'}}>/ untuk slash commands</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [messages, setMessages] = useState([{ role:'assistant', content:'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa? 🌸' }]);
   const [input, setInput] = useState('');
@@ -1212,6 +1311,7 @@ export default function App() {
   const [dragOver, setDragOver] = useState(false);
   const [reconnectTimer, setReconnectTimer] = useState(0);
   const [openTabs, setOpenTabs] = useState([]);
+  const [showPalette, setShowPalette] = useState(false);
   const fileInputRef = useRef(null);
   const chatRef = useRef(null);
   const bottomRef = useRef(null);
@@ -2020,38 +2120,46 @@ export default function App() {
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         ::-webkit-scrollbar{width:3px;height:3px;}
         ::-webkit-scrollbar-track{background:transparent;}
-        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px;}
         textarea,input{scrollbar-width:none;}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-        button:active{opacity:.7;}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        button{transition:color .15s,background .15s,opacity .15s;}
+        button:active{opacity:.6!important;}
+        .msg-appear{animation:fadeIn .18s ease forwards;}
       `}</style>
 
-      {/* HEADER */}
-      <div style={{padding:'8px 12px',borderBottom:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'6px',background:T.bg2,flexShrink:0}}>
-        <button onClick={()=>setShowSidebar(!showSidebar)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer',padding:'2px 4px'}}>☰</button>
+      {/* ── HEADER (minimal) ── */}
+      <div style={{height:'44px',padding:'0 10px',borderBottom:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'8px',background:T.bg,flexShrink:0}}>
+        <button onClick={()=>setShowSidebar(!showSidebar)}
+          style={{background:'none',border:'none',color:showSidebar?T.accent:'rgba(255,255,255,.3)',fontSize:'15px',cursor:'pointer',padding:'4px',borderRadius:'5px',lineHeight:1}}>
+          ☰
+        </button>
         <div style={{width:'6px',height:'6px',borderRadius:'50%',background:serverOk?'#4ade80':'#f87171',flexShrink:0}}/>
-        <div style={{flex:1,cursor:'pointer',minWidth:0}} onClick={()=>setShowFolder(!showFolder)}>
-          <span style={{fontSize:'13px',fontWeight:'600',color:T.text}}>YuyuCode</span>
-          <span style={{fontSize:'11px',color:'rgba(255,255,255,.3)',marginLeft:'6px'}}>📁 {folder}</span>
-          <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)',marginLeft:'4px'}}>⎇ {branch}</span>
-          {skill&&<span style={{fontSize:'10px',color:'rgba(74,222,128,.5)',marginLeft:'4px'}}>SKILL</span>}
+        <div style={{flex:1,cursor:'pointer',minWidth:0,overflow:'hidden'}} onClick={()=>setShowFolder(!showFolder)}>
+          <span style={{fontSize:'13px',fontWeight:'600',color:T.text,letterSpacing:'-0.2px'}}>YuyuCode</span>
+          <span style={{fontSize:'11px',color:'rgba(255,255,255,.25)',marginLeft:'8px'}}>{folder}</span>
+          <span style={{fontSize:'10px',color:'rgba(255,255,255,.18)',marginLeft:'4px'}}>⎇ {branch}</span>
+          {skill&&<span style={{fontSize:'9px',color:'rgba(74,222,128,.5)',marginLeft:'6px',letterSpacing:'.04em',fontWeight:'600'}}>SKILL</span>}
         </div>
-        <span style={{fontSize:'11px',color:'rgba(255,255,255,.2)',background:'rgba(255,255,255,.04)',padding:'2px 6px',borderRadius:'99px',flexShrink:0}}>~{tokens}tk</span>
-        <button onClick={()=>setShowSearch(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>🔍</button>
-        <button onClick={()=>setShowMemory(true)} style={{background:memories.length?'rgba(124,58,237,.1)':'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:memories.length?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}} title="Memories">🧠{memories.length>0&&<span style={{fontSize:'9px',marginLeft:'2px'}}>{memories.length}</span>}</button>
-        <button onClick={()=>setShowCheckpoints(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}} title="Checkpoints">📍</button>
-        <button onClick={()=>setShowMCP(true)} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'6px',padding:'3px 7px',color:'rgba(74,222,128,.7)',fontSize:'11px',cursor:'pointer'}} title="MCP Tools">🔌</button>
-        <button onClick={()=>setShowGitHub(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}} title="GitHub">⑂</button>
-        <button onClick={()=>setShowDeploy(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}} title="Deploy">🚀</button>
-        <button onClick={()=>setShowTerminal(!showTerminal)} style={{background:showTerminal?'rgba(124,58,237,.2)':'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:showTerminal?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>⌨</button>
-        <button onClick={()=>setShowShortcuts(true)} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>?</button>
-        <select value={theme} onChange={e=>{setTheme(e.target.value);Preferences.set({key:'yc_theme',value:e.target.value});}}
-          style={{background:'rgba(255,255,255,.06)',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 6px',color:'rgba(255,255,255,.4)',fontSize:'10px',cursor:'pointer',outline:'none'}}>
-          <option value="dark">Dark</option>
-          <option value="darker">Darker</option>
-          <option value="midnight">Midnight</option>
-        </select>
-        <button onClick={()=>{setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});setShowFollowUp(false);}} style={{background:'none',border:'1px solid '+T.border,borderRadius:'6px',padding:'3px 7px',color:'rgba(255,255,255,.35)',fontSize:'11px',cursor:'pointer'}}>new</button>
+        {/* Model pill — click cycles model */}
+        <button onClick={()=>{ const i=MODELS.findIndex(m=>m.id===model); const next=MODELS[(i+1)%MODELS.length]; setModel(next.id); Preferences.set({key:'yc_model',value:next.id}); }}
+          style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'99px',padding:'3px 9px',color:'rgba(255,255,255,.45)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>
+          {MODELS.find(m=>m.id===model)?.label||'AI'}
+        </button>
+        {/* Token badge */}
+        <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)',flexShrink:0}}>~{tokens}tk</span>
+        {/* Command palette trigger */}
+        <button onClick={()=>setShowPalette(true)}
+          style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'7px',padding:'4px 8px',color:'rgba(255,255,255,.4)',fontSize:'12px',cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',gap:'4px'}}>
+          <span>⌘</span>
+        </button>
+        {/* New chat */}
+        <button onClick={()=>{setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});setShowFollowUp(false);haptic('light');}}
+          style={{background:'none',border:'1px solid rgba(255,255,255,.07)',borderRadius:'7px',padding:'4px 8px',color:'rgba(255,255,255,.3)',fontSize:'11px',cursor:'pointer',flexShrink:0}}>
+          new
+        </button>
       </div>
 
       {showFolder&&(
@@ -2064,24 +2172,12 @@ export default function App() {
 
       <UndoBar history={editHistory} onUndo={undoLastEdit}/>
 
-      {!netOnline&&<div style={{padding:'5px 12px',background:'rgba(248,113,113,.08)',borderBottom:'1px solid rgba(248,113,113,.15)',fontSize:'11px',color:'#f87171',flexShrink:0}}>📡 Tidak ada koneksi internet</div>}
-      {rateLimitTimer>0&&<div style={{padding:'5px 12px',background:'rgba(251,191,36,.06)',borderBottom:'1px solid rgba(251,191,36,.1)',fontSize:'11px',color:'rgba(251,191,36,.7)',flexShrink:0}}>⏳ Rate limit — lanjut dalam {rateLimitTimer}d</div>}
-      {agentRunning&&<div style={{padding:'5px 12px',background:'rgba(124,58,237,.06)',borderBottom:'1px solid rgba(124,58,237,.12)',fontSize:'11px',color:'#a78bfa',flexShrink:0}}>🤖 Yuyu lagi jalan sendiri···</div>}
-      {reconnectTimer>0&&!serverOk&&<div style={{padding:'5px 12px',background:'rgba(248,113,113,.06)',borderBottom:'1px solid rgba(248,113,113,.12)',fontSize:'11px',color:'#f87171',flexShrink:0}}>🔄 YuyuServer mati — coba reconnect... ({reconnectTimer}d)</div>}
-      {countTokens(messages)>15000&&<div style={{padding:'5px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.08)',fontSize:'11px',color:'rgba(251,191,36,.6)',flexShrink:0}}>⚠️ Context besar (~{countTokens(messages)}tk) — Yuyu auto-trim history lama</div>}
-
-      {/* PINNED FILES BAR */}
-      {pinnedFiles.length>0&&(
-        <div style={{padding:'4px 12px',background:'rgba(99,102,241,.05)',borderBottom:'1px solid rgba(99,102,241,.1)',display:'flex',gap:'6px',overflowX:'auto',flexShrink:0}}>
-          <span style={{fontSize:'10px',color:'rgba(99,102,241,.5)',flexShrink:0,alignSelf:'center'}}>📌</span>
-          {pinnedFiles.map(f=>(
-            <button key={f} onClick={()=>openFile(f)}
-              style={{background:'rgba(99,102,241,.08)',border:'1px solid rgba(99,102,241,.15)',borderRadius:'4px',padding:'2px 8px',color:'rgba(99,102,241,.7)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace'}}>
-              {f.split('/').pop()}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* ── STATUS BANNERS (thin) ── */}
+      {!netOnline&&<div style={{padding:'3px 12px',background:'rgba(248,113,113,.08)',borderBottom:'1px solid rgba(248,113,113,.12)',fontSize:'10px',color:'#f87171',flexShrink:0}}>📡 Offline</div>}
+      {rateLimitTimer>0&&<div style={{padding:'3px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.08)',fontSize:'10px',color:'rgba(251,191,36,.7)',flexShrink:0}}>⏳ Rate limit {rateLimitTimer}d</div>}
+      {agentRunning&&<div style={{padding:'3px 12px',background:'rgba(124,58,237,.05)',borderBottom:'1px solid rgba(124,58,237,.1)',fontSize:'10px',color:'#a78bfa',flexShrink:0}}>● Yuyu lagi jalan···</div>}
+      {reconnectTimer>0&&!serverOk&&<div style={{padding:'3px 12px',background:'rgba(248,113,113,.05)',borderBottom:'1px solid rgba(248,113,113,.1)',fontSize:'10px',color:'#f87171',flexShrink:0}}>↺ Reconnecting···</div>}
+      {countTokens(messages)>15000&&<div style={{padding:'3px 12px',background:'rgba(251,191,36,.04)',borderBottom:'1px solid rgba(251,191,36,.07)',fontSize:'10px',color:'rgba(251,191,36,.6)',flexShrink:0}}>⚠ Context besar ~{countTokens(messages)}tk</div>}
 
       <div style={{flex:1,display:'flex',overflow:'hidden',position:'relative'}}>
 
@@ -2116,26 +2212,30 @@ export default function App() {
 
         {/* CENTER */}
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-          {/* TABS */}
-          <div style={{display:'flex',borderBottom:'1px solid '+T.border,flexShrink:0,overflowX:'auto',background:T.bg2}}>
-            <button onClick={()=>setActiveTab('chat')} style={{padding:'6px 14px',background:'none',border:'none',borderBottom:activeTab==='chat'?'2px solid '+T.accent:'2px solid transparent',color:activeTab==='chat'?'#a78bfa':'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap'}}>💬 Chat</button>
+          {/* ── TABS (minimal) ── */}
+          <div style={{display:'flex',borderBottom:'1px solid '+T.border,flexShrink:0,background:T.bg,height:'34px',alignItems:'stretch'}}>
+            <button onClick={()=>setActiveTab('chat')}
+              style={{padding:'0 14px',background:'none',border:'none',borderBottom:activeTab==='chat'?'2px solid '+T.accent:'2px solid transparent',color:activeTab==='chat'?T.accent:'rgba(255,255,255,.3)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap',fontWeight:activeTab==='chat'?'500':'400'}}>
+              Chat
+            </button>
             {selectedFile&&(
               <>
-                <button onClick={()=>{setActiveTab('file');setEditMode(false);}} style={{padding:'6px 10px',background:'none',border:'none',borderBottom:activeTab==='file'&&!editMode?'2px solid '+T.accent:'2px solid transparent',color:activeTab==='file'&&!editMode?'#a78bfa':'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap',maxWidth:'130px',overflow:'hidden',textOverflow:'ellipsis'}}>
-                  📄 {selectedFile.split('/').pop()}
+                <button onClick={()=>{setActiveTab('file');setEditMode(false);}}
+                  style={{padding:'0 12px',background:'none',border:'none',borderBottom:activeTab==='file'&&!editMode?'2px solid '+T.accent:'2px solid transparent',color:activeTab==='file'&&!editMode?T.accent:'rgba(255,255,255,.3)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap',maxWidth:'140px',overflow:'hidden',textOverflow:'ellipsis'}}>
+                  {selectedFile.split('/').pop()}
                 </button>
-                <button onClick={()=>{setActiveTab('file');setEditMode(true);}} style={{padding:'6px 10px',background:'none',border:'none',borderBottom:editMode?'2px solid #f59e0b':'2px solid transparent',color:editMode?'#f59e0b':'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                  ✏️ Edit
+                <button onClick={()=>{setActiveTab('file');setEditMode(true);}}
+                  style={{padding:'0 10px',background:'none',border:'none',borderBottom:editMode?'2px solid #f59e0b':'2px solid transparent',color:editMode?'#f59e0b':'rgba(255,255,255,.25)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                  edit
                 </button>
               </>
             )}
-            <div style={{marginLeft:'auto',display:'flex',gap:'4px',padding:'4px 8px',alignItems:'center'}}>
-              {MODELS.map(m=>(
-                <button key={m.id} onClick={()=>{setModel(m.id);Preferences.set({key:'yc_model',value:m.id});}} style={{background:model===m.id?'rgba(124,58,237,.2)':'rgba(255,255,255,.03)',border:'1px solid '+(model===m.id?'rgba(124,58,237,.4)':'rgba(255,255,255,.07)'),borderRadius:'5px',padding:'2px 8px',color:model===m.id?'#a78bfa':'rgba(255,255,255,.3)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                  {m.label}
-                </button>
-              ))}
-            </div>
+            <div style={{flex:1}}/>
+            {/* Terminal toggle — only visible icon in tab bar */}
+            <button onClick={()=>setShowTerminal(!showTerminal)}
+              style={{padding:'0 12px',background:'none',border:'none',borderBottom:showTerminal?'2px solid rgba(255,255,255,.3)':'2px solid transparent',color:showTerminal?'rgba(255,255,255,.6)':'rgba(255,255,255,.2)',fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>
+              $
+            </button>
           </div>
 
           {/* CHAT */}
@@ -2220,48 +2320,40 @@ export default function App() {
             </div>
           )}
 
-          {/* GIT SHORTCUTS */}
+          {/* ── QUICK BAR (minimal, only git essentials) ── */}
           {!showTerminal&&(
-            <div style={{padding:'5px 12px',borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'5px',overflowX:'auto',flexShrink:0}}>
+            <div style={{height:'32px',padding:'0 10px',borderTop:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'2px',flexShrink:0,overflowX:'auto'}}>
               {GIT_SHORTCUTS.map(s=>(
-                <button key={s.label} onClick={()=>runShortcut(s.cmd)} disabled={loading} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'5px',padding:'3px 10px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
-                  <span>{s.icon}</span><span>{s.label}</span>
+                <button key={s.label} onClick={()=>runShortcut(s.cmd)} disabled={loading}
+                  style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.3)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',borderRadius:'5px',display:'flex',alignItems:'center',gap:'3px'}}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.05)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                  <span style={{opacity:.6}}>{s.icon}</span><span>{s.label}</span>
                 </button>
               ))}
-              <button onClick={()=>setShowDiff(true)} style={{background:'rgba(96,165,250,.06)',border:'1px solid rgba(96,165,250,.15)',borderRadius:'5px',padding:'3px 10px',color:'rgba(96,165,250,.7)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
-                <span>◐</span><span>diff</span>
-              </button>
-              <button onClick={runTests} disabled={loading} style={{background:'rgba(251,191,36,.06)',border:'1px solid rgba(251,191,36,.15)',borderRadius:'5px',padding:'3px 10px',color:'rgba(251,191,36,.7)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
-                <span>▶</span><span>test</span>
-              </button>
-              <button onClick={generateCommitMsg} disabled={loading} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'5px',padding:'3px 10px',color:'rgba(74,222,128,.7)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
-                <span>✦</span><span>commit</span>
-              </button>
-              <button onClick={()=>setShowSnippets(true)} style={{background:'rgba(251,191,36,.06)',border:'1px solid rgba(251,191,36,.12)',borderRadius:'5px',padding:'3px 10px',color:'rgba(251,191,36,.6)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
-                <span>✂</span><span>snip</span>
-              </button>
-              <button onClick={()=>setShowCustomActions(true)} style={{background:'rgba(124,58,237,.06)',border:'1px solid rgba(124,58,237,.12)',borderRadius:'5px',padding:'3px 10px',color:'rgba(124,58,237,.7)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
-                <span>⚡</span><span>actions</span>
-              </button>
-              <button onClick={exportChat} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'5px',padding:'3px 10px',color:'rgba(255,255,255,.3)',fontSize:'11px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',display:'flex',alignItems:'center',gap:'4px'}}>
-                <span>📤</span><span>export</span>
-              </button>
+              <div style={{flex:1}}/>
+              {/* Pinned files chips */}
+              {pinnedFiles.map(f=>(
+                <button key={f} onClick={()=>openFile(f)}
+                  style={{background:'rgba(99,102,241,.08)',border:'none',borderRadius:'4px',padding:'2px 7px',color:'rgba(99,102,241,.6)',fontSize:'9px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace'}}>
+                  {f.split('/').pop()}
+                </button>
+              ))}
             </div>
           )}
 
-          {/* INPUT */}
+          {/* ── INPUT ── */}
           {!showTerminal&&(
-            <div style={{padding:'8px 12px',borderTop:'1px solid '+T.border,background:T.bg2,flexShrink:0,position:'relative'}}>
-              {/* SLASH SUGGESTIONS */}
+            <div style={{padding:'8px 10px',borderTop:'1px solid '+T.border,background:T.bg,flexShrink:0,position:'relative'}}>
               {slashSuggestions.length>0&&(
-                <div style={{position:'absolute',bottom:'100%',left:'12px',right:'12px',background:'#1a1a1e',border:'1px solid rgba(255,255,255,.12)',borderRadius:'8px',overflow:'hidden',zIndex:99,marginBottom:'4px'}}>
+                <div style={{position:'absolute',bottom:'100%',left:'10px',right:'10px',background:'#111113',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',overflow:'hidden',zIndex:99,marginBottom:'6px',boxShadow:'0 12px 32px rgba(0,0,0,.6)'}}>
                   {slashSuggestions.map(s=>(
                     <div key={s.cmd} onClick={()=>{setInput(s.cmd);setSlashSuggestions([]);inputRef.current?.focus();}}
-                      style={{display:'flex',gap:'10px',padding:'7px 12px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.04)'}}
-                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'}
+                      style={{display:'flex',gap:'10px',padding:'8px 12px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.04)'}}
+                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.05)'}
                       onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      <span style={{color:'#a78bfa',fontFamily:'monospace',fontSize:'12px',flexShrink:0}}>{s.cmd}</span>
-                      <span style={{color:'rgba(255,255,255,.4)',fontSize:'12px'}}>{s.desc}</span>
+                      <span style={{color:T.accent,fontFamily:'monospace',fontSize:'12px',flexShrink:0,minWidth:'100px'}}>{s.cmd}</span>
+                      <span style={{color:'rgba(255,255,255,.35)',fontSize:'12px'}}>{s.desc}</span>
                     </div>
                   ))}
                 </div>
@@ -2269,33 +2361,35 @@ export default function App() {
               <div style={{display:'flex',gap:'6px',alignItems:'flex-end'}}>
                 {visionImage&&(
                   <div style={{position:'relative',flexShrink:0}}>
-                    <img src={'data:image/jpeg;base64,'+visionImage} alt="attached" style={{width:'40px',height:'40px',borderRadius:'6px',objectFit:'cover',border:'1px solid rgba(124,58,237,.4)'}}/>
-                    <button onClick={()=>setVisionImage(null)} style={{position:'absolute',top:'-4px',right:'-4px',background:'#f87171',border:'none',borderRadius:'50%',width:'14px',height:'14px',color:'white',fontSize:'9px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>×</button>
+                    <img src={'data:image/jpeg;base64,'+visionImage} alt="attached"
+                      style={{width:'36px',height:'36px',borderRadius:'7px',objectFit:'cover',border:'1px solid rgba(124,58,237,.3)'}}/>
+                    <button onClick={()=>setVisionImage(null)} style={{position:'absolute',top:'-4px',right:'-4px',background:'#f87171',border:'none',borderRadius:'50%',width:'13px',height:'13px',color:'white',fontSize:'8px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>×</button>
                   </div>
                 )}
-                <button onClick={()=>fileInputRef.current?.click()} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'10px',padding:'8px 10px',color:'rgba(255,255,255,.3)',fontSize:'13px',cursor:'pointer',flexShrink:0}}>📎</button>
+                <button onClick={()=>fileInputRef.current?.click()}
+                  style={{background:'none',border:'none',padding:'8px 4px',color:'rgba(255,255,255,.2)',fontSize:'15px',cursor:'pointer',flexShrink:0,borderRadius:'8px'}}>
+                  📎
+                </button>
                 <textarea ref={inputRef} value={input}
                   onChange={e=>{
                     setInput(e.target.value);
                     e.target.style.height='auto';
                     e.target.style.height=Math.min(e.target.scrollHeight,120)+'px';
                     const v=e.target.value;
-                    if(v.startsWith('/')){
-                      setSlashSuggestions(SLASH_COMMANDS.filter(s=>s.cmd.startsWith(v)));
-                    } else {
-                      setSlashSuggestions([]);
-                    }
+                    if(v.startsWith('/')){setSlashSuggestions(SLASH_COMMANDS.filter(s=>s.cmd.startsWith(v)));}
+                    else{setSlashSuggestions([]);}
                   }}
                   onKeyDown={e=>{
                     if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();return;}
                     if(e.key==='ArrowUp'&&!input){const i=Math.min(histIdx+1,cmdHistory.length-1);setHistIdx(i);setInput(cmdHistory[i]||'');}
                     if(e.key==='ArrowDown'&&histIdx>-1){const i=histIdx-1;setHistIdx(i);setInput(i>=0?cmdHistory[i]:'');}
                   }}
-                  placeholder="Tanya Yuyu... atau / untuk commands" disabled={loading} rows={1}
-                  style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',padding:'8px 12px',color:loading?'rgba(255,255,255,.3)':T.text,fontSize:'13px',resize:'none',outline:'none',fontFamily:'inherit',lineHeight:'1.5'}}/>
+                  placeholder="Tanya Yuyu, atau / untuk commands"
+                  disabled={loading} rows={1}
+                  style={{flex:1,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'10px',padding:'9px 12px',color:loading?'rgba(255,255,255,.25)':T.text,fontSize:'13px',resize:'none',outline:'none',fontFamily:'inherit',lineHeight:'1.5'}}/>
                 {loading
-                  ?<button onClick={cancel} style={{background:'rgba(248,113,113,.15)',border:'1px solid rgba(248,113,113,.25)',borderRadius:'10px',padding:'8px 14px',color:'#f87171',fontSize:'13px',cursor:'pointer',flexShrink:0}}>stop</button>
-                  :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'10px',padding:'8px 14px',color:'white',fontSize:'13px',cursor:'pointer',fontWeight:'500',flexShrink:0}}>↑</button>
+                  ?<button onClick={cancel} style={{background:'rgba(248,113,113,.1)',border:'none',borderRadius:'10px',padding:'9px 14px',color:'#f87171',fontSize:'14px',cursor:'pointer',flexShrink:0}}>■</button>
+                  :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'10px',padding:'9px 16px',color:'white',fontSize:'14px',cursor:'pointer',fontWeight:'600',flexShrink:0}}>↑</button>
                 }
                 <VoiceBtn disabled={loading} onResult={txt=>{setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}} />
               </div>
@@ -2312,6 +2406,33 @@ export default function App() {
       {showSnippets&&<SnippetLibrary onInsert={code=>{setInput(i=>i?i+'\n'+code:code);setShowSnippets(false);inputRef.current?.focus();}} onClose={()=>setShowSnippets(false)}/>}
       {showFileHistory&&selectedFile&&<FileHistoryPanel folder={folder} filePath={selectedFile} onClose={()=>setShowFileHistory(false)}/>}
       {showCustomActions&&<CustomActionsPanel folder={folder} onRun={cmd=>runShortcut(cmd)} onClose={()=>setShowCustomActions(false)}/>}
+
+      {/* COMMAND PALETTE */}
+      {showPalette&&(
+        <CommandPalette
+          onClose={()=>setShowPalette(false)}
+          folder={folder} memories={memories} checkpoints={checkpoints}
+          model={model} models={MODELS}
+          onModelChange={id=>{setModel(id);Preferences.set({key:'yc_model',value:id});}}
+          onNewChat={()=>{setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});setShowFollowUp(false);}}
+          theme={theme}
+          onThemeChange={t=>{setTheme(t);Preferences.set({key:'yc_theme',value:t});}}
+          showSidebar={showSidebar} onToggleSidebar={()=>setShowSidebar(s=>!s)}
+          onShowMemory={()=>setShowMemory(true)}
+          onShowCheckpoints={()=>setShowCheckpoints(true)}
+          onShowMCP={()=>setShowMCP(true)}
+          onShowGitHub={()=>setShowGitHub(true)}
+          onShowDeploy={()=>setShowDeploy(true)}
+          onShowDiff={()=>setShowDiff(true)}
+          onShowSearch={()=>setShowSearch(true)}
+          onShowSnippets={()=>setShowSnippets(true)}
+          onShowCustomActions={()=>setShowCustomActions(true)}
+          runTests={runTests}
+          generateCommitMsg={generateCommitMsg}
+          exportChat={exportChat}
+          compactContext={compactContext}
+        />
+      )}
 
       {/* MEMORY PANEL */}
       {showMemory&&(
