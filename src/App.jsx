@@ -416,7 +416,7 @@ function Terminal({ folder, cmdHistory, addHistory }) {
     setLoading(true); setSuggestions([]);
     try {
       if (addHistory) addHistory(cmd);
-      const res = await callServer({ action: 'terminal', cmd, folder });
+      const res = await callServer({ type:'exec', path:folder, command:cmd });
       setOutput(res.output || res.error || 'Done.');
       setCmd('');
     } catch (e) { setOutput(e.message); } finally { setLoading(false); }
@@ -748,7 +748,7 @@ export default function App() {
         if(nm){const n=(notes+'\n'+nm[1].trim()).trim();setNotes(n);Preferences.set({key:'yc_notes_'+folder,value:n});}
       }
       setMessages(m=>[...m,{role:'assistant',content:final,actions:[...nonWrites,...writes.map(a=>({...a,executed:false}))]}]);
-    }catch(_e){
+    }catch(e){
       if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
     }
     setLoading(false);
