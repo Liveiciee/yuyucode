@@ -383,6 +383,7 @@ function ErrorBoundary({ children }) {
 }
 
 export default function App() {
+  console.log("APP RENDER START");
   const [messages, setMessages] = useState([{ role:'assistant', content:'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa? 🌸' }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -527,6 +528,9 @@ export default function App() {
   }
 
   const tokens = countTokens(messages);
+  console.log("TOKENS OK:", tokens);
+
+  try { countTokens(messages); } catch(e) { console.error("CRASH:", e); }
 
   return (
     <div style={{position:'fixed',inset:0,background:'#0d0d0e',color:'#e8e8e8',fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:'14px'}}>
