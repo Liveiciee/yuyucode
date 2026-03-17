@@ -1481,12 +1481,10 @@ export default function App() {
     } else if (base==='/bg') {
       const task = parts.slice(1).join(' ').trim();
       const id = await runBackgroundAgent(task, folder, callAI);
-      setMessages(m=>[...m,{role:'assistant',content:'🤖 Background agent: '+task+'
-ID: '+id,actions:[]}]);
+      setMessages(m=>[...m,{role:'assistant',content:'🤖 Background agent: '+task+'\nID: '+id,actions:[]}]);
     } else if (base==='/bgstatus') {
       const agents = getBgAgents();
       setMessages(m=>[...m,{role:'assistant',content:'🤖 Agents:\n'+agents.map(a=>a.id+' ['+a.status+'] '+a.task).join('\n'),actions:[]}]);
-'),actions:[]}]);
     } else if (base==='/self-edit') {
       const task = parts.slice(1).join(' ').trim() || 'Fix bugs, hapus dead code, optimasi performa';
       setLoading(true);
