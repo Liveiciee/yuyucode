@@ -108,9 +108,7 @@ function ActionChip({ action }) {
 function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix }) {
   const [hover, setHover] = useState(false);
   const isUser = msg.role === 'user';
-  const thinkMatch = msg.content.match(/<think>([\s\S]*?)<\/think>/i);
-  const thinkText = thinkMatch ? thinkMatch[1] : null;
-  const cleanText = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim();
+  const cleanText = msg.content.replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim();
   const actions = msg.actions || [];
   const hasPendingWrite = actions.some(a => a.type === 'write_file' && !a.executed);
   const isContinued = msg.content.trim().endsWith('CONTINUE');
@@ -130,7 +128,6 @@ function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast,
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:'2px', width:'100%' }}>
-          {thinkText && <ThinkingBlock text={thinkText} />}
           <div style={S.aiBubble}><MsgContent text={cleanText} /></div>
           {actions.map((a, i) => <ActionChip key={i} action={a} />)}
           {hasPendingWrite && onApprove && (
@@ -183,26 +180,6 @@ function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast,
 
 
 
-
-// ── THINKING BLOCK COMPONENT ──────────────────────────────────────────────
-function ThinkingBlock({ text }) {
-  const [open, setOpen] = React.useState(false);
-  if (!text || !text.trim()) return null;
-  return (
-    <div style={{margin:'4px 0 6px',borderRadius:'8px',overflow:'hidden',border:'1px solid rgba(167,139,250,.15)',background:'rgba(167,139,250,.04)'}}>
-      <div onClick={()=>setOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:'6px',padding:'5px 10px',cursor:'pointer',userSelect:'none'}}>
-        <span style={{fontSize:'11px',color:'rgba(167,139,250,.7)',fontFamily:'monospace'}}>{'> thinking'}</span>
-        <div style={{flex:1,height:'1px',background:'rgba(167,139,250,.1)'}} />
-        <span style={{fontSize:'10px',color:'rgba(167,139,250,.4)'}}>{open ? '▲' : '▼'}</span>
-      </div>
-      {open && (
-        <div style={{padding:'6px 12px 10px',fontSize:'12px',lineHeight:'1.6',color:'rgba(255,255,255,.45)',fontFamily:'monospace',whiteSpace:'pre-wrap',wordBreak:'break-word',borderTop:'1px solid rgba(167,139,250,.08)'}}>
-          {text.trim()}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function FileTree({ folder, onSelectFile, selectedFile, onRefresh }) {
   const [tree, setTree] = useState(null);
@@ -2084,8 +2061,23 @@ export default function App() {
         if (iter > 1) setAgentRunning(true);
 
         // ── DECISION LAYER: AI mikir dulu sebelum pakai tool ──
-        // Hint singkat: hemat token
-        const DECISION_HINT = iter === 1 ? '\n[TOOL RULE: Jawab langsung jika bisa. Pakai tool HANYA jika butuh info baru dari filesystem.]' : '';
+        const DECISION_HINT = iter === 1 ? [
+          '',
+          'AGENTIC DECISION PROTOCOL — baca sebelum respons:',
+          'Sebelum melakukan apapun, tentukan: apakah request ini benar-benar butuh tool?',
+          '',
+          'JAWAB LANGSUNG (tanpa action block) jika:',
+          '- Pertanyaan/penjelasan yang bisa dijawab dari context yang sudah ada',
+          '- Review/analisis kode yang sudah terlihat di context',
+          '- Saran arsitektur, debugging hypothesis, atau diskusi teknis',
+          '',
+          'GUNAKAN TOOL jika:',
+          '- Perlu baca file yang belum ada di context -> read_file',
+          '- Perlu jalankan perintah / check output nyata -> exec',
+          '- Perlu tulis/edit file -> write_file',
+          '',
+          'ATURAN: Kalau bisa jawab tanpa tool, JANGAN pakai tool.'
+        ].join('\n') : '';
 
         const groqMsgs=[
           {role:'system',content:systemPrompt+DECISION_HINT+(Object.keys(autoContext).length?'\n\nAuto-loaded context:\n'+Object.entries(autoContext).map(([p,c])=>'=== '+p+' ===\n'+c.slice(0,800)).join('\n\n'):'')},
