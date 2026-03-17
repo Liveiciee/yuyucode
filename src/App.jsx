@@ -1158,8 +1158,7 @@ export default function App() {
       if(ght.value) setGithubToken(ght.value);
       if(ghr.value) setGithubRepo(ghr.value);
       if(oh.value) setOllamaHost(oh.value);
-      const scr = await Preferences.get({key:'yc_session_color'});
-      if(scr.value) setSessionColor(scr.value||null);
+      Preferences.get({key:'yc_session_color'}).then(scr=>{if(scr.value)setSessionColor(scr.value||null);});
     });
     callServer({type:'ping'}).then(r=>{
       setServerOk(r.ok);
