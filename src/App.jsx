@@ -1026,7 +1026,7 @@ export default function App() {
   const [planSteps, setPlanSteps] = useState([]);
   const [showPlanPanel, setShowPlanPanel] = useState(false);
   const [planTask, setPlanTask] = useState('');
-  const [permissions, setPermissions] = useState(DEFAULT_PERMISSIONS);
+  const [permissions, setPermissions] = useState({read_file:true,write_file:false,exec:false,list_files:true,search:true,mcp:false,delete_file:false,browse:false});
   const [showPermissions, setShowPermissions] = useState(false);
   const [bgAgentList, setBgAgentList] = useState([]);
   const [showBgAgents, setShowBgAgents] = useState(false);
