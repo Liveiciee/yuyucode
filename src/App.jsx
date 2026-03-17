@@ -68,11 +68,11 @@ Kalau perlu info sebelum bertindak: baca dulu, lalu lanjut tanpa nunggu konfirma
 ## POLA AGENTIC YANG BENAR
 Task: "fix bug di useEffect"
 ❌ SALAH: "Saya perlu melihat kode dulu, bisa share file-nya?"
-✅ BENAR: langsung ```action {"type":"read_file","path":"src/App.jsx","from":1,"to":80}```
+✅ BENAR: langsung \u0060\u0060\u0060action {"type":"read_file","path":"src/App.jsx","from":1,"to":80}\u0060\u0060\u0060
 
 Task: "ada error di baris 234"
 ❌ SALAH: menjelaskan kemungkinan error
-✅ BENAR: ```action {"type":"read_file","path":"src/App.jsx","from":220,"to":250}````;
+✅ BENAR: \u0060\u0060\u0060action {"type":"read_file","path":"src/App.jsx","from":220,"to":250}\u0060\u0060\u0060`;
 
 const GIT_SHORTCUTS = [
   { label: 'status', icon: '◎', cmd: 'git status' },
