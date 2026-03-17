@@ -1604,7 +1604,7 @@ export default function App() {
         setMessages(m=>[...m,{role:'assistant',content:'🧠 Memory ['+scope+'] dihapus.',actions:[]}]);
       } else {
         const all = ['user','project','local'].map(s=>'**'+s+'** ('+(agentMemory[s]||[]).length+'):\n'+((agentMemory[s]||[]).map(mx=>'• '+mx.text).join('\n')||'kosong')).join('\n\n');
-        setMessages(m=>[...m,{role:'assistant',content:'🧠 **Agent Memory:**\n\n'+all+'\n\nUsage: /memory add user|project|local <teks>\n/memory clear user|project|local',actions:[]}]);
+        setMessages(m=>[...m,{role:'assistant',content:'🧠 **Agent Memory:**\n\n'+all+'\n\nUsage: /amemory add user|project|local <teks>\n/amemory clear user|project|local',actions:[]}]);
       }
     } else if (base==='/ptt') {
       setPushToTalk(p=>!p);
