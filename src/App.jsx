@@ -1371,8 +1371,6 @@ export default function App() {
       saveCheckpoint();
     } else if (base==='/restore') {
       setShowCheckpoints(true);
-    } else if (base==='/memory') {
-      setShowMemory(true);
     } else if (base==='/cost') {
       const total = messages.reduce((a,m)=>a+m.content.length,0);
       const tokens = Math.round(total/4);
