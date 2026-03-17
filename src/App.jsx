@@ -1709,7 +1709,7 @@ export default function App() {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const clean = text
-      .replace(/```[sS]*?```/g, '')
+      .replace(/```[\s\S]*?```/g, '')
       .replace(/[#*`_~>]/g, '')
       .replace(/[([^]]+)]([^)]+)/g, '$1')
       .replace(/s+/g, ' ').trim().slice(0, 500);
