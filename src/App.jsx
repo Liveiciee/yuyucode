@@ -1508,7 +1508,16 @@ export default function App() {
       setMessages(m=>[...m,{role:'assistant',content:'🤖 Background agent: '+task+'\nID: '+id,actions:[]}]);
     } else if (base==='/bgstatus') {
       const agents = getBgAgents();
-      setMessages(m=>[...m,{role:'assistant',content:'🤖 Agents:\n'+agents.map(a=>a.id+' ['+a.status+'] '+a.task).join('\n'),actions:[]}]);
+      const statusLines = agents.map(a=>'['+a.status+'] '+a.id+'\n'+a.task+(a.log?'\n'+a.log.slice(-1).join(''):'')).join('\n\n');
+      setMessages(m=>[...m,{role:'assistant',content:'🤖 **Background Agents:**\n\n'+statusLines,actions:[]}]);
+    } else if (base==='/bgmerge') {
+      const id = parts[1]?.trim();
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'🔀 Merging '+id+'...',actions:[]}]);
+      const result = await mergeBackgroundAgent(id, folder);
+      setMessages(m=>[...m,{role:'assistant',content:result.ok?'✅ '+result.msg:'❌ '+result.msg,actions:[]}]);
+      if(result.ok){haptic('heavy');sendNotification('YuyuCode','Merge berhasil!');}
+      setLoading(false);
     } else if (base==='/self-edit') {
       const task = parts.slice(1).join(' ').trim() || 'Fix bugs, hapus dead code, optimasi performa';
       setLoading(true);
