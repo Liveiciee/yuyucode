@@ -1590,7 +1590,7 @@ export default function App() {
         setMessages([...messages.slice(0, fromIdx), {role:'assistant',content:'📦 **Ringkasan dari pesan '+fromIdx+':**\n\n'+summary}, {role:'assistant',content:'✅ Diringkas.',actions:[]}]);
       } catch(e) { if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message,actions:[]}]); }
       setLoading(false);
-    } else if (base==='/memory') {
+    } else if (base==='/amemory') {
       const sub = parts[1]?.toLowerCase();
       const scope = ['user','project','local'].includes(parts[2]) ? parts[2] : 'user';
       const content = parts.slice(3).join(' ').trim();

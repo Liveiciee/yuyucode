@@ -125,7 +125,7 @@ export const SLASH_COMMANDS = [
   { cmd:'/loop',        desc:'Jalankan command berulang (/loop untuk stop)' },
   { cmd:'/summarize',   desc:'Kompres conversation dari pesan ke-N' },
   { cmd:'/ptt',         desc:'Toggle push-to-talk mode' },
-  { cmd:'/memory',      desc:'Agent memory: add/clear/view (user/project/local)' },
+  { cmd:'/amemory',     desc:'Agent memory: add/clear/view (user/project/local)' },
 ];
 
 export const TEMPLATES = {
