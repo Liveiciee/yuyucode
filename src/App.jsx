@@ -1485,8 +1485,7 @@ export default function App() {
 ID: '+id,actions:[]}]);
     } else if (base==='/bgstatus') {
       const agents = getBgAgents();
-      setMessages(m=>[...m,{role:'assistant',content:'🤖 Agents:
-'+agents.map(a=>a.id+' ['+a.status+'] '+a.task).join('
+      setMessages(m=>[...m,{role:'assistant',content:'🤖 Agents:\n'+agents.map(a=>a.id+' ['+a.status+'] '+a.task).join('\n'),actions:[]}]);
 '),actions:[]}]);
     } else if (base==='/self-edit') {
       const task = parts.slice(1).join(' ').trim() || 'Fix bugs, hapus dead code, optimasi performa';
