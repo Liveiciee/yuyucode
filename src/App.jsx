@@ -1453,12 +1453,9 @@ export default function App() {
       setLoading(false);
     } else if (base==='/effort') {
       const lvl = parts[1]?.toLowerCase();
-        setMessages(m=>[...m,{role:'assistant',content:'⚡ Effort: **'+effort+'** | /effort low|medium|high',actions:[]}]);
-        return;
-      }
       setEffort(lvl);
       Preferences.set({key:'yc_effort',value:lvl});
-      setMessages(m=>[...m,{role:'assistant',content:'⚡ Effort diubah: **'+lvl+'**',actions:[]}]);
+      setMessages(m=>[...m,{role:'assistant',content:'⚡ Effort: **'+lvl+'**',actions:[]}]);
     } else if (base==='/rewind') {
       const turns = parseInt(parts[1])||1;
       const rewound = rewindMessages(messages, turns);
