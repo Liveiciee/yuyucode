@@ -1360,7 +1360,8 @@ export default function App() {
         callServer({type:'exec', path:folder, command:'node --version 2>&1'}),
         callServer({type:'exec', path:folder, command:'df -h . 2>&1 | tail -1'}),
       ]);
-      const m = MODELS.find(x=>x.id===model);
+      const mx = MODELS.find(x=>x.id===model);
+      setMessages(prev=>[...prev,{role:'assistant',content:'📊 **Status**\n**Server:** '+(ping.ok?'✅ Online':'❌ Offline')+'\n**Model:** '+(mx?.label||model)+'\n**Git:** '+(git.data||'').trim().slice(0,60)+'\n**Node:** '+(nodeV.data||'').trim()+'\n**Disk:** '+(disk.data||'').trim(),actions:[]}]);
       setLoading(false);
     } else if (base==='/tokens') {
       const breakdown = messages.slice(-10).map(m=>{
