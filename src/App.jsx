@@ -2208,7 +2208,7 @@ export default function App() {
         {MODELS.find(m=>m.id===model)?.provider==='ollama'&&(
           <button onClick={()=>setShowOllamaConfig(v=>!v)} title={ollamaHost}
             style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'99px',padding:'2px 7px',color:'rgba(74,222,128,.7)',fontSize:'9px',cursor:'pointer',flexShrink:0,fontFamily:'monospace',maxWidth:'90px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-            🏠 {ollamaHost.replace(/https?:///,'')}
+            🏠 {ollamaHost.replace('http://','').replace('https://','')}
           </button>
         )}
         {/* Token badge */}
