@@ -1669,7 +1669,6 @@ export default function App() {
         callServer({type:'exec', path:folder, command:'df -h . 2>&1 | tail -1'}),
       ]);
       const m = MODELS.find(x=>x.id===model);
-      ,actions:[]}]);
       setLoading(false);
     } else if (base==='/tokens') {
       const breakdown = messages.slice(-10).map(m=>{
