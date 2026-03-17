@@ -1,13 +1,13 @@
 import { CEREBRAS_KEY, GEMINI_KEY, YUYU_SERVER, DEFAULT_OLLAMA_HOST } from './constants.js';
 
-export async function askCerebrasStream(messages, model, onChunk, signal) {
+export async function askCerebrasStream(messages, model, onChunk, signal, options = {}) {
   const resp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
     method: 'POST', signal,
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + CEREBRAS_KEY,
     },
-    body: JSON.stringify({ model, messages, max_tokens: 4000, stream: true }),
+    body: JSON.stringify({ model, messages, max_tokens: options.maxTokens || 1500, stream: true }),
   });
   if (resp.status === 429) {
     const retry = parseInt(resp.headers.get('retry-after') || '60');
@@ -32,50 +32,7 @@ export async function askCerebrasStream(messages, model, onChunk, signal) {
   return full;
 }
 
-export async function askGeminiStream(messages, model, onChunk, signal, imageBase64 = null) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
-  const sys = messages.find(m => m.role === 'system');
-  const chat = messages.filter(m => m.role !== 'system');
-  const contents = chat.map((m, i) => {
-    const parts = [];
-    if (imageBase64 && i === chat.length - 1) parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
-    parts.push({ text: m.content });
-    return { role: m.role === 'assistant' ? 'model' : 'user', parts };
-  });
-  const body = { contents, generationConfig: { maxOutputTokens: 4000 } };
-  if (sys) body.systemInstruction = { parts: [{ text: sys.content }] };
-  const resp = await fetch(url, { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (resp.status === 429) throw new Error('RATE_LIMIT:60');
-  if (!resp.ok) throw new Error('Gemini error: HTTP ' + resp.status);
-  const data = await resp.json();
-  const full = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  onChunk(full);
-  return full;
-}
 
-export async function askOllamaStream(messages, model, onChunk, signal, host = DEFAULT_OLLAMA_HOST) {
-  const ollamaModel = model.replace('ollama:', '');
-  const resp = await fetch((host || DEFAULT_OLLAMA_HOST) + '/api/chat', {
-    method: 'POST', signal,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: ollamaModel, messages, stream: true }),
-  });
-  if (!resp.ok) throw new Error('Ollama error: HTTP ' + resp.status + ' — pastikan Ollama jalan di Termux');
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let full = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    for (const line of decoder.decode(value).split('\n').filter(Boolean)) {
-      try {
-        const d = JSON.parse(line);
-        if (d.message?.content) { full += d.message.content; onChunk(full); }
-      } catch {}
-    }
-  }
-  return full;
-}
 
 export async function callServer(payload) {
   try {

@@ -3,7 +3,7 @@ import { Preferences } from "@capacitor/preferences";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CEREBRAS_KEY, GEMINI_KEY, YUYU_SERVER, DEFAULT_OLLAMA_HOST, MAX_HISTORY, MODELS, THEMES, BASE_SYSTEM, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS, TEMPLATES } from './constants.js';
-import { askCerebrasStream, callServer } from './api.js';
+import { askCerebrasStream, askGeminiStream, askOllamaStream, callServer } from './api.js';
 import { countTokens, getFileIcon, hl, resolvePath, parseActions, executeAction } from './utils.js';
 import { generatePlan, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, selectSkills, runHooksV2, tokenTracker, saveSession, loadSessions, rewindMessages, EFFORT_CONFIG, parseElicitation } from './features.js';
 
@@ -1818,9 +1818,10 @@ export default function App() {
 
   // ── UNIVERSAL AI ROUTER ──
   async function callAI(msgs, onChunk, signal, imgBase64=null) {
-    const effortTokens = { low: 512, medium: 1500, high: 3500 };
-    const maxTokens = effortTokens[effort] || 1500;
-    return askCerebrasStream(msgs, model, onChunk, signal, { maxTokens });
+    const m = MODELS.find(x=>x.id===model)||MODELS[0];
+    if (m.provider==='gemini') return askGeminiStream(msgs, model, onChunk, signal, imgBase64);
+    if (m.provider==='ollama') return askOllamaStream(msgs, model, onChunk, signal, ollamaHost);
+    return askCerebrasStream(msgs, model, onChunk, signal);
   }
 
   // ── BROWSER TOOL (via yuyu-server) ──

@@ -8,6 +8,8 @@ export const MODELS = [
   { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥', provider:'cerebras' },
   { id: 'llama-3.3-70b', label: 'Llama 3.3 70B 🚀', provider:'cerebras' },
   { id: 'llama3.1-8b', label: 'Llama 3.1 8B ⚡', provider:'cerebras' },
+  { id: 'gemini-2.0-flash', label: 'Gemini Flash 👁', provider:'gemini', vision:true },
+  { id: 'ollama:llama3', label: 'Ollama Local 🏠', provider:'ollama' },
 ];
 
 export const THEMES = {
@@ -59,9 +61,6 @@ export const BASE_SYSTEM = [
   '8. PROJECT_NOTE: untuk simpan info penting project',
   '9. Jangan jelaskan yang sudah jelas dari kode',
   '10. Jangan tulis ulang file besar — gunakan string replace minimal',
-  '',
-  '## THINKING',
-  'Sebelum setiap respons, tulis reasoning dalam <think>...</think>. Maks 1-2 kalimat.',
   '',
   '## POLA AGENTIC YANG BENAR',
   'Task: "fix bug di useEffect"',
