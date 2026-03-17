@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { CEREBRAS_KEY, GEMINI_KEY, YUYU_SERVER, DEFAULT_OLLAMA_HOST, MAX_HISTORY, MODELS, THEMES, BASE_SYSTEM, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS, TEMPLATES } from './constants.js';
 import { askCerebrasStream, askGeminiStream, askOllamaStream, callServer } from './api.js';
 import { countTokens, getFileIcon, hl, resolvePath, parseActions, executeAction } from './utils.js';
+import { generatePlan, runBackgroundAgent, getBgAgents, loadSkills, selectSkills, runHooksV2, tokenTracker, saveSession, loadSessions, rewindMessages, EFFORT_CONFIG, parseElicitation } from './features.js';
 
 const S = {
   msgRow: (isUser) => ({ display:'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', padding:'2px 16px', marginBottom:'2px' }),
