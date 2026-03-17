@@ -1712,8 +1712,8 @@ export default function App() {
       .replace(/```[\s\S]*?```/g, '')
       .replace(/[#*`_~>]/g, '')
       .replace(/[([^]]+)]([^)]+)/g, '$1')
-      .replace(/s+/g, ' ').trim().slice(0, 500);
-    if (!clean) return;
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/\s+/g, ' ').trim().slice(0, 500);
     const utt = new SpeechSynthesisUtterance(clean);
     utt.lang = 'id-ID'; utt.rate = 1.05; utt.pitch = 1.1;
     const voices = window.speechSynthesis.getVoices();
