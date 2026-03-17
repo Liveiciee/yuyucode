@@ -1670,15 +1670,7 @@ export default function App() {
       ]);
       const m = MODELS.find(x=>x.id===model);
       setMessages(prev=>[...prev,{role:'assistant',content:
-        `📊 **Status YuyuCode**
-
-` +
-        '**Server:** '+(ping.ok?'✅ Online':'❌ Offline')+`
-` +
-        '**Model:** '+(m?.label||model)+' ('+(m?.provider)+')
-' +
-        '**Ollama:** '+ollamaHost+`
-` +
+        content: '📊 **Status YuyuCode**\n\n' + '**Server:** ' + (ping.ok ? '✅ Online' : '❌ Offline') + '\n' + '**Model:** ' + (m?.label || model) + ' (' + (m?.provider) + ')\n' + '**Ollama:** ' + ollamaHost
         '**Project:** '+folder+' ⎇ '+branch+`
 ` +
         '**Git:** '+((git.data||'').trim()||'clean')+`
