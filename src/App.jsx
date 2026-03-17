@@ -2467,7 +2467,7 @@ export default function App() {
           {!showTerminal&&(
             <div style={{padding:'8px 10px',borderTop:'1px solid '+T.border,background:T.bg,flexShrink:0,position:'relative'}}>
               {slashSuggestions.length>0&&(
-                <div style={{position:'absolute',bottom:'100%',left:'10px',right:'10px',background:'#111113',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',overflow:'hidden',zIndex:99,marginBottom:'6px',boxShadow:'0 12px 32px rgba(0,0,0,.6)',maxHeight:'280px',overflowY:'auto'}}>
+                <div style={{position:'absolute',bottom:'100%',left:'10px',right:'10px',background:'#111113',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',zIndex:99,marginBottom:'6px',boxShadow:'0 12px 32px rgba(0,0,0,.6)',maxHeight:'260px',overflowY:'auto'}}>
                   {slashSuggestions.map(s=>(
                     <div key={s.cmd} onClick={()=>{setInput(s.cmd);setSlashSuggestions([]);inputRef.current?.focus();}}
                       style={{display:'flex',gap:'10px',padding:'8px 12px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.04)'}}
