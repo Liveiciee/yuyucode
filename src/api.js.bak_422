@@ -7,7 +7,7 @@ export async function askCerebrasStream(messages, model, onChunk, signal) {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + CEREBRAS_KEY,
     },
-    body: JSON.stringify({ model, messages, max_tokens: 4000, stream: true }),
+    body: JSON.stringify({ model, messages, max_tokens: 4000, stream: true, ...(model.includes('qwen') ? { enable_thinking: true } : {}) }),
   });
   if (resp.status === 429) {
     const retry = parseInt(resp.headers.get('retry-after') || '60');
