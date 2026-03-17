@@ -83,6 +83,15 @@ const GIT_SHORTCUTS = [
 
 const FOLLOW_UPS = ['Jelaskan lebih detail', 'Ada bug?', 'Bisa dioptimasi?', 'Langkah selanjutnya?'];
 
+const ACTION_KEYWORDS = ['fix','baca','lihat','edit','tulis','cek','buat','hapus','ganti','update','read','write','create','delete','check','open','show','list','run','exec','search','find','grep'];
+function needsAction(txt) {
+  const t = txt.toLowerCase();
+  return ACTION_KEYWORDS.some(k => t.includes(k));
+}
+function hasActionBlock(txt) {
+  return /```action[sS]*?```/.test(txt);
+}
+
 // ── SLASH COMMANDS ──
 const SLASH_COMMANDS = [
   { cmd:'/model',      desc:'Ganti model AI' },
@@ -109,6 +118,7 @@ const SLASH_COMMANDS = [
   { cmd:'/db',         desc:'Query SQLite database' },
   { cmd:'/ollama',     desc:'Set Ollama host URL' },
   { cmd:'/self-edit',  desc:'AI edit App.jsx sendiri' },
+  { cmd:'/index',      desc:'Re-index codebase sekarang' },
 ];
 
 const S = {
@@ -1312,6 +1322,8 @@ export default function App() {
   const [deployLog, setDeployLog] = useState('');
   const [ollamaHost, setOllamaHost] = useState(DEFAULT_OLLAMA_HOST);
   const [showOllamaConfig, setShowOllamaConfig] = useState(false);
+  const [codeIndex, setCodeIndex] = useState([]); // [{path, size}]
+  const [indexing, setIndexing] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const ttsRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
@@ -1405,6 +1417,7 @@ export default function App() {
     callServer({type:'ping'}).then(r=>setServerOk(r.ok));
     callServer({type:'read',path:folder+'/SKILL.md'}).then(r=>{if(r.ok)setSkill(r.data);else setSkill('');});
     callServer({type:'exec',path:folder,command:'git branch --show-current'}).then(r=>{if(r.ok)setBranch(r.data.trim());});
+    buildCodeIndex(folder);
   },[folder]);
 
   async function openFile(path) {
@@ -1634,6 +1647,10 @@ export default function App() {
       const r = await callServer({type:'mcp',tool:'sqlite',action:'query',params:{dbPath:folder+'/data.db',query:q}});
       setMessages(m=>[...m,{role:'assistant',content:'🗄 Query result:\n```\n'+(r.data||'kosong')+'\n```',actions:[]}]);
       setLoading(false);
+    } else if (base==='/index') {
+      setMessages(m=>[...m,{role:'assistant',content:'🔍 Re-indexing codebase...',actions:[]}]);
+      await buildCodeIndex(folder);
+      setMessages(m=>[...m,{role:'assistant',content:`✅ Index selesai: ${codeIndex.length} files ditemukan~`,actions:[]}]);
     } else if (base==='/ollama') {
       const newHost = parts.slice(1).join(' ').trim();
       if (!newHost) {
@@ -1702,6 +1719,40 @@ export default function App() {
     if (navigator.vibrate) {
       navigator.vibrate(type==='heavy'?[50,30,50]:type==='medium'?30:10);
     }
+  }
+
+  // ── CODEBASE INDEX ──
+  async function buildCodeIndex(dir) {
+    setIndexing(true);
+    try {
+      const r = await callServer({type:'exec', path:dir, command:
+        'find . -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.md" -o -name "*.css" -o -name "*.html" \) ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.gradle/*" 2>/dev/null | head -200'
+      });
+      if (r.ok && r.data) {
+        const paths = r.data.trim().split('\n').filter(Boolean).map(p => p.replace(/^\.\//,''));
+        setCodeIndex(paths.map(p => ({path:p})));
+      }
+    } catch{}
+    setIndexing(false);
+  }
+
+  async function grepIndex(query, dir) {
+    if (!query || query.length < 3) return '';
+    // extract meaningful words dari query
+    const words = query.match(/[a-zA-Z_][a-zA-Z0-9_]{2,}/g)||[];
+    if (!words.length) return '';
+    const term = words.slice(0,3).join('|');
+    const r = await callServer({type:'exec', path:dir, command:
+      `grep -rn --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx" -E "${term}" . --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist -l 2>/dev/null | head -8`
+    });
+    if (!r.ok || !r.data.trim()) return '';
+    const files = r.data.trim().split('\n').filter(Boolean).map(p=>p.replace(/^\.\//,''));
+    // baca 30 baris pertama dari tiap file relevan (max 3 file)
+    const snippets = await Promise.all(files.slice(0,3).map(async f => {
+      const fr = await callServer({type:'read', path:dir+'/'+f, from:1, to:30});
+      return fr.ok ? `=== ${f} (relevant) ===\n${fr.data}` : '';
+    }));
+    return snippets.filter(Boolean).join('\n\n');
   }
 
   // ── VOICE TTS ──
@@ -1976,7 +2027,10 @@ export default function App() {
       const fileCtx=selectedFile&&fileContent?'\n\nFile terbuka: '+selectedFile+'\n```\n'+fileContent.slice(0,1500)+'\n```':'';
       const memCtx=memories.length?'\n\nMemories (pola coding Papa):\n'+memories.slice(0,10).map(m=>'• '+m.text).join('\n'):'';
       const visionCtx=visionImage?'\n\n[Gambar dilampirkan — analisis untuk context coding]':'';
-      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+visionCtx;
+      // ── AUTO GREP: inject file relevan berdasarkan query ──
+      const grepCtx = needsAction(txt) ? await grepIndex(txt, folder) : '';
+      const indexCtx = codeIndex.length ? '\n\nFile di project ('+codeIndex.length+' files):\n'+codeIndex.slice(0,50).map(f=>f.path).join('\n') : '';
+      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+visionCtx+indexCtx+(grepCtx?'\n\nFile relevan dengan query ini:\n'+grepCtx:'');
 
       // ── PARALLEL PRE-LOAD pinned files ──
       if (pinnedFiles.length) {
@@ -2004,6 +2058,17 @@ export default function App() {
 
         let reply = await callAI(groqMsgs, setStreaming, ctrl.signal, iter===1?visionImage:null);
         setStreaming('');
+
+        // ── ACTION ENFORCEMENT: jika perlu action tapi tidak ada ──
+        if (!hasActionBlock(reply) && needsAction(txt) && iter === 1 && selfOptRetry < 2) {
+          selfOptRetry++;
+          allMessages = [
+            ...allMessages,
+            {role:'assistant', content:reply.trim()},
+            {role:'user', content:'Untuk task ini kamu HARUS menggunakan action block. Gunakan read_file, write_file, exec, atau search sesuai kebutuhan. Jangan hanya jelaskan — langsung eksekusi dengan action block.'}
+          ];
+          continue;
+        }
 
         // ── SELF-OPTIMIZATION: jika ada error di reply, retry dengan hint ──
         if (reply.includes('❌') && selfOptRetry < 2) {
@@ -2209,6 +2274,12 @@ export default function App() {
             style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'99px',padding:'2px 7px',color:'rgba(74,222,128,.7)',fontSize:'9px',cursor:'pointer',flexShrink:0,fontFamily:'monospace',maxWidth:'90px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
             🏠 {ollamaHost.replace('http://','').replace('https://','')}
           </button>
+        )}
+        {/* Index badge */}
+        {codeIndex.length>0&&(
+          <span title={'Codebase index: '+codeIndex.length+' files'} style={{fontSize:'9px',color:'rgba(74,222,128,.4)',flexShrink:0,cursor:'default'}}>
+            {indexing?'⟳':('idx:'+codeIndex.length)}
+          </span>
         )}
         {/* Token badge */}
         <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)',flexShrink:0}}>~{tokens}tk</span>
