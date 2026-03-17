@@ -89,8 +89,11 @@ export async function runBackgroundAgent(task, folder, callAI) {
             'Working directory: ' + wtPath,
             'Branch: ' + branch,
             'Task: ' + task,
-            'PENTING: Gunakan path ' + wtPath + ' untuk semua operasi file.',
-            'Gunakan action blocks untuk baca/tulis file.',
+            'PENTING: Kamu HARUS menggunakan write_file action block untuk menulis file. Contoh:',
+            ```action
+{"type":"write_file","path":"PATH/nama-file.md","content":"ISI FILE"}
+```
+Gunakan path lengkap: ' + wtPath + '/nama-file. WAJIB pakai action block, bukan cerita saja.',
             'Setelah selesai, commit semua perubahan dengan pesan yang jelas.',
           ].join('\n'),
         },
