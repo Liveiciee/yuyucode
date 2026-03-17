@@ -108,6 +108,20 @@ export const SLASH_COMMANDS = [
   { cmd:'/index',      desc:'Re-index codebase sekarang' },
   { cmd:'/status',     desc:'Health check semua sistem' },
   { cmd:'/tokens',     desc:'Breakdown token usage' },
+  { cmd:'/plan',        desc:'Plan + approve + eksekusi step by step' },
+  { cmd:'/rewind',      desc:'Undo N conversation turns + code changes' },
+  { cmd:'/effort',      desc:'Set effort level: low | medium | high' },
+  { cmd:'/rename',      desc:'Beri nama sesi ini' },
+  { cmd:'/usage',       desc:'Token usage akurat sesi ini' },
+  { cmd:'/bg',          desc:'Jalankan agent di background' },
+  { cmd:'/bgstatus',    desc:'Status background agents' },
+  { cmd:'/skills',      desc:'Lihat dan reload skill files' },
+  { cmd:'/thinking',    desc:'Toggle extended thinking mode' },
+  { cmd:'/permissions', desc:'Manage tool permissions' },
+  { cmd:'/sessions',    desc:'Lihat dan restore sesi tersimpan' },
+  { cmd:'/save',        desc:'Simpan sesi sekarang' },
+  { cmd:'/debug',       desc:'Debug info: model, tokens, state' },
+  { cmd:'/plugin',      desc:'Plugin marketplace' },
 ];
 
 export const TEMPLATES = {
