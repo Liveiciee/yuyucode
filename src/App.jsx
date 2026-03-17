@@ -1453,8 +1453,7 @@ export default function App() {
       setLoading(false);
     } else if (base==='/effort') {
       const lvl = parts[1]?.toLowerCase();
-        setMessages(m=>[...m,{role:'assistant',content:'⚡ Effort sekarang: **'+effort+'**
-Usage: /effort low|medium|high',actions:[]}]);
+        setMessages(m=>[...m,{role:'assistant',content:'⚡ Effort sekarang: **'+effort+'**\nUsage: /effort low|medium|high',actions:[]}]);
         return;
       }
       setEffort(lvl);
