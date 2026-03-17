@@ -126,6 +126,11 @@ export const SLASH_COMMANDS = [
   { cmd:'/summarize',   desc:'Kompres conversation dari pesan ke-N' },
   { cmd:'/ptt',         desc:'Toggle push-to-talk mode' },
   { cmd:'/amemory',     desc:'Agent memory: add/clear/view (user/project/local)' },
+  { cmd:'/batch',       desc:'Operasi AI ke semua file di src/' },
+  { cmd:'/simplify',    desc:'Simplifikasi file yang sedang dibuka' },
+  { cmd:'/color',       desc:'Set warna bar sesi (red/green/blue/off)' },
+  { cmd:'/config',      desc:'Panel settings interaktif' },
+  { cmd:'/watch',       desc:'Toggle file watcher (notify perubahan eksternal)' },
 ];
 
 export const TEMPLATES = {
