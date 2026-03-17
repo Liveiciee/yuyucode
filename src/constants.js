@@ -115,6 +115,7 @@ export const SLASH_COMMANDS = [
   { cmd:'/usage',       desc:'Token usage akurat sesi ini' },
   { cmd:'/bg',          desc:'Jalankan agent di background' },
   { cmd:'/bgstatus',    desc:'Status background agents' },
+  { cmd:'/bgmerge',     desc:'Merge hasil background agent ke main' },
   { cmd:'/skills',      desc:'Lihat dan reload skill files' },
   { cmd:'/thinking',    desc:'Toggle extended thinking mode' },
   { cmd:'/permissions', desc:'Manage tool permissions' },

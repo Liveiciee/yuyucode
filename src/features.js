@@ -1,4 +1,4 @@
-// ── FEATURES v1 ──────────────────────────────────────────────────────────────
+// ── FEATURES v2 — with Git Worktree Isolation ────────────────────────────────
 import { callServer } from './api.js';
 import { parseActions, executeAction } from './utils.js';
 import { Preferences } from '@capacitor/preferences';
@@ -16,10 +16,7 @@ export function parsePlanSteps(reply) {
 
 export async function generatePlan(task, folder, callAI, signal) {
   const reply = await callAI([
-    {
-      role: 'system',
-      content: 'Buat rencana eksekusi bernomor untuk task berikut.\nFormat WAJIB:\n1. [action singkat]\n2. [action berikutnya]\nMaksimal 8 langkah. Langsung ke langkah, tanpa penjelasan.',
-    },
+    { role: 'system', content: 'Buat rencana eksekusi bernomor untuk task berikut.\nFormat WAJIB:\n1. [action singkat]\n2. [action berikutnya]\nMaksimal 8 langkah. Langsung ke langkah, tanpa penjelasan.' },
     { role: 'user', content: 'Task: ' + task + '\nFolder: ' + folder },
   ], () => {}, signal);
   const steps = parsePlanSteps(reply);
@@ -28,10 +25,7 @@ export async function generatePlan(task, folder, callAI, signal) {
 
 export async function executePlanStep(step, folder, callAI, signal) {
   const reply = await callAI([
-    {
-      role: 'system',
-      content: 'Eksekusi langkah: "' + step.text + '"\nFolder: ' + folder + '\nGunakan action blocks.',
-    },
+    { role: 'system', content: 'Eksekusi langkah: "' + step.text + '"\nFolder: ' + folder + '\nGunakan action blocks.' },
     { role: 'user', content: 'Lakukan: ' + step.text },
   ], () => {}, signal);
   const actions = parseActions(reply);
@@ -45,37 +39,126 @@ export async function executePlanStep(step, folder, callAI, signal) {
   return { reply, actions, results };
 }
 
-// ─── BACKGROUND AGENTS ────────────────────────────────────────────────────────
+// ─── BACKGROUND AGENTS WITH GIT WORKTREE ISOLATION ───────────────────────────
 const bgAgents = new Map();
+const WORKTREE_BASE = '/data/data/com.termux/files/home/.yuyuworktrees';
 
 export function getBgAgents() {
   return Array.from(bgAgents.entries()).map(([id, v]) => ({ id, ...v }));
 }
 
+async function execGit(folder, cmd) {
+  const r = await callServer({ type: 'exec', path: folder, command: cmd });
+  return r.data || '';
+}
+
 export async function runBackgroundAgent(task, folder, callAI) {
   const id = 'bg_' + Date.now();
-  const agent = { task, status: 'running', log: [], result: null };
+  const branch = 'agent-' + id;
+  const wtPath = WORKTREE_BASE + '/' + id;
+  const agent = {
+    task, status: 'preparing', log: [], result: null,
+    branch, wtPath, folder,
+  };
   bgAgents.set(id, agent);
   const ctrl = new AbortController();
-  agent.abort = () => ctrl.abort();
+  agent.abort = () => {
+    ctrl.abort();
+    // cleanup worktree on abort
+    callServer({ type: 'exec', path: folder, command: 'git worktree remove --force ' + wtPath + ' 2>/dev/null; git branch -D ' + branch + ' 2>/dev/null' });
+  };
+
   (async () => {
     try {
-      agent.log.push('Mulai: ' + task);
+      // 1. Create worktree
+      agent.log.push('🌿 Creating worktree: ' + branch);
+      const wtResult = await execGit(folder, 'git worktree add ' + wtPath + ' -b ' + branch + ' 2>&1');
+      if (wtResult.includes('error') || wtResult.includes('fatal')) {
+        throw new Error('Worktree failed: ' + wtResult.slice(0, 100));
+      }
+      agent.status = 'running';
+      agent.log.push('✅ Worktree siap di: ' + wtPath);
+
+      // 2. Run AI in worktree context
+      agent.log.push('🤖 Agent mulai task: ' + task);
       const reply = await callAI([
-        { role: 'system', content: 'Background agent. Task: ' + task + '. Folder: ' + folder + '. Gunakan action blocks.' },
+        {
+          role: 'system',
+          content: [
+            'Kamu adalah isolated background agent.',
+            'Working directory: ' + wtPath,
+            'Branch: ' + branch,
+            'Task: ' + task,
+            'PENTING: Gunakan path ' + wtPath + ' untuk semua operasi file.',
+            'Gunakan action blocks untuk baca/tulis file.',
+            'Setelah selesai, commit semua perubahan dengan pesan yang jelas.',
+          ].join('\n'),
+        },
         { role: 'user', content: task },
       ], () => {}, ctrl.signal);
+
       const actions = parseActions(reply);
       const writes = actions.filter(a => a.type === 'write_file');
-      agent.result = { reply, writes };
+
+      // 3. Execute non-write actions
+      for (const a of actions.filter(a => a.type !== 'write_file')) {
+        a.result = await executeAction(a, wtPath);
+      }
+
+      // 4. Apply writes to worktree
+      for (const a of writes) {
+        const wtAction = { ...a, path: a.path.startsWith(wtPath) ? a.path : wtPath + '/' + a.path.replace(folder + '/', '') };
+        await callServer({ type: 'write', path: wtAction.path, content: a.content });
+        agent.log.push('✏️ Ditulis: ' + wtAction.path.split('/').pop());
+      }
+
+      // 5. Commit in worktree
+      if (writes.length > 0) {
+        await execGit(wtPath, 'git add -A');
+        await execGit(wtPath, 'git commit -m "agent(' + id + '): ' + task.slice(0, 50) + '"');
+        agent.log.push('📝 Committed ' + writes.length + ' file di branch ' + branch);
+      }
+
+      agent.result = { reply, writes, branch, wtPath };
       agent.status = 'done';
-      agent.log.push('Selesai. ' + writes.length + ' file siap.');
+      agent.log.push('✅ Selesai. ' + writes.length + ' file di branch ' + branch + '. Gunakan /bgmerge ' + id + ' untuk merge ke main.');
+
     } catch (e) {
       agent.status = 'error';
-      agent.log.push('Error: ' + e.message);
+      agent.log.push('❌ Error: ' + (e.message || String(e)));
+      // cleanup on error
+      try {
+        await callServer({ type: 'exec', path: folder, command: 'git worktree remove --force ' + wtPath + ' 2>/dev/null; git branch -D ' + branch + ' 2>/dev/null' });
+      } catch {}
     }
   })();
+
   return id;
+}
+
+export async function mergeBackgroundAgent(id, folder) {
+  const agent = bgAgents.get(id);
+  if (!agent) return { ok: false, msg: 'Agent tidak ditemukan' };
+  if (agent.status !== 'done') return { ok: false, msg: 'Agent belum selesai (status: ' + agent.status + ')' };
+
+  try {
+    // Merge branch ke main
+    const mergeResult = await execGit(folder, 'git merge ' + agent.branch + ' --no-ff -m "merge: agent ' + id + ' — ' + agent.task.slice(0, 40) + '" 2>&1');
+    const conflict = mergeResult.includes('CONFLICT');
+
+    if (conflict) {
+      return { ok: false, msg: 'Ada konflik merge. Cek dengan /status dan resolve manual.' };
+    }
+
+    // Cleanup worktree
+    await execGit(folder, 'git worktree remove --force ' + agent.wtPath + ' 2>/dev/null');
+    await execGit(folder, 'git branch -D ' + agent.branch + ' 2>/dev/null');
+    agent.status = 'merged';
+    agent.log.push('🎉 Merged ke main dan worktree dihapus.');
+    return { ok: true, msg: 'Merged! ' + (agent.result?.writes?.length || 0) + ' file masuk ke main.' };
+  } catch (e) {
+    return { ok: false, msg: 'Merge error: ' + e.message };
+  }
 }
 
 export function abortBgAgent(id) {
@@ -161,8 +244,7 @@ export async function saveSession(name, messages, folder, branch) {
     id: Date.now(),
     name: name || 'Session ' + new Date().toLocaleString('id'),
     messages: messages.slice(-50),
-    folder,
-    branch,
+    folder, branch,
     savedAt: new Date().toISOString(),
   };
   const existing = await loadSessions();
@@ -175,9 +257,7 @@ export async function loadSessions() {
   try {
     const r = await Preferences.get({ key: 'yc_sessions' });
     return r.value ? JSON.parse(r.value) : [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 // ─── REWIND ──────────────────────────────────────────────────────────────────
@@ -195,14 +275,9 @@ export const EFFORT_CONFIG = {
 
 // ─── PERMISSIONS ─────────────────────────────────────────────────────────────
 export const DEFAULT_PERMISSIONS = {
-  read_file: true,
-  write_file: false,
-  exec: false,
-  list_files: true,
-  search: true,
-  mcp: false,
-  delete_file: false,
-  browse: false,
+  read_file: true, write_file: false, exec: false,
+  list_files: true, search: true, mcp: false,
+  delete_file: false, browse: false,
 };
 
 export function checkPermission(permissions, actionType) {
