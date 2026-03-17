@@ -1385,11 +1385,8 @@ export default function App() {
     } else if (base==='/skills') {
       const loaded = await loadSkills(folder);
       setSkills(loaded);
-      const list = loaded.map(s=>'• '+s.name+' ('+Math.round(s.content.length/100)/10+'KB)').join('
-');
-      setMessages(m=>[...m,{role:'assistant',content:'🧩 **Skills loaded ('+loaded.length+'):**
-
-'+(list||'Tidak ada skill files.'),actions:[]}]);
+      const list = loaded.map(s=>'• '+s.name+' ('+Math.round(s.content.length/100)/10+'KB)').join('\n');
+      setMessages(m=>[...m,{role:'assistant',content:'🧩 **Skills loaded ('+loaded.length+'):**\n\n'+(list||'Tidak ada skill files.'),actions:[]}]);
     } else if (base==='/thinking') {
       const next = !thinkingEnabled;
       setThinkingEnabled(next);
