@@ -1263,33 +1263,6 @@ export default function App() {
       setMessages(m=>[...m,{role:'assistant',content:'✅ '+targets.length+' file berhasil ditulis secara atomic~',actions:[]}]);
     }
     await runHooks('postWrite', targets.map(a=>a.path).join(','));
-
-    // ── RUN-AFTER-WRITE: auto verify syntax ──
-    if (permissions.exec) {
-      for (const wr of targets) {
-        const filePath = wr.path || '';
-        const ext = filePath.split('.').pop().toLowerCase();
-        let verifyCmd = null;
-        const absPath = resolvePath(folder, filePath);
-        if (ext === 'js' || ext === 'cjs' || ext === 'mjs') {
-          verifyCmd = 'node --check "' + absPath + '" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"';
-        } else if (ext === 'json') {
-          verifyCmd = 'python3 -m json.tool "' + absPath + '" > /dev/null 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"';
-        } else if (ext === 'sh') {
-          verifyCmd = 'bash -n "' + absPath + '" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"';
-        }
-        if (!verifyCmd) continue;
-        const vr = await callServer({type:'exec', path:folder, command:verifyCmd});
-        const vOut = (vr.data || '').trim();
-        if (!vOut) continue;
-        const hasVerifyErr = vOut.includes('SYNTAX_ERR') || (vOut.toLowerCase().includes('error') && !vOut.includes('SYNTAX_OK'));
-        if (hasVerifyErr) {
-          const fname = filePath.split('/').pop();
-          setMessages(m=>[...m,{role:'assistant',content:'Syntax error di ' + fname + ' setelah write:\n```\n' + vOut.slice(0,300) + '\n```',actions:[]}]);
-          setTimeout(()=>sendMsg('Fix syntax error di ' + filePath + ':\n```\n' + vOut.slice(0,300) + '\n```'), 700);
-        }
-      }
-    }
   }
 
   async function undoLastEdit(){
@@ -2060,27 +2033,8 @@ export default function App() {
         iter++;
         if (iter > 1) setAgentRunning(true);
 
-        // ── DECISION LAYER: AI mikir dulu sebelum pakai tool ──
-        const DECISION_HINT = iter === 1 ? [
-          '',
-          'AGENTIC DECISION PROTOCOL — baca sebelum respons:',
-          'Sebelum melakukan apapun, tentukan: apakah request ini benar-benar butuh tool?',
-          '',
-          'JAWAB LANGSUNG (tanpa action block) jika:',
-          '- Pertanyaan/penjelasan yang bisa dijawab dari context yang sudah ada',
-          '- Review/analisis kode yang sudah terlihat di context',
-          '- Saran arsitektur, debugging hypothesis, atau diskusi teknis',
-          '',
-          'GUNAKAN TOOL jika:',
-          '- Perlu baca file yang belum ada di context -> read_file',
-          '- Perlu jalankan perintah / check output nyata -> exec',
-          '- Perlu tulis/edit file -> write_file',
-          '',
-          'ATURAN: Kalau bisa jawab tanpa tool, JANGAN pakai tool.'
-        ].join('\n') : '';
-
         const groqMsgs=[
-          {role:'system',content:systemPrompt+DECISION_HINT+(Object.keys(autoContext).length?'\n\nAuto-loaded context:\n'+Object.entries(autoContext).map(([p,c])=>'=== '+p+' ===\n'+c.slice(0,800)).join('\n\n'):'')},
+          {role:'system',content:systemPrompt+(Object.keys(autoContext).length?'\n\nAuto-loaded context:\n'+Object.entries(autoContext).map(([p,c])=>'=== '+p+' ===\n'+c.slice(0,800)).join('\n\n'):'')},
           ...trimHistory(allMessages).map(m=>({role:m.role,content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim()}))
         ];
 
@@ -2131,32 +2085,6 @@ export default function App() {
               }
             }
           }
-        }
-
-        // ── POST-EXEC ERROR DETECTION: auto-fix loop ──
-        const execErrors = otherActions.filter(function(a) {
-          if (a.type !== 'exec') return false;
-          const out = (a.result && a.result.data ? a.result.data : '').toLowerCase();
-          if (!out || !out.trim()) return false;
-          const hasErr = out.includes('error') || out.includes('exception') ||
-            out.includes('traceback') || out.includes('cannot find module') ||
-            out.includes('command not found') || out.includes('exit code 1') ||
-            out.includes('failed to compile');
-          const isFalsePositive = out.includes('no error') || out.includes('0 errors') ||
-            out.includes('syntax ok') || out.includes('passed');
-          return hasErr && !isFalsePositive;
-        });
-
-        if (execErrors.length > 0 && iter < MAX_ITER) {
-          const errSummary = execErrors.map(function(a) {
-            return '[ERROR] ' + (a.command || a.path || '?') + '\n' + (a.result && a.result.data ? a.result.data.slice(0, 400) : '');
-          }).join('\n\n');
-          allMessages = [
-            ...allMessages,
-            {role:'assistant', content: reply.replace(/```action[\s\S]*?```/g,'').trim()},
-            {role:'user', content: 'Error saat eksekusi:\n\n' + errSummary + '\n\nAnalisis dan fix. Jangan ulangi command yang sama persis.'}
-          ];
-          continue;
         }
 
         const fileData = [...readActions,...otherActions].filter(a=>a.result?.ok&&a.type!=='exec').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
