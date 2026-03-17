@@ -1669,11 +1669,6 @@ export default function App() {
         callServer({type:'exec', path:folder, command:'df -h . 2>&1 | tail -1'}),
       ]);
       const m = MODELS.find(x=>x.id===model);
-      setMessages(prev=>[...prev,{role:'assistant',content:'📊 **Status YuyuCode**\n\n**Server:** '+(ping.ok?'✅ Online':'❌ Offline')+'\n**Model:** '+(m?.label||model)+' ('+(m?.provider)+')\n**Ollama:** '+ollamaHost}]);
-' +
-        '**Context:** ~'+countTokens(messages)+'tk
-' +
-        '**Memories:** '+memories.length+' items'
       ,actions:[]}]);
       setLoading(false);
     } else if (base==='/tokens') {
