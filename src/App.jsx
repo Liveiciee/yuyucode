@@ -1436,6 +1436,65 @@ export default function App() {
       setMessages(m=>[...m,{role:'assistant',content:info,actions:[]}]);
     } else if (base==='/plugin') {
       setShowPlugins(true);
+    } else if (base==='/plan') {
+      const task = parts.slice(1).join(' ').trim();
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'📋 Generating plan...',actions:[]}]);
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      try {
+        const { reply, steps } = await generatePlan(task, folder, callAI, ctrl.signal);
+        setPlanSteps(steps.map(s=>({...s,done:false})));
+        setPlanTask(task);
+        setMessages(m=>[...m,{role:'assistant',content:'📋 **Plan ('+steps.length+' langkah):**
+
+'+steps.map(s=>s.num+'. '+s.text).join('
+'),actions:[]}]);
+      } catch(e) {
+        if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message,actions:[]}]);
+      }
+      setLoading(false);
+    } else if (base==='/effort') {
+      const lvl = parts[1]?.toLowerCase();
+        setMessages(m=>[...m,{role:'assistant',content:'⚡ Effort sekarang: **'+effort+'**
+Usage: /effort low|medium|high',actions:[]}]);
+        return;
+      }
+      setEffort(lvl);
+      Preferences.set({key:'yc_effort',value:lvl});
+      setMessages(m=>[...m,{role:'assistant',content:'⚡ Effort: **'+lvl+'**',actions:[]}]);
+    } else if (base==='/rewind') {
+      const turns = parseInt(parts[1])||1;
+      const rewound = rewindMessages(messages, turns);
+      setMessages(rewound);
+      setMessages(m=>[...m,{role:'assistant',content:'⏪ Rewind '+turns+' turn. '+rewound.length+' pesan tersisa.',actions:[]}]);
+    } else if (base==='/rename') {
+      const name = parts.slice(1).join(' ').trim();
+      setSessionName(name);
+      Preferences.set({key:'yc_session_name',value:name});
+      setMessages(m=>[...m,{role:'assistant',content:'✏️ Sesi: **'+name+'**',actions:[]}]);
+    } else if (base==='/save') {
+      const name = parts.slice(1).join(' ').trim() || sessionName || 'Session '+new Date().toLocaleString('id');
+      const s = await saveSession(name, messages, folder, branch);
+      setSessionName(name);
+      setMessages(m=>[...m,{role:'assistant',content:'💾 Sesi disimpan: **'+s.name+'**',actions:[]}]);
+    } else if (base==='/sessions') {
+      const sessions = await loadSessions();
+      setSessionList(sessions);
+      setShowSessions(true);
+      setMessages(m=>[...m,{role:'assistant',content:'📂 '+sessions.length+' sesi ditemukan.',actions:[]}]);
+    } else if (base==='/usage') {
+      setMessages(m=>[...m,{role:'assistant',content:tokenTracker.summary(),actions:[]}]);
+    } else if (base==='/bg') {
+      const task = parts.slice(1).join(' ').trim();
+      const id = await runBackgroundAgent(task, folder, callAI);
+      setMessages(m=>[...m,{role:'assistant',content:'🤖 Background agent: '+task+'
+ID: '+id,actions:[]}]);
+    } else if (base==='/bgstatus') {
+      const agents = getBgAgents();
+      setMessages(m=>[...m,{role:'assistant',content:'🤖 Agents:
+'+agents.map(a=>a.id+' ['+a.status+'] '+a.task).join('
+'),actions:[]}]);
     } else if (base==='/self-edit') {
       const task = parts.slice(1).join(' ').trim() || 'Fix bugs, hapus dead code, optimasi performa';
       setLoading(true);
