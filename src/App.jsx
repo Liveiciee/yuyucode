@@ -835,6 +835,35 @@ function VoiceBtn({ onResult, disabled }) {
   );
 }
 
+function PushToTalkBtn({ onResult, disabled }) {
+  const [recording, setRecording] = useState(false);
+  async function onPressIn() {
+    setRecording(true);
+    try {
+      const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
+      await SpeechRecognition.requestPermissions();
+      await SpeechRecognition.start({ language: 'id-ID', maxResults: 1, partialResults: false, popup: false });
+    } catch {}
+  }
+  async function onPressOut() {
+    setRecording(false);
+    try {
+      const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
+      const result = await SpeechRecognition.stop();
+      if (result && result.matches && result.matches.length > 0) onResult(result.matches[0]);
+    } catch {}
+  }
+  return (
+    <button
+      onMouseDown={onPressIn} onMouseUp={onPressOut}
+      onTouchStart={e=>{e.preventDefault();onPressIn();}} onTouchEnd={e=>{e.preventDefault();onPressOut();}}
+      disabled={disabled}
+      style={{background:recording?'rgba(248,113,113,.3)':'rgba(124,58,237,.15)',border:'1px solid '+(recording?'rgba(248,113,113,.5)':'rgba(124,58,237,.3)'),borderRadius:'10px',padding:'8px 10px',color:recording?'#f87171':'#a78bfa',fontSize:'13px',cursor:'pointer',flexShrink:0}}>
+      {recording ? '🔴' : '🎙'}
+    </button>
+  );
+}
+
 // ─── THEME BUILDER ────────────────────────────────────────────────────────────
 function ThemeBuilder({ current, onSave, onClose }) {
   const [t, setT] = useState({...current});
@@ -1061,6 +1090,11 @@ export default function App() {
   const [sessionList, setSessionList] = useState([]);
   const [showPlugins, setShowPlugins] = useState(false);
   const [sessionTokens, setSessionTokens] = useState({input:0,output:0,requests:0});
+  const [loopActive, setLoopActive] = useState(false);
+  const [loopIntervalRef, setLoopIntervalRef] = useState(null);
+  const [agentMemory, setAgentMemory] = useState({ user: [], project: [], local: [] });
+  const [pushToTalk, setPushToTalk] = useState(false);
+  const [summarizeAnchor, setSummarizeAnchor] = useState(null);
   const [openTabs, setOpenTabs] = useState([]);
   const [showPalette, setShowPalette] = useState(false);
   const fileInputRef = useRef(null);
@@ -1300,6 +1334,7 @@ export default function App() {
       ];
       setMessages(compacted);
       setMessages(m=>[...m,{role:'assistant',content:'✅ Context berhasil dikompres!',actions:[]}]);
+      await runHooksV2(hooks.postCompact||[], 'compact', folder);
     } catch(e) {
       if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);
     }
@@ -1518,6 +1553,64 @@ export default function App() {
       setMessages(m=>[...m,{role:'assistant',content:result.ok?'✅ '+result.msg:'❌ '+result.msg,actions:[]}]);
       if(result.ok){haptic('heavy');sendNotification('YuyuCode','Merge berhasil!');}
       setLoading(false);
+    } else if (base==='/loop') {
+      const args = parts.slice(1).join(' ').trim();
+      if (!args) {
+        if (loopActive) {
+          clearInterval(loopIntervalRef);
+          setLoopIntervalRef(null);
+          setLoopActive(false);
+          setMessages(m=>[...m,{role:'assistant',content:'⏹ Loop dihentikan.',actions:[]}]);
+        } else {
+          setMessages(m=>[...m,{role:'assistant',content:'Usage: /loop <interval> <command>\nContoh: /loop 5m git status\nInterval: 1m 5m 10m 30m 1h',actions:[]}]);
+        }
+        return;
+      }
+      const lm = args.match(/^(\d+)(m|h)\s+(.+)/);
+      if (!lm) { setMessages(m=>[...m,{role:'assistant',content:'Format: /loop <interval> <cmd>. Contoh: /loop 5m git status',actions:[]}]); return; }
+      const loopMs = parseInt(lm[1]) * (lm[2]==='h' ? 3600000 : 60000);
+      const loopCmd = lm[3];
+      if (loopActive) clearInterval(loopIntervalRef);
+      setLoopActive(true);
+      setMessages(m=>[...m,{role:'assistant',content:'🔄 Loop aktif: **'+loopCmd+'** setiap '+lm[1]+(lm[2]==='h'?' jam':' menit')+'. /loop untuk stop.',actions:[]}]);
+      const iv = setInterval(async () => {
+        const r = await callServer({type:'exec', path:folder, command:loopCmd});
+        setMessages(m=>[...m,{role:'assistant',content:'🔄 Loop ['+new Date().toLocaleTimeString('id')+']:\n```bash\n'+(r.data||'').slice(0,500)+'\n```',actions:[]}]);
+      }, loopMs);
+      setLoopIntervalRef(iv);
+    } else if (base==='/summarize') {
+      const fromIdx = parseInt(parts[1]);
+      if (isNaN(fromIdx)) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /summarize <N> — kompres dari pesan ke-N.',actions:[]}]); return; }
+      setLoading(true);
+      const ctrl2 = new AbortController();
+      try {
+        const toCompact = messages.slice(fromIdx);
+        const summary = await askCerebrasStream([
+          {role:'system',content:'Ringkas percakapan coding ini. Fokus: keputusan teknis, files diubah, status project. Maks 200 kata.'},
+          {role:'user',content:toCompact.map(mx=>mx.role+': '+mx.content.slice(0,200)).join('\n\n')}
+        ], 'llama3.1-8b', ()=>{}, ctrl2.signal);
+        setMessages([...messages.slice(0, fromIdx), {role:'assistant',content:'📦 **Ringkasan dari pesan '+fromIdx+':**\n\n'+summary}, {role:'assistant',content:'✅ Diringkas.',actions:[]}]);
+      } catch(e) { if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message,actions:[]}]); }
+      setLoading(false);
+    } else if (base==='/memory') {
+      const sub = parts[1]?.toLowerCase();
+      const scope = ['user','project','local'].includes(parts[2]) ? parts[2] : 'user';
+      const content = parts.slice(3).join(' ').trim();
+      if (sub==='add' && content) {
+        const next = {...agentMemory, [scope]: [...(agentMemory[scope]||[]), {text:content, ts:new Date().toLocaleDateString('id'), id:Date.now()}]};
+        setAgentMemory(next); Preferences.set({key:'yc_agent_memory',value:JSON.stringify(next)});
+        setMessages(m=>[...m,{role:'assistant',content:'🧠 Memory ['+scope+']: '+content,actions:[]}]);
+      } else if (sub==='clear') {
+        const next = {...agentMemory, [scope]:[]};
+        setAgentMemory(next); Preferences.set({key:'yc_agent_memory',value:JSON.stringify(next)});
+        setMessages(m=>[...m,{role:'assistant',content:'🧠 Memory ['+scope+'] dihapus.',actions:[]}]);
+      } else {
+        const all = ['user','project','local'].map(s=>'**'+s+'** ('+(agentMemory[s]||[]).length+'):\n'+((agentMemory[s]||[]).map(mx=>'• '+mx.text).join('\n')||'kosong')).join('\n\n');
+        setMessages(m=>[...m,{role:'assistant',content:'🧠 **Agent Memory:**\n\n'+all+'\n\nUsage: /memory add user|project|local <teks>\n/memory clear user|project|local',actions:[]}]);
+      }
+    } else if (base==='/ptt') {
+      setPushToTalk(p=>!p);
+      setMessages(m=>[...m,{role:'assistant',content:'🎙 Push-to-talk '+(pushToTalk?'dimatikan':'diaktifkan. Tahan 🎙 untuk rekam, lepas untuk kirim.')+'.', actions:[]}]);
     } else if (base==='/self-edit') {
       const task = parts.slice(1).join(' ').trim() || 'Fix bugs, hapus dead code, optimasi performa';
       setLoading(true);
@@ -1849,7 +1942,8 @@ export default function App() {
       const fileCtx=selectedFile&&fileContent?'\n\nFile terbuka: '+selectedFile+'\n```\n'+fileContent.slice(0,1500)+'\n```':'';
       const memCtx=memories.length?'\n\nMemories (pola coding Papa):\n'+memories.slice(0,10).map(m=>'• '+m.text).join('\n'):'';
       const visionCtx=visionImage?'\n\n[Gambar dilampirkan — analisis untuk context coding]':'';
-      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+visionCtx;
+      const agentMemCtx = ['user','project','local'].map(s=>(agentMemory[s]||[]).length ? '\n\n['+s+' memory]:\n'+(agentMemory[s]||[]).map(mx=>'• '+mx.text).join('\n') : '').join('');
+      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+agentMemCtx+visionCtx;
 
       // ── PARALLEL PRE-LOAD pinned files ──
       if (pinnedFiles.length) {
@@ -2346,6 +2440,7 @@ export default function App() {
                   :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'10px',padding:'9px 16px',color:'white',fontSize:'14px',cursor:'pointer',fontWeight:'600',flexShrink:0}}>↑</button>
                 }
                 <VoiceBtn disabled={loading} onResult={txt=>{setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}} />
+              {pushToTalk&&<PushToTalkBtn onResult={v=>{setInput('');setTimeout(()=>sendMsg(v),100);}} disabled={loading}/>}
                 <button onClick={()=>{if(ttsEnabled){stopTts();setTtsEnabled(false);}else setTtsEnabled(true);}}
                   title={ttsEnabled?'Matikan suara':'Aktifkan suara AI'}
                   style={{background:ttsEnabled?'rgba(124,58,237,.2)':'rgba(255,255,255,.04)',border:'1px solid '+(ttsEnabled?'rgba(124,58,237,.4)':'rgba(255,255,255,.08)'),borderRadius:'10px',padding:'8px 10px',color:ttsEnabled?'#a78bfa':'rgba(255,255,255,.3)',fontSize:'13px',cursor:'pointer',flexShrink:0,transition:'all .2s'}}>

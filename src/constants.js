@@ -123,6 +123,10 @@ export const SLASH_COMMANDS = [
   { cmd:'/save',        desc:'Simpan sesi sekarang' },
   { cmd:'/debug',       desc:'Debug info: model, tokens, state' },
   { cmd:'/plugin',      desc:'Plugin marketplace' },
+  { cmd:'/loop',        desc:'Jalankan command berulang (/loop untuk stop)' },
+  { cmd:'/summarize',   desc:'Kompres conversation dari pesan ke-N' },
+  { cmd:'/ptt',         desc:'Toggle push-to-talk mode' },
+  { cmd:'/memory',      desc:'Agent memory: add/clear/view (user/project/local)' },
 ];
 
 export const TEMPLATES = {
