@@ -1481,9 +1481,7 @@ export default function App() {
     if(failed.length > 0 && targets.length > 1){
       // rollback semua
       await Promise.all(backups.map(b=>callServer({type:'write',path:b.path,content:b.content})));
-      setMessages(m=>[...m,{role:'assistant',content:'❌ Atomic write gagal ('+failed.length+' file). Semua perubahan di-rollback.
-'+failed.map(r=>r.data).join('
-'),actions:[]}]);
+        setMessages(m=>[...m,{role:'assistant',content:'❌ Atomic write gagal ('+failed.length+' file). Semua perubahan di-rollback.'}]);
       return;
     }
     results.forEach((r,i)=>{ targets[i].result=r; targets[i].executed=true; });
