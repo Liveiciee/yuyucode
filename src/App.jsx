@@ -1670,23 +1670,23 @@ export default function App() {
       ]);
       const m = MODELS.find(x=>x.id===model);
       setMessages(prev=>[...prev,{role:'assistant',content:
-        '📊 **Status YuyuCode**
+        `📊 **Status YuyuCode**
 
-' +
-        '**Server:** '+(ping.ok?'✅ Online':'❌ Offline')+'
-' +
+` +
+        '**Server:** '+(ping.ok?'✅ Online':'❌ Offline')+`
+` +
         '**Model:** '+(m?.label||model)+' ('+(m?.provider)+')
 ' +
-        '**Ollama:** '+ollamaHost+'
-' +
-        '**Project:** '+folder+' ⎇ '+branch+'
-' +
-        '**Git:** '+((git.data||'').trim()||'clean')+'
-' +
-        '**Node:** '+((nodeV.data||'').trim())+'
-' +
-        '**Disk:** '+((disk.data||'').trim())+'
-' +
+        '**Ollama:** '+ollamaHost+`
+` +
+        '**Project:** '+folder+' ⎇ '+branch+`
+` +
+        '**Git:** '+((git.data||'').trim()||'clean')+`
+` +
+        '**Node:** '+((nodeV.data||'').trim())+`
+` +
+        '**Disk:** '+((disk.data||'').trim())+`
+` +
         '**Index:** '+codeIndex.length+' files
 ' +
         '**Context:** ~'+countTokens(messages)+'tk
