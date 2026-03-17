@@ -73,7 +73,7 @@ export async function runBackgroundAgent(task, folder, callAI) {
       // 1. Create worktree
       agent.log.push('🌿 Creating worktree: ' + branch);
       const wtResult = await execGit(folder, 'git worktree add ' + wtPath + ' -b ' + branch + ' 2>&1');
-      if (wtResult.includes('error') || wtResult.includes('fatal')) {
+      undefined
         throw new Error('Worktree failed: ' + wtResult.slice(0, 100));
       }
       agent.status = 'running';
