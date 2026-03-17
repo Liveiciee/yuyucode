@@ -1676,9 +1676,7 @@ export default function App() {
         return (m.role==='user'?'Papa':'Yuyu')+': ~'+tk+'tk';
       }).join('\n');
       setMessages(prev=>[...prev,{role:'assistant',content:
-        '📒 **Token breakdown (10 pesan terakhir)**\n```\n'+breakdown+'\n```'
-        '**Total:** ~'+countTokens(messages)+'tk | Cerebras gratis 🎉'
-      ,actions:[]}]);
+        '📓 **Token breakdown (10 pesan terakhir)**\n```\n'+breakdown+'\n```\n**Total:** ~'+countTokens(messages)+'tk | Cerebras gratis 🎉',actions:[]}]);
     } else if (base==='/index') {
       setMessages(m=>[...m,{role:'assistant',content:'🔍 Re-indexing...',actions:[]}]);
       await buildCodeIndex(folder);
