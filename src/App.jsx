@@ -907,7 +907,7 @@ function CommandPalette({ onClose, onRun, folder, memories, checkpoints, model, 
   onModelChange, onNewChat, theme, onThemeChange, showSidebar, onToggleSidebar,
   onShowMemory, onShowCheckpoints, onShowMCP, onShowGitHub, onShowDeploy,
   onShowDiff, onShowSearch, onShowSnippets, onShowCustomActions,
-  onShowSessions, onShowPermissions, onShowPlugins,
+  onShowSessions, onShowPermissions, onShowPlugins, onShowConfig,
   runTests, generateCommitMsg, exportChat, compactContext }) {
   const [q, setQ] = useState('');
   const inputRef = useRef(null);
@@ -931,6 +931,7 @@ function CommandPalette({ onClose, onRun, folder, memories, checkpoints, model, 
       { icon:'💾', label:'Sessions', sub:'Sesi tersimpan', action:()=>{ onShowSessions&&onShowSessions(); onClose(); } },
       { icon:'🔐', label:'Permissions', sub:'Kelola tool permissions', action:()=>{ onShowPermissions&&onShowPermissions(); onClose(); } },
       { icon:'🔌', label:'Plugins', sub:'Plugin marketplace', action:()=>{ onShowPlugins&&onShowPlugins(); onClose(); } },
+      { icon:'⚙️', label:'Config', sub:'Settings interaktif', action:()=>{ onShowConfig&&onShowConfig(); onClose(); } },
       { icon:'✂', label:'Snippets', sub:'Code snippet library', action:()=>{ onShowSnippets(); onClose(); } },
       { icon:'⚡', label:'Custom actions', sub:'Shortcut commands', action:()=>{ onShowCustomActions(); onClose(); } },
     ]},
@@ -1095,6 +1096,11 @@ export default function App() {
   const [agentMemory, setAgentMemory] = useState({ user: [], project: [], local: [] });
   const [pushToTalk, setPushToTalk] = useState(false);
   const [summarizeAnchor, setSummarizeAnchor] = useState(null);
+  const [sessionColor, setSessionColor] = useState(null);
+  const [showConfig, setShowConfig] = useState(false);
+  const [fileWatcherActive, setFileWatcherActive] = useState(false);
+  const [fileWatcherInterval, setFileWatcherInterval] = useState(null);
+  const [fileSnapshots, setFileSnapshots] = useState({});
   const [openTabs, setOpenTabs] = useState([]);
   const [showPalette, setShowPalette] = useState(false);
   const fileInputRef = useRef(null);
@@ -1152,6 +1158,8 @@ export default function App() {
       if(ght.value) setGithubToken(ght.value);
       if(ghr.value) setGithubRepo(ghr.value);
       if(oh.value) setOllamaHost(oh.value);
+      const scr = await Preferences.get({key:'yc_session_color'});
+      if(scr.value) setSessionColor(scr.value||null);
     });
     callServer({type:'ping'}).then(r=>{
       setServerOk(r.ok);
@@ -1603,12 +1611,50 @@ export default function App() {
         setAgentMemory(next); Preferences.set({key:'yc_agent_memory',value:JSON.stringify(next)});
         setMessages(m=>[...m,{role:'assistant',content:'🧠 Memory ['+scope+'] dihapus.',actions:[]}]);
       } else {
-        const all = ['user','project','local'].map(s=>'**'+s+'** ('+(agentMemory[s]||[]).length+'):\n'+((agentMemory[s]||[]).map(mx=>'• '+mx.text).join('\n')||'kosong')).join('\n\n');
+        const all = ['user','project','local'].map(s=>'**'+s+'** ('+(agentMemory[s]||[]).length+'):\n'+((agentMemory[s]||[]).map(mx=>'• '+mx.text+(mx.ts?' ('+mx.ts+')':'')).join('\n')||'kosong')).join('\n\n');
         setMessages(m=>[...m,{role:'assistant',content:'🧠 **Agent Memory:**\n\n'+all+'\n\nUsage: /amemory add user|project|local <teks>\n/amemory clear user|project|local',actions:[]}]);
       }
     } else if (base==='/ptt') {
       setPushToTalk(p=>!p);
       setMessages(m=>[...m,{role:'assistant',content:'🎙 Push-to-talk '+(pushToTalk?'dimatikan':'diaktifkan. Tahan 🎙 untuk rekam, lepas untuk kirim.')+'.', actions:[]}]);
+    } else if (base==='/batch') {
+      const batchCmd = parts.slice(1).join(' ').trim();
+      if (!batchCmd) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /batch <command>\nContoh: /batch tambah console.log di setiap fungsi\nAkan dijalankan ke semua file di src/',actions:[]}]); return; }
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'📦 Batch operation: **'+batchCmd+'**\nMengambil daftar file...',actions:[]}]);
+      const listR = await callServer({type:'list', path:folder+'/src'});
+      if (!listR.ok) { setMessages(m=>[...m,{role:'assistant',content:'❌ Tidak bisa list src/',actions:[]}]); setLoading(false); return; }
+      const files = (listR.data||[]).filter(f=>!f.isDir && (f.name.endsWith('.jsx')||f.name.endsWith('.js')||f.name.endsWith('.ts')));
+      setMessages(m=>[...m,{role:'assistant',content:'📦 **'+files.length+' file** ditemukan. Mengirim ke AI...',actions:[]}]);
+      await sendMsg('BATCH OPERATION pada '+files.length+' file di src/:\n'+files.map(f=>f.name).join(', ')+'\n\nTask: '+batchCmd+'\n\nUntuk setiap file, gunakan read_file lalu write_file jika perlu perubahan. Lakukan per file satu-satu.');
+      setLoading(false);
+    } else if (base==='/simplify') {
+      if (!selectedFile) { setMessages(m=>[...m,{role:'assistant',content:'Buka file dulu Papa~',actions:[]}]); return; }
+      await sendMsg('Simplifikasi kode di '+selectedFile+'. Hapus dead code, perpendek fungsi yang terlalu panjang, perbaiki naming. Jangan ubah fungsionalitas. Gunakan write_file untuk patch minimal.');
+    } else if (base==='/color') {
+      const color = parts[1]?.trim();
+      const colors = {red:'#ef4444',green:'#22c55e',blue:'#3b82f6',purple:'#a855f7',yellow:'#eab308',pink:'#ec4899',orange:'#f97316',off:'off'};
+      if (!color || !colors[color]) {
+        setMessages(m=>[...m,{role:'assistant',content:'🎨 Session color sekarang: '+(sessionColor||'off')+'\nUsage: /color red|green|blue|purple|yellow|pink|orange|off',actions:[]}]);
+        return;
+      }
+      const newColor = color==='off' ? null : colors[color];
+      setSessionColor(newColor);
+      Preferences.set({key:'yc_session_color',value:newColor||''});
+      setMessages(m=>[...m,{role:'assistant',content:'🎨 Session color: **'+color+'**',actions:[]}]);
+    } else if (base==='/config') {
+      setShowConfig(true);
+    } else if (base==='/watch') {
+      if (fileWatcherActive) {
+        clearInterval(fileWatcherInterval);
+        setFileWatcherActive(false);
+        setFileWatcherInterval(null);
+        setMessages(m=>[...m,{role:'assistant',content:'👁 File watcher dimatikan.',actions:[]}]);
+      } else {
+        setFileWatcherActive(true);
+        setFileSnapshots({});
+        setMessages(m=>[...m,{role:'assistant',content:'👁 File watcher aktif. Yuyu akan notify kalau ada file yang berubah dari luar app (check tiap 30 detik).',actions:[]}]);
+      }
     } else if (base==='/self-edit') {
       const task = parts.slice(1).join(' ').trim() || 'Fix bugs, hapus dead code, optimasi performa';
       setLoading(true);
@@ -1625,6 +1671,32 @@ export default function App() {
       );
     }
   }
+
+  // ── FILE WATCHER ──
+  useEffect(() => {
+    if (!fileWatcherActive || !folder) return;
+    const iv = setInterval(async () => {
+      const r = await callServer({type:'list', path:folder+'/src'});
+      if (!r.ok || !Array.isArray(r.data)) return;
+      const changed = [];
+      for (const f of r.data.filter(x=>!x.isDir)) {
+        const key = f.name;
+        const mtime = f.mtime || f.size;
+        if (fileSnapshots[key] !== undefined && fileSnapshots[key] !== mtime) {
+          changed.push(f.name);
+        }
+      }
+      const snap = {};
+      r.data.forEach(f=>{ snap[f.name] = f.mtime || f.size; });
+      setFileSnapshots(snap);
+      if (changed.length > 0) {
+        setMessages(m=>[...m,{role:'assistant',content:'👁 **File berubah** (dari luar app):\n'+changed.map(f=>'• '+f).join('\n'),actions:[]}]);
+        sendNotification('YuyuCode 👁', changed.join(', ')+' berubah');
+      }
+    }, 30000);
+    setFileWatcherInterval(iv);
+    return () => clearInterval(iv);
+  }, [fileWatcherActive, folder]);
 
   // ── CONTEXT WINDOW MANAGEMENT ──
   function trimHistory(msgs) {
@@ -2156,6 +2228,9 @@ export default function App() {
         .msg-appear{animation:fadeIn .18s ease forwards;}
       `}</style>
 
+      {/* SESSION COLOR BAR */}
+      {sessionColor&&<div style={{height:'2px',background:sessionColor,flexShrink:0}}/>}
+
       {/* ── HEADER (minimal) ── */}
       <div style={{height:'44px',padding:'0 10px',borderBottom:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'8px',background:T.bg,flexShrink:0}}>
         <button onClick={()=>setShowSidebar(!showSidebar)}
@@ -2168,6 +2243,7 @@ export default function App() {
           <span style={{fontSize:'11px',color:'rgba(255,255,255,.25)',marginLeft:'8px'}}>{folder}</span>
           <span style={{fontSize:'10px',color:'rgba(255,255,255,.18)',marginLeft:'4px'}}>⎇ {branch}</span>
           {skill&&<span style={{fontSize:'9px',color:'rgba(74,222,128,.5)',marginLeft:'6px',letterSpacing:'.04em',fontWeight:'600'}}>SKILL</span>}
+          <span style={{fontSize:'10px',color:effort==='low'?'rgba(74,222,128,.6)':effort==='high'?'rgba(248,113,113,.6)':' rgba(255,255,255,.2)',marginLeft:'4px'}}>{effort==='low'?'○':effort==='high'?'●':'◐'}</span>
         </div>
         {/* Model pill — click cycles model */}
         <button onClick={()=>{ const i=MODELS.findIndex(m=>m.id===model); const next=MODELS[(i+1)%MODELS.length]; setModel(next.id); Preferences.set({key:'yc_model',value:next.id}); }}
@@ -2478,6 +2554,7 @@ export default function App() {
               onShowSessions={()=>{loadSessions().then(s=>{setSessionList(s);setShowSessions(true);});}}
               onShowPermissions={()=>setShowPermissions(true)}
               onShowPlugins={()=>setShowPlugins(true)}
+              onShowConfig={()=>setShowConfig(true)}
           onShowDiff={()=>setShowDiff(true)}
           onShowSearch={()=>setShowSearch(true)}
           onShowSnippets={()=>setShowSnippets(true)}
@@ -2747,6 +2824,50 @@ export default function App() {
           ))}
           <div style={{marginTop:'8px',fontSize:'11px',color:'rgba(255,255,255,.3)'}}>
             Buat plugin sendiri: tambah instruksi ke <code style={{color:'#4ade80'}}>.claude/skills/plugin-name.md</code>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIG PANEL */}
+      {showConfig&&(
+        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.95)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+          <div style={{display:'flex',alignItems:'center',marginBottom:'16px'}}>
+            <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⚙️ Config</span>
+            <button onClick={()=>setShowConfig(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+          </div>
+          <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'12px'}}>
+            {[
+              {label:'Effort Level',value:effort,options:['low','medium','high'],onChange:v=>{setEffort(v);Preferences.set({key:'yc_effort',value:v});}},
+              {label:'Font Size',value:String(fontSize),options:['12','13','14','15','16'],onChange:v=>{setFontSize(parseInt(v));Preferences.set({key:'yc_fontsize',value:v});}},
+              {label:'Theme',value:theme,options:['dark','darker','midnight'],onChange:v=>{setTheme(v);Preferences.set({key:'yc_theme',value:v});}},
+              {label:'Model',value:model,options:MODELS.map(m=>m.id),onChange:v=>{setModel(v);Preferences.set({key:'yc_model',value:v});}},
+            ].map(cfg=>(
+              <div key={cfg.label} style={{padding:'10px 12px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px'}}>
+                <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'6px'}}>{cfg.label}</div>
+                <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+                  {cfg.options.map(opt=>(
+                    <button key={opt} onClick={()=>cfg.onChange(opt)}
+                      style={{background:cfg.value===opt?'rgba(124,58,237,.3)':' rgba(255,255,255,.05)',border:'1px solid '+(cfg.value===opt?'rgba(124,58,237,.5)':' rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:cfg.value===opt?'#a78bfa':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>
+                      {opt.length > 20 ? opt.slice(0,20)+'…' : opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div style={{padding:'10px 12px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px'}}>
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'6px'}}>Extended Thinking</div>
+              <button onClick={()=>{const n=!thinkingEnabled;setThinkingEnabled(n);Preferences.set({key:'yc_thinking',value:n?'1':'0'});}}
+                style={{background:thinkingEnabled?'rgba(124,58,237,.3)':' rgba(255,255,255,.05)',border:'1px solid '+(thinkingEnabled?'rgba(124,58,237,.5)':' rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:thinkingEnabled?'#a78bfa':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer'}}>
+                {thinkingEnabled?'✅ ON':'○ OFF'}
+              </button>
+            </div>
+            <div style={{padding:'10px 12px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px'}}>
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'6px'}}>File Watcher</div>
+              <button onClick={()=>{if(fileWatcherActive){clearInterval(fileWatcherInterval);setFileWatcherActive(false);}else{setFileWatcherActive(true);setFileSnapshots({});}}}
+                style={{background:fileWatcherActive?'rgba(74,222,128,.15)':' rgba(255,255,255,.05)',border:'1px solid '+(fileWatcherActive?'rgba(74,222,128,.3)':' rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:fileWatcherActive?'#4ade80':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer'}}>
+                {fileWatcherActive?'👁 ACTIVE':'○ OFF'}
+              </button>
+            </div>
           </div>
         </div>
       )}
