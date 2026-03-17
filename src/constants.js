@@ -85,7 +85,6 @@ export const SLASH_COMMANDS = [
   { cmd:'/compact',    desc:'Kompres context sekarang' },
   { cmd:'/checkpoint', desc:'Simpan checkpoint sesi ini' },
   { cmd:'/restore',    desc:'Restore checkpoint terakhir' },
-  { cmd:'/memory',     desc:'Lihat/edit auto memories' },
   { cmd:'/cost',       desc:'Estimasi token terpakai' },
   { cmd:'/review',     desc:'Code review file aktif' },
   { cmd:'/clear',      desc:'Clear chat history' },
