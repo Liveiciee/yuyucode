@@ -1415,8 +1415,7 @@ export default function App() {
         'Folder: '+folder,
         'Branch: '+branch,
         'Server: '+(serverOk?'OK':'offline'),
-      ].join('
-');
+      ].join('\n');
       setMessages(m=>[...m,{role:'assistant',content:info,actions:[]}]);
     } else if (base==='/plugin') {
       setShowPlugins(true);
