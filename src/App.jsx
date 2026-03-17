@@ -1674,14 +1674,9 @@ export default function App() {
       const breakdown = messages.slice(-10).map(m=>{
         const tk = Math.round(m.content.length/4);
         return (m.role==='user'?'Papa':'Yuyu')+': ~'+tk+'tk';
-      }).join('
-');
+      }).join('\n');
       setMessages(prev=>[...prev,{role:'assistant',content:
-        '💰 **Token breakdown (10 pesan terakhir)**
-```
-'+breakdown+'
-```
-' +
+        '📒 **Token breakdown (10 pesan terakhir)**\n```\n'+breakdown+'\n```'
         '**Total:** ~'+countTokens(messages)+'tk | Cerebras gratis 🎉'
       ,actions:[]}]);
     } else if (base==='/index') {
