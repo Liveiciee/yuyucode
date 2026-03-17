@@ -7,7 +7,7 @@ export async function askCerebrasStream(messages, model, onChunk, signal) {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + CEREBRAS_KEY,
     },
-    body: JSON.stringify({ model, messages, max_tokens: 4000, stream: true, ...(model.includes('qwen') ? { enable_thinking: true } : {}) }),
+    body: JSON.stringify({ model, messages, max_tokens: 4000, stream: true }),
   });
   if (resp.status === 429) {
     const retry = parseInt(resp.headers.get('retry-after') || '60');
@@ -17,20 +17,19 @@ export async function askCerebrasStream(messages, model, onChunk, signal) {
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let full = '';
-  let thinking = '';
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     for (const line of decoder.decode(value).split('\n')) {
       if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
       try {
-        const delta = JSON.parse(line.slice(6)).choices[0].delta;
-        if (delta.reasoning_content) thinking += delta.reasoning_content;
-        if (delta.content) { full += delta.content; onChunk(thinking ? '<think>' + thinking + '</think>' + full : full); }
+        const d = JSON.parse(line.slice(6)).choices[0].delta.content || '';
+        full += d;
+        onChunk(full);
       } catch {}
     }
   }
-  return thinking ? '<think>' + thinking + '</think>' + full : full;
+  return full;
 }
 
 export async function askGeminiStream(messages, model, onChunk, signal, imageBase64 = null) {
