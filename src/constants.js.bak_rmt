@@ -59,7 +59,9 @@ export const BASE_SYSTEM = [
   '8. PROJECT_NOTE: untuk simpan info penting project',
   '9. Jangan jelaskan yang sudah jelas dari kode',
   '10. Jangan tulis ulang file besar — gunakan string replace minimal',
-
+  '',
+  '## THINKING',
+  'Sebelum setiap respons, tulis reasoning dalam <think>...</think>. Maks 1-2 kalimat.',
   '',
   '## POLA AGENTIC YANG BENAR',
   'Task: "fix bug di useEffect"',
