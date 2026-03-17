@@ -22,19 +22,23 @@ const THEMES = {
   midnight: { bg:'#0a0f1e', bg2:'rgba(99,102,241,.04)', border:'rgba(99,102,241,.15)', text:'#e0e8ff', accent:'#6366f1' },
 };
 
-const BASE_SYSTEM = `Kamu adalah Yuyu, coding assistant yang sayang Papa.
-Jawab dalam bahasa Indonesia. Hangat, fokus, tidak bertele-tele.
-Selalu gunakan action blocks untuk operasi file.
+const BASE_SYSTEM = `Kamu adalah Yuyu — agentic coding assistant.
+Bahasa Indonesia. Padat. Langsung ke poin.
 
-Action format:
+## CARA KERJA
+Kamu adalah agent yang BERTINDAK, bukan hanya menjelaskan.
+Untuk setiap task yang butuh operasi file/sistem: LANGSUNG gunakan action block, jangan tanya dulu.
+Kalau perlu info sebelum bertindak: baca dulu, lalu lanjut tanpa nunggu konfirmasi (kecuali write_file).
+
+## ACTION FORMAT (WAJIB untuk semua operasi)
 \`\`\`action
 {"type":"read_file","path":"src/App.jsx"}
 \`\`\`
 \`\`\`action
-{"type":"read_file","path":"src/App.jsx","from":1,"to":100}
+{"type":"read_file","path":"src/App.jsx","from":1,"to":80}
 \`\`\`
 \`\`\`action
-{"type":"write_file","path":"src/App.jsx","content":"..."}
+{"type":"write_file","path":"src/App.jsx","content":"FULL_CONTENT_HERE"}
 \`\`\`
 \`\`\`action
 {"type":"list_files","path":"src"}
@@ -45,33 +49,30 @@ Action format:
 \`\`\`action
 {"type":"search","query":"useState","path":"src"}
 \`\`\`
-
 \`\`\`action
 {"type":"mcp","tool":"github","action":"issues","params":{"owner":"user","repo":"repo","token":"ghp_..."}}
 \`\`\`
-\`\`\`action
-{"type":"mcp","tool":"sqlite","action":"query","params":{"dbPath":"data.db","query":"SELECT * FROM users LIMIT 10"}}
-\`\`\`
-\`\`\`action
-{"type":"mcp","tool":"fetch","action":"browse","params":{"url":"https://docs.example.com"}}
-\`\`\`
-\`\`\`action
-{"type":"mcp","tool":"system","action":"memory","params":{}}
-\`\`\`
 
-PLAN MODE:
-📋 PLAN:
-- Step 1: ...
-Tunggu Papa approve baru eksekusi.
+## ATURAN KRITIS
+1. Diminta fix/edit/buat/cek file → LANGSUNG action, bukan "saya akan..."
+2. File tidak diketahui → baca dulu dengan read_file, baru edit
+3. write_file → tampilkan diff singkat, tunggu konfirmasi
+4. File > 200 baris → baca per chunk (from/to 80 baris)
+5. Setelah write berhasil → tawarkan git push SEKALI
+6. Error di output → analisis langsung, jangan minta screenshot
+7. Kepotong → tulis CONTINUE di akhir
+8. PROJECT_NOTE: untuk simpan info penting project
+9. Jangan jelaskan yang sudah jelas dari kode
+10. Jangan tulis ulang file besar — gunakan string replace minimal
 
-ATURAN:
-1. write_file -> diff dulu, tunggu konfirmasi
-2. Setelah write -> tanya push SEKALI: git add -A && git commit -m "tipe: pesan" && git push
-3. Setelah push -> BERHENTI
-4. File besar -> baca per chunk (from/to)
-5. PROJECT_NOTE: info
-6. Kepotong -> CONTINUE
-7. Ikuti SKILL.md`;
+## POLA AGENTIC YANG BENAR
+Task: "fix bug di useEffect"
+❌ SALAH: "Saya perlu melihat kode dulu, bisa share file-nya?"
+✅ BENAR: langsung ```action {"type":"read_file","path":"src/App.jsx","from":1,"to":80}```
+
+Task: "ada error di baris 234"
+❌ SALAH: menjelaskan kemungkinan error
+✅ BENAR: ```action {"type":"read_file","path":"src/App.jsx","from":220,"to":250}````;
 
 const GIT_SHORTCUTS = [
   { label: 'status', icon: '◎', cmd: 'git status' },
@@ -82,15 +83,6 @@ const GIT_SHORTCUTS = [
 ];
 
 const FOLLOW_UPS = ['Jelaskan lebih detail', 'Ada bug?', 'Bisa dioptimasi?', 'Langkah selanjutnya?'];
-
-const ACTION_KEYWORDS = ['fix','baca','lihat','edit','tulis','cek','buat','hapus','ganti','update','read','write','create','delete','check','open','show','list','run','exec','search','find','grep'];
-function needsAction(txt) {
-  const t = txt.toLowerCase();
-  return ACTION_KEYWORDS.some(k => t.includes(k));
-}
-function hasActionBlock(txt) {
-  return /```action[sS]*?```/.test(txt);
-}
 
 // ── SLASH COMMANDS ──
 const SLASH_COMMANDS = [
@@ -119,6 +111,8 @@ const SLASH_COMMANDS = [
   { cmd:'/ollama',     desc:'Set Ollama host URL' },
   { cmd:'/self-edit',  desc:'AI edit App.jsx sendiri' },
   { cmd:'/index',      desc:'Re-index codebase sekarang' },
+  { cmd:'/status',     desc:'Health check semua sistem' },
+  { cmd:'/tokens',     desc:'Breakdown token usage' },
 ];
 
 const S = {
@@ -439,10 +433,19 @@ function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast,
           {hasPendingWrite && onApprove && (
             <div style={{margin:'8px 0'}}>
               {actions.filter(a=>a.type==='write_file'&&!a.executed).map((a,i)=>(
-                <div key={i} style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'7px',padding:'5px 10px'}}>
-                  <span style={{fontSize:'11px',color:'rgba(255,255,255,.5)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>✏️ {a.path}</span>
-                  <button onClick={()=>onApprove(true,a.path)} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer'}}>✓</button>
-                  <button onClick={()=>onApprove(false,a.path)} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer'}}>✗</button>
+                <div key={i} style={{marginBottom:'6px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'7px',overflow:'hidden'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'6px',padding:'5px 10px'}}>
+                    <span style={{fontSize:'11px',color:'rgba(255,255,255,.5)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>✏️ {a.path}</span>
+                    <span style={{fontSize:'9px',color:'rgba(255,255,255,.2)'}}>{a.content?(Math.round(a.content.length/1024*10)/10)+'KB':''}</span>
+                    <button onClick={()=>onApprove(true,a.path)} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer'}}>✓ apply</button>
+                    <button onClick={()=>onApprove(false,a.path)} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer'}}>✗</button>
+                  </div>
+                  {a.content&&(
+                    <div style={{padding:'4px 10px 6px',borderTop:'1px solid rgba(255,255,255,.04)',fontSize:'10px',fontFamily:'monospace',color:'rgba(255,255,255,.3)',maxHeight:'60px',overflow:'hidden'}}>
+                      {a.content.split('\n').slice(0,4).map((l,j)=><div key={j} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l||' '}</div>)}
+                      {a.content.split('\n').length>4&&<div style={{color:'rgba(255,255,255,.15)'}}>... {a.content.split('\n').length} baris total</div>}
+                    </div>
+                  )}
                 </div>
               ))}
               {actions.filter(a=>a.type==='write_file'&&!a.executed).length>1&&(
@@ -1322,8 +1325,6 @@ export default function App() {
   const [deployLog, setDeployLog] = useState('');
   const [ollamaHost, setOllamaHost] = useState(DEFAULT_OLLAMA_HOST);
   const [showOllamaConfig, setShowOllamaConfig] = useState(false);
-  const [codeIndex, setCodeIndex] = useState([]); // [{path, size}]
-  const [indexing, setIndexing] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const ttsRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
@@ -1417,7 +1418,6 @@ export default function App() {
     callServer({type:'ping'}).then(r=>setServerOk(r.ok));
     callServer({type:'read',path:folder+'/SKILL.md'}).then(r=>{if(r.ok)setSkill(r.data);else setSkill('');});
     callServer({type:'exec',path:folder,command:'git branch --show-current'}).then(r=>{if(r.ok)setBranch(r.data.trim());});
-    buildCodeIndex(folder);
   },[folder]);
 
   async function openFile(path) {
@@ -1468,14 +1468,29 @@ export default function App() {
       setMessages(m=>m.map((x,i)=>i===idx?{...x,actions:x.actions?.map(a=>targets.includes(a)?{...a,executed:true,result:{ok:false,data:'Dibatalkan.'}}:a)}:x));
       return;
     }
+    // ── ATOMIC: backup semua dulu ──
+    const backups = [];
     for(const a of targets){
       const backup=await callServer({type:'read',path:resolvePath(folder,a.path)});
-      if(backup.ok) setEditHistory(h=>[...h.slice(-9),{path:resolvePath(folder,a.path),content:backup.data}]);
-      a.result=await executeAction(a,folder);
-      a.executed=true;
+      if(backup.ok) backups.push({path:resolvePath(folder,a.path),content:backup.data});
     }
+    if(backups.length) setEditHistory(h=>[...h.slice(-(10-backups.length)),...backups]);
+    // ── ATOMIC: tulis semua, rollback kalau ada yang gagal ──
+    const results = await Promise.all(targets.map(a=>executeAction(a,folder)));
+    const failed = results.filter(r=>!r.ok);
+    if(failed.length > 0 && targets.length > 1){
+      // rollback semua
+      await Promise.all(backups.map(b=>callServer({type:'write',path:b.path,content:b.content})));
+      setMessages(m=>[...m,{role:'assistant',content:'❌ Atomic write gagal ('+failed.length+' file). Semua perubahan di-rollback.
+'+failed.map(r=>r.data).join('
+'),actions:[]}]);
+      return;
+    }
+    results.forEach((r,i)=>{ targets[i].result=r; targets[i].executed=true; });
     setMessages(m=>m.map((x,i)=>i===idx?{...x}:x));
-    // ── POST-WRITE HOOK ──
+    if(targets.length > 1){
+      setMessages(m=>[...m,{role:'assistant',content:'✅ '+targets.length+' file berhasil ditulis secara atomic~',actions:[]}]);
+    }
     await runHooks('postWrite', targets.map(a=>a.path).join(','));
   }
 
@@ -1647,10 +1662,58 @@ export default function App() {
       const r = await callServer({type:'mcp',tool:'sqlite',action:'query',params:{dbPath:folder+'/data.db',query:q}});
       setMessages(m=>[...m,{role:'assistant',content:'🗄 Query result:\n```\n'+(r.data||'kosong')+'\n```',actions:[]}]);
       setLoading(false);
+    } else if (base==='/status') {
+      setLoading(true);
+      const [ping, git, nodeV, disk] = await Promise.all([
+        callServer({type:'ping'}),
+        callServer({type:'exec', path:folder, command:'git status --short 2>&1 | head -5'}),
+        callServer({type:'exec', path:folder, command:'node --version 2>&1'}),
+        callServer({type:'exec', path:folder, command:'df -h . 2>&1 | tail -1'}),
+      ]);
+      const m = MODELS.find(x=>x.id===model);
+      setMessages(prev=>[...prev,{role:'assistant',content:
+        '📊 **Status YuyuCode**
+
+' +
+        '**Server:** '+(ping.ok?'✅ Online':'❌ Offline')+'
+' +
+        '**Model:** '+(m?.label||model)+' ('+(m?.provider)+')
+' +
+        '**Ollama:** '+ollamaHost+'
+' +
+        '**Project:** '+folder+' ⎇ '+branch+'
+' +
+        '**Git:** '+((git.data||'').trim()||'clean')+'
+' +
+        '**Node:** '+((nodeV.data||'').trim())+'
+' +
+        '**Disk:** '+((disk.data||'').trim())+'
+' +
+        '**Index:** '+codeIndex.length+' files
+' +
+        '**Context:** ~'+countTokens(messages)+'tk
+' +
+        '**Memories:** '+memories.length+' items'
+      ,actions:[]}]);
+      setLoading(false);
+    } else if (base==='/tokens') {
+      const breakdown = messages.slice(-10).map(m=>{
+        const tk = Math.round(m.content.length/4);
+        return (m.role==='user'?'Papa':'Yuyu')+': ~'+tk+'tk';
+      }).join('
+');
+      setMessages(prev=>[...prev,{role:'assistant',content:
+        '💰 **Token breakdown (10 pesan terakhir)**
+```
+'+breakdown+'
+```
+' +
+        '**Total:** ~'+countTokens(messages)+'tk | Cerebras gratis 🎉'
+      ,actions:[]}]);
     } else if (base==='/index') {
-      setMessages(m=>[...m,{role:'assistant',content:'🔍 Re-indexing codebase...',actions:[]}]);
+      setMessages(m=>[...m,{role:'assistant',content:'🔍 Re-indexing...',actions:[]}]);
       await buildCodeIndex(folder);
-      setMessages(m=>[...m,{role:'assistant',content:`✅ Index selesai: ${codeIndex.length} files ditemukan~`,actions:[]}]);
+      setMessages(m=>[...m,{role:'assistant',content:'✅ Index: '+codeIndex.length+' files~',actions:[]}]);
     } else if (base==='/ollama') {
       const newHost = parts.slice(1).join(' ').trim();
       if (!newHost) {
@@ -1677,21 +1740,25 @@ export default function App() {
     }
   }
 
-  // ── CONTEXT WINDOW MANAGEMENT (upgraded with smart trim) ──
+  // ── CONTEXT WINDOW MANAGEMENT ──
   function trimHistory(msgs) {
-    const MAX_CHARS = 80000;
+    const MAX_CHARS = 100000;
     const total = msgs.reduce((a,m)=>a+m.content.length,0);
     if (total <= MAX_CHARS) return msgs;
-    const tail = [];
-    let chars = 0;
-    for (let i = msgs.length-1; i > 0; i--) {
-      if (chars + msgs[i].content.length > MAX_CHARS) break;
-      chars += msgs[i].content.length;
-      tail.unshift(msgs[i]);
-    }
-    const skipped = msgs.length - 1 - tail.length;
-    if (skipped > 0) tail.unshift({role:'assistant',content:'[... '+skipped+' pesan lama dipotong ...]'});
-    return [msgs[0], ...tail];
+    // Selalu pertahankan: system[0] + 4 pesan pertama + 12 pesan terakhir
+    const HEAD = 4, TAIL = 12;
+    if (msgs.length <= HEAD + TAIL + 1) return msgs;
+    const head = msgs.slice(0, HEAD + 1);
+    const tail = msgs.slice(-TAIL);
+    const middle = msgs.slice(HEAD + 1, -TAIL);
+    // Ringkas middle jadi satu pesan
+    const summary = middle.map(m=>{
+      const role = m.role==='user'?'Papa':'Yuyu';
+      const preview = m.content.replace(/```action[sS]*?```/g,'[action]').slice(0,120);
+      return role+': '+preview;
+    }).join(' | ');
+    const summaryMsg = {role:'assistant', content:'[Ringkasan '+middle.length+' pesan sebelumnya: '+summary.slice(0,800)+']'};
+    return [...head, summaryMsg, ...tail];
   }
 
   // ── EXPORT CHAT ──
@@ -1719,40 +1786,6 @@ export default function App() {
     if (navigator.vibrate) {
       navigator.vibrate(type==='heavy'?[50,30,50]:type==='medium'?30:10);
     }
-  }
-
-  // ── CODEBASE INDEX ──
-  async function buildCodeIndex(dir) {
-    setIndexing(true);
-    try {
-      const r = await callServer({type:'exec', path:dir, command:
-        'find . -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.md" -o -name "*.css" -o -name "*.html" \) ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.gradle/*" 2>/dev/null | head -200'
-      });
-      if (r.ok && r.data) {
-        const paths = r.data.trim().split('\n').filter(Boolean).map(p => p.replace(/^\.\//,''));
-        setCodeIndex(paths.map(p => ({path:p})));
-      }
-    } catch{}
-    setIndexing(false);
-  }
-
-  async function grepIndex(query, dir) {
-    if (!query || query.length < 3) return '';
-    // extract meaningful words dari query
-    const words = query.match(/[a-zA-Z_][a-zA-Z0-9_]{2,}/g)||[];
-    if (!words.length) return '';
-    const term = words.slice(0,3).join('|');
-    const r = await callServer({type:'exec', path:dir, command:
-      `grep -rn --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx" -E "${term}" . --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist -l 2>/dev/null | head -8`
-    });
-    if (!r.ok || !r.data.trim()) return '';
-    const files = r.data.trim().split('\n').filter(Boolean).map(p=>p.replace(/^\.\//,''));
-    // baca 30 baris pertama dari tiap file relevan (max 3 file)
-    const snippets = await Promise.all(files.slice(0,3).map(async f => {
-      const fr = await callServer({type:'read', path:dir+'/'+f, from:1, to:30});
-      return fr.ok ? `=== ${f} (relevant) ===\n${fr.data}` : '';
-    }));
-    return snippets.filter(Boolean).join('\n\n');
   }
 
   // ── VOICE TTS ──
@@ -2027,10 +2060,7 @@ export default function App() {
       const fileCtx=selectedFile&&fileContent?'\n\nFile terbuka: '+selectedFile+'\n```\n'+fileContent.slice(0,1500)+'\n```':'';
       const memCtx=memories.length?'\n\nMemories (pola coding Papa):\n'+memories.slice(0,10).map(m=>'• '+m.text).join('\n'):'';
       const visionCtx=visionImage?'\n\n[Gambar dilampirkan — analisis untuk context coding]':'';
-      // ── AUTO GREP: inject file relevan berdasarkan query ──
-      const grepCtx = needsAction(txt) ? await grepIndex(txt, folder) : '';
-      const indexCtx = codeIndex.length ? '\n\nFile di project ('+codeIndex.length+' files):\n'+codeIndex.slice(0,50).map(f=>f.path).join('\n') : '';
-      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+visionCtx+indexCtx+(grepCtx?'\n\nFile relevan dengan query ini:\n'+grepCtx:'');
+      const systemPrompt=BASE_SYSTEM+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+visionCtx;
 
       // ── PARALLEL PRE-LOAD pinned files ──
       if (pinnedFiles.length) {
@@ -2039,7 +2069,7 @@ export default function App() {
       }
 
       // ── AGENTIC LOOP ──
-      const MAX_ITER = 6;
+      const MAX_ITER = 10;
       let iter = 0;
       let allMessages = [...history];
       let finalContent = '';
@@ -2058,17 +2088,6 @@ export default function App() {
 
         let reply = await callAI(groqMsgs, setStreaming, ctrl.signal, iter===1?visionImage:null);
         setStreaming('');
-
-        // ── ACTION ENFORCEMENT: jika perlu action tapi tidak ada ──
-        if (!hasActionBlock(reply) && needsAction(txt) && iter === 1 && selfOptRetry < 2) {
-          selfOptRetry++;
-          allMessages = [
-            ...allMessages,
-            {role:'assistant', content:reply.trim()},
-            {role:'user', content:'Untuk task ini kamu HARUS menggunakan action block. Gunakan read_file, write_file, exec, atau search sesuai kebutuhan. Jangan hanya jelaskan — langsung eksekusi dengan action block.'}
-          ];
-          continue;
-        }
 
         // ── SELF-OPTIMIZATION: jika ada error di reply, retry dengan hint ──
         if (reply.includes('❌') && selfOptRetry < 2) {
@@ -2142,6 +2161,12 @@ export default function App() {
 
       setAgentRunning(false);
       if (iter > 1) sendNotification('YuyuCode ✅', 'Agent selesai! '+txt.slice(0,40));
+
+      // ── AUTO CONTINUE kalau kepotong ──
+      if (finalContent.trim().endsWith('CONTINUE')) {
+        setTimeout(()=>sendMsg('Lanjutkan dari titik terakhir.'), 300);
+        return;
+      }
 
       if(finalContent.includes('PROJECT_NOTE:')){
         const nm=finalContent.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
@@ -2274,12 +2299,6 @@ export default function App() {
             style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'99px',padding:'2px 7px',color:'rgba(74,222,128,.7)',fontSize:'9px',cursor:'pointer',flexShrink:0,fontFamily:'monospace',maxWidth:'90px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
             🏠 {ollamaHost.replace('http://','').replace('https://','')}
           </button>
-        )}
-        {/* Index badge */}
-        {codeIndex.length>0&&(
-          <span title={'Codebase index: '+codeIndex.length+' files'} style={{fontSize:'9px',color:'rgba(74,222,128,.4)',flexShrink:0,cursor:'default'}}>
-            {indexing?'⟳':('idx:'+codeIndex.length)}
-          </span>
         )}
         {/* Token badge */}
         <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)',flexShrink:0}}>~{tokens}tk</span>
