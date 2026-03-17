@@ -1446,9 +1446,7 @@ export default function App() {
         const { reply, steps } = await generatePlan(task, folder, callAI, ctrl.signal);
         setPlanSteps(steps.map(s=>({...s,done:false})));
         setPlanTask(task);
-        setMessages(m=>[...m,{role:'assistant',content:'📋 **Plan ('+steps.length+' langkah):**
-
-'+steps.map(s=>s.num+'. '+s.text).join('
+        setMessages(m=>[...m,{role:'assistant',content:'📋 **Plan ('+steps.length+' langkah):**\n\n'+steps.map(s=>s.num+'. '+s.text).join('\n'),actions:[]}]);
 '),actions:[]}]);
       } catch(e) {
         if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message,actions:[]}]);
