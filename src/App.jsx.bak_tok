@@ -1818,7 +1818,7 @@ export default function App() {
 
   // ── UNIVERSAL AI ROUTER ──
   async function callAI(msgs, onChunk, signal, imgBase64=null) {
-    const effortTokens = { low: 1024, medium: 2048, high: 4000 };
+    const effortTokens = { low: 512, medium: 1500, high: 3500 };
     const maxTokens = effortTokens[effort] || 1500;
     return askCerebrasStream(msgs, model, onChunk, signal, { maxTokens });
   }
