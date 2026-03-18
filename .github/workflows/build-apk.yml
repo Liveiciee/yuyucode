@@ -60,8 +60,10 @@ jobs:
           npx cap copy android
           npx cap sync android
           # Restore custom icon after cap sync overwrites
-          cp .github/icons/ic_launcher_background.xml android/app/src/main/res/drawable/ic_launcher_background.xml
-          cp .github/icons/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
+          echo "=== RESTORING ICONS ==="
+          cp -v .github/icons/ic_launcher_background.xml android/app/src/main/res/drawable/ic_launcher_background.xml
+          cp -v .github/icons/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
+          echo "=== ICONS RESTORED ==="
       # Auto-bump versionCode = build number, versionName = 1.0.N
       - name: Bump version
         uses: chkfung/android-version-actions@v1.2.1
