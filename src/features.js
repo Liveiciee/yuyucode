@@ -333,9 +333,12 @@ export function tfidfRank(memories, queryText, topN = 5) {
       const idf = df > 0 ? Math.log((N + 1) / df) : 0;
       score += tf * idf;
     }
-    // Boost recent memories slightly
-    const ageDays = mem.ts ? 0 : 1;
-    score += ageDays === 0 ? 0.1 : 0;
+    // Boost recent memories — gunakan mem.id (Date.now()-based) untuk umur sebenarnya
+    // mem.id = Date.now() + Math.random(), jadi Math.floor(mem.id) = ms epoch saat dibuat
+    const createdMs = mem.id ? Math.floor(mem.id) : 0;
+    const ageDays = createdMs > 0 ? (Date.now() - createdMs) / 86400000 : 999;
+    // Linear decay: boost 0.15 di hari-0, turun ke 0 di hari-14
+    score += Math.max(0, 0.15 * (1 - ageDays / 14));
     return { ...mem, _score: score };
   });
 

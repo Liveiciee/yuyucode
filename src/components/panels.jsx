@@ -699,7 +699,6 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
   const [status, setStatus]       = useState('');
 
   async function loadPreview(cf) {
-    const { callServer } = await import('../api.js');
     const r = await callServer({ type: 'read', path: folder + '/' + cf });
     if (r.ok) setPreviews(p => ({ ...p, [cf]: r.data }));
   }
@@ -707,7 +706,6 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
   async function resolve(strategy) {
     setResolving(true);
     setStatus('Resolving (' + strategy + ')···');
-    const { callServer } = await import('../api.js');
     if (strategy === 'ours') {
       await callServer({ type: 'exec', path: folder, command: 'git checkout --ours -- . && git add -A' });
     } else {
@@ -726,7 +724,6 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
   async function abortMerge() {
     setResolving(true);
     setStatus('Aborting···');
-    const { callServer } = await import('../api.js');
     await callServer({ type: 'exec', path: folder, command: 'git merge --abort' });
     setResolving(false);
     onAborted();

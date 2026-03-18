@@ -11,7 +11,6 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
   if (options.imageBase64 && typeof options.imageBase64 === 'string') {
     finalMessages = messages.map((m, i) => {
       if (i === messages.length - 1 && m.role === 'user') {
-        // Jika content adalah string, jadikan array
         const textContent = typeof m.content === 'string' ? m.content :
                              Array.isArray(m.content) ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ') :
                              '';
@@ -46,7 +45,7 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
     const retry = parseInt(resp.headers.get('retry-after') || '60', 10);
     throw new Error(`RATE_LIMIT:${retry}`);
   }
-  
+
   if (!resp.ok) {
     const errText = await resp.text();
     throw new Error(`Cerebras error: HTTP ${resp.status} - ${errText}`);
@@ -57,45 +56,56 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
   let full = '';
   let buffer = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    
-    if (done) break;
-    
-    buffer += decoder.decode(value, { stream: true });
-    
-    let lines = buffer.split('\n');
-    buffer = lines.pop(); // Simpan sisa yang belum penuh
-    
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      if (line === 'data: [DONE]') {
-        continue;
-      }
-      
+  try {
+    while (true) {
+      let done, value;
       try {
-        const parsed = JSON.parse(line.slice(6));
-        const content = parsed.choices?.[0]?.delta?.content || '';
-        full += content;
-        onChunk(full);
-      } catch (e) {
-        console.warn('Failed to parse stream chunk:', e, 'line:', line);
+        ({ done, value } = await reader.read());
+      } catch (readErr) {
+        // Stream bisa terputus saat AbortController di-cancel — bukan error fatal
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+        console.warn('Stream read error:', readErr);
+        break;
       }
-    }
-  }
 
-  // Flush sisa buffer jika ada
-  if (buffer.length > 0) {
-    try {
-      if (buffer.startsWith('data: ') && buffer !== 'data: [DONE]') {
-        const parsed = JSON.parse(buffer.slice(6));
-        const content = parsed.choices?.[0]?.delta?.content || '';
-        full += content;
-        onChunk(full);
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // Simpan sisa yang belum penuh
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        if (line === 'data: [DONE]') continue;
+
+        try {
+          const parsed = JSON.parse(line.slice(6));
+          const content = parsed.choices?.[0]?.delta?.content || '';
+          full += content;
+          onChunk(full);
+        } catch (e) {
+          console.warn('Failed to parse stream chunk:', e, 'line:', line);
+        }
       }
-    } catch (e) {
-      console.warn('Failed to parse final buffer:', e, 'buffer:', buffer);
     }
+
+    // Flush sisa buffer jika ada
+    if (buffer.length > 0) {
+      try {
+        if (buffer.startsWith('data: ') && buffer !== 'data: [DONE]') {
+          const parsed = JSON.parse(buffer.slice(6));
+          const content = parsed.choices?.[0]?.delta?.content || '';
+          full += content;
+          onChunk(full);
+        }
+      } catch (e) {
+        console.warn('Failed to parse final buffer:', e, 'buffer:', buffer);
+      }
+    }
+  } finally {
+    // Selalu release lock — cegah ReadableStream locked error di request berikutnya
+    try { reader.releaseLock(); } catch {}
   }
 
   return full;
