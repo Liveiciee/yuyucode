@@ -5,7 +5,6 @@ export const MAX_HISTORY = 50;
 
 export const MODELS = [
   { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥', provider:'cerebras' },
-  { id: 'llama-3.3-70b', label: 'Llama 3.3 70B 🚀', provider:'cerebras' },
   { id: 'llama3.1-8b', label: 'Llama 3.1 8B ⚡', provider:'cerebras' },
 ];
 
