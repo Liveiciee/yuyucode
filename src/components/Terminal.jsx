@@ -13,11 +13,11 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI }) {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:'smooth' }); }, [outputs, loading]);
 
-  function detectError(output, ok) {
-    if (!ok) return true;
-    const lower = output.toLowerCase();
-    const hasErr = lower.includes('error') || lower.includes('failed') || lower.includes('exception') || lower.includes('cannot find') || lower.includes('exit code 1');
-    const isFP = lower.includes('0 errors') || lower.includes('no error') || lower.includes('syntax ok') || lower.includes('0 problem');
+  function detectError(res) {
+    if (res.ok === false) return true;
+    const output = (res.data || '').toLowerCase();
+    const hasErr = output.includes('error') || output.includes('failed') || output.includes('no such file') || output.includes('cannot find') || output.includes('exception') || output.includes('not found');
+    const isFP = output.includes('0 errors') || output.includes('no error') || output.includes('syntax ok');
     return hasErr && !isFP;
   }
 
@@ -46,7 +46,7 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI }) {
     try {
       const res = await callServer({ type:'exec', path:folder, command:c });
       const output = res.data || res.output || res.error || '(selesai)';
-      const hasError = detectError(output, res.ok);
+      const hasError = detectError(res);
       setOutputs(prev => [...prev.slice(-50), { cmd:c, output, hasError }]);
     } catch(e) {
       setOutputs(prev => [...prev.slice(-50), { cmd:c, output:e.message, hasError:true }]);
