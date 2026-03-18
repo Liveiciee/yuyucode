@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v5
 
@@ -25,9 +28,6 @@ jobs:
           VITE_CEREBRAS_API_KEY: ${{ secrets.VITE_CEREBRAS_API_KEY }}
           VITE_TAVILY_API_KEY: ${{ secrets.VITE_TAVILY_API_KEY }}
 
-
-
-
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
@@ -44,7 +44,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('**/*.gradle*') }}
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
 
       - name: Generate App Icons
@@ -56,18 +56,65 @@ jobs:
           npx cap copy android
           npx cap sync android
 
-      - name: Build APK
+      # Auto-bump versionCode = build number, versionName = 1.0.N
+      - name: Bump version
+        uses: chkfung/android-version-actions@v1.2.1
+        with:
+          gradlePath: android/app/build.gradle
+          versionCode: ${{ github.run_number }}
+          versionName: 1.0.${{ github.run_number }}
+
+      - name: Build Release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --parallel --build-cache
+          ./gradlew assembleRelease --parallel --build-cache
 
-      - name: Rename APK
-        run: mv android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/YuyuCode.apk
+      # Decode keystore from secret, sign & zipalign
+      - name: Sign APK
+        id: sign_apk
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: android/app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
 
-      - name: Upload APK
+      - name: Rename signed APK
+        run: cp "${{ steps.sign_apk.outputs.signedReleaseFile }}" android/app/build/outputs/apk/release/YuyuCode.apk
+
+      # Keep artifact upload as backup
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v5
         with:
-          name: YuyuCode
-          path: android/app/build/outputs/apk/debug/YuyuCode.apk
-# updated Mon Mar 16 07:53:39 WITA 2026
+          name: YuyuCode-v1.0.${{ github.run_number }}
+          path: android/app/build/outputs/apk/release/YuyuCode.apk
+
+      - name: Get commit info
+        id: info
+        run: |
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+
+      # Create GitHub Release — APK attached, downloadable dari Releases tab
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: "YuyuCode v1.0.${{ github.run_number }} (${{ steps.info.outputs.date }})"
+          body: |
+            **${{ steps.info.outputs.msg }}**
+
+            | | |
+            |---|---|
+            | Version | 1.0.${{ github.run_number }} |
+            | Build | #${{ github.run_number }} |
+            | Commit | ${{ github.sha }} |
+            | Date | ${{ steps.info.outputs.date }} |
+
+            ⬇️ Download **YuyuCode.apk** di bawah
+          files: android/app/build/outputs/apk/release/YuyuCode.apk
+          make_latest: true
