@@ -15,7 +15,7 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI }) {
 
   function detectError(output) {
     const lower = output.toLowerCase();
-    const hasErr = lower.includes('error') || lower.includes('failed') || lower.includes('exception') || lower.includes('cannot find') || lower.includes('exit code 1');
+    const hasErr = lower.includes('error') || lower.includes('failed') || lower.includes('exception') || lower.includes('cannot find') || lower.includes('exit code 1') || lower.includes('no such file') || lower.includes('permission denied') || lower.includes('command not found');
     const isFP = lower.includes('0 errors') || lower.includes('no error') || lower.includes('syntax ok') || lower.includes('0 problem');
     return hasErr && !isFP;
   }
