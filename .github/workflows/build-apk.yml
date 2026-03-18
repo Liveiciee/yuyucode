@@ -60,7 +60,8 @@ jobs:
           npx cap copy android
           npx cap sync android
           # Restore custom icon after cap sync overwrites
-          cat > android/app/src/main/res/drawable/ic_launcher_background.xml << 'XMLEOF'
+          cp .github/icons/ic_launcher_background.xml android/app/src/main/res/drawable/ic_launcher_background.xml
+          cp .github/icons/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml'
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <solid android:color="#1e0a3c"/>
