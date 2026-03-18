@@ -119,7 +119,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   const thinkText = thinkMatch ? thinkMatch[1] : null;
   const cleanText = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim();
   const actions = msg.actions || [];
-  const hasPendingWrite = actions.some(a => a.type === 'write_file' && !a.executed);
+  const hasPendingWrite = actions.some(a => (a.type === 'write_file' || a.type === 'patch_file') && !a.executed);
   const isContinued = msg.content.trim().endsWith('CONTINUE');
   const hasPlan = !msg.planApproved && msg.content.includes('📋 **Plan (');
 
@@ -148,10 +148,10 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
           {/* ── Write approvals ── */}
           {hasPendingWrite && onApprove && (
             <div style={{margin:'8px 0',display:'flex',flexDirection:'column',gap:'6px'}}>
-              {actions.filter(a=>a.type==='write_file'&&!a.executed).map((a,i)=>(
+              {actions.filter(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed).map((a,i)=>(
                 <div key={i} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'10px',overflow:'hidden'}}>
                   <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'8px 12px'}}>
-                    <span style={{fontSize:'12px',color:'rgba(255,255,255,.55)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>✏️ {a.path}</span>
+                    <span style={{fontSize:'12px',color:'rgba(255,255,255,.55)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.type==='patch_file'?'🩹':'✏️'} {a.path}</span>
                     <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',flexShrink:0}}>{a.content?(Math.round(a.content.length/1024*10)/10)+'KB':''}</span>
                   </div>
                   {/* diff preview */}
@@ -193,9 +193,9 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
                   </div>
                 </div>
               ))}
-              {actions.filter(a=>a.type==='write_file'&&!a.executed).length>1&&(
+              {actions.filter(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed).length>1&&(
                 <div style={{display:'flex',gap:'8px',marginTop:'2px'}}>
-                  <button onClick={()=>onApprove(true,'__all__')} style={{...approveBtn,flex:1}}>✓ Tulis semua ({actions.filter(a=>a.type==='write_file'&&!a.executed).length} file)</button>
+                  <button onClick={()=>onApprove(true,'__all__')} style={{...approveBtn,flex:1}}>✓ Tulis semua ({actions.filter(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed).length} file)</button>
                   <button onClick={()=>onApprove(false,'__all__')} style={rejectBtn}>✗ Batal</button>
                 </div>
               )}

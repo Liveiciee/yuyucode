@@ -91,6 +91,7 @@ export async function executeAction(action, baseFolder) {
     return r;
   }
   if (action.type === 'write_file') return callServer({ type: 'write', path: resolvePath(base, action.path), content: action.content });
+  if (action.type === 'patch_file') return callServer({ type: 'patch', path: resolvePath(base, action.path), old_str: action.old_str, new_str: action.new_str || '' });
   if (action.type === 'list_files') {
     const r = await callServer({ type: 'list', path: resolvePath(base, action.path) });
     if (r.ok && Array.isArray(r.data)) r.data = r.data.map(f => (f.isDir ? '📁 ' : '📄 ') + f.name + (f.size ? ` (${Math.round(f.size / 1024)}KB)` : '')).join('\n');

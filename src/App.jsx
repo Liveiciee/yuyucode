@@ -161,7 +161,7 @@ export default function App() {
       try{
         const {reply,actions}=await executePlanStep(step,project.folder,callAI,ctrl.signal,chat.setStreaming);
         chat.setStreaming('');
-        const writes=actions.filter(a=>a.type==='write_file');
+        const writes=actions.filter(a=>a.type==='write_file'||a.type==='patch_file');
         const cleaned=reply.replace(/```action[\s\S]*?```/g,'').trim();
         if(writes.length>0){
           chat.setMessages(m=>[...m,{role:'assistant',content:cleaned,actions:writes.map(a=>({...a,executed:false}))}]);
@@ -181,8 +181,8 @@ export default function App() {
   async function handleApprove(idx,ok,targetPath){
     const msg=chat.messages[idx];
     const targets=targetPath==='__all__'
-      ?(msg.actions||[]).filter(a=>a.type==='write_file'&&!a.executed)
-      :(msg.actions||[]).filter(a=>a.type==='write_file'&&!a.executed&&(targetPath?a.path===targetPath:true));
+      ?(msg.actions||[]).filter(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed)
+      :(msg.actions||[]).filter(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed&&(targetPath?a.path===targetPath:true));
     if(!ok){
       chat.setMessages(m=>m.map((x,i)=>i===idx?{...x,actions:x.actions?.map(a=>targets.includes(a)?{...a,executed:true,result:{ok:false,data:'Dibatalkan.'}}:a)}:x));
       return;
@@ -361,8 +361,8 @@ export default function App() {
       }
 
       // Deduplikasi: BE menang jika ada path yang sama
-      const feWrites=parseActions(fixedFeReply).filter(a=>a.type==='write_file');
-      const beWrites=parseActions(fixedBeReply).filter(a=>a.type==='write_file');
+      const feWrites=parseActions(fixedFeReply).filter(a=>a.type==='write_file'||a.type==='patch_file');
+      const beWrites=parseActions(fixedBeReply).filter(a=>a.type==='write_file'||a.type==='patch_file');
       const bePaths=new Set(beWrites.map(a=>a.path));
       const dedupedWrites=[...feWrites.filter(a=>!bePaths.has(a.path)),...beWrites];
 
@@ -533,8 +533,8 @@ export default function App() {
         tokenTracker.record(inTk, outTk, project.model);
 
         const allActs=parseActions(reply);
-        const writes=allActs.filter(a=>a.type==='write_file');
-        const nonWrites=allActs.filter(a=>a.type!=='write_file');
+        const writes=allActs.filter(a=>a.type==='write_file'||a.type==='patch_file');
+        const nonWrites=allActs.filter(a=>a.type!=='write_file'&&a.type!=='patch_file');
         const readActions=nonWrites.filter(a=>a.type==='read_file');
         const webSearchActions=nonWrites.filter(a=>a.type==='web_search');
         const otherActions=nonWrites.filter(a=>a.type!=='read_file'&&a.type!=='web_search');
@@ -770,7 +770,7 @@ export default function App() {
             <div ref={chatRef} style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
               {visibleMessages.map((m,i)=>(
                 <MsgBubble key={i} msg={m} isLast={i===chat.messages.length-1}
-                  onApprove={m.actions?.some(a=>a.type==='write_file'&&!a.executed)?(ok,path)=>handleApprove(i,ok,path):null}
+                  onApprove={m.actions?.some(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed)?(ok,path)=>handleApprove(i,ok,path):null}
                   onPlanApprove={m.content?.includes('📋 **Plan (')&&!m.planApproved?(ok)=>handlePlanApprove(i,ok):null}
                   onRetry={i===chat.messages.length-1&&m.role==='user'?retryLast:null}
                   onContinue={i===chat.messages.length-1&&m.role==='assistant'&&m.content.trim().endsWith('CONTINUE')?continueMsg:null}
