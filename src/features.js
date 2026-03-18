@@ -200,20 +200,19 @@ export class TokenTracker {
     const total = this.inputTokens + this.outputTokens;
     const mins = Math.round((Date.now() - this.startTime) / 60000);
     const avg = this.requests > 0 ? Math.round(total / this.requests) : 0;
-    const recent = this.history.slice(-5).map((h,i) => '  '+(i+1)+'. in:'+h.inTk+' out:'+h.outTk+'tk ('+h.model+')').join('
-');
-    return '📊 **Token Usage**
-Input:    ~'+this.inputTokens+'tk
-Output:   ~'+this.outputTokens+'tk
-Total:    ~'+total+'tk
-Requests: '+this.requests+' (~'+avg+'tk/req)
-Durasi:   '+mins+' menit
+    const recent = this.history.slice(-5).map((h,i) => "  "+(i+1)+". in:"+h.inTk+" out:"+h.outTk+"tk ("+h.model+")").join("
+");
+    return "📊 **Token Usage**
+Input:    ~"+this.inputTokens+"tk
+Output:   ~"+this.outputTokens+"tk
+Total:    ~"+total+"tk
+Requests: "+this.requests+" (~"+avg+"tk/req)
+Durasi:   "+mins+" menit
 Cerebras: gratis 🎉
 
 **5 request terakhir:**
-'+recent;
-  }
-}
+"+recent;
+  }}
 export const tokenTracker = new TokenTracker();
 
 // ─── SESSION MANAGER ─────────────────────────────────────────────────────────
