@@ -22,12 +22,14 @@ jobs:
           cache: 'npm'
 
       - name: Cache node_modules
+        id: nm-cache
         uses: actions/cache@v5
         with:
           path: node_modules
           key: nm-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
+        if: steps.nm-cache.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Build Vite
@@ -55,17 +57,16 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
 
-
       - name: Add Capacitor Android
         run: |
           if [ ! -d "android" ]; then npx cap add android; fi
-          npx cap copy android
           npx cap sync android
           # Restore custom icon after cap sync overwrites
           echo "=== RESTORING ICONS ==="
           cp -v .github/icons/ic_launcher_background.xml android/app/src/main/res/drawable/ic_launcher_background.xml
           cp -v .github/icons/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
           echo "=== ICONS RESTORED ==="
+
       # Auto-bump versionCode = build number, versionName = 1.0.N
       - name: Bump version
         uses: chkfung/android-version-actions@v1.2.1
