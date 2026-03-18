@@ -220,7 +220,7 @@ export default function App() {
         {role:'system',content:'Buat ringkasan singkat dari percakapan coding ini. Fokus: keputusan teknis, files diubah, bug fix, status project. Maks 300 kata.'},
         {role:'user',content:toCompact.map(m=>m.role+': '+m.content.slice(0,300)).join('\n\n')}
       ],'llama3.1-8b',()=>{},ctrl.signal);
-      chat.setMessages([messages[0],{role:'assistant',content:'📦 **Context dicompact** ('+toCompact.length+' pesan):\n\n'+summary},...chat.messages.slice(-6)]);
+      chat.setMessages([chat.messages[0],{role:'assistant',content:'📦 **Context dicompact** ('+toCompact.length+' pesan):\n\n'+summary},...chat.messages.slice(-6)]);
       chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Context berhasil dikompres!',actions:[]}]);
     }catch(e){if(e.name!=='AbortError') chat.setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message}]);}
     chat.setLoading(false);
@@ -358,7 +358,7 @@ export default function App() {
     if(!diff.ok||!diff.data.trim()){chat.setMessages(m=>[...m,{role:'assistant',content:'Tidak ada perubahan~',actions:[]}]);chat.setLoading(false);return;}
     const ctrl=new AbortController();abortRef.current=ctrl;
     try{
-      const reply=await callAI([{role:'system',content:'Generate satu baris commit message format "tipe: deskripsi". Hanya commit message, tanpa penjelasan.'},{role:'user',content:diff.data.slice(0,3000)}],setStreaming,ctrl.signal);
+      const reply=await callAI([{role:'system',content:'Generate satu baris commit message format "tipe: deskripsi". Hanya commit message, tanpa penjelasan.'},{role:'user',content:diff.data.slice(0,3000)}],chat.setStreaming,ctrl.signal);
       chat.setStreaming('');
       const msg=reply.trim().replace(/^[\"'`]|[\"'`]$/g,'');
       chat.setMessages(m=>[...m,{role:'assistant',content:'💬 Commit message:\n```\n'+msg+'\n```\n```action\n{"type":"exec","command":"git add -A && git commit -m \\"'+msg.replace(/"/g,'\\"')+'\\" && git push"}\n```',actions:[]}]);
@@ -467,7 +467,7 @@ export default function App() {
           {role:'system',content:systemPrompt+DECISION_HINT+(Object.keys(autoContext).length?'\n\nAuto-loaded context:\n'+Object.entries(autoContext).map(([p,c])=>'=== '+p+' ===\n'+c.slice(0,800)).join('\n\n'):'')},
           ...chat.trimHistory(allMessages).map(m=>({role:m.role,content:m.content.replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim()}))
         ];
-        let reply=await callAI(groqMsgs,setStreaming,ctrl.signal,iter===1?chat.visionImage:null);
+        let reply=await callAI(groqMsgs,chat.setStreaming,ctrl.signal,iter===1?chat.visionImage:null);
         chat.setStreaming('');
         // track tokens per request
         const inTk = Math.round(groqMsgs.reduce((a,m)=>a+(m.content?.length||0),0)/4);
@@ -545,7 +545,8 @@ export default function App() {
       chat.setAgentRunning(false);
       if(e.name!=='AbortError'){
         if(e.message.startsWith('RATE_LIMIT:')){
-          chat.startRateLimitTimer(parseInt(e.message.split(':')[1]));
+          const secs=parseInt(e.message.split(':')[1]);
+          chat.startRateLimitTimer(secs);
           chat.setMessages(m=>[...m,{role:'assistant',content:'⏳ Rate limit — tunggu '+secs+' detik ya Papa~'}]);
         }else if(!navigator.onLine){
           chat.setMessages(m=>[...m,{role:'assistant',content:'📡 Internet terputus~'}]);
@@ -585,11 +586,11 @@ export default function App() {
 
   const tokens=countTokens(chat.messages);
   const VIRTUAL_LIMIT=60;
-  const visibleMessages=chat.messages.length>VIRTUAL_LIMIT?[{role:'assistant',content:`[... ${chat.messages.length-VIRTUAL_LIMIT} pesan tersembunyi. /clear untuk bersihkan]`},...chat.messages.slice(-VIRTUAL_LIMIT)]:messages;
+  const visibleMessages=chat.messages.length>VIRTUAL_LIMIT?[{role:'assistant',content:`[... ${chat.messages.length-VIRTUAL_LIMIT} pesan tersembunyi. /clear untuk bersihkan]`},...chat.messages.slice(-VIRTUAL_LIMIT)]:chat.messages;
 
   // ── RENDER ──
   return (
-    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:fontSize+'px'}}
+    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:ui.fontSize+'px'}}
       onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}>
       {ui.dragOver&&<div style={{position:'absolute',inset:0,background:'rgba(124,58,237,.15)',border:'2px dashed rgba(124,58,237,.5)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:'#a78bfa'}}>Drop file di sini~</span></div>}
       <style>{`*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}::-webkit-scrollbar{width:3px;height:3px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px;}textarea,input{scrollbar-width:none;}@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}button{transition:color .15s,background .15s,opacity .15s;}button:active{opacity:.6!important;}.msg-appear{animation:fadeIn .18s ease forwards;}`}</style>
@@ -619,7 +620,7 @@ export default function App() {
 
       {ui.showFolder&&(
         <div style={{padding:'8px 12px',borderBottom:'1px solid '+T.border,display:'flex',gap:'6px',background:T.bg2,flexShrink:0}}>
-          <input value={project.folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(folderInput)}
+          <input value={project.folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(project.folderInput)}
             style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'6px 10px',color:T.text,fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
           <button onClick={()=>saveFolder(project.folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}>set</button>
         </div>
@@ -629,10 +630,10 @@ export default function App() {
 
       {/* STATUS BANNERS */}
       {!project.netOnline&&<div style={{padding:'3px 12px',background:'rgba(248,113,113,.08)',borderBottom:'1px solid rgba(248,113,113,.12)',fontSize:'10px',color:'#f87171',flexShrink:0}}>📡 Offline</div>}
-      {chat.rateLimitTimer>0&&<div style={{padding:'3px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.08)',fontSize:'10px',color:'rgba(251,191,36,.7)',flexShrink:0}}>⏳ Rate limit {rateLimitTimer}s</div>}
+      {chat.rateLimitTimer>0&&<div style={{padding:'3px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.08)',fontSize:'10px',color:'rgba(251,191,36,.7)',flexShrink:0}}>⏳ Rate limit {chat.rateLimitTimer}s</div>}
       {chat.agentRunning&&<div style={{padding:'3px 12px',background:'rgba(124,58,237,.05)',borderBottom:'1px solid rgba(124,58,237,.1)',fontSize:'10px',color:'#a78bfa',flexShrink:0}}>● Yuyu lagi jalan···</div>}
       {project.reconnectTimer>0&&!project.serverOk&&<div style={{padding:'3px 12px',background:'rgba(248,113,113,.05)',borderBottom:'1px solid rgba(248,113,113,.1)',fontSize:'10px',color:'#f87171',flexShrink:0}}>↺ Reconnecting···</div>}
-      {countTokens(chat.messages)>15000&&<div style={{padding:'3px 12px',background:'rgba(251,191,36,.04)',borderBottom:'1px solid rgba(251,191,36,.07)',fontSize:'10px',color:'rgba(251,191,36,.6)',flexShrink:0}}>⚠ Context besar ~{countTokens(messages)}tk</div>}
+      {countTokens(chat.messages)>15000&&<div style={{padding:'3px 12px',background:'rgba(251,191,36,.04)',borderBottom:'1px solid rgba(251,191,36,.07)',fontSize:'10px',color:'rgba(251,191,36,.6)',flexShrink:0}}>⚠ Context besar ~{countTokens(chat.messages)}tk</div>}
 
       <div style={{flex:1,display:'flex',overflow:'hidden',position:'relative'}}>
 
@@ -842,7 +843,7 @@ export default function App() {
 
       {/* OVERLAYS */}
       {ui.showSearch&&<SearchBar folder={project.folder} onSelectFile={openFile} onClose={()=>ui.setShowSearch(false)}/>}
-      {showShortcuts&&<ShortcutsPanel onClose={()=>setShowShortcuts(false)}/>}
+      {ui.showShortcuts&&<ShortcutsPanel onClose={()=>ui.setShowShortcuts(false)}/>}
       {ui.showDiff&&<GitDiffPanel folder={project.folder} onClose={()=>ui.setShowDiff(false)}/>}
       {ui.showBlame&&file.selectedFile&&<GitBlamePanel folder={project.folder} filePath={file.selectedFile} onClose={()=>ui.setShowBlame(false)}/>}
       {ui.showSnippets&&<SnippetLibrary onInsert={code=>{chat.setInput(i=>i?i+'\n'+code:code);ui.setShowSnippets(false);inputRef.current?.focus();}} onClose={()=>ui.setShowSnippets(false)}/>}
@@ -882,7 +883,7 @@ export default function App() {
                   <div style={{fontSize:'12px',color:'rgba(255,255,255,.75)'}}>{m.text}</div>
                   <div style={{fontSize:'10px',color:'rgba(255,255,255,.25)',marginTop:'2px'}}>{m.folder} · {m.ts}</div>
                 </div>
-                <button onClick={()=>{const next=memories.filter(x=>x.id!==m.id);chat.setMemories(next);Preferences.set({key:'yc_memories',value:JSON.stringify(next)});}} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer',flexShrink:0}}>×</button>
+                <button onClick={()=>{const next=chat.memories.filter(x=>x.id!==m.id);chat.setMemories(next);Preferences.set({key:'yc_memories',value:JSON.stringify(next)});}} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer',flexShrink:0}}>×</button>
               </div>
             ))}
           </div>
@@ -906,7 +907,7 @@ export default function App() {
                   <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)'}}>{cp.folder} · {cp.messages.length} pesan</div>
                 </div>
                 <button onClick={()=>restoreCheckpoint(cp)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer'}}>restore</button>
-                <button onClick={()=>{chat.setCheckpoints(chat.checkpoints.filter(x=>x.id!==cp.id));Preferences.set({key:'yc_checkpoints',value:JSON.stringify(next)});}} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer'}}>×</button>
+                <button onClick={()=>{const next=chat.checkpoints.filter(x=>x.id!==cp.id);chat.setCheckpoints(next);Preferences.set({key:'yc_checkpoints',value:JSON.stringify(next)});}} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer'}}>×</button>
               </div>
             ))}
           </div>
@@ -971,7 +972,7 @@ export default function App() {
               <span style={{fontSize:'13px',color:'#4ade80',fontFamily:'monospace',fontWeight:'600'}}>{tool}</span>
               <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginTop:'6px'}}>
                 {(tool==='git'?['status','log','diff']:tool==='fetch'?['browse']:tool==='sqlite'?['tables']:tool==='github'?['issues','pulls']:tool==='system'?['disk','memory']:['list']).map(act=>(
-                  <button key={act} onClick={async()=>{const r=await callServer({type:'mcp',tool,action:act,params:{path:folder}});chat.setMessages(m=>[...m,{role:'assistant',content:`🔌 ${tool}/${act}:\n\`\`\`\n${(r.data||'').slice(0,1000)}\n\`\`\``,actions:[]}]);ui.setShowMCP(false);}}
+                  <button key={act} onClick={async()=>{const r=await callServer({type:'mcp',tool,action:act,params:{path:project.folder}});chat.setMessages(m=>[...m,{role:'assistant',content:`🔌 ${tool}/${act}:\n\`\`\`\n${(r.data||'').slice(0,1000)}\n\`\`\``,actions:[]}]);ui.setShowMCP(false);}}
                     style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'4px',padding:'2px 8px',color:'rgba(74,222,128,.8)',fontSize:'10px',cursor:'pointer',fontFamily:'monospace'}}>{act}</button>
                 ))}
               </div>
@@ -1154,7 +1155,7 @@ export default function App() {
               </button>
             ))}
           </div>
-          {ui.deployLog?<div style={{flex:1,background:'#0a0a0b',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px',padding:'12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(255,255,255,.7)',overflowY:'auto',whiteSpace:'pre-wrap'}}>{deployLog}</div>:<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Pilih platform untuk deploy~</div>}
+          {ui.deployLog?<div style={{flex:1,background:'#0a0a0b',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px',padding:'12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(255,255,255,.7)',overflowY:'auto',whiteSpace:'pre-wrap'}}>{ui.deployLog}</div>:<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Pilih platform untuk deploy~</div>}
         </div>
       )}
 
