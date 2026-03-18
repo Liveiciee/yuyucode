@@ -1,8 +1,6 @@
 export const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
 export const TAVILY_KEY = import.meta.env.VITE_TAVILY_API_KEY || '';
-export const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 export const YUYU_SERVER = 'http://localhost:8765';
-export const DEFAULT_OLLAMA_HOST = 'http://localhost:11434';
 export const MAX_HISTORY = 50;
 
 export const MODELS = [
@@ -106,7 +104,6 @@ export const SLASH_COMMANDS = [
   { cmd:'/github',     desc:'GitHub issues & PRs' },
   { cmd:'/deploy',     desc:'Deploy project' },
   { cmd:'/db',         desc:'Query SQLite database' },
-  { cmd:'/ollama',     desc:'Set Ollama host URL' },
   { cmd:'/self-edit',  desc:'AI edit App.jsx sendiri' },
   { cmd:'/index',      desc:'Re-index codebase sekarang' },
   { cmd:'/status',     desc:'Health check semua sistem' },

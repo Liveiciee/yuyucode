@@ -1,4 +1,4 @@
-import { CEREBRAS_KEY, GEMINI_KEY, YUYU_SERVER, DEFAULT_OLLAMA_HOST } from './constants.js';
+import { CEREBRAS_KEY, YUYU_SERVER } from './constants.js';
 
 export async function askCerebrasStream(messages, model, onChunk, signal, options = {}) {
   const resp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
@@ -41,9 +41,7 @@ export async function callServer(payload) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const json = await resp.json();
-    if (!resp.ok && json.ok === undefined) json.ok = false;
-    return json;
+    return await resp.json();
   } catch (_e) {
     return { ok: false, data: 'YuyuServer tidak aktif. Jalankan: node ~/yuyu-server.js' };
   }

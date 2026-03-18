@@ -11,13 +11,13 @@ export function useSlashCommands({
   model, folder, branch, messages, selectedFile, fileContent, notes,
   memories, checkpoints, skills, thinkingEnabled, effort, loopActive,
   loopIntervalRef, agentMemory, splitView, pushToTalk, sessionName,
-  sessionColor, fileWatcherActive, fileWatcherInterval, ollamaHost,
+  sessionColor, fileWatcherActive, fileWatcherInterval,
   // setters
   setModel, setMessages, setFolder, setFolderInput, setLoading, setStreaming,
   setThinkingEnabled, setEffort, setLoopActive, setLoopIntervalRef,
   setSplitView, setPushToTalk, setSessionName, setSessionColor,
   setSkills, setFileWatcherActive, setFileWatcherInterval, setFileSnapshots,
-  setOllamaHost, setPlanSteps, setPlanTask, setAgentMemory, setSessionList,
+  setPlanSteps, setPlanTask, setAgentMemory, setSessionList,
   setShowCheckpoints, setShowMemory, setShowMCP, setShowGitHub, setShowDeploy,
   setShowSessions, setShowPermissions, setShowPlugins, setShowConfig,
   setShowCustomActions, setShowFileHistory, setShowThemeBuilder,
@@ -147,16 +147,6 @@ export function useSlashCommands({
       const idxCount = idxR.ok && Array.isArray(idxR.data) ? idxR.data.filter(f=>!f.isDir).length : 0;
       setMessages(m=>[...m,{role:'assistant',content:'✅ Index: '+idxCount+' files di src/~',actions:[]}]);
       setLoading(false);
-
-    } else if (base==='/ollama') {
-      const newHost = parts.slice(1).join(' ').trim();
-      if (!newHost) {
-        setMessages(m=>[...m,{role:'assistant',content:`🏠 Ollama host sekarang: \`${ollamaHost}\`\n\nUsage: \`/ollama http://192.168.1.x:11434\``,actions:[]}]);
-        return;
-      }
-      setOllamaHost(newHost);
-      Preferences.set({key:'yc_ollama_host', value:newHost});
-      setMessages(m=>[...m,{role:'assistant',content:`✅ Ollama host diubah ke: \`${newHost}\``,actions:[]}]);
 
     } else if (base==='/skills') {
       const loaded = await loadSkills(folder);
@@ -447,7 +437,7 @@ Tulis ke SKILL.md menggunakan write_file. Format singkat, padat, max 50 baris.`)
     }
   }, [model, folder, branch, messages, selectedFile, fileContent, notes, memories, skills,
       thinkingEnabled, effort, loopActive, loopIntervalRef, agentMemory, splitView,
-      pushToTalk, sessionName, sessionColor, fileWatcherActive, fileWatcherInterval, ollamaHost]);
+      pushToTalk, sessionName, sessionColor, fileWatcherActive, fileWatcherInterval]);
 
   return { handleSlashCommand };
 }

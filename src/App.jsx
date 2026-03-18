@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { DEFAULT_OLLAMA_HOST, MAX_HISTORY, MODELS, THEMES, BASE_SYSTEM, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
+import { MAX_HISTORY, MODELS, THEMES, BASE_SYSTEM, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { askCerebrasStream, callServer } from './api.js';
 import { countTokens, hl, resolvePath, parseActions, executeAction } from './utils.js';
 import { generatePlan, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages } from './features.js';
@@ -76,8 +76,6 @@ export default function App() {
   const [githubData, setGithubData] = useState(null);
   const [showDeploy, setShowDeploy] = useState(false);
   const [deployLog, setDeployLog] = useState('');
-  const [ollamaHost, setOllamaHost] = useState(DEFAULT_OLLAMA_HOST);
-  const [showOllamaConfig, setShowOllamaConfig] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const ttsRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
@@ -127,8 +125,8 @@ export default function App() {
       Preferences.get({key:'yc_recent'}),Preferences.get({key:'yc_sidebar_w'}),Preferences.get({key:'yc_memories'}),
       Preferences.get({key:'yc_checkpoints'}),Preferences.get({key:'yc_hooks'}),Preferences.get({key:'yc_fontsize'}),
       Preferences.get({key:'yc_custom_theme'}),Preferences.get({key:'yc_onboarded'}),Preferences.get({key:'yc_gh_token'}),
-      Preferences.get({key:'yc_gh_repo'}),Preferences.get({key:'yc_ollama_host'}),
-    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr,oh])=>{
+      Preferences.get({key:'yc_gh_repo'}),
+    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr])=>{
       if(f.value){setFolder(f.value);setFolderInput(f.value);}
       if(h.value){try{setMessages(JSON.parse(h.value));}catch{}}
       if(ch.value){try{setCmdHistory(JSON.parse(ch.value));}catch{}}
@@ -145,7 +143,6 @@ export default function App() {
       if(!ob.value) setShowOnboarding(true);
       if(ght.value) setGithubToken(ght.value);
       if(ghr.value) setGithubRepo(ghr.value);
-      if(oh.value) setOllamaHost(oh.value);
       Preferences.get({key:'yc_session_color'}).then(scr=>{if(scr.value)setSessionColor(scr.value||null);});
     });
     callServer({type:'ping'}).then(r=>{setServerOk(r.ok);if(r.mcp)setMcpTools(r.mcp);});
@@ -477,12 +474,12 @@ export default function App() {
     model,folder,branch,messages,selectedFile,fileContent,notes,
     memories,checkpoints,skills,thinkingEnabled,effort,loopActive,
     loopIntervalRef,agentMemory,splitView,pushToTalk,sessionName,
-    sessionColor,fileWatcherActive,fileWatcherInterval,ollamaHost,
+    sessionColor,fileWatcherActive,fileWatcherInterval,
     setModel,setMessages,setFolder,setFolderInput,setLoading,setStreaming,
     setThinkingEnabled,setEffort,setLoopActive,setLoopIntervalRef,
     setSplitView,setPushToTalk,setSessionName,setSessionColor,
     setSkills,setFileWatcherActive,setFileWatcherInterval,setFileSnapshots,
-    setOllamaHost,setPlanSteps,setPlanTask,setAgentMemory,setSessionList,
+    setPlanSteps,setPlanTask,setAgentMemory,setSessionList,
     setShowCheckpoints,setShowMemory,setShowMCP,setShowGitHub,setShowDeploy,
     setShowSessions,setShowPermissions,setShowPlugins,setShowConfig,
     setShowCustomActions,setShowFileHistory,setShowThemeBuilder,
@@ -685,12 +682,6 @@ export default function App() {
           style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'99px',padding:'3px 9px',color:'rgba(255,255,255,.45)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>
           {MODELS.find(m=>m.id===model)?.label||'AI'}
         </button>
-        {MODELS.find(m=>m.id===model)?.provider==='ollama'&&(
-          <button onClick={()=>setShowOllamaConfig(v=>!v)} title={ollamaHost}
-            style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'99px',padding:'2px 7px',color:'rgba(74,222,128,.7)',fontSize:'9px',cursor:'pointer',flexShrink:0,fontFamily:'monospace',maxWidth:'90px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-            🏠 {ollamaHost.replace('http://','').replace('https://','')}
-          </button>
-        )}
         <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)',flexShrink:0}}>~{tokens}tk</span>
         <button onClick={()=>setShowPalette(true)} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'7px',padding:'4px 8px',color:'rgba(255,255,255,.4)',fontSize:'12px',cursor:'pointer',flexShrink:0}}>⌘</button>
         <button onClick={()=>{setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});setShowFollowUp(false);haptic('light');}}
@@ -702,15 +693,6 @@ export default function App() {
           <input value={folderInput} onChange={e=>setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(folderInput)}
             style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'6px 10px',color:T.text,fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
           <button onClick={()=>saveFolder(folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}>set</button>
-        </div>
-      )}
-
-      {showOllamaConfig&&(
-        <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(74,222,128,.15)',display:'flex',gap:'6px',alignItems:'center',background:'rgba(74,222,128,.03)',flexShrink:0}}>
-          <span style={{fontSize:'11px',color:'rgba(74,222,128,.7)',flexShrink:0}}>🏠</span>
-          <input value={ollamaHost} onChange={e=>setOllamaHost(e.target.value)} onBlur={()=>Preferences.set({key:'yc_ollama_host',value:ollamaHost})} onKeyDown={e=>{if(e.key==='Enter'){Preferences.set({key:'yc_ollama_host',value:ollamaHost});setShowOllamaConfig(false);}}} placeholder="http://192.168.1.x:11434"
-            style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'6px',padding:'4px 8px',color:'#f0f0f0',fontSize:'11px',outline:'none',fontFamily:'monospace'}}/>
-          <button onClick={()=>{Preferences.set({key:'yc_ollama_host',value:ollamaHost});setShowOllamaConfig(false);}} style={{background:'rgba(74,222,128,.12)',border:'none',borderRadius:'5px',padding:'4px 10px',color:'#4ade80',fontSize:'11px',cursor:'pointer'}}>set</button>
         </div>
       )}
 

@@ -13,11 +13,10 @@ YuyuCode adalah **mobile-native AI coding assistant** berbasis Capacitor + React
 
 ## 🔥 Fitur Utama
 
-### 🤖 Multi-AI Provider
+### 🤖 AI Provider
 | Provider | Model | Keunggulan |
 |----------|-------|------------|
 | Cerebras | Qwen 3 235B, Llama 3.3 70B, Llama 3.1 8B | Gratis, super cepat |
-| Ollama | Local LLM | Offline, privat |
 
 ### 🧠 Agentic Loop
 - **10 iterasi otomatis** — AI baca file, analisis, tulis, tanpa perlu disuruh
@@ -139,6 +138,7 @@ git add -A && git commit -m "update" && git push
 ### Environment Variables
 ```env
 VITE_CEREBRAS_API_KEY=your_key_here
+VITE_TAVILY_API_KEY=your_key_here  # opsional, untuk web search
 ```
 
 ---
