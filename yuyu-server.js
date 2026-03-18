@@ -1,38 +1,23 @@
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { execSync, exec, spawn } = require('child_process');
+// yuyu-server.js — v4-async
+// Run dari ~: node ~/yuyu-server.js &
+const http   = require('http');
+const fs     = require('fs');
+const path   = require('path');
+const { execSync, spawn } = require('child_process');
 
-const HOME = process.env.HOME;
-const PORT = 8765;
-const VERSION = 'v3-mcp';
+const HOME    = process.env.HOME;
+const PORT    = 8765;
+const WS_PORT = 8766;
+const VERSION = 'v4-async';
 
 // ── MCP TOOL REGISTRY ─────────────────────────────────────────────────────────
 const MCP_TOOLS = {
-  filesystem: {
-    desc: 'Baca/tulis/list file di sistem',
-    actions: ['read','write','list','delete','search','info','append']
-  },
-  git: {
-    desc: 'Operasi git',
-    actions: ['status','log','diff','blame','branch','stash']
-  },
-  fetch: {
-    desc: 'Fetch URL dan scrape konten web',
-    actions: ['browse','fetch_json','screenshot']
-  },
-  sqlite: {
-    desc: 'Query database SQLite',
-    actions: ['query','tables','schema']
-  },
-  github: {
-    desc: 'GitHub API — issues, PRs, repos',
-    actions: ['issues','pulls','create_issue','repo_info']
-  },
-  system: {
-    desc: 'Info sistem dan proses',
-    actions: ['disk','memory','processes','env']
-  }
+  filesystem: { desc:'Baca/tulis/list/patch file',        actions:['read','write','patch','list','delete','search','info','append','move','mkdir','tree','read_many'] },
+  git:        { desc:'Operasi git',                        actions:['status','log','diff','blame','branch','stash'] },
+  fetch:      { desc:'Fetch URL dan scrape konten web',    actions:['browse','fetch_json','screenshot'] },
+  sqlite:     { desc:'Query database SQLite',              actions:['query','tables','schema'] },
+  github:     { desc:'GitHub API — issues, PRs, repos',    actions:['issues','pulls','create_issue','repo_info'] },
+  system:     { desc:'Info sistem dan proses',             actions:['disk','memory','processes','env'] },
 };
 
 // ── HELPERS ────────────────────────────────────────────────────────────────────
@@ -44,44 +29,110 @@ function resolvePath(filePath) {
 
 function execSafe(command, cwd, timeoutMs = 60000) {
   try {
-    const mergedCmd = command.includes("2>") ? command : command + " 2>&1";
+    const mergedCmd = command.includes('2>') ? command : command + ' 2>&1';
     const out = execSync(mergedCmd, {
-      cwd: cwd || HOME,
-      encoding: 'utf8',
-      timeout: timeoutMs,
-      maxBuffer: 10 * 1024 * 1024
+      cwd: cwd || HOME, encoding: 'utf8',
+      timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024,
     });
     return { ok: true, data: out || '(selesai)' };
   } catch(e) {
     const errMsg = (e.stdout || '') + (e.stderr || '') || e.message;
-    return { ok: false, data: errMsg.slice(0, 2000) };
+    return { ok: false, data: errMsg.slice(0, 3000) };
   }
 }
 
-// ── HANDLER MAP ───────────────────────────────────────────────────────────────
+// ── PATCH ─────────────────────────────────────────────────────────────────────
+// find-and-replace dengan fallback whitespace normalization
+function applyPatch(filePath, oldStr, newStr) {
+  if (!filePath || !oldStr) return { ok: false, data: 'path dan old_str diperlukan' };
+  const full = resolvePath(filePath);
+  if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ditemukan: ' + filePath };
+  const content = fs.readFileSync(full, 'utf8');
+  const replacement = newStr !== undefined ? newStr : '';
+
+  // Exact match
+  if (content.includes(oldStr)) {
+    fs.writeFileSync(full, content.replace(oldStr, replacement), 'utf8');
+    return { ok: true, data: '✅ Patch OK: ' + filePath };
+  }
+
+  // Whitespace-normalized fallback
+  const normalize = s => s.replace(/\r\n/g, '\n').replace(/\t/g, '  ');
+  const normContent = normalize(content);
+  const normOld     = normalize(oldStr);
+  if (normContent.includes(normOld)) {
+    fs.writeFileSync(full, normContent.replace(normOld, replacement), 'utf8');
+    return { ok: true, data: '✅ Patch (whitespace-norm) OK: ' + filePath };
+  }
+
+  // Trim-lines fallback (untuk trailing space)
+  const trimLines  = s => s.split('\n').map(l => l.trimEnd()).join('\n');
+  const trimContent = trimLines(normContent);
+  const trimOld     = trimLines(normOld);
+  if (trimContent.includes(trimOld)) {
+    fs.writeFileSync(full, trimContent.replace(trimOld, replacement), 'utf8');
+    return { ok: true, data: '✅ Patch (trimmed) OK: ' + filePath };
+  }
+
+  // Not found: return context around closest match for debugging
+  const oldLines = normOld.split('\n');
+  const firstLine = oldLines[0].trim();
+  const fileLines = normContent.split('\n');
+  const nearIdx   = fileLines.findIndex(l => l.trim().includes(firstLine.slice(0, 30)));
+  const ctx = nearIdx !== -1
+    ? '\n\nContext sekitar baris ' + (nearIdx + 1) + ':\n' + fileLines.slice(Math.max(0, nearIdx - 2), nearIdx + 5).join('\n')
+    : '';
+  return {
+    ok: false,
+    data: '⚠ old_str tidak ditemukan di ' + filePath + '. Pastikan exact match (case-sensitive, spasi, baris baru).' + ctx,
+  };
+}
+
+// ── DIRECTORY TREE ────────────────────────────────────────────────────────────
+function buildTree(dirPath, depth, maxDepth, prefix) {
+  if (depth > maxDepth) return '';
+  let entries;
+  try { entries = fs.readdirSync(dirPath, { withFileTypes: true }); }
+  catch { return ''; }
+
+  const skip = new Set(['.git','node_modules','dist','build','.gradle','.idea','__pycache__','.DS_Store']);
+  entries = entries.filter(e => !skip.has(e.name)).sort((a,b) => {
+    if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  let out = '';
+  entries.forEach((e, i) => {
+    const last   = i === entries.length - 1;
+    const branch = last ? '└── ' : '├── ';
+    const child  = last ? '    ' : '│   ';
+    out += prefix + branch + e.name + (e.isDirectory() ? '/' : '') + '\n';
+    if (e.isDirectory()) {
+      out += buildTree(path.join(dirPath, e.name), depth + 1, maxDepth, prefix + child);
+    }
+  });
+  return out;
+}
+
+// ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 function handle(payload) {
-  const { type, path: filePath, content, command, from, to, url,
-          query, dbPath, token, owner, repo, tool, action, params } = payload;
+  const {
+    type, path: filePath, content, command, from, to, url,
+    query, dbPath, token, owner, repo, tool, action, params,
+    paths, depth,
+  } = payload;
   const full = resolvePath(filePath);
 
-  // ── PING ──
   if (type === 'ping') {
-    return { ok: true, data: 'YuyuServer ' + VERSION + ' aktif!',
-             mcp: Object.keys(MCP_TOOLS), version: VERSION };
+    return { ok: true, data: 'YuyuServer ' + VERSION + ' aktif!', mcp: Object.keys(MCP_TOOLS), version: VERSION };
   }
 
-  // ── MCP DISPATCH ──
-  if (type === 'mcp') {
-    return handleMCP(tool, action, params || payload);
-  }
-
-  // ── MCP TOOLS LIST ──
-  if (type === 'mcp_list') {
-    return { ok: true, data: MCP_TOOLS };
-  }
+  if (type === 'mcp')      return handleMCP(tool, action, params || payload);
+  if (type === 'mcp_list') return { ok: true, data: MCP_TOOLS };
 
   // ── FILE OPS ──
   if (type === 'read') {
+    if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath };
     let data = fs.readFileSync(full, 'utf8');
     const totalLines = data.split('\n').length;
     const totalChars = data.length;
@@ -92,6 +143,23 @@ function handle(payload) {
       data = lines.slice(f, t).join('\n');
     }
     return { ok: true, data, meta: { totalLines, totalChars } };
+  }
+
+  // ── BATCH READ ──
+  if (type === 'read_many') {
+    const pathList = Array.isArray(paths) ? paths : [];
+    const results = {};
+    for (const p of pathList) {
+      const abs = resolvePath(p);
+      try {
+        if (fs.existsSync(abs)) {
+          results[p] = fs.readFileSync(abs, 'utf8');
+        } else {
+          results[p] = null;
+        }
+      } catch(e) { results[p] = null; }
+    }
+    return { ok: true, data: results };
   }
 
   if (type === 'write') {
@@ -105,66 +173,99 @@ function handle(payload) {
     return { ok: true, data: '✅ Ditambahkan ke: ' + filePath };
   }
 
+  // ── PATCH — CRITICAL FIX ──
+  if (type === 'patch') {
+    return applyPatch(filePath, payload.old_str, payload.new_str);
+  }
+
   if (type === 'delete') {
+    if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath };
     fs.unlinkSync(full);
     return { ok: true, data: '🗑 Dihapus: ' + filePath };
   }
 
+  // ── MOVE / RENAME ──
+  if (type === 'move') {
+    const fromFull = resolvePath(payload.from || filePath);
+    const toFull   = resolvePath(payload.to || content);
+    if (!fs.existsSync(fromFull)) return { ok: false, data: 'Source tidak ada: ' + (payload.from || filePath) };
+    fs.mkdirSync(path.dirname(toFull), { recursive: true });
+    fs.renameSync(fromFull, toFull);
+    return { ok: true, data: '✅ Dipindah: ' + (payload.from || filePath) + ' → ' + (payload.to || content) };
+  }
+
+  // ── MKDIR ──
+  if (type === 'mkdir') {
+    fs.mkdirSync(full, { recursive: true });
+    return { ok: true, data: '✅ Dibuat: ' + filePath };
+  }
+
   if (type === 'list') {
+    if (!fs.existsSync(full)) return { ok: false, data: 'Path tidak ada: ' + filePath };
     const files = fs.readdirSync(full, { withFileTypes: true });
-    const data = files.map(f => ({
-      name: f.name,
-      isDir: f.isDirectory(),
-      size: f.isFile() ? fs.statSync(path.join(full, f.name)).size : 0
+    const data  = files.map(f => ({
+      name: f.name, isDir: f.isDirectory(),
+      size: f.isFile() ? fs.statSync(path.join(full, f.name)).size : 0,
     }));
     return { ok: true, data };
   }
 
-  if (type === 'search') {
-    const searchPath = full || HOME;
-    const r = execSafe(
-      `grep -rn "${(content||'').replace(/"/g,'\\"')}" "${searchPath}" --include="*.jsx" --include="*.js" --include="*.ts" --include="*.tsx" --include="*.json" --include="*.md" 2>/dev/null || echo ""`,
-      HOME
-    );
-    return { ok: true, data: r.data.trim() || 'Tidak ditemukan' };
-  }
-
-  if (type === 'web_search') {
-    const q = (payload.query || '').trim();
-    if (!q) return { ok: false, data: 'Query diperlukan' };
-    const tavilyKey = process.env.TAVILY_API_KEY || '';
-    if (!tavilyKey) return { ok: false, data: 'Set dulu: export TAVILY_API_KEY=tvly-xxx' };
-    const tmpFile = HOME + '/.tavily_body.json';
-    fs.writeFileSync(tmpFile, JSON.stringify({ api_key: tavilyKey, query: q, search_depth: 'basic', max_results: 5 }));
-    const r = execSafe(
-      'curl -sL --max-time 15 -X POST "https://api.tavily.com/search" -H "Content-Type: application/json" -d @' + tmpFile,
-      HOME, 18000
-    );
-    if (!r.ok || !r.data) return { ok: false, data: 'Tavily request gagal' };
-    try {
-      const d = JSON.parse(r.data);
-      if (d.error) return { ok: false, data: 'Tavily error: ' + d.error };
-      const lines = (d.results || []).slice(0, 5).map(function(item, i) {
-        return (i+1) + '. **' + item.title + '**\n' + item.content.slice(0, 300) + '\n🔗 ' + item.url;
-      });
-      return { ok: true, data: lines.join('\n\n') || 'Tidak ada hasil' };
-    } catch(e) {
-      return { ok: false, data: 'Parse error: ' + e.message };
-    }
-  }
-
-    if (type === 'exec') {
-    const cwd = filePath ? resolvePath(filePath) : HOME;
-    return execSafe(command, cwd);
+  // ── TREE ──
+  if (type === 'tree') {
+    const maxDepth = parseInt(depth) || 3;
+    if (!fs.existsSync(full)) return { ok: false, data: 'Path tidak ada: ' + filePath };
+    const tree = (filePath || '.') + '/\n' + buildTree(full, 1, maxDepth, '');
+    return { ok: true, data: tree || '(kosong)' };
   }
 
   if (type === 'info') {
-    const stat = fs.statSync(full);
+    if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath };
+    const stat  = fs.statSync(full);
     const lines = stat.isFile() ? fs.readFileSync(full, 'utf8').split('\n').length : 0;
     return { ok: true, data: { size: stat.size, lines, isFile: stat.isFile(), modified: stat.mtime } };
   }
 
-  // ── BROWSE (curl-based) ──
+  // ── SEARCH (ripgrep → grep fallback) ──
+  if (type === 'search') {
+    const searchPath = full || HOME;
+    const q = (content || '').replace(/"/g, '\\"');
+    // try rg first (faster, respects .gitignore)
+    const rgCheck = execSafe('which rg 2>/dev/null', HOME, 2000);
+    if (rgCheck.ok && rgCheck.data.trim()) {
+      const ext = (payload.ext || 'jsx,js,ts,tsx,json,md,py,sh').split(',').map(e => '-g "**/*.'+e+'"').join(' ');
+      const r = execSafe(`rg -n --color=never ${ext} "${q}" "${searchPath}" 2>/dev/null | head -100`, HOME, 15000);
+      return { ok: true, data: r.data.trim() || 'Tidak ditemukan' };
+    }
+    // grep fallback
+    const exts = '--include="*.jsx" --include="*.js" --include="*.ts" --include="*.tsx" --include="*.json" --include="*.md" --include="*.py" --include="*.sh"';
+    const r = execSafe(`grep -rn "${q}" "${searchPath}" ${exts} 2>/dev/null | head -100 || echo ""`, HOME, 15000);
+    return { ok: true, data: r.data.trim() || 'Tidak ditemukan' };
+  }
+
+  if (type === 'web_search') {
+    const q = (query || '').trim();
+    if (!q) return { ok: false, data: 'Query diperlukan' };
+    const tavilyKey = process.env.TAVILY_API_KEY || '';
+    if (!tavilyKey) return { ok: false, data: 'Set: export TAVILY_API_KEY=tvly-xxx' };
+    const tmpFile = HOME + '/.tavily_body.json';
+    fs.writeFileSync(tmpFile, JSON.stringify({ api_key: tavilyKey, query: q, search_depth: 'basic', max_results: 5 }));
+    const r = execSafe('curl -sL --max-time 15 -X POST "https://api.tavily.com/search" -H "Content-Type: application/json" -d @' + tmpFile, HOME, 18000);
+    if (!r.ok || !r.data) return { ok: false, data: 'Tavily request gagal' };
+    try {
+      const d = JSON.parse(r.data);
+      if (d.error) return { ok: false, data: 'Tavily: ' + d.error };
+      const lines = (d.results || []).slice(0, 5).map((item, i) =>
+        (i+1) + '. **' + item.title + '**\n' + (item.content || '').slice(0, 300) + '\n🔗 ' + item.url
+      );
+      return { ok: true, data: lines.join('\n\n') || 'Tidak ada hasil' };
+    } catch(e) { return { ok: false, data: 'Parse error: ' + e.message }; }
+  }
+
+  if (type === 'exec') {
+    const cwd = filePath ? resolvePath(filePath) : HOME;
+    return execSafe(command, cwd);
+  }
+
   if (type === 'browse') {
     const target = url || filePath;
     if (!target) return { ok: false, data: 'URL diperlukan' };
@@ -175,19 +276,15 @@ function handle(payload) {
     return r;
   }
 
-  // ── FETCH JSON ──
   if (type === 'fetch_json') {
     const target = url || filePath;
     const headers = token ? `-H "Authorization: Bearer ${token}"` : '';
-    const r = execSafe(`curl -sL --max-time 15 ${headers} "${target}"`, HOME, 20000);
-    return r;
+    return execSafe(`curl -sL --max-time 15 ${headers} "${target}"`, HOME, 20000);
   }
 
-  // ── SQLITE ──
   if (type === 'sqlite') {
     const db = resolvePath(dbPath || filePath);
-    const r = execSafe(`sqlite3 "${db}" "${(query||'').replace(/"/g,'\\"')}"`, HOME);
-    return r;
+    return execSafe(`sqlite3 "${db}" "${(query || '').replace(/"/g, '\\"')}"`, HOME);
   }
 
   return { ok: false, data: 'Unknown type: ' + type };
@@ -197,88 +294,77 @@ function handle(payload) {
 function handleMCP(tool, action, params) {
   const { path: p, query, token, owner, repo, title, body, dbPath, url } = params;
 
-  // ── MCP: GIT ──
   if (tool === 'git') {
-    const cwd = p ? resolvePath(p) : HOME;
+    const cwd  = p ? resolvePath(p) : HOME;
     const cmds = {
       status: 'git status --short',
-      log: 'git log --oneline -20',
-      diff: 'git diff HEAD',
-      blame: `git blame "${p||'.'}" 2>/dev/null | head -50`,
+      log:    'git log --oneline -20',
+      diff:   'git diff HEAD',
+      blame:  `git blame "${p || '.'}" 2>/dev/null | head -50`,
       branch: 'git branch -a',
-      stash: 'git stash list',
+      stash:  'git stash list',
     };
     if (!cmds[action]) return { ok: false, data: 'Unknown git action: ' + action };
     return execSafe(cmds[action], cwd);
   }
 
-  // ── MCP: FETCH ──
   if (tool === 'fetch') {
+    const target = url || p;
     if (action === 'browse' || action === 'fetch') {
-      const target = url || p;
-      const r = execSafe(`curl -sL --max-time 15 -A "Mozilla/5.0" "${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$/d' | head -300`, HOME, 25000);
-      return r;
+      return execSafe(`curl -sL --max-time 15 -A "Mozilla/5.0" "${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$/d' | head -300`, HOME, 25000);
     }
     if (action === 'fetch_json') {
       const headers = token ? `-H "Authorization: Bearer ${token}"` : '';
-      return execSafe(`curl -sL --max-time 15 ${headers} "${url||p}"`, HOME, 20000);
+      return execSafe(`curl -sL --max-time 15 ${headers} "${target}"`, HOME, 20000);
     }
   }
 
-  // ── MCP: SQLITE ──
   if (tool === 'sqlite') {
     const db = resolvePath(dbPath || p);
     if (action === 'tables') return execSafe(`sqlite3 "${db}" ".tables"`, HOME);
     if (action === 'schema') return execSafe(`sqlite3 "${db}" ".schema"`, HOME);
-    if (action === 'query') return execSafe(`sqlite3 "${db}" "${(query||'').replace(/"/g,'\\"')}"`, HOME);
+    if (action === 'query')  return execSafe(`sqlite3 "${db}" "${(query||'').replace(/"/g, '\\"')}"`, HOME);
     return { ok: false, data: 'Unknown sqlite action: ' + action };
   }
 
-  // ── MCP: GITHUB ──
   if (tool === 'github') {
-    if (!token) return { ok: false, data: 'GitHub token diperlukan. Set GITHUB_TOKEN di env.' };
     const ghToken = token || process.env.GITHUB_TOKEN || '';
+    if (!ghToken) return { ok: false, data: 'GitHub token diperlukan. Set GITHUB_TOKEN env.' };
     const base = `curl -sL -H "Authorization: Bearer ${ghToken}" -H "Accept: application/vnd.github+json"`;
-    if (action === 'repo_info')
-      return execSafe(`${base} "https://api.github.com/repos/${owner}/${repo}"`, HOME, 15000);
-    if (action === 'issues')
-      return execSafe(`${base} "https://api.github.com/repos/${owner}/${repo}/issues?state=open&per_page=20"`, HOME, 15000);
-    if (action === 'pulls')
-      return execSafe(`${base} "https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=20"`, HOME, 15000);
+    if (action === 'repo_info')    return execSafe(`${base} "https://api.github.com/repos/${owner}/${repo}"`, HOME, 15000);
+    if (action === 'issues')       return execSafe(`${base} "https://api.github.com/repos/${owner}/${repo}/issues?state=open&per_page=20"`, HOME, 15000);
+    if (action === 'pulls')        return execSafe(`${base} "https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=20"`, HOME, 15000);
     if (action === 'create_issue') {
-      const bodyData = JSON.stringify({ title, body: body||'' });
-      return execSafe(`${base} -X POST -d '${bodyData}' "https://api.github.com/repos/${owner}/${repo}/issues"`, HOME, 15000);
+      const bd = JSON.stringify({ title, body: body || '' });
+      return execSafe(`${base} -X POST -d '${bd}' "https://api.github.com/repos/${owner}/${repo}/issues"`, HOME, 15000);
     }
     return { ok: false, data: 'Unknown github action: ' + action };
   }
 
-  // ── MCP: SYSTEM ──
   if (tool === 'system') {
-    if (action === 'disk') return execSafe('df -h', HOME);
-    if (action === 'memory') return execSafe('free -h 2>/dev/null || cat /proc/meminfo | head -5', HOME);
+    if (action === 'disk')      return execSafe('df -h', HOME);
+    if (action === 'memory')    return execSafe('free -h 2>/dev/null || cat /proc/meminfo | head -5', HOME);
     if (action === 'processes') return execSafe('ps aux | head -20', HOME);
-    if (action === 'env') return { ok: true, data: JSON.stringify(process.env, null, 2).slice(0, 2000) };
+    if (action === 'env')       return { ok: true, data: JSON.stringify(process.env, null, 2).slice(0, 2000) };
     return { ok: false, data: 'Unknown system action: ' + action };
   }
 
-  // ── MCP: FILESYSTEM ──
   if (tool === 'filesystem') {
-    return handle({ type: action, path: p, content: params.content, from: params.from, to: params.to });
+    return handle({ type: action, path: p, content: params.content, from: params.from, to: params.to, old_str: params.old_str, new_str: params.new_str });
   }
 
-  return { ok: false, data: `Unknown MCP tool: ${tool}` };
+  return { ok: false, data: 'Unknown MCP tool: ' + tool };
 }
 
-// ── SERVER ────────────────────────────────────────────────────────────────────
+// ── HTTP SERVER ───────────────────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
-  // Health check via GET
   if (req.method === 'GET') {
-    res.writeHead(200, {'Content-Type':'application/json'});
+    res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, version: VERSION, mcp: Object.keys(MCP_TOOLS) }));
     return;
   }
@@ -288,26 +374,114 @@ const server = http.createServer((req, res) => {
   req.on('end', () => {
     try {
       const payload = JSON.parse(body);
-      const result = handle(payload);
-      res.writeHead(200, {'Content-Type':'application/json'});
+      const result  = handle(payload);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
     } catch(e) {
-      res.writeHead(200, {'Content-Type':'application/json'});
+      res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, data: e.message }));
     }
   });
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`🌸 YuyuServer ${VERSION} jalan di localhost:${PORT}`);
+  console.log(`🌸 YuyuServer ${VERSION} — HTTP :${PORT}`);
   console.log(`   HOME: ${HOME}`);
-  console.log(`   MCP tools: ${Object.keys(MCP_TOOLS).join(', ')}`);
+  console.log(`   Tools: ${Object.keys(MCP_TOOLS).join(', ')}`);
 });
 
-// Auto-restart watchdog
-process.on('uncaughtException', e => {
-  console.error('❌ Uncaught:', e.message);
-});
-process.on('unhandledRejection', e => {
-  console.error('❌ Unhandled rejection:', e);
-});
+// ── WEBSOCKET SERVER (port 8766) ──────────────────────────────────────────────
+// Dipakai untuk: (1) file watcher, (2) streaming exec (live terminal)
+let WebSocketServer;
+try {
+  WebSocketServer = require('ws').WebSocketServer;
+} catch {
+  console.log('⚠ ws tidak tersedia — jalankan: npm install -g ws');
+  console.log('  WebSocket (file watcher + streaming exec) tidak aktif.');
+}
+
+if (WebSocketServer) {
+  const wss = new WebSocketServer({ port: WS_PORT });
+  // Map: watcherId → fs.watch instance
+  const watchers  = new Map();
+  // Map: execId → child process
+  const execProcs = new Map();
+
+  wss.on('connection', ws => {
+    let clientWatcher = null;
+
+    ws.on('message', raw => {
+      let msg;
+      try { msg = JSON.parse(raw); } catch { return; }
+
+      // ── File Watcher ──
+      if (msg.type === 'watch') {
+        const watchPath = resolvePath(msg.path);
+        if (!fs.existsSync(watchPath)) {
+          ws.send(JSON.stringify({ event: 'error', data: 'Path tidak ada: ' + msg.path }));
+          return;
+        }
+        if (clientWatcher) { try { clientWatcher.close(); } catch {} }
+        try {
+          clientWatcher = fs.watch(watchPath, { recursive: true }, (event, filename) => {
+            if (!filename || filename.startsWith('.git/')) return;
+            try { ws.send(JSON.stringify({ event, filename })); } catch {}
+          });
+          ws.send(JSON.stringify({ event: 'watching', path: watchPath }));
+        } catch(e) {
+          ws.send(JSON.stringify({ event: 'error', data: e.message }));
+        }
+        return;
+      }
+
+      // ── Streaming Exec ──
+      if (msg.type === 'exec_stream') {
+        const { id, command, cwd } = msg;
+        if (!command || !id) return;
+        const workDir = cwd ? resolvePath(cwd) : HOME;
+        const proc = spawn('bash', ['-c', command], {
+          cwd: workDir, env: { ...process.env },
+        });
+        execProcs.set(id, proc);
+
+        proc.stdout.on('data', d => {
+          try { ws.send(JSON.stringify({ type: 'stdout', id, data: d.toString() })); } catch {}
+        });
+        proc.stderr.on('data', d => {
+          try { ws.send(JSON.stringify({ type: 'stderr', id, data: d.toString() })); } catch {}
+        });
+        proc.on('close', code => {
+          execProcs.delete(id);
+          try { ws.send(JSON.stringify({ type: 'exit', id, code })); } catch {}
+        });
+        proc.on('error', e => {
+          execProcs.delete(id);
+          try { ws.send(JSON.stringify({ type: 'error', id, data: e.message })); } catch {}
+        });
+        return;
+      }
+
+      // ── Kill Exec ──
+      if (msg.type === 'kill') {
+        const proc = execProcs.get(msg.id);
+        if (proc) { proc.kill('SIGTERM'); execProcs.delete(msg.id); }
+        return;
+      }
+    });
+
+    ws.on('close', () => {
+      if (clientWatcher) { try { clientWatcher.close(); } catch {} }
+      // Kill all exec procs for this client
+      for (const [id, proc] of execProcs) {
+        try { proc.kill('SIGTERM'); } catch {}
+        execProcs.delete(id);
+      }
+    });
+  });
+
+  console.log(`🔌 YuyuServer WebSocket — WS :${WS_PORT} (file watch + streaming exec)`);
+}
+
+// ── ERROR GUARDS ──────────────────────────────────────────────────────────────
+process.on('uncaughtException',   e => console.error('❌ Uncaught:', e.message));
+process.on('unhandledRejection',  e => console.error('❌ Rejection:', e));
