@@ -69,7 +69,7 @@ export function useUIStore() {
 
   // ── Load from Preferences ──
   function loadUIPrefs({ theme: t, fontSize: fs, sidebarWidth: sw, customTheme: ct, onboarded }) {
-    if (t)  setThemeRaw(t);
+    if (t && ['dark','darker','midnight','rose'].includes(t)) setThemeRaw(t);
     if (fs) setFontSizeRaw(parseInt(fs) || 14);
     if (sw) setSidebarWidthRaw(parseInt(sw) || 180);
     if (ct) { try { setCustomTheme(JSON.parse(ct)); } catch {} }
