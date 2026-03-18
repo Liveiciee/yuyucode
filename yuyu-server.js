@@ -48,8 +48,7 @@ function execSafe(command, cwd, timeoutMs = 60000) {
       cwd: cwd || HOME,
       encoding: 'utf8',
       timeout: timeoutMs,
-      maxBuffer: 10 * 1024 * 1024,
-      stdio: ['pipe','pipe','pipe']
+      maxBuffer: 10 * 1024 * 1024
     });
     return { ok: true, data: out || '(selesai)' };
   } catch(e) {
