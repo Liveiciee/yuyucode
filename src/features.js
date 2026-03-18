@@ -188,30 +188,21 @@ export class TokenTracker {
     this.inputTokens += inTk || 0;
     this.outputTokens += outTk || 0;
     this.requests += 1;
-    this.history.push({ inTk: inTk||0, outTk: outTk||0, model: model||'?', ts: Date.now() });
+    this.history.push({ inTk: inTk||0, outTk: outTk||0, model: model||"?" });
     if (this.history.length > 100) this.history = this.history.slice(-100);
   }
   lastCost() {
     const last = this.history[this.history.length - 1];
-    if (!last) return '';
-    return '[' + last.inTk + '→' + last.outTk + 'tk]';
+    return last ? "[" + last.inTk + "->" + last.outTk + "tk]" : "";
   }
   summary() {
     const total = this.inputTokens + this.outputTokens;
     const mins = Math.round((Date.now() - this.startTime) / 60000);
     const avg = this.requests > 0 ? Math.round(total / this.requests) : 0;
-    const recent = this.history.slice(-5).map((h,i) => '  '+(i+1)+'. in:'+h.inTk+' out:'+h.outTk+'tk ('+h.model+')').join('
-');
-    return '📊 **Token Usage**
-Input:    ~'+this.inputTokens+'tk
-Output:   ~'+this.outputTokens+'tk
-Total:    ~'+total+'tk
-Requests: '+this.requests+' (~'+avg+'tk/req)
-Durasi:   '+mins+' menit
-Cerebras: gratis 🎉
-
-**5 request terakhir:**
-'+recent;
+    const rec = this.history.slice(-5).map(function(h,i) {
+      return "  "+(i+1)+". in:"+h.inTk+" out:"+h.outTk+"tk ("+h.model+")";
+    }).join("\n");
+    return "📊 **Token Usage**\nInput:    ~"+this.inputTokens+"tk\nOutput:   ~"+this.outputTokens+"tk\nTotal:    ~"+total+"tk\nRequests: "+this.requests+" (~"+avg+"tk/req)\nDurasi:   "+mins+" menit\nCerebras: gratis 🎉\n\n**5 request terakhir:**\n"+rec;
   }
 }
 export const tokenTracker = new TokenTracker();
