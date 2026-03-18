@@ -204,7 +204,8 @@ export class TokenTracker {
     const recent = lines.join("\n");
     const parts = ["📊 **Token Usage**","Input:    ~"+this.inputTokens+"tk","Output:   ~"+this.outputTokens+"tk","Total:    ~"+total+"tk","Requests: "+this.requests+" (~"+avg+"tk/req)","Durasi:   "+mins+" menit","Cerebras: gratis 🎉","","**5 request terakhir:**",recent];
     return parts.join("\n");
-  }─ FEATURES v2 — Git Worktree Isolation ─────────────────────────────────────
+  }
+// ─── FEATURES v2 — Git Worktree Isolation ─────────────────────────────────────
 import { callServer } from './api.js';
 import { parseActions, executeAction } from './utils.js';
 import { Preferences } from '@capacitor/preferences';
