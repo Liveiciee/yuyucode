@@ -121,7 +121,7 @@ export default function App() {
       const step=steps[i];
       chat.setMessages(m=>[...m,{role:'assistant',content:`⚙️ **Step ${step.num}/${steps.length}:** ${step.text}`,actions:[]}]);
       try{
-        const {reply,actions}=await executePlanStep(step,project.folder,callAI,ctrl.signal,setStreaming);
+        const {reply,actions}=await executePlanStep(step,project.folder,callAI,ctrl.signal,chat.setStreaming);
         chat.setStreaming('');
         const writes=actions.filter(a=>a.type==='write_file');
         const cleaned=reply.replace(/```action[\s\S]*?```/g,'').trim();
@@ -433,20 +433,20 @@ export default function App() {
     }
 
     try{
-      const project.effortCfg = EFFORT_CONFIG[effort] || EFFORT_CONFIG.medium;
+      const cfg = project.effortCfg;
       const notesCtx=project.notes?'\n\nProject notes:\n'+project.notes:'';
       const skillCtx=project.skill?'\n\nSKILL.md:\n'+project.skill:'';
       const pinnedCtx=file.pinnedFiles.length?'\n\nPinned files: '+file.pinnedFiles.join(', '):'';
-      const fileCtx=file.selectedFile&&file.fileContent?'\n\nFile terbuka: '+file.selectedFile+'\n```\n'+fileContent.slice(0,1500)+'\n```':'';
+      const fileCtx=file.selectedFile&&file.fileContent?'\n\nFile terbuka: '+file.selectedFile+'\n```\n'+file.fileContent.slice(0,1500)+'\n```':'';
       // Memory retrieval: filter by keyword relevance bukan hanya ambil 10 pertama
       const msgWords = txt.toLowerCase().split(/\s+/).filter(w=>w.length>3);
-      const relevantMems = memories.filter(m => msgWords.some(w => m.text.toLowerCase().includes(w))).slice(0,5);
-      const memPool = relevantMems.length ? relevantMems : memories.slice(0,5);
+      const relevantMems = chat.memories.filter(m => msgWords.some(w => m.text.toLowerCase().includes(w))).slice(0,5);
+      const memPool = relevantMems.length ? relevantMems : chat.memories.slice(0,5);
       const memCtx=memPool.length?'\n\nMemories:\n'+memPool.map(m=>'• '+m.text).join('\n'):'';
       const visionCtx=chat.visionImage?'\n\n[Gambar dilampirkan]':'';
       const agentMemCtx=['user','project','local'].map(s=>(project.agentMemory[s]||[]).length?'\n\n['+s+' memory]:\n'+(project.agentMemory[s]||[]).map(mx=>'• '+mx.text).join('\n'):'').join('');
       const thinkInstruction=project.thinkingEnabled?'\n\nSebelum respons, tulis reasoning singkat dalam <think>...</think>. Singkat, max 2 kalimat.':'';
-      const systemPrompt=BASE_SYSTEM+project.effortCfg.systemSuffix+thinkInstruction+'\n\nFolder aktif: '+project.folder+'\nBranch: '+project.branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+agentMemCtx+visionCtx;
+      const systemPrompt=BASE_SYSTEM+cfg.systemSuffix+thinkInstruction+'\n\nFolder aktif: '+project.folder+'\nBranch: '+project.branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+agentMemCtx+visionCtx;
 
       // Reset autoContext setiap pesan baru — cegah context stale dari percakapan lama
       autoContextRef.current = {};
@@ -579,7 +579,7 @@ export default function App() {
     ui.setDragging(true);
     const startX=e.touches?e.touches[0].clientX:e.clientX,startW=ui.sidebarWidth;
     function onMove(ev){const x=ev.touches?ev.touches[0].clientX:ev.clientX;ui.setSidebarWidth(Math.max(120,Math.min(300,startW+(x-startX))));}
-    function onEnd(){ui.setDragging(false);Preferences.set({key:'yc_sidebar_w',value:String(sidebarWidth)});window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onEnd);window.removeEventListener('touchmove',onMove);window.removeEventListener('touchend',onEnd);}
+    function onEnd(){ui.setDragging(false);Preferences.set({key:'yc_sidebar_w',value:String(ui.sidebarWidth)});window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onEnd);window.removeEventListener('touchmove',onMove);window.removeEventListener('touchend',onEnd);}
     window.addEventListener('mousemove',onMove);window.addEventListener('mouseup',onEnd);window.addEventListener('touchmove',onMove,{passive:true});window.addEventListener('touchend',onEnd);
   }
 
@@ -602,8 +602,8 @@ export default function App() {
         <div style={{width:'6px',height:'6px',borderRadius:'50%',background:project.serverOk?'#4ade80':'#f87171',flexShrink:0}}/>
         <div style={{flex:1,cursor:'pointer',minWidth:0,overflow:'hidden'}} onClick={()=>ui.setShowFolder(!showFolder)}>
           <span style={{fontSize:'13px',fontWeight:'600',color:T.text,letterSpacing:'-0.2px'}}>YuyuCode</span>
-          <span style={{fontSize:'11px',color:'rgba(255,255,255,.25)',marginLeft:'8px'}}>{folder}</span>
-          <span style={{fontSize:'10px',color:'rgba(255,255,255,.18)',marginLeft:'4px'}}>⎇ {branch}</span>
+          <span style={{fontSize:'11px',color:'rgba(255,255,255,.25)',marginLeft:'8px'}}>{project.folder}</span>
+          <span style={{fontSize:'10px',color:'rgba(255,255,255,.18)',marginLeft:'4px'}}>⎇ {project.branch}</span>
           {project.skill&&<span style={{fontSize:'9px',color:'rgba(74,222,128,.5)',marginLeft:'6px',fontWeight:'600'}}>SKILL</span>}
           <span style={{fontSize:'10px',color:project.effort==='low'?'rgba(74,222,128,.6)':project.effort==='high'?'rgba(248,113,113,.6)':'rgba(255,255,255,.2)',marginLeft:'4px'}}>{project.effort==='low'?'○':project.effort==='high'?'●':'◐'}</span>
         </div>
@@ -619,9 +619,9 @@ export default function App() {
 
       {ui.showFolder&&(
         <div style={{padding:'8px 12px',borderBottom:'1px solid '+T.border,display:'flex',gap:'6px',background:T.bg2,flexShrink:0}}>
-          <input value={folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(folderInput)}
+          <input value={project.folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(folderInput)}
             style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'6px 10px',color:T.text,fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
-          <button onClick={()=>saveFolder(folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}>set</button>
+          <button onClick={()=>saveFolder(project.folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}>set</button>
         </div>
       )}
 
@@ -674,7 +674,7 @@ export default function App() {
               </>
             )}
             <div style={{flex:1}}/>
-            <button onClick={()=>ui.setShowTerminal(!showTerminal)} style={{padding:'0 12px',background:'none',border:'none',borderBottom:showTerminal?'2px solid rgba(255,255,255,.3)':'2px solid transparent',color:showTerminal?'rgba(255,255,255,.6)':'rgba(255,255,255,.2)',fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>$</button>
+            <button onClick={()=>ui.setShowTerminal(!ui.showTerminal)} style={{padding:'0 12px',background:'none',border:'none',borderBottom:showTerminal?'2px solid rgba(255,255,255,.3)':'2px solid transparent',color:showTerminal?'rgba(255,255,255,.6)':'rgba(255,255,255,.2)',fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>$</button>
           </div>
 
           {/* CHAT */}
@@ -708,7 +708,7 @@ export default function App() {
               <div style={{padding:'5px 12px',borderBottom:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'6px',background:T.bg2,position:'sticky',top:0,flexWrap:'wrap'}}>
                 <span style={{fontSize:'11px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{selectedFile}</span>
                 <button onClick={()=>togglePin(file.selectedFile)} style={{background:file.pinnedFiles.includes(file.selectedFile)?'rgba(99,102,241,.15)':'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:file.pinnedFiles.includes(file.selectedFile)?'#818cf8':'rgba(255,255,255,.3)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📌</button>
-                <button onClick={()=>sendMsg('Yu, jalankan git log --oneline -10 -- '+selectedFile.replace(project.folder+'/',''))} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:'rgba(255,255,255,.35)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📜</button>
+                <button onClick={()=>sendMsg('Yu, jalankan git log --oneline -10 -- '+file.selectedFile.replace(project.folder+'/',''))} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:'rgba(255,255,255,.35)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📜</button>
                 <button onClick={()=>ui.setShowBlame(true)} style={{background:'rgba(99,102,241,.06)',border:'1px solid rgba(99,102,241,.15)',borderRadius:'5px',padding:'2px 6px',color:'rgba(99,102,241,.7)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>👁 blame</button>
                 <button onClick={()=>ui.setShowFileHistory(true)} style={{background:'rgba(251,191,36,.06)',border:'1px solid rgba(251,191,36,.12)',borderRadius:'5px',padding:'2px 6px',color:'rgba(251,191,36,.6)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📜 history</button>
                 <button onClick={()=>{chat.setMessages(m=>[...m,{role:'user',content:'Yu, ini konteks file '+file.selectedFile+':\n```\n'+(file.fileContent||'').slice(0,2000)+'\n```'}]);file.setActiveTab('chat');}} style={{background:'rgba(74,222,128,.06)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'5px',padding:'2px 6px',color:'#4ade80',fontSize:'10px',cursor:'pointer',flexShrink:0}}>+ctx</button>
@@ -788,9 +788,9 @@ export default function App() {
           {/* INPUT */}
           {!ui.showTerminal&&(
             <div style={{padding:'8px 10px',borderTop:'1px solid '+T.border,background:T.bg,flexShrink:0,position:'relative'}}>
-              {slashSuggestions.length>0&&(
+              {chat.slashSuggestions.length>0&&(
                 <div style={{position:'absolute',bottom:'100%',left:'10px',right:'10px',background:'#111113',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',zIndex:99,marginBottom:'6px',boxShadow:'0 12px 32px rgba(0,0,0,.6)',maxHeight:'260px',overflowY:'auto'}}>
-                  {slashSuggestions.map(s=>(
+                  {chat.slashSuggestions.map(s=>(
                     <div key={s.cmd} onClick={()=>{chat.setInput(s.cmd);chat.setSlashSuggestions([]);inputRef.current?.focus();}}
                       style={{display:'flex',gap:'10px',padding:'8px 12px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.04)'}}
                       onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.05)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
@@ -830,7 +830,7 @@ export default function App() {
                 }
                 <VoiceBtn disabled={chat.loading} onResult={txt=>{chat.setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}}/>
                 {project.pushToTalk&&<PushToTalkBtn onResult={v=>{chat.setInput('');setTimeout(()=>sendMsg(v),100);}} disabled={chat.loading}/>}
-                <button onClick={()=>{if(ttsEnabled){stopTts();chat.setTtsEnabled(false);}else chat.setTtsEnabled(true);}}
+                <button onClick={()=>{if(chat.ttsEnabled){stopTts();chat.setTtsEnabled(false);}else chat.setTtsEnabled(true);}}
                   style={{background:chat.ttsEnabled?'rgba(124,58,237,.2)':'rgba(255,255,255,.04)',border:'1px solid '+(chat.ttsEnabled?'rgba(124,58,237,.4)':'rgba(255,255,255,.08)'),borderRadius:'10px',padding:'8px 10px',color:chat.ttsEnabled?'#a78bfa':'rgba(255,255,255,.3)',fontSize:'13px',cursor:'pointer',flexShrink:0}}>
                   {chat.ttsEnabled?'🔊':'🔇'}
                 </button>
@@ -841,20 +841,20 @@ export default function App() {
       </div>
 
       {/* OVERLAYS */}
-      {ui.showSearch&&<SearchBar folder={folder} onSelectFile={openFile} onClose={()=>ui.setShowSearch(false)}/>}
+      {ui.showSearch&&<SearchBar folder={project.folder} onSelectFile={openFile} onClose={()=>ui.setShowSearch(false)}/>}
       {showShortcuts&&<ShortcutsPanel onClose={()=>setShowShortcuts(false)}/>}
-      {ui.showDiff&&<GitDiffPanel folder={folder} onClose={()=>ui.setShowDiff(false)}/>}
-      {ui.showBlame&&file.selectedFile&&<GitBlamePanel folder={folder} filePath={selectedFile} onClose={()=>ui.setShowBlame(false)}/>}
+      {ui.showDiff&&<GitDiffPanel folder={project.folder} onClose={()=>ui.setShowDiff(false)}/>}
+      {ui.showBlame&&file.selectedFile&&<GitBlamePanel folder={project.folder} filePath={file.selectedFile} onClose={()=>ui.setShowBlame(false)}/>}
       {ui.showSnippets&&<SnippetLibrary onInsert={code=>{chat.setInput(i=>i?i+'\n'+code:code);ui.setShowSnippets(false);inputRef.current?.focus();}} onClose={()=>ui.setShowSnippets(false)}/>}
-      {ui.showFileHistory&&file.selectedFile&&<FileHistoryPanel folder={folder} filePath={selectedFile} onClose={()=>ui.setShowFileHistory(false)}/>}
-      {ui.showCustomActions&&<CustomActionsPanel folder={folder} onRun={cmd=>runShortcut(cmd)} onClose={()=>ui.setShowCustomActions(false)}/>}
+      {ui.showFileHistory&&file.selectedFile&&<FileHistoryPanel folder={project.folder} filePath={file.selectedFile} onClose={()=>ui.setShowFileHistory(false)}/>}
+      {ui.showCustomActions&&<CustomActionsPanel folder={project.folder} onRun={cmd=>runShortcut(cmd)} onClose={()=>ui.setShowCustomActions(false)}/>}
 
       {ui.showPalette&&(
         <CommandPalette onClose={()=>ui.setShowPalette(false)}
-          folder={folder} memories={memories} checkpoints={checkpoints} model={model} models={MODELS}
+          folder={project.folder} memories={chat.memories} checkpoints={chat.checkpoints} model={project.model} models={MODELS}
           onModelChange={id=>{project.setModel(id);Preferences.set({key:'yc_model',value:id});}}
           onNewChat={()=>{chat.setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});chat.setShowFollowUp(false);}}
-          theme={theme} onThemeChange={t=>{ui.setTheme(t);Preferences.set({key:'yc_theme',value:t});}}
+          theme={ui.theme} onThemeChange={t=>ui.setTheme(t)}
           showSidebar={showSidebar} onToggleSidebar={()=>ui.setShowSidebar(s=>!s)}
           onShowMemory={()=>ui.setShowMemory(true)} onShowCheckpoints={()=>ui.setShowCheckpoints(true)}
           onShowMCP={()=>ui.setShowMCP(true)} onShowGitHub={()=>ui.setShowGitHub(true)} onShowDeploy={()=>ui.setShowDeploy(true)}
@@ -870,13 +870,13 @@ export default function App() {
       {ui.showMemory&&(
         <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
           <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-            <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🧠 Auto Memories ({memories.length})</span>
+            <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🧠 Auto Memories ({chat.memories.length})</span>
             <button onClick={()=>{chat.setMemories([]);Preferences.remove({key:'yc_memories'});}} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>clear all</button>
             <button onClick={()=>ui.setShowMemory(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
           </div>
           <div style={{flex:1,overflowY:'auto'}}>
-            {memories.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada memories~</div>}
-            {memories.map(m=>(
+            {chat.memories.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada memories~</div>}
+            {chat.memories.map(m=>(
               <div key={m.id} style={{display:'flex',gap:'8px',padding:'7px 10px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:'7px'}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:'12px',color:'rgba(255,255,255,.75)'}}>{m.text}</div>
@@ -898,15 +898,15 @@ export default function App() {
             <button onClick={()=>ui.setShowCheckpoints(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
           </div>
           <div style={{flex:1,overflowY:'auto'}}>
-            {checkpoints.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada checkpoint~</div>}
-            {checkpoints.map(cp=>(
+            {chat.checkpoints.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada checkpoint~</div>}
+            {chat.checkpoints.map(cp=>(
               <div key={cp.id} style={{display:'flex',gap:'8px',alignItems:'center',padding:'8px 10px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:'7px'}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:'12px',color:'rgba(255,255,255,.75)'}}>{cp.label}</div>
-                  <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)'}}>{cp.folder} · {cp.chat.messages.length} pesan</div>
+                  <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)'}}>{cp.folder} · {cp.messages.length} pesan</div>
                 </div>
                 <button onClick={()=>restoreCheckpoint(cp)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer'}}>restore</button>
-                <button onClick={()=>{const next=checkpoints.filter(x=>x.id!==cp.id);chat.setCheckpoints(next);Preferences.set({key:'yc_checkpoints',value:JSON.stringify(next)});}} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer'}}>×</button>
+                <button onClick={()=>{chat.setCheckpoints(chat.checkpoints.filter(x=>x.id!==cp.id));Preferences.set({key:'yc_checkpoints',value:JSON.stringify(next)});}} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer'}}>×</button>
               </div>
             ))}
           </div>
@@ -939,7 +939,7 @@ export default function App() {
         </div>
       )}
 
-      {ui.showThemeBuilder&&<ThemeBuilder current={ui.customTheme||THEMES[theme]} onSave={t=>{ui.setCustomTheme(t);Preferences.set({key:'yc_custom_theme',value:JSON.stringify(t)});ui.setShowThemeBuilder(false);}} onClose={()=>ui.setShowThemeBuilder(false)}/>}
+      {ui.showThemeBuilder&&<ThemeBuilder current={ui.customTheme||THEMES[ui.theme]} onSave={t=>{ui.setCustomTheme(t);Preferences.set({key:'yc_custom_theme',value:JSON.stringify(t)});ui.setShowThemeBuilder(false);}} onClose={()=>ui.setShowThemeBuilder(false)}/>}
 
       {/* ONBOARDING */}
       {ui.showOnboarding&&(
@@ -948,10 +948,10 @@ export default function App() {
           <div style={{fontSize:'20px',fontWeight:'700',color:'#f0f0f0',marginBottom:'6px'}}>Halo Papa! Yuyu siap~</div>
           <div style={{fontSize:'13px',color:'rgba(255,255,255,.5)',marginBottom:'24px',textAlign:'center'}}>Setup cepat sebelum mulai</div>
           <div style={{width:'100%',maxWidth:'320px',display:'flex',flexDirection:'column',gap:'10px'}}>
-            <input value={folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="contoh: yuyucode"
+            <input value={project.folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="contoh: yuyucode"
               style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'8px',padding:'10px 14px',color:'#f0f0f0',fontSize:'14px',outline:'none',fontFamily:'monospace'}}/>
             <div style={{background:'rgba(0,0,0,.5)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'8px 12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(74,222,128,.8)'}}>node ~/yuyu-server.js &</div>
-            <button onClick={()=>{saveFolder(folderInput);Preferences.set({key:'yc_onboarded',value:'1'});ui.setShowOnboarding(false);haptic('medium');}}
+            <button onClick={()=>{saveFolder(project.folderInput);Preferences.set({key:'yc_onboarded',value:'1'});ui.setShowOnboarding(false);haptic('medium');}}
               style={{background:'#7c3aed',border:'none',borderRadius:'10px',padding:'12px',color:'white',fontSize:'14px',cursor:'pointer',fontWeight:'600',marginTop:'8px'}}>
               Mulai Coding! 🚀
             </button>
@@ -988,7 +988,7 @@ export default function App() {
             <button onClick={()=>ui.setShowGitHub(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'12px'}}>
-            <input value={githubRepo} onChange={e=>project.setGithubRepo(e.target.value)} placeholder="owner/repo" style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
+            <input value={project.githubRepo} onChange={e=>project.setGithubRepo(e.target.value)} placeholder="owner/repo" style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
             <input value={project.githubToken} onChange={e=>{project.setGithubToken(e.target.value);Preferences.set({key:'yc_gh_token',value:e.target.value});}} placeholder="GitHub token" type="password" style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
             <div style={{display:'flex',gap:'6px'}}>
               <button onClick={()=>fetchGitHub('issues')} style={{background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.2)',borderRadius:'6px',padding:'5px 12px',color:'#818cf8',fontSize:'11px',cursor:'pointer',flex:1}}>📋 Issues</button>
@@ -1022,7 +1022,7 @@ export default function App() {
                   <div style={{fontSize:'13px',color:'#f0f0f0',fontWeight:'500'}}>{s.name}</div>
                   <div style={{fontSize:'10px',color:'rgba(255,255,255,.35)'}}>{s.folder} · {new Date(s.savedAt).toLocaleString('id')} · {s.messages?.length||0} pesan</div>
                 </div>
-                <button onClick={()=>{chat.setMessages(s.messages||[]);project.setFolder(s.project.folder);project.setFolderInput(s.project.folder);ui.setShowSessions(false);chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Sesi **'+s.name+'** dipulihkan.',actions:[]}]);}} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'6px',padding:'4px 10px',color:'#a78bfa',fontSize:'11px',cursor:'pointer'}}>Restore</button>
+                <button onClick={()=>{chat.setMessages(s.messages||[]);project.setFolder(s.folder);project.setFolderInput(s.project.folder);ui.setShowSessions(false);chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Sesi **'+s.name+'** dipulihkan.',actions:[]}]);}} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'6px',padding:'4px 10px',color:'#a78bfa',fontSize:'11px',cursor:'pointer'}}>Restore</button>
               </div>
             ))}
           </div>
@@ -1114,8 +1114,8 @@ export default function App() {
           </div>
           <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'12px'}}>
             {[
-              {label:'Effort Level',value:effort,options:['low','medium','high'],onChange:v=>{project.setEffort(v);Preferences.set({key:'yc_effort',value:v});}},
-              {label:'Font Size',value:String(fontSize),options:['12','13','14','15','16'],onChange:v=>{ui.setFontSize(parseInt(v));Preferences.set({key:'yc_fontsize',value:v});}},
+              {label:'Effort Level',value:project.effort,options:['low','medium','high'],onChange:v=>{project.setEffort(v);Preferences.set({key:'yc_effort',value:v});}},
+              {label:'Font Size',value:String(ui.fontSize),options:['12','13','14','15','16'],onChange:v=>{ui.setFontSize(parseInt(v));Preferences.set({key:'yc_fontsize',value:v});}},
               {label:'Theme',value:ui.theme,options:['dark','darker','midnight'],onChange:v=>ui.setTheme(v)},
               {label:'Model',value:project.model,options:MODELS.map(m=>m.id),onChange:v=>project.setModel(v)},
             ].map(cfg=>(
@@ -1132,7 +1132,7 @@ export default function App() {
             ))}
             <div style={{padding:'10px 12px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px'}}>
               <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'6px'}}>Extended Thinking</div>
-              <button onClick={()=>{const n=!thinkingEnabled;project.setThinkingEnabled(n);Preferences.set({key:'yc_thinking',value:n?'1':'0'});}} style={{background:project.thinkingEnabled?'rgba(124,58,237,.3)':'rgba(255,255,255,.05)',border:'1px solid '+(project.thinkingEnabled?'rgba(124,58,237,.5)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:project.thinkingEnabled?'#a78bfa':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer'}}>
+              <button onClick={()=>{const n=!project.thinkingEnabled;project.setThinkingEnabled(n);Preferences.set({key:'yc_thinking',value:n?'1':'0'});}} style={{background:project.thinkingEnabled?'rgba(124,58,237,.3)':'rgba(255,255,255,.05)',border:'1px solid '+(project.thinkingEnabled?'rgba(124,58,237,.5)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:project.thinkingEnabled?'#a78bfa':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer'}}>
                 {project.thinkingEnabled?'✅ ON':'○ OFF'}
               </button>
             </div>
