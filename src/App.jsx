@@ -411,7 +411,7 @@ function SearchBar({ folder, onSelectFile, onClose }) {
     <div style={{flex:1,overflowY:'auto'}}>
       {results.length===0&&!searching&&query&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Tidak ada hasil</div>}
       {results.map((line,i)=>{
-        const m=line.match(/^(.+?):(d+):s*(.*)/);
+        const m=line.match(/^(.+?):(\d+):\s*(.*)/);
         if(!m) return null;
         const [,file,lineNum,content]=m;
         return (<div key={i} onClick={()=>{onSelectFile(folder+'/'+file);onClose();}}
@@ -1501,9 +1501,12 @@ export default function App() {
       setMessages(prev=>[...prev,{role:'assistant',content:
         '📓 **Token breakdown (10 pesan terakhir)**\n```\n'+breakdown+'\n```\n**Total:** ~'+countTokens(messages)+'tk | Cerebras gratis 🎉',actions:[]}]);
     } else if (base==='/index') {
-      setMessages(m=>[...m,{role:'assistant',content:'🔍 Re-indexing...',actions:[]}]);
-      await buildCodeIndex(folder);
-      setMessages(m=>[...m,{role:'assistant',content:'✅ Index: '+codeIndex.length+' files~',actions:[]}]);
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'🔍 Indexing...',actions:[]}]);
+      const idxR = await callServer({type:'list', path:folder+'/src'});
+      const idxCount = idxR.ok && Array.isArray(idxR.data) ? idxR.data.filter(f=>!f.isDir).length : 0;
+      setMessages(m=>[...m,{role:'assistant',content:'✅ Index: '+idxCount+' files di src/~',actions:[]}]);
+      setLoading(false);
     } else if (base==='/ollama') {
       const newHost = parts.slice(1).join(' ').trim();
       if (!newHost) {
@@ -1580,16 +1583,7 @@ export default function App() {
       setSessionName(name);
       Preferences.set({key:'yc_session_name',value:name});
       setMessages(m=>[...m,{role:'assistant',content:'✏️ Sesi: **'+name+'**',actions:[]}]);
-    } else if (base==='/save') {
-      const name = parts.slice(1).join(' ').trim() || sessionName || 'Session '+new Date().toLocaleString('id');
-      const s = await saveSession(name, messages, folder, branch);
-      setSessionName(name);
-      setMessages(m=>[...m,{role:'assistant',content:'💾 Sesi disimpan: **'+s.name+'**',actions:[]}]);
-    } else if (base==='/sessions') {
-      const sessions = await loadSessions();
-      setSessionList(sessions);
-      setShowSessions(true);
-      setMessages(m=>[...m,{role:'assistant',content:'📂 '+sessions.length+' sesi ditemukan.',actions:[]}]);
+
     } else if (base==='/usage') {
       setMessages(m=>[...m,{role:'assistant',content:tokenTracker.summary(),actions:[]}]);
     } else if (base==='/bg') {
@@ -2061,7 +2055,7 @@ export default function App() {
       const memCtx=memories.length?'\n\nMemories (pola coding Papa):\n'+memories.slice(0,10).map(m=>'• '+m.text).join('\n'):'';
       const visionCtx=visionImage?'\n\n[Gambar dilampirkan — analisis untuk context coding]':'';
       const agentMemCtx = ['user','project','local'].map(s=>(agentMemory[s]||[]).length ? '\n\n['+s+' memory]:\n'+(agentMemory[s]||[]).map(mx=>'• '+mx.text).join('\n') : '').join('');
-      const thinkInstruction = '\n\nSebelum respons, tulis reasoning singkat dalam <think>...</think>. Singkat, max 2 kalimat.';
+      const thinkInstruction = thinkingEnabled ? '\n\nSebelum respons, tulis reasoning singkat dalam <think>...</think>. Singkat, max 2 kalimat.' : '';
       const systemPrompt=BASE_SYSTEM+thinkInstruction+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+agentMemCtx+visionCtx;
 
       // ── PARALLEL PRE-LOAD pinned files ──
@@ -2375,7 +2369,7 @@ export default function App() {
 
       {/* ── STATUS BANNERS (thin) ── */}
       {!netOnline&&<div style={{padding:'3px 12px',background:'rgba(248,113,113,.08)',borderBottom:'1px solid rgba(248,113,113,.12)',fontSize:'10px',color:'#f87171',flexShrink:0}}>📡 Offline</div>}
-      {rateLimitTimer>0&&<div style={{padding:'3px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.08)',fontSize:'10px',color:'rgba(251,191,36,.7)',flexShrink:0}}>⏳ Rate limit {rateLimitTimer}d</div>}
+      {rateLimitTimer>0&&<div style={{padding:'3px 12px',background:'rgba(251,191,36,.05)',borderBottom:'1px solid rgba(251,191,36,.08)',fontSize:'10px',color:'rgba(251,191,36,.7)',flexShrink:0}}>⏳ Rate limit {rateLimitTimer}s</div>}
       {agentRunning&&<div style={{padding:'3px 12px',background:'rgba(124,58,237,.05)',borderBottom:'1px solid rgba(124,58,237,.1)',fontSize:'10px',color:'#a78bfa',flexShrink:0}}>● Yuyu lagi jalan···</div>}
       {reconnectTimer>0&&!serverOk&&<div style={{padding:'3px 12px',background:'rgba(248,113,113,.05)',borderBottom:'1px solid rgba(248,113,113,.1)',fontSize:'10px',color:'#f87171',flexShrink:0}}>↺ Reconnecting···</div>}
       {countTokens(messages)>15000&&<div style={{padding:'3px 12px',background:'rgba(251,191,36,.04)',borderBottom:'1px solid rgba(251,191,36,.07)',fontSize:'10px',color:'rgba(251,191,36,.6)',flexShrink:0}}>⚠ Context besar ~{countTokens(messages)}tk</div>}
