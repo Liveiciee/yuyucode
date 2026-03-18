@@ -31,7 +31,7 @@ export function hl(code, lang = '') {
   if (L === 'bash' || L === 'sh') {
     return s
       .replace(/(#.*$)/gm, '<span style="color:#6a737d">$1</span>')
-      .replace(/\b(echo|cd|ls|git|npm|node|export|source|if|then|fi|for|do|done|while|function|return|mkdir|cp|mv|rm|chmod|curl|wget)\\b/g, '<span style="color:#c678dd">$1</span>')
+      .replace(/\b(echo|cd|ls|git|npm|node|export|source|if|then|fi|for|do|done|while|function|return|mkdir|cp|mv|rm|chmod|curl|wget)\b/g, '<span style="color:#c678dd">$1</span>')
       .replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>')
       .replace(/(\$\w+|\$\{[^}]+\})/g, '<span style="color:#79b8ff">$1</span>');
   }
@@ -40,7 +40,7 @@ export function hl(code, lang = '') {
       .replace(/(#.*$)/gm, '<span style="color:#6a737d">$1</span>')
       .replace(/(\"\"\"[\s\S]*?\"\"\"|'''[\s\S]*?''')/g, '<span style="color:#98c379">$1</span>')
       .replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>')
-      .replace(/\b(def|class|import|from|return|if|elif|else|for|while|try|except|with|as|in|not|and|or|True|False|None|lambda|yield|async|await|pass|raise|del|global|nonlocal)\\b/g, '<span style="color:#c678dd">$1</span>')
+      .replace(/\b(def|class|import|from|return|if|elif|else|for|while|try|except|with|as|in|not|and|or|True|False|None|lambda|yield|async|await|pass|raise|del|global|nonlocal)\b/g, '<span style="color:#c678dd">$1</span>')
       .replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>');
   }
   if (L === 'css') {
@@ -55,7 +55,7 @@ export function hl(code, lang = '') {
     .replace(/(\/\/.*$|\/\*[\s\S]*?\*\/)/gm, '<span style="color:#6a737d">$1</span>')
     .replace(/(`(?:[^`\\]|\\.)*`)/g, '<span style="color:#98c379">$1</span>')
     .replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>')
-    .replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|finally|class|new|this|from|of|in|typeof|instanceof|null|undefined|true|false|throw|switch|case|break|continue|extends|super|static|get|set|type|interface|enum|as|keyof|readonly)\\b/g, '<span style="color:#c678dd">$1</span>')
+    .replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|finally|class|new|this|from|of|in|typeof|instanceof|null|undefined|true|false|throw|switch|case|break|continue|extends|super|static|get|set|type|interface|enum|as|keyof|readonly)\b/g, '<span style="color:#c678dd">$1</span>')
     .replace(/\b([A-Z][a-zA-Z0-9]*)\b/g, '<span style="color:#79b8ff">$1</span>')
     .replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>');
 }

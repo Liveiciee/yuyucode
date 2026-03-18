@@ -99,12 +99,13 @@ export function useAgentLoop({
         actions: [],
       }]);
       await compactContext();
-      // compactContext sudah update chat.messages — tapi kita gunakan history lama
-      // untuk allMessages awal (messages baru akan terpakai di iter berikutnya via getState)
     }
 
     try {
       const cfg = project.effortCfg;
+
+      // Pakai messages terbaru — bisa sudah dicompact oleh auto-compact di atas
+      const freshHistory = chat.messages;
 
       // ── Build system context ──
       const notesCtx   = project.notes ? '\n\nProject notes:\n' + project.notes : '';
@@ -138,7 +139,7 @@ export function useAgentLoop({
       }
 
       const MAX_ITER = cfg.maxIter || 10;
-      let iter = 0, allMessages = [...history], finalContent = '', finalActions = [];
+      let iter = 0, allMessages = [...freshHistory], finalContent = '', finalActions = [];
       let autoContext = { ...(autoContextRef.current || {}) };
 
       // ── MAIN AGENT LOOP ──

@@ -109,7 +109,7 @@ export async function callServer(payload) {
     });
     if (!resp.ok) {
       const err = await resp.text();
-      return { ok: false, data: `Server error: ${resp.status}` };
+      return { ok: false, data: `Server error: ${resp.status} — ${err.slice(0, 200)}` };
     }
     return await resp.json();
   } catch(e) {
