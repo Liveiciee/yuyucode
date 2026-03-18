@@ -132,51 +132,25 @@ function handle(payload) {
   if (type === 'web_search') {
     const q = (payload.query || '').trim();
     if (!q) return { ok: false, data: 'Query diperlukan' };
-    const encoded = encodeURIComponent(q);
-    // 1. Wikipedia search API
-    const wikiSearch = execSafe(
-      'curl -sL --max-time 12 "https://en.wikipedia.org/w/api.php?action=search&srsearch=' + encoded + '&format=json&utf8=1&srlimit=3" 2>/dev/null',
-      HOME, 15000
+    const tavilyKey = process.env.TAVILY_API_KEY || '';
+    if (!tavilyKey) return { ok: false, data: 'Set dulu: export TAVILY_API_KEY=tvly-xxx' };
+    const tmpFile = HOME + '/.tavily_body.json';
+    fs.writeFileSync(tmpFile, JSON.stringify({ api_key: tavilyKey, query: q, search_depth: 'basic', max_results: 5 }));
+    const r = execSafe(
+      'curl -sL --max-time 15 -X POST "https://api.tavily.com/search" -H "Content-Type: application/json" -d @' + tmpFile,
+      HOME, 18000
     );
-    let results = [];
-    if (wikiSearch.ok && wikiSearch.data) {
-      try {
-        const d = JSON.parse(wikiSearch.data);
-        const hits = (d.query && d.query.search) || [];
-        hits.forEach(function(h) {
-          const snippet = h.snippet.replace(/<[^>]*>/g, '');
-          results.push('📖 **' + h.title + '**\n' + snippet);
-        });
-      } catch(e) {}
+    if (!r.ok || !r.data) return { ok: false, data: 'Tavily request gagal' };
+    try {
+      const d = JSON.parse(r.data);
+      if (d.error) return { ok: false, data: 'Tavily error: ' + d.error };
+      const lines = (d.results || []).slice(0, 5).map(function(item, i) {
+        return (i+1) + '. **' + item.title + '**\n' + item.content.slice(0, 300) + '\n🔗 ' + item.url;
+      });
+      return { ok: true, data: lines.join('\n\n') || 'Tidak ada hasil' };
+    } catch(e) {
+      return { ok: false, data: 'Parse error: ' + e.message };
     }
-    // 2. Jina AI fetch first result for richer content
-    if (results.length > 0) {
-      try {
-        const d = JSON.parse(wikiSearch.data);
-        const first = d.query && d.query.search && d.query.search[0];
-        if (first) {
-          const wikiUrl = 'https://en.wikipedia.org/wiki/' + encodeURIComponent(first.title.replace(/ /g,'_'));
-          const jinaR = execSafe(
-            'curl -sL --max-time 15 "https://r.jina.ai/' + wikiUrl + '" 2>/dev/null | head -60',
-            HOME, 18000
-          );
-          if (jinaR.ok && jinaR.data) {
-            results.push('\n---\n🌐 **Detail: ' + first.title + '**\n' + jinaR.data.trim().slice(0, 1500));
-          }
-        }
-      } catch(e) {}
-    }
-    // 3. Fallback: Jina fetch direct search if no wiki results
-    if (results.length === 0) {
-      const jinaFallback = execSafe(
-        'curl -sL --max-time 15 "https://r.jina.ai/https://en.wikipedia.org/w/index.php?search=' + encoded + '" 2>/dev/null | head -40',
-        HOME, 18000
-      );
-      if (jinaFallback.ok && jinaFallback.data) {
-        results.push('🌐 ' + jinaFallback.data.trim().slice(0, 1000));
-      }
-    }
-    return { ok: true, data: results.join('\n\n') || 'Tidak ada hasil untuk: ' + q };
   }
 
     if (type === 'exec') {

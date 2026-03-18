@@ -1,4 +1,5 @@
 export const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
+export const TAVILY_KEY = import.meta.env.VITE_TAVILY_API_KEY || '';
 export const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 export const YUYU_SERVER = 'http://localhost:8765';
 export const DEFAULT_OLLAMA_HOST = 'http://localhost:11434';
