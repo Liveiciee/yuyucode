@@ -41,7 +41,9 @@ export async function callServer(payload) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    return await resp.json();
+    const json = await resp.json();
+    if (!resp.ok && json.ok === undefined) json.ok = false;
+    return json;
   } catch (_e) {
     return { ok: false, data: 'YuyuServer tidak aktif. Jalankan: node ~/yuyu-server.js' };
   }

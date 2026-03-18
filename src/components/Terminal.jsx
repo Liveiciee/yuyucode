@@ -14,7 +14,7 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI }) {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:'smooth' }); }, [outputs, loading]);
 
   function detectError(res) {
-    if (res.ok === false) return true;
+    if (!res.ok) return true;
     const output = (res.data || '').toLowerCase();
     const hasErr = output.includes('error') || output.includes('failed') || output.includes('no such file') || output.includes('cannot find') || output.includes('exception') || output.includes('not found');
     const isFP = output.includes('0 errors') || output.includes('no error') || output.includes('syntax ok');
