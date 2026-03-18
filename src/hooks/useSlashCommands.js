@@ -380,12 +380,7 @@ export function useSlashCommands({
     } else if (base==='/open') {
       const openUrl = parts.slice(1).join(' ').trim();
       if (!openUrl) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /open https://...',actions:[]}]); return; }
-      try {
-        const { Browser } = await import('@capacitor/browser');
-        await Browser.open({ url: openUrl });
-      } catch {
-        window.open(openUrl, '_blank');
-      }
+      window.open(openUrl, '_blank');
       setMessages(m=>[...m,{role:'assistant',content:'🌐 Membuka: '+openUrl,actions:[]}]);
 
     } else if (base==='/self-edit') {
