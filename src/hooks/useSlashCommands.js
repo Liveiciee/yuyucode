@@ -345,6 +345,49 @@ export function useSlashCommands({
         setMessages(m=>[...m,{role:'assistant',content:'👁 File watcher aktif. Yuyu akan notify kalau ada file yang berubah dari luar app (check tiap 30 detik).',actions:[]}]);
       }
 
+    } else if (base==='/refactor') {
+      const oldName = parts[1]?.trim();
+      const newName2 = parts[2]?.trim();
+      if (!oldName || !newName2) {
+        setMessages(m=>[...m,{role:'assistant',content:'Usage: /refactor <nama_lama> <nama_baru>',actions:[]}]);
+        return;
+      }
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'🔄 Refactor: '+oldName+' → '+newName2+'...',actions:[]}]);
+      const searchR = await callServer({type:'search', path:folder+'/src', content:oldName});
+      const fileList = searchR.ok ? [...new Set((searchR.data||'').split('\n').filter(Boolean).map(l=>{ const mx=l.match(/^(.+?):\d+:/); return mx?mx[1]:null; }).filter(Boolean))] : [];
+      if (fileList.length === 0) {
+        setMessages(m=>[...m,{role:'assistant',content:'❌ '+oldName+' tidak ditemukan di src/',actions:[]}]);
+        setLoading(false); return;
+      }
+      await sendMsg('REFACTOR: rename ' + oldName + ' menjadi ' + newName2 + ' di: ' + fileList.join(', ') + '. Baca tiap file, ganti semua occurrence, lalu write_file.');
+      setLoading(false);
+
+    } else if (base==='/lint') {
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'🔍 Running lint...',actions:[]}]);
+      const lintR = await callServer({type:'exec', path:folder, command:'npm run lint 2>&1 || true'});
+      const lintOut = lintR.data || '';
+      const hasLintErr = lintOut.toLowerCase().includes('error') && !lintOut.includes('0 error');
+      setMessages(m=>[...m,{role:'assistant',content:'```bash\n'+lintOut.slice(0,1000)+'\n```',actions:[]}]);
+      if (hasLintErr) {
+        setTimeout(()=>sendMsg('Ada lint error. Fix semua error ini:\n```\n'+lintOut.slice(0,600)+'\n```'), 500);
+      } else {
+        setMessages(m=>[...m,{role:'assistant',content:'✅ Lint clean!',actions:[]}]);
+      }
+      setLoading(false);
+
+    } else if (base==='/open') {
+      const openUrl = parts.slice(1).join(' ').trim();
+      if (!openUrl) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /open https://...',actions:[]}]); return; }
+      try {
+        const { Browser } = await import('@capacitor/browser');
+        await Browser.open({ url: openUrl });
+      } catch {
+        window.open(openUrl, '_blank');
+      }
+      setMessages(m=>[...m,{role:'assistant',content:'🌐 Membuka: '+openUrl,actions:[]}]);
+
     } else if (base==='/self-edit') {
       const task = parts.slice(1).join(' ').trim() || 'Fix bugs, hapus dead code, optimasi performa';
       setLoading(true);

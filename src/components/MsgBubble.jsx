@@ -151,10 +151,35 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
                     <button onClick={()=>onApprove(true,a.path)} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer'}}>✓ apply</button>
                     <button onClick={()=>onApprove(false,a.path)} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer'}}>✗</button>
                   </div>
-                  {a.content&&(
-                    <div style={{padding:'4px 10px 6px',borderTop:'1px solid rgba(255,255,255,.04)',fontSize:'10px',fontFamily:'monospace',color:'rgba(255,255,255,.3)',maxHeight:'60px',overflow:'hidden'}}>
-                      {a.content.split('\n').slice(0,4).map((l,j)=><div key={j} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l||' '}</div>)}
-                      {a.content.split('\n').length>4&&<div style={{color:'rgba(255,255,255,.15)'}}>... {a.content.split('\n').length} baris total</div>}
+                  {a.content&&a.original&&(
+                    <div style={{padding:'4px 0 6px',borderTop:'1px solid rgba(255,255,255,.04)',fontSize:'10px',fontFamily:'monospace',maxHeight:'160px',overflow:'auto'}}>
+                      {(()=>{
+                        const oldLines=(a.original||'').split('\n');
+                        const newLines=(a.content||'').split('\n');
+                        const maxLen=Math.max(oldLines.length,newLines.length);
+                        const result=[];
+                        for(let i=0;i<Math.min(maxLen,40);i++){
+                          const o=oldLines[i],n=newLines[i];
+                          if(o===n) continue;
+                          if(o!==undefined&&n===undefined) result.push({type:'del',text:o,ln:i+1});
+                          else if(o===undefined&&n!==undefined) result.push({type:'add',text:n,ln:i+1});
+                          else { result.push({type:'del',text:o,ln:i+1}); result.push({type:'add',text:n,ln:i+1}); }
+                        }
+                        return result.slice(0,30).map((line,j)=>(
+                          <div key={j} style={{display:'flex',gap:'6px',padding:'0 10px',background:line.type==='add'?'rgba(74,222,128,.07)':'rgba(248,113,113,.07)'}}>
+                            <span style={{color:line.type==='add'?'#4ade80':'#f87171',flexShrink:0,width:'10px'}}>{line.type==='add'?'+':'-'}</span>
+                            <span style={{color:'rgba(255,255,255,.3)',flexShrink:0,width:'28px',textAlign:'right'}}>{line.ln}</span>
+                            <span style={{color:line.type==='add'?'rgba(74,222,128,.9)':'rgba(248,113,113,.7)',whiteSpace:'pre',overflow:'hidden',textOverflow:'ellipsis'}}>{line.text||' '}</span>
+                          </div>
+                        ));
+                      })()}
+                      <div style={{padding:'2px 10px',color:'rgba(255,255,255,.2)',fontSize:'9px'}}>{a.content.split('\n').length} baris total</div>
+                    </div>
+                  )}
+                  {a.content&&!a.original&&(
+                    <div style={{padding:'4px 10px 6px',borderTop:'1px solid rgba(255,255,255,.04)',fontSize:'10px',fontFamily:'monospace',color:'rgba(255,255,255,.3)',maxHeight:'80px',overflow:'hidden'}}>
+                      {a.content.split('\n').slice(0,5).map((l,j)=><div key={j} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l||' '}</div>)}
+                      {a.content.split('\n').length>5&&<div style={{color:'rgba(255,255,255,.15)'}}>... {a.content.split('\n').length} baris total</div>}
                     </div>
                   )}
                 </div>

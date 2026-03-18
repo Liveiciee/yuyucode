@@ -232,7 +232,7 @@ export default function App() {
       return;
     }
     const backups=[];
-    for(const a of targets){const backup=await callServer({type:'read',path:resolvePath(folder,a.path)});if(backup.ok) backups.push({path:resolvePath(folder,a.path),content:backup.data});}
+    for(const a of targets){const backup=await callServer({type:'read',path:resolvePath(folder,a.path)});if(backup.ok){backups.push({path:resolvePath(folder,a.path),content:backup.data});a.original=backup.data;}}
     if(backups.length) setEditHistory(h=>[...h.slice(-(10-backups.length)),...backups]);
     const results=await Promise.all(targets.map(a=>executeAction(a,folder)));
     const failed=results.filter(r=>!r.ok);
@@ -837,7 +837,7 @@ export default function App() {
           )}
 
           {/* TERMINAL */}
-          {showTerminal&&<div style={{flex:1,overflow:'hidden'}}><Terminal folder={folder} cmdHistory={cmdHistory} addHistory={addHistory}/></div>}
+          {showTerminal&&<div style={{flex:1,overflow:'hidden'}}><Terminal folder={folder} cmdHistory={cmdHistory} addHistory={addHistory} onSendToAI={txt=>{setShowTerminal(false);setActiveTab('chat');sendMsg(txt);}}/></div>}
 
           {/* FOLLOW UPS */}
           {showFollowUp&&!loading&&activeTab==='chat'&&!showTerminal&&(

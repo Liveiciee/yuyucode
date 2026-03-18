@@ -135,6 +135,9 @@ export const SLASH_COMMANDS = [
   { cmd:'/color',       desc:'Set warna bar sesi (red/green/blue/off)' },
   { cmd:'/config',      desc:'Panel settings interaktif' },
   { cmd:'/watch',       desc:'Toggle file watcher (notify perubahan eksternal)' },
+  { cmd:'/refactor',    desc:'Rename symbol di semua file: /refactor <lama> <baru>' },
+  { cmd:'/lint',        desc:'Run lint dan auto-fix errors' },
+  { cmd:'/open',        desc:'Buka URL di browser: /open https://...' },
   { cmd:'/init',        desc:'Generate SKILL.md dari project ini otomatis' },
   { cmd:'/search',      desc:'Web search — cari di internet' },
 ];
