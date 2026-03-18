@@ -119,7 +119,35 @@ export async function mergeBackgroundAgent(id, folder) {
   if (agent.status !== 'done') return { ok: false, msg: 'Agent belum selesai (status: ' + agent.status + ')' };
   try {
     const mergeResult = await execGit(folder, 'git merge ' + agent.branch + ' --no-ff -m "merge: agent ' + id.slice(-6) + ' — ' + agent.task.slice(0, 40) + '" 2>&1');
-    if (mergeResult.includes('CONFLICT')) return { ok: false, msg: 'Ada konflik merge.' };
+    if (mergeResult.includes('CONFLICT')) {
+      // Get list of conflicting files
+      const conflictOut = await execGit(folder, 'git diff --name-only --diff-filter=U 2>&1');
+      const conflicts = conflictOut.trim().split('\n').filter(Boolean);
+      // Read previews: extract just conflict markers from each file
+      const previews = [];
+      for (const cf of conflicts.slice(0, 4)) {
+        const r = await callServer({ type: 'read', path: folder + '/' + cf });
+        if (r.ok && r.data) {
+          const lines = r.data.split('\n');
+          const start = lines.findIndex(l => l.startsWith('<<<<<<<'));
+          const end   = lines.findIndex(l => l.startsWith('>>>>>>>'));
+          const snippet = start !== -1 && end !== -1
+            ? lines.slice(start, end + 1).join('\n').slice(0, 400)
+            : r.data.slice(0, 300);
+          previews.push({ file: cf, snippet });
+        }
+      }
+      agent.status = 'conflict';
+      return {
+        ok: false,
+        hasConflicts: true,
+        conflicts,
+        previews,
+        branch: agent.branch,
+        task: agent.task,
+        msg: 'Konflik di ' + conflicts.length + ' file.',
+      };
+    }
     await execGit(folder, 'git worktree remove --force ' + agent.wtPath + ' 2>/dev/null');
     await execGit(folder, 'git branch -D ' + agent.branch + ' 2>/dev/null');
     agent.status = 'merged';
@@ -251,4 +279,37 @@ export function parseElicitation(reply) {
   const m = reply.match(/ELICIT:\s*({[\s\S]*?})/);
   if (!m) return null;
   try { return JSON.parse(m[1]); } catch { return null; }
+}
+
+// ─── TF-IDF MEMORY RANKING ───────────────────────────────────────────────────
+// Returns memories sorted by relevance to queryText using TF-IDF scoring.
+export function tfidfRank(memories, queryText, topN = 5) {
+  if (!memories.length) return [];
+  if (!queryText) return memories.slice(0, topN);
+
+  const queryWords = queryText.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  if (!queryWords.length) return memories.slice(0, topN);
+
+  const N = memories.length;
+
+  const scored = memories.map(mem => {
+    const memWords = mem.text.toLowerCase().split(/\s+/);
+    let score = 0;
+    for (const qw of queryWords) {
+      // TF: how often query word appears in this memory
+      const tf = memWords.filter(w => w === qw).length / (memWords.length || 1);
+      // IDF: log(N / num docs containing term) — rare terms weighted higher
+      const df = memories.filter(m => m.text.toLowerCase().includes(qw)).length;
+      const idf = df > 0 ? Math.log((N + 1) / df) : 0;
+      score += tf * idf;
+    }
+    // Boost recent memories slightly
+    const ageDays = mem.ts ? 0 : 1;
+    score += ageDays === 0 ? 0.1 : 0;
+    return { ...mem, _score: score };
+  });
+
+  return scored
+    .sort((a, b) => b._score - a._score)
+    .slice(0, topN);
 }

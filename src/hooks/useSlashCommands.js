@@ -23,6 +23,7 @@ export function useSlashCommands({
   setShowCustomActions, setShowFileHistory, setShowThemeBuilder,
   setShowDiff, setShowSearch, setShowSnippets, setShowDepGraph,
   setDepGraph, setFontSize,
+  setShowMergeConflict, setMergeConflictData,
   // functions
   sendMsg, compactContext, saveCheckpoint, exportChat, generateCommitMsg,
   runTests, browseTo, runAgentSwarm, callAI, addHistory, runHooks,
@@ -248,10 +249,17 @@ export function useSlashCommands({
 
     } else if (base==='/bgmerge') {
       const id = parts[1]?.trim();
+      if (!id) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /bgmerge <agent-id>',actions:[]}]); return; }
       setLoading(true);
-      setMessages(m=>[...m,{role:'assistant',content:'🔀 Merging '+id+'...',actions:[]}]);
+      setMessages(m=>[...m,{role:'assistant',content:'🔀 Merging agent '+id+'...',actions:[]}]);
       const result = await mergeBackgroundAgent(id, folder);
-      setMessages(m=>[...m,{role:'assistant',content:result.ok?'✅ '+result.msg:'❌ '+result.msg,actions:[]}]);
+      if (result.hasConflicts) {
+        setMergeConflictData(result);
+        setShowMergeConflict(true);
+        setMessages(m=>[...m,{role:'assistant',content:'⚠ **Konflik di '+result.conflicts.length+' file:**\n'+result.conflicts.map(c=>'• '+c).join('\n')+'\n\nBuka panel konflik untuk pilih strategi resolusi.',actions:[]}]);
+      } else {
+        setMessages(m=>[...m,{role:'assistant',content:result.ok?'✅ '+result.msg:'❌ '+result.msg,actions:[]}]);
+      }
       setLoading(false);
 
     } else if (base==='/loop') {

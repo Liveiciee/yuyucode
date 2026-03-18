@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import * as d3 from "d3";
 import { Preferences } from "@capacitor/preferences";
 import { callServer } from '../api.js';
 import { THEMES, MODELS } from '../constants.js';
@@ -442,6 +443,301 @@ export function CommandPalette({ onClose, onRun, folder, memories, checkpoints, 
           <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)'}}>esc tutup</span>
           <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)'}}>/ untuk slash commands</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── DEP GRAPH PANEL (d3 force layout) ───────────────────────────────────────
+export function DepGraphPanel({ depGraph, onClose }) {
+  const containerRef = useRef(null);
+  const [hovered, setHovered] = useState(null);
+
+  useEffect(() => {
+    if (!depGraph || !containerRef.current) return;
+    const el = containerRef.current;
+    const W = el.clientWidth || 340;
+    const H = el.clientHeight || 420;
+
+    d3.select(el).selectAll('*').remove();
+
+    const nodes = [
+      { id: depGraph.file, type: 'root', label: depGraph.file },
+      ...depGraph.imports.map(imp => ({
+        id: imp,
+        type: imp.startsWith('.') ? 'local' : 'external',
+        label: imp.split('/').pop().replace(/\.(jsx?|tsx?)$/, ''),
+      })),
+    ];
+    const links = depGraph.imports.map(imp => ({ source: depGraph.file, target: imp }));
+
+    const svg = d3.select(el).append('svg').attr('width', W).attr('height', H);
+
+    // Arrow marker
+    svg.append('defs').append('marker')
+      .attr('id', 'dep-arrow').attr('viewBox', '0 -4 8 8')
+      .attr('refX', 22).attr('refY', 0)
+      .attr('markerWidth', 5).attr('markerHeight', 5).attr('orient', 'auto')
+      .append('path').attr('d', 'M0,-4L8,0L0,4').attr('fill', 'rgba(124,58,237,.45)');
+
+    const sim = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(d => d.id).distance(90))
+      .force('charge', d3.forceManyBody().strength(-220))
+      .force('center', d3.forceCenter(W / 2, H / 2))
+      .force('collision', d3.forceCollide(28));
+
+    const link = svg.append('g').selectAll('line').data(links).join('line')
+      .attr('stroke', 'rgba(124,58,237,.3)').attr('stroke-width', 1.5)
+      .attr('marker-end', 'url(#dep-arrow)');
+
+    const COLOR = { root: '#7c3aed', local: '#059669', external: '#1d4ed8' };
+    const RADIUS = { root: 18, local: 13, external: 10 };
+
+    const node = svg.append('g').selectAll('g').data(nodes).join('g')
+      .style('cursor', 'pointer')
+      .call(d3.drag()
+        .on('start', (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+        .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
+        .on('end',   (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
+      )
+      .on('mouseenter', (_, d) => setHovered(d.id))
+      .on('mouseleave', () => setHovered(null));
+
+    node.append('circle')
+      .attr('r', d => RADIUS[d.type] || 10)
+      .attr('fill', d => COLOR[d.type])
+      .attr('fill-opacity', 0.85)
+      .attr('stroke', 'rgba(255,255,255,.2)').attr('stroke-width', 1.5);
+
+    node.append('text')
+      .text(d => d.label.length > 14 ? d.label.slice(0, 12) + '…' : d.label)
+      .attr('text-anchor', 'middle')
+      .attr('dy', d => (RADIUS[d.type] || 10) + 13)
+      .attr('fill', 'rgba(255,255,255,.65)')
+      .attr('font-size', '9px').attr('font-family', 'monospace')
+      .style('pointer-events', 'none');
+
+    sim.on('tick', () => {
+      link
+        .attr('x1', d => Math.max(20, Math.min(W - 20, d.source.x)))
+        .attr('y1', d => Math.max(20, Math.min(H - 20, d.source.y)))
+        .attr('x2', d => Math.max(20, Math.min(W - 20, d.target.x)))
+        .attr('y2', d => Math.max(20, Math.min(H - 20, d.target.y)));
+      node.attr('transform', d =>
+        `translate(${Math.max(20, Math.min(W - 20, d.x))},${Math.max(20, Math.min(H - 20, d.y))})`
+      );
+    });
+
+    return () => { sim.stop(); d3.select(el).selectAll('*').remove(); };
+  }, [depGraph]);
+
+  const localCount = depGraph?.imports.filter(i => i.startsWith('.')).length || 0;
+  const extCount   = depGraph?.imports.filter(i => !i.startsWith('.')).length || 0;
+
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.93)',zIndex:99,display:'flex',flexDirection:'column'}}>
+      <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:'8px',flexShrink:0,background:'rgba(255,255,255,.02)'}}>
+        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🕸 Dep Graph — <span style={{fontFamily:'monospace',color:'#a78bfa'}}>{depGraph?.file}</span></span>
+        <span style={{fontSize:'10px',color:'rgba(5,150,105,.7)'}}>● {localCount} local</span>
+        <span style={{fontSize:'10px',color:'rgba(96,165,250,.7)'}}>● {extCount} npm</span>
+        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+      </div>
+      {hovered && (
+        <div style={{padding:'4px 12px',background:'rgba(124,58,237,.08)',borderBottom:'1px solid rgba(124,58,237,.15)',fontSize:'10px',color:'#a78bfa',fontFamily:'monospace',flexShrink:0}}>
+          {hovered}
+        </div>
+      )}
+      <div ref={containerRef} style={{flex:1,position:'relative',overflow:'hidden'}} />
+      <div style={{padding:'5px 12px',borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'14px',flexShrink:0,background:'rgba(255,255,255,.01)'}}>
+        <span style={{fontSize:'9px',color:'rgba(124,58,237,.7)'}}>● root</span>
+        <span style={{fontSize:'9px',color:'rgba(5,150,105,.7)'}}>● local</span>
+        <span style={{fontSize:'9px',color:'rgba(29,78,216,.7)'}}>● npm</span>
+        <span style={{fontSize:'9px',color:'rgba(255,255,255,.2)',marginLeft:'auto'}}>drag nodes to reposition</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── ELICITATION PANEL (AI-requested dynamic form) ───────────────────────────
+export function ElicitationPanel({ data, onSubmit, onDismiss }) {
+  const [values, setValues] = useState(() => {
+    const init = {};
+    (data.fields || []).forEach(f => { init[f.name] = f.default || ''; });
+    return init;
+  });
+
+  function set(name, val) { setValues(v => ({ ...v, [name]: val })); }
+
+  function handleSubmit() {
+    const result = Object.entries(values)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(', ');
+    onSubmit(result);
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.78)',zIndex:210,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
+      <div style={{background:'#111113',border:'1px solid rgba(124,58,237,.25)',borderRadius:'14px',padding:'20px',width:'100%',maxWidth:'380px',boxShadow:'0 24px 60px rgba(0,0,0,.8)'}}>
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'flex-start',gap:'10px',marginBottom:'14px'}}>
+          <span style={{fontSize:'18px'}}>✦</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0'}}>{data.title || 'Input diperlukan'}</div>
+            {data.description && <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginTop:'3px'}}>{data.description}</div>}
+          </div>
+          <button onClick={onDismiss} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'16px',cursor:'pointer',flexShrink:0}}>×</button>
+        </div>
+
+        {/* Fields */}
+        <div style={{display:'flex',flexDirection:'column',gap:'10px',marginBottom:'16px'}}>
+          {(data.fields || []).map(field => (
+            <div key={field.name}>
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,.5)',marginBottom:'4px'}}>{field.label}</div>
+              {field.type === 'select' ? (
+                <select value={values[field.name]} onChange={e => set(field.name, e.target.value)}
+                  style={{width:'100%',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:'8px',padding:'8px 10px',color:'#f0f0f0',fontSize:'13px',outline:'none',boxSizing:'border-box'}}>
+                  <option value="">Pilih···</option>
+                  {(field.options || []).map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ) : field.type === 'checkbox' ? (
+                <label style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',padding:'4px 0'}}>
+                  <input type="checkbox" checked={!!values[field.name]}
+                    onChange={e => set(field.name, e.target.checked)}
+                    style={{width:'15px',height:'15px',accentColor:'#7c3aed'}} />
+                  <span style={{fontSize:'12px',color:'rgba(255,255,255,.6)'}}>{field.placeholder || field.label}</span>
+                </label>
+              ) : field.type === 'textarea' ? (
+                <textarea value={values[field.name]} onChange={e => set(field.name, e.target.value)}
+                  placeholder={field.placeholder || ''} rows={3}
+                  style={{width:'100%',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:'8px',padding:'8px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',resize:'none',fontFamily:'inherit',boxSizing:'border-box'}} />
+              ) : (
+                <input value={values[field.name]} onChange={e => set(field.name, e.target.value)}
+                  placeholder={field.placeholder || ''}
+                  style={{width:'100%',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:'8px',padding:'8px 10px',color:'#f0f0f0',fontSize:'13px',outline:'none',boxSizing:'border-box'}} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div style={{display:'flex',gap:'8px'}}>
+          <button onClick={onDismiss}
+            style={{flex:1,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px',padding:'9px',color:'rgba(255,255,255,.4)',fontSize:'12px',cursor:'pointer'}}>
+            Batal
+          </button>
+          <button onClick={handleSubmit}
+            style={{flex:2,background:'#7c3aed',border:'none',borderRadius:'8px',padding:'9px',color:'white',fontSize:'12px',cursor:'pointer',fontWeight:'600'}}>
+            Kirim →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MERGE CONFLICT PANEL ─────────────────────────────────────────────────────
+export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClose }) {
+  const [resolving, setResolving] = useState(false);
+  const [previews, setPreviews]   = useState({});
+  const [status, setStatus]       = useState('');
+
+  async function loadPreview(cf) {
+    const { callServer } = await import('../api.js');
+    const r = await callServer({ type: 'read', path: folder + '/' + cf });
+    if (r.ok) setPreviews(p => ({ ...p, [cf]: r.data }));
+  }
+
+  async function resolve(strategy) {
+    setResolving(true);
+    setStatus('Resolving (' + strategy + ')···');
+    const { callServer } = await import('../api.js');
+    if (strategy === 'ours') {
+      await callServer({ type: 'exec', path: folder, command: 'git checkout --ours -- . && git add -A' });
+    } else {
+      await callServer({ type: 'exec', path: folder, command: 'git checkout --theirs -- . && git add -A' });
+    }
+    const commit = await callServer({ type: 'exec', path: folder, command: `git commit -m "merge: resolve conflicts via ${strategy}"` });
+    setResolving(false);
+    if (commit.ok) {
+      setStatus('✅ Resolved!');
+      setTimeout(() => onResolved(strategy), 800);
+    } else {
+      setStatus('❌ Commit gagal: ' + (commit.data || '').slice(0, 80));
+    }
+  }
+
+  async function abortMerge() {
+    setResolving(true);
+    setStatus('Aborting···');
+    const { callServer } = await import('../api.js');
+    await callServer({ type: 'exec', path: folder, command: 'git merge --abort' });
+    setResolving(false);
+    onAborted();
+  }
+
+  const conflictList = data?.conflicts || [];
+  const previewData  = data?.previews || [];
+
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.96)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',marginBottom:'10px'}}>
+        <span style={{fontSize:'14px',fontWeight:'600',color:'#f87171',flex:1}}>⚠ Merge Conflict — {conflictList.length} file</span>
+        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+      </div>
+
+      <div style={{background:'rgba(248,113,113,.06)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'8px',padding:'9px 12px',marginBottom:'12px',fontSize:'11px',color:'rgba(255,255,255,.55)',lineHeight:'1.6'}}>
+        Branch <span style={{color:'#a78bfa',fontFamily:'monospace'}}>{data?.branch}</span> konflik dengan main.<br/>
+        Task: <em style={{color:'rgba(255,255,255,.4)'}}>{data?.task?.slice(0, 80)}</em>
+      </div>
+
+      {/* Conflict files */}
+      <div style={{flex:1,overflowY:'auto',marginBottom:'12px'}}>
+        {conflictList.map((cf, i) => {
+          const preview = previews[cf] || previewData.find(p => p.file === cf)?.snippet;
+          return (
+            <div key={cf} style={{padding:'9px 12px',marginBottom:'6px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(248,113,113,.12)',borderRadius:'8px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:preview?'6px':'0'}}>
+                <span style={{fontSize:'10px',color:'#f87171'}}>⚠</span>
+                <span style={{fontSize:'12px',color:'rgba(255,255,255,.8)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cf}</span>
+                <button onClick={() => loadPreview(cf)}
+                  style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'4px',padding:'2px 7px',color:'rgba(255,255,255,.4)',fontSize:'9px',cursor:'pointer',flexShrink:0}}>
+                  preview
+                </button>
+              </div>
+              {preview && (
+                <pre style={{margin:0,padding:'6px 8px',background:'rgba(0,0,0,.5)',borderRadius:'5px',fontSize:'9px',color:'rgba(255,255,255,.45)',fontFamily:'monospace',maxHeight:'90px',overflow:'auto',whiteSpace:'pre-wrap',wordBreak:'break-all'}}>
+                  {preview.slice(0, 400)}
+                </pre>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Status */}
+      {status && (
+        <div style={{padding:'6px 10px',marginBottom:'8px',borderRadius:'6px',background:'rgba(255,255,255,.04)',fontSize:'11px',color:status.startsWith('✅')?'#4ade80':status.startsWith('❌')?'#f87171':'rgba(255,255,255,.5)',textAlign:'center'}}>
+          {status}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+        <div style={{display:'flex',gap:'8px'}}>
+          <button onClick={() => resolve('ours')} disabled={resolving}
+            style={{flex:1,background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.2)',borderRadius:'8px',padding:'10px 8px',color:'#818cf8',fontSize:'11px',cursor:'pointer',fontWeight:'500',opacity:resolving?.5:1}}>
+            ← Pakai main (ours)
+          </button>
+          <button onClick={() => resolve('theirs')} disabled={resolving}
+            style={{flex:1,background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'8px',padding:'10px 8px',color:'#4ade80',fontSize:'11px',cursor:'pointer',fontWeight:'500',opacity:resolving?.5:1}}>
+            Pakai agent (theirs) →
+          </button>
+        </div>
+        <button onClick={abortMerge} disabled={resolving}
+          style={{background:'rgba(248,113,113,.07)',border:'1px solid rgba(248,113,113,.14)',borderRadius:'8px',padding:'8px',color:'#f87171',fontSize:'11px',cursor:'pointer',opacity:resolving?.5:1}}>
+          ✕ Abort merge
+        </button>
       </div>
     </div>
   );

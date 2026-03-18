@@ -43,6 +43,13 @@ export function useUIStore() {
   const [commitMsg, setCommitMsg]     = useState('');
   const [dragOver, setDragOver]       = useState(false);
 
+  // ── Elicitation (AI-requested form input) ──
+  const [elicitationData, setElicitationData] = useState(null);
+
+  // ── Merge Conflict UI ──
+  const [showMergeConflict, setShowMergeConflict] = useState(false);
+  const [mergeConflictData, setMergeConflictData] = useState(null);
+
   // ── Derived ──
   const T = customTheme || THEMES[theme] || THEMES.dark;
 
@@ -108,6 +115,9 @@ export function useUIStore() {
     commitModal, setCommitModal,
     commitMsg, setCommitMsg,
     dragOver, setDragOver,
+    elicitationData, setElicitationData,
+    showMergeConflict, setShowMergeConflict,
+    mergeConflictData, setMergeConflictData,
     // loader
     loadUIPrefs,
   };

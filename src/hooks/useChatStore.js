@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { MAX_HISTORY } from '../constants.js';
 import { askCerebrasStream } from '../api.js';
-import { tokenTracker } from '../features.js';
+import { tokenTracker, tfidfRank } from '../features.js';
 
 export function useChatStore() {
   // ── Core chat ──
@@ -94,11 +94,13 @@ export function useChatStore() {
     } catch {}
   }
 
-  // ── getRelevantMemories (keyword filtering) ──
+  // ── getRelevantMemories (TF-IDF scoring) ──
   function getRelevantMemories(txt) {
-    const words = txt.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-    const relevant = memories.filter(m => words.some(w => m.text.toLowerCase().includes(w))).slice(0, 5);
-    return relevant.length ? relevant : memories.slice(0, 5);
+    if (!memories.length) return [];
+    const ranked = tfidfRank(memories, txt, 5);
+    // Fallback to most recent if no scores > 0
+    const hasScore = ranked.some(m => (m._score || 0) > 0);
+    return hasScore ? ranked : memories.slice(0, 5);
   }
 
   // ── saveCheckpoint ──

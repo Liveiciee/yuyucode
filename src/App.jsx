@@ -10,7 +10,8 @@ import { FileEditor } from './components/FileEditor.jsx';
 import { Terminal } from './components/Terminal.jsx';
 import { SearchBar, UndoBar } from './components/SearchBar.jsx';
 import { VoiceBtn, PushToTalkBtn } from './components/VoiceBtn.jsx';
-import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette } from './components/panels.jsx';
+import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel } from './components/panels.jsx';
+import { parseElicitation } from './features.js';
 import { useSlashCommands } from './hooks/useSlashCommands.js';
 import { useUIStore }      from './hooks/useUIStore.js';
 import { useProjectStore } from './hooks/useProjectStore.js';
@@ -32,6 +33,7 @@ export default function App() {
   const inputRef     = useRef(null);
   const abortRef     = useRef(null);
   const autoContextRef = useRef({});
+  const wsRef        = useRef(null); // WebSocket file watcher
   const T = ui.T;
 
   // ── EFFECTS ──
@@ -80,22 +82,29 @@ export default function App() {
 
   useEffect(()=>{
     if(!project.fileWatcherActive||!project.folder) return;
-    const iv=setInterval(async()=>{
-      const r=await callServer({type:'list',path:project.folder+'/src'});
-      if(!r.ok||!Array.isArray(r.data)) return;
-      const changed=[];
-      for(const f of r.data.filter(x=>!x.isDir)){
-        const key=f.name, mtime=f.mtime||f.size;
-        if(project.fileSnapshots[key]!==undefined&&project.fileSnapshots[key]!==mtime) changed.push(f.name);
-      }
-      project.setFileSnapshots(Object.fromEntries(r.data.map(f=>[f.name,f.mtime||f.size])));
-      if(changed.length>0){
-        chat.setMessages(m=>[...m,{role:'assistant',content:'👁 **File berubah**:\n'+changed.map(f=>'• '+f).join('\n'),actions:[]}]);
-        sendNotification('YuyuCode 👁',changed.join(', ')+' berubah');
-      }
-    },30000);
-    project.setFileWatcherInterval(iv);
-    return()=>clearInterval(iv);
+    // ── Real-time WebSocket watcher (yuyu-server port 8766) ──
+    let dead=false;
+    function connect(){
+      if(dead) return;
+      const ws=new WebSocket('ws://127.0.0.1:8766');
+      wsRef.current=ws;
+      ws.onopen=()=>ws.send(JSON.stringify({type:'watch',path:project.folder}));
+      ws.onmessage=(e)=>{
+        try{
+          const {event,filename}=JSON.parse(e.data);
+          if(event==='watching'||!filename) return;
+          chat.setMessages(m=>[...m,{role:'assistant',content:'👁 **File berubah:** `'+filename+'`',actions:[]}]);
+          sendNotification('YuyuCode 👁',filename+' berubah');
+        }catch{}
+      };
+      ws.onerror=()=>{};
+      ws.onclose=()=>{ if(!dead) setTimeout(connect,3000); };
+    }
+    connect();
+    return()=>{
+      dead=true;
+      if(wsRef.current){wsRef.current.onclose=null;wsRef.current.close();wsRef.current=null;}
+    };
   },[project.fileWatcherActive,project.folder]);
 
   // ── FILE OPS ──
@@ -406,6 +415,7 @@ export default function App() {
     setShowThemeBuilder:ui.setShowThemeBuilder, setShowDiff:ui.setShowDiff,
     setShowSearch:ui.setShowSearch, setShowSnippets:ui.setShowSnippets,
     setShowDepGraph:ui.setShowDepGraph, setDepGraph:ui.setDepGraph, setFontSize:ui.setFontSize,
+    setShowMergeConflict:ui.setShowMergeConflict, setMergeConflictData:ui.setMergeConflictData,
     sendMsg, compactContext, saveCheckpoint, exportChat, generateCommitMsg,
     runTests, browseTo, runAgentSwarm, callAI, addHistory, runHooks:project.runHooks,
     sendNotification, haptic, abortRef,
@@ -539,6 +549,9 @@ export default function App() {
       if(finalContent.trim().endsWith('CONTINUE')){setTimeout(()=>sendMsg('Lanjutkan dari titik terakhir.'),300);return;}
       if(finalContent.includes('PROJECT_NOTE:')){const nm=finalContent.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);if(nm){const n=(project.notes+'\n'+nm[1].trim()).trim();project.setNotes(n, project.folder);}}
       chat.setMessages(m=>[...m,{role:'assistant',content:finalContent,actions:finalActions}]);
+      // ── Elicitation: AI requested structured input ──
+      const elicit=parseElicitation(finalContent);
+      if(elicit) ui.setElicitationData(elicit);
       chat.extractMemories(txt,finalContent,project.folder);
       if(chat.ttsEnabled&&finalContent) speakText(finalContent);
     }catch(e){
@@ -922,22 +935,40 @@ export default function App() {
         </div>
       )}
 
-      {/* DEP GRAPH */}
+      {/* DEP GRAPH — d3 force layout */}
       {ui.showDepGraph&&ui.depGraph&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
-          <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-            <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🕸 Dep Graph — {ui.depGraph.file}</span>
-            <button onClick={()=>ui.setShowDepGraph(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
-          </div>
-          <div style={{flex:1,overflowY:'auto'}}>
-            {ui.depGraph.imports.map((imp,i)=>(
-              <div key={i} style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 10px',marginBottom:'3px',background:imp.startsWith('.')?'rgba(74,222,128,.04)':'rgba(255,255,255,.02)',border:'1px solid '+(imp.startsWith('.')?'rgba(74,222,128,.1)':'rgba(255,255,255,.05)'),borderRadius:'6px'}}>
-                <span style={{fontSize:'10px'}}>{imp.startsWith('.')?'📄':'📦'}</span>
-                <span style={{fontSize:'11px',color:imp.startsWith('.')?'#4ade80':'rgba(255,255,255,.5)',fontFamily:'monospace'}}>{imp}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <DepGraphPanel depGraph={ui.depGraph} onClose={()=>ui.setShowDepGraph(false)}/>
+      )}
+
+      {/* ELICITATION — AI-requested dynamic form */}
+      {ui.elicitationData&&(
+        <ElicitationPanel
+          data={ui.elicitationData}
+          onSubmit={(result)=>{
+            ui.setElicitationData(null);
+            sendMsg(result);
+          }}
+          onDismiss={()=>ui.setElicitationData(null)}
+        />
+      )}
+
+      {/* MERGE CONFLICT */}
+      {ui.showMergeConflict&&ui.mergeConflictData&&(
+        <MergeConflictPanel
+          data={ui.mergeConflictData}
+          folder={project.folder}
+          onResolved={(strategy)=>{
+            ui.setShowMergeConflict(false);
+            ui.setMergeConflictData(null);
+            chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Konflik resolved via **'+strategy+'**. Branch berhasil di-merge.',actions:[]}]);
+          }}
+          onAborted={()=>{
+            ui.setShowMergeConflict(false);
+            ui.setMergeConflictData(null);
+            chat.setMessages(m=>[...m,{role:'assistant',content:'↩ Merge dibatalkan. Branch agent tetap tersedia.',actions:[]}]);
+          }}
+          onClose={()=>ui.setShowMergeConflict(false)}
+        />
       )}
 
       {ui.showThemeBuilder&&<ThemeBuilder current={ui.customTheme||THEMES[ui.theme]} onSave={t=>{ui.setCustomTheme(t);Preferences.set({key:'yc_custom_theme',value:JSON.stringify(t)});ui.setShowThemeBuilder(false);}} onClose={()=>ui.setShowThemeBuilder(false)}/>}
