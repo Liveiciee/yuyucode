@@ -4,18 +4,18 @@ import remarkGfm from 'remark-gfm';
 import { hl } from '../utils.js';
 
 export const S = {
-  msgRow: (isUser) => ({ display:'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', padding:'2px 16px', marginBottom:'2px' }),
-  userBubble: { background:'rgba(255,255,255,.08)', borderRadius:'18px 18px 4px 18px', padding:'10px 14px', maxWidth:'80%', minWidth:'60px', fontSize:'14px', lineHeight:'1.6', color:'#f0f0f0', whiteSpace:'pre-wrap', wordBreak:'break-word' },
-  aiBubble: { maxWidth:'92%', fontSize:'14px', lineHeight:'1.7', color:'#e0e0e0', wordBreak:'break-word' },
-  actionChip: (ok) => ({ display:'inline-flex', alignItems:'center', gap:'5px', background: ok===null?'rgba(255,255,255,.05)':ok?'rgba(74,222,128,.06)':'rgba(248,113,113,.06)', border:'1px solid '+(ok===null?'rgba(255,255,255,.08)':ok?'rgba(74,222,128,.15)':'rgba(248,113,113,.15)'), borderRadius:'6px', padding:'4px 10px', fontSize:'11px', fontFamily:'monospace', color:ok===null?'rgba(255,255,255,.4)':ok?'#4ade80':'#f87171', margin:'4px 0', cursor:'default' }),
+  msgRow: (isUser) => ({ display:'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', padding:'3px 12px', marginBottom:'2px' }),
+  userBubble: { background:'rgba(255,255,255,.08)', borderRadius:'18px 18px 4px 18px', padding:'11px 15px', maxWidth:'82%', minWidth:'60px', fontSize:'14px', lineHeight:'1.6', color:'#f0f0f0', whiteSpace:'pre-wrap', wordBreak:'break-word' },
+  aiBubble: { maxWidth:'96%', fontSize:'14px', lineHeight:'1.7', color:'#e0e0e0', wordBreak:'break-word' },
+  actionChip: (ok) => ({ display:'inline-flex', alignItems:'center', gap:'5px', background: ok===null?'rgba(255,255,255,.05)':ok?'rgba(74,222,128,.06)':'rgba(248,113,113,.06)', border:'1px solid '+(ok===null?'rgba(255,255,255,.08)':ok?'rgba(74,222,128,.15)':'rgba(248,113,113,.15)'), borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontFamily:'monospace', color:ok===null?'rgba(255,255,255,.4)':ok?'#4ade80':'#f87171', margin:'4px 0', cursor:'default', minHeight:'36px' }),
   terminalBlock: { background:'#0a0a0b', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', padding:'12px 14px', margin:'8px 0', fontFamily:'monospace', fontSize:'12px', color:'rgba(255,255,255,.65)', whiteSpace:'pre-wrap', wordBreak:'break-word', maxHeight:'300px', overflowY:'auto' },
   codeBlock: { background:'#111114', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', margin:'8px 0', overflow:'hidden' },
   codeLang: { padding:'6px 14px', background:'rgba(255,255,255,.03)', fontSize:'11px', color:'rgba(255,255,255,.3)', borderBottom:'1px solid rgba(255,255,255,.05)', fontFamily:'monospace' },
   codePre: { padding:'12px 14px', margin:0, whiteSpace:'pre-wrap', wordBreak:'break-word', fontSize:'12px', lineHeight:'1.6' },
   diffBlock: { background:'#0d1117', border:'1px solid rgba(255,255,255,.07)', borderRadius:'10px', margin:'8px 0', overflow:'hidden' },
   diffHeader: { padding:'6px 14px', background:'rgba(255,255,255,.03)', fontSize:'11px', color:'rgba(255,255,255,.3)', borderBottom:'1px solid rgba(255,255,255,.05)' },
-  msgActions: { display:'flex', gap:'6px', marginTop:'6px' },
-  msgActBtn: { background:'none', border:'none', padding:'3px 6px', color:'rgba(255,255,255,.3)', fontSize:'11px', cursor:'pointer', borderRadius:'4px' },
+  msgActions: { display:'flex', gap:'4px', marginTop:'6px', flexWrap:'wrap' },
+  msgActBtn: { background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.08)', padding:'6px 12px', color:'rgba(255,255,255,.45)', fontSize:'11px', cursor:'pointer', borderRadius:'8px', minHeight:'32px' },
 };
 
 export function ThinkingBlock({ text }) {
@@ -23,7 +23,7 @@ export function ThinkingBlock({ text }) {
   if (!text || !text.trim()) return null;
   return (
     <div style={{margin:'4px 0 6px',borderRadius:'8px',overflow:'hidden',border:'1px solid rgba(167,139,250,.15)',background:'rgba(167,139,250,.04)'}}>
-      <div onClick={()=>setOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:'6px',padding:'5px 10px',cursor:'pointer',userSelect:'none'}}>
+      <div onClick={()=>setOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:'6px',padding:'8px 10px',cursor:'pointer',userSelect:'none',minHeight:'36px'}}>
         <span style={{fontSize:'11px',color:'rgba(167,139,250,.7)',fontFamily:'monospace'}}>{'> thinking'}</span>
         <div style={{flex:1,height:'1px',background:'rgba(167,139,250,.1)'}} />
         <span style={{fontSize:'10px',color:'rgba(167,139,250,.4)'}}>{open ? '▲' : '▼'}</span>
@@ -58,15 +58,15 @@ export function MsgContent({ text }) {
             <ReactMarkdown remarkPlugins={[remarkGfm]}
               components={{
                 table: ({node: _node,...props}) => <div style={{overflowX:'auto',margin:'8px 0'}}><table style={{width:'100%',borderCollapse:'collapse',background:'rgba(255,255,255,.02)',borderRadius:'8px'}} {...props} /></div>,
-                th: ({node: _node,...props}) => <th style={{padding:'6px 12px',fontSize:'11px',color:'rgba(255,255,255,.45)',fontWeight:'600',borderBottom:'1px solid rgba(255,255,255,.12)',textAlign:'left',whiteSpace:'nowrap',minWidth:'120px'}} {...props} />,
-                td: ({node: _node,...props}) => <td style={{padding:'6px 12px',fontSize:'12px',borderBottom:'1px solid rgba(255,255,255,.04)',verticalAlign:'top',minWidth:'120px'}} {...props} />,
-                h1: ({node: _node,...props}) => <div style={{fontSize:'15px',fontWeight:'700',color:'#f0f0f0',margin:'14px 0 6px'}} {...props} />,
-                h2: ({node: _node,...props}) => <div style={{fontSize:'14px',fontWeight:'700',color:'#f0f0f0',margin:'12px 0 5px'}} {...props} />,
-                h3: ({node: _node,...props}) => <div style={{fontSize:'13px',fontWeight:'700',color:'#e8e8e8',margin:'10px 0 4px'}} {...props} />,
-                code: ({node: _node, inline,...props}) => inline ? <code style={{background:'rgba(255,255,255,.1)',padding:'1px 5px',borderRadius:'3px',fontFamily:'monospace',fontSize:'12px',color:'#e8e8e8'}} {...props} /> : <pre style={{background:'#111114',padding:'10px 12px',borderRadius:'8px',overflow:'auto',fontSize:'12px',margin:'6px 0'}} {...props} />,
+                th: ({node: _node,...props}) => <th style={{padding:'8px 12px',fontSize:'11px',color:'rgba(255,255,255,.45)',fontWeight:'600',borderBottom:'1px solid rgba(255,255,255,.12)',textAlign:'left',whiteSpace:'nowrap',minWidth:'100px'}} {...props} />,
+                td: ({node: _node,...props}) => <td style={{padding:'8px 12px',fontSize:'12px',borderBottom:'1px solid rgba(255,255,255,.04)',verticalAlign:'top',minWidth:'100px'}} {...props} />,
+                h1: ({node: _node,...props}) => <div style={{fontSize:'16px',fontWeight:'700',color:'#f0f0f0',margin:'14px 0 6px'}} {...props} />,
+                h2: ({node: _node,...props}) => <div style={{fontSize:'15px',fontWeight:'700',color:'#f0f0f0',margin:'12px 0 5px'}} {...props} />,
+                h3: ({node: _node,...props}) => <div style={{fontSize:'14px',fontWeight:'700',color:'#e8e8e8',margin:'10px 0 4px'}} {...props} />,
+                code: ({node: _node, inline,...props}) => inline ? <code style={{background:'rgba(255,255,255,.1)',padding:'2px 6px',borderRadius:'4px',fontFamily:'monospace',fontSize:'12px',color:'#e8e8e8'}} {...props} /> : <pre style={{background:'#111114',padding:'10px 12px',borderRadius:'8px',overflow:'auto',fontSize:'12px',margin:'6px 0'}} {...props} />,
                 hr: ({node: _node,...props}) => <hr style={{border:'none',borderTop:'1px solid rgba(255,255,255,.08)',margin:'10px 0'}} />,
                 strong: ({node: _node,...props}) => <strong style={{color:'#f0f0f0'}} {...props} />,
-                li: ({node: _node,...props}) => <li style={{margin:'2px 0',color:'#e0e0e0'}} {...props} />,
+                li: ({node: _node,...props}) => <li style={{margin:'3px 0',color:'#e0e0e0',lineHeight:'1.6'}} {...props} />,
               }}
             >{p.c}</ReactMarkdown>
           </div>
@@ -100,7 +100,7 @@ export function ActionChip({ action }) {
   return (
     <div style={{ margin:'4px 0' }}>
       <div style={S.actionChip(ok)} onClick={() => action.result && setExpanded(!expanded)}>
-        <span>{icon}</span><span>{label}</span>
+        <span>{icon}</span><span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label}</span>
         {ok === null && <span style={{ opacity:.5 }}>···</span>}
         {ok === true && <span>✓</span>}
         {ok === false && <span>✗</span>}
@@ -114,7 +114,6 @@ export function ActionChip({ action }) {
 }
 
 export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix }) {
-  const [hover, setHover] = useState(false);
   const isUser = msg.role === 'user';
   const thinkMatch = msg.content.match(/<think>([\s\S]*?)<\/think>/i);
   const thinkText = thinkMatch ? thinkMatch[1] : null;
@@ -126,14 +125,18 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
 
   function copyMsg() { navigator.clipboard?.writeText(cleanText).catch(() => {}); }
 
+  // ── approve button style (big touch target) ──
+  const approveBtn = { background:'rgba(74,222,128,.12)', border:'1px solid rgba(74,222,128,.25)', borderRadius:'8px', padding:'8px 16px', color:'#4ade80', fontSize:'13px', cursor:'pointer', minHeight:'40px', fontWeight:'500' };
+  const rejectBtn  = { background:'rgba(248,113,113,.08)', border:'1px solid rgba(248,113,113,.18)', borderRadius:'8px', padding:'8px 14px', color:'#f87171', fontSize:'13px', cursor:'pointer', minHeight:'40px' };
+
   return (
-    <div style={S.msgRow(isUser)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <div style={S.msgRow(isUser)}>
       {isUser ? (
         <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px' }}>
           <div style={S.userBubble}>{cleanText}</div>
-          <div style={{ ...S.msgActions, opacity: hover ? 1 : 0 }}>
+          <div style={S.msgActions}>
             <button style={S.msgActBtn} onClick={copyMsg}>copy</button>
-            {onRetry && <button style={S.msgActBtn} onClick={onRetry}>retry</button>}
+            {onRetry && <button style={S.msgActBtn} onClick={onRetry}>↺ retry</button>}
           </div>
         </div>
       ) : (
@@ -141,72 +144,86 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
           {thinkText && <ThinkingBlock text={thinkText} />}
           <div style={S.aiBubble}><MsgContent text={cleanText} /></div>
           {actions.map((a, i) => <ActionChip key={i} action={a} />)}
+
+          {/* ── Write approvals ── */}
           {hasPendingWrite && onApprove && (
-            <div style={{margin:'8px 0'}}>
+            <div style={{margin:'8px 0',display:'flex',flexDirection:'column',gap:'6px'}}>
               {actions.filter(a=>a.type==='write_file'&&!a.executed).map((a,i)=>(
-                <div key={i} style={{marginBottom:'6px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'7px',overflow:'hidden'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:'6px',padding:'5px 10px'}}>
-                    <span style={{fontSize:'11px',color:'rgba(255,255,255,.5)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>✏️ {a.path}</span>
-                    <span style={{fontSize:'9px',color:'rgba(255,255,255,.2)'}}>{a.content?(Math.round(a.content.length/1024*10)/10)+'KB':''}</span>
-                    <button onClick={()=>onApprove(true,a.path)} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer'}}>✓ apply</button>
-                    <button onClick={()=>onApprove(false,a.path)} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer'}}>✗</button>
+                <div key={i} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'10px',overflow:'hidden'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'8px 12px'}}>
+                    <span style={{fontSize:'12px',color:'rgba(255,255,255,.55)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>✏️ {a.path}</span>
+                    <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',flexShrink:0}}>{a.content?(Math.round(a.content.length/1024*10)/10)+'KB':''}</span>
                   </div>
+                  {/* diff preview */}
                   {a.content&&a.original&&(
-                    <div style={{padding:'4px 0 6px',borderTop:'1px solid rgba(255,255,255,.04)',fontSize:'10px',fontFamily:'monospace',maxHeight:'160px',overflow:'auto'}}>
+                    <div style={{paddingBottom:'6px',borderTop:'1px solid rgba(255,255,255,.04)',fontSize:'11px',fontFamily:'monospace',maxHeight:'180px',overflow:'auto'}}>
                       {(()=>{
                         const oldLines=(a.original||'').split('\n');
                         const newLines=(a.content||'').split('\n');
                         const maxLen=Math.max(oldLines.length,newLines.length);
                         const result=[];
-                        for(let i=0;i<Math.min(maxLen,40);i++){
+                        for(let i=0;i<Math.min(maxLen,50);i++){
                           const o=oldLines[i],n=newLines[i];
                           if(o===n) continue;
                           if(o!==undefined&&n===undefined) result.push({type:'del',text:o,ln:i+1});
                           else if(o===undefined&&n!==undefined) result.push({type:'add',text:n,ln:i+1});
                           else { result.push({type:'del',text:o,ln:i+1}); result.push({type:'add',text:n,ln:i+1}); }
                         }
-                        return result.slice(0,30).map((line,j)=>(
-                          <div key={j} style={{display:'flex',gap:'6px',padding:'0 10px',background:line.type==='add'?'rgba(74,222,128,.07)':'rgba(248,113,113,.07)'}}>
-                            <span style={{color:line.type==='add'?'#4ade80':'#f87171',flexShrink:0,width:'10px'}}>{line.type==='add'?'+':'-'}</span>
-                            <span style={{color:'rgba(255,255,255,.3)',flexShrink:0,width:'28px',textAlign:'right'}}>{line.ln}</span>
+                        return result.slice(0,40).map((line,j)=>(
+                          <div key={j} style={{display:'flex',gap:'6px',padding:'1px 12px',background:line.type==='add'?'rgba(74,222,128,.07)':'rgba(248,113,113,.07)'}}>
+                            <span style={{color:line.type==='add'?'#4ade80':'#f87171',flexShrink:0,width:'12px'}}>{line.type==='add'?'+':'-'}</span>
+                            <span style={{color:'rgba(255,255,255,.3)',flexShrink:0,width:'30px',textAlign:'right'}}>{line.ln}</span>
                             <span style={{color:line.type==='add'?'rgba(74,222,128,.9)':'rgba(248,113,113,.7)',whiteSpace:'pre',overflow:'hidden',textOverflow:'ellipsis'}}>{line.text||' '}</span>
                           </div>
                         ));
                       })()}
-                      <div style={{padding:'2px 10px',color:'rgba(255,255,255,.2)',fontSize:'9px'}}>{a.content.split('\n').length} baris total</div>
+                      <div style={{padding:'3px 12px',color:'rgba(255,255,255,.2)',fontSize:'10px'}}>{a.content.split('\n').length} baris total</div>
                     </div>
                   )}
                   {a.content&&!a.original&&(
-                    <div style={{padding:'4px 10px 6px',borderTop:'1px solid rgba(255,255,255,.04)',fontSize:'10px',fontFamily:'monospace',color:'rgba(255,255,255,.3)',maxHeight:'80px',overflow:'hidden'}}>
+                    <div style={{padding:'6px 12px',borderTop:'1px solid rgba(255,255,255,.04)',fontSize:'11px',fontFamily:'monospace',color:'rgba(255,255,255,.3)',maxHeight:'80px',overflow:'hidden'}}>
                       {a.content.split('\n').slice(0,5).map((l,j)=><div key={j} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l||' '}</div>)}
-                      {a.content.split('\n').length>5&&<div style={{color:'rgba(255,255,255,.15)'}}>... {a.content.split('\n').length} baris total</div>}
+                      {a.content.split('\n').length>5&&<div style={{color:'rgba(255,255,255,.15)'}}>... {a.content.split('\n').length} baris</div>}
                     </div>
                   )}
+                  {/* per-file approve buttons */}
+                  <div style={{display:'flex',gap:'8px',padding:'8px 12px',borderTop:'1px solid rgba(255,255,255,.04)'}}>
+                    <button onClick={()=>onApprove(true,a.path)} style={{...approveBtn,flex:1}}>✓ Apply</button>
+                    <button onClick={()=>onApprove(false,a.path)} style={rejectBtn}>✗</button>
+                  </div>
                 </div>
               ))}
               {actions.filter(a=>a.type==='write_file'&&!a.executed).length>1&&(
-                <div style={{display:'flex',gap:'6px',marginTop:'4px'}}>
-                  <button onClick={()=>onApprove(true,'__all__')} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'7px',padding:'5px 14px',color:'#4ade80',fontSize:'11px',cursor:'pointer'}}>✓ Tulis semua</button>
-                  <button onClick={()=>onApprove(false,'__all__')} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'7px',padding:'5px 14px',color:'#f87171',fontSize:'11px',cursor:'pointer'}}>✗ Batal semua</button>
+                <div style={{display:'flex',gap:'8px',marginTop:'2px'}}>
+                  <button onClick={()=>onApprove(true,'__all__')} style={{...approveBtn,flex:1}}>✓ Tulis semua ({actions.filter(a=>a.type==='write_file'&&!a.executed).length} file)</button>
+                  <button onClick={()=>onApprove(false,'__all__')} style={rejectBtn}>✗ Batal</button>
                 </div>
               )}
             </div>
           )}
+
+          {/* ── Plan approval ── */}
           {hasPlan && onPlanApprove && (
             <div style={{ display:'flex', gap:'8px', margin:'8px 0' }}>
-              <button onClick={() => onPlanApprove(true)} style={{ background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.3)', borderRadius:'8px', padding:'6px 16px', color:'#a78bfa', fontSize:'12px', cursor:'pointer' }}>✓ Approve Plan</button>
-              <button onClick={() => onPlanApprove(false)} style={{ background:'rgba(248,113,113,.08)', border:'1px solid rgba(248,113,113,.15)', borderRadius:'8px', padding:'6px 16px', color:'#f87171', fontSize:'12px', cursor:'pointer' }}>✗ Ubah Plan</button>
+              <button onClick={() => onPlanApprove(true)} style={{...approveBtn,flex:1}}>✓ Approve Plan</button>
+              <button onClick={() => onPlanApprove(false)} style={rejectBtn}>✗ Ubah</button>
             </div>
           )}
+
+          {/* ── Auto-fix ── */}
           {isLast && onAutoFix && msg.role==='assistant' && (msg.content.includes('❌')||msg.content.includes('Error:')) && (
-            <button onClick={onAutoFix} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'8px',padding:'5px 14px',color:'#f87171',fontSize:'12px',cursor:'pointer',alignSelf:'flex-start',marginTop:'4px'}}>🔧 Auto-fix</button>
+            <button onClick={onAutoFix} style={{...rejectBtn,alignSelf:'flex-start',marginTop:'4px'}}>🔧 Auto-fix</button>
           )}
+
+          {/* ── Continue ── */}
           {isContinued && onContinue && (
-            <button onClick={onContinue} style={{ background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.2)', borderRadius:'8px', padding:'5px 14px', color:'#a78bfa', fontSize:'12px', cursor:'pointer', alignSelf:'flex-start', marginTop:'4px' }}>↓ Lanjutkan</button>
+            <button onClick={onContinue} style={{ background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.2)', borderRadius:'8px', padding:'8px 16px', color:'#a78bfa', fontSize:'13px', cursor:'pointer', alignSelf:'flex-start', marginTop:'4px', minHeight:'40px' }}>↓ Lanjutkan</button>
           )}
-          <div style={{ ...S.msgActions, opacity: hover ? 1 : 0 }}>
+
+          {/* ── Message actions — always visible on mobile ── */}
+          <div style={S.msgActions}>
             <button style={S.msgActBtn} onClick={copyMsg}>copy</button>
-            {isLast && onRetry && <button style={S.msgActBtn} onClick={onRetry}>retry</button>}
+            {isLast && onRetry && <button style={S.msgActBtn} onClick={onRetry}>↺ retry</button>}
           </div>
         </div>
       )}

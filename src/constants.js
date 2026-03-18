@@ -59,7 +59,7 @@ export const BASE_SYSTEM = [
   '7. Kepotong → tulis CONTINUE di akhir',
   '8. PROJECT_NOTE: untuk simpan info penting project',
   '9. Jangan jelaskan yang sudah jelas dari kode',
-  '10. Jangan tulis ulang file besar — gunakan string replace minimal',
+  '13. Task edit file yang JELAS → LANGSUNG write_file action, tanpa prose penjelasan dulu.',
   '11. Butuh info dari internet (docs, library, berita tech) → gunakan web_search action',
   '12. Kalau task butuh input spesifik dari user sebelum bisa mulai → gunakan format ELICIT:',
   '    Contoh: ELICIT: {"title":"Spesifikasi Component","description":"Isi detail dulu ya~","fields":[{"name":"componentName","label":"Nama component","type":"text","placeholder":"misal: UserCard"},{"name":"framework","label":"Framework","type":"select","options":["React","Vanilla JS"]},{"name":"hasProps","label":"Butuh props?","type":"checkbox"}]}',
@@ -80,7 +80,7 @@ export const GIT_SHORTCUTS = [
   { label: 'status', icon: '◎', cmd: 'git status' },
   { label: 'log',    icon: '◈', cmd: 'git log --oneline -10' },
   { label: 'pull',   icon: '↓', cmd: 'git pull' },
-  { label: 'push',   icon: '↑', cmd: 'node ~/yugit.cjs "update"' },
+  { label: 'push',   icon: '↑', cmd: 'node yugit.cjs "update"' },
   { label: 'cp dl',  icon: '📥', cmd: 'cp /sdcard/Download/* . 2>/dev/null && echo "✅ Copy selesai" || echo "⚠ Tidak ada file baru"' },
 ];
 

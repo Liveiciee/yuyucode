@@ -86,15 +86,20 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI }) {
         {suggestions.length>0&&(
           <div style={{position:'absolute',bottom:'100%',left:0,right:0,background:'#1e2028',border:'1px solid rgba(255,255,255,.1)',borderRadius:'8px 8px 0 0',boxShadow:'0 -8px 24px rgba(0,0,0,.5)',overflow:'hidden',marginBottom:'2px'}}>
             {suggestions.map((s,i)=>(
-              <div key={i} style={{padding:'7px 12px',fontSize:'11px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.05)',background:i===selIdx?'rgba(49,109,202,.5)':'transparent',color:i===selIdx?'#fff':'rgba(255,255,255,.5)'}} onClick={()=>{setCmd(s);setSuggestions([]);}}>
-                <span style={{opacity:.5,marginRight:'8px'}}>❯</span>{s}
+              <div key={i} style={{padding:'10px 12px',fontSize:'12px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,.05)',background:i===selIdx?'rgba(49,109,202,.5)':'transparent',color:i===selIdx?'#fff':'rgba(255,255,255,.5)'}} onClick={()=>{setCmd(s);setSuggestions([]);}}>                <span style={{opacity:.5,marginRight:'8px'}}>❯</span>{s}
               </div>
             ))}
           </div>
         )}
+        <div style={{display:'flex',gap:'4px',marginBottom:'5px'}}>
+          <button onClick={()=>{const i=Math.min(histIdx+1,(cmdHistory?.length||1)-1);setHistIdx(i);setCmd(cmdHistory?.[i]||'');}} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'4px 12px',color:'rgba(255,255,255,.4)',fontSize:'13px',cursor:'pointer',minHeight:'32px'}}>↑</button>
+          <button onClick={()=>{const i=histIdx-1;setHistIdx(i);setCmd(i>=0?cmdHistory?.[i]||'':'');}} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'4px 12px',color:'rgba(255,255,255,.4)',fontSize:'13px',cursor:'pointer',minHeight:'32px'}}>↓</button>
+          <div style={{flex:1}}/>
+          {cmd.trim()&&<button onClick={run} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'6px',padding:'4px 16px',color:'#4ade80',fontSize:'12px',cursor:'pointer',minHeight:'32px'}}>▶ Run</button>}
+        </div>
         <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
           <span style={{color:'#4ade80'}}>➜</span>
-          <input style={{background:'transparent',border:'none',outline:'none',flex:1,color:'rgba(255,255,255,.85)',fontSize:'12px',fontFamily:'monospace'}} value={cmd} onChange={e=>onTextChange(e.target.value)} onKeyDown={handleKeyDown} placeholder='Type command...' autoCapitalize='none' autoCorrect='off'/>
+          <input style={{background:'transparent',border:'none',outline:'none',flex:1,color:'rgba(255,255,255,.85)',fontSize:'13px',fontFamily:'monospace'}} value={cmd} onChange={e=>onTextChange(e.target.value)} onKeyDown={handleKeyDown} placeholder='Type command...' autoCapitalize='none' autoCorrect='off' autoComplete='off' spellCheck={false}/>
         </div>
       </div>
     </div>

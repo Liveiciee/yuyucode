@@ -4,7 +4,49 @@ import { Preferences } from "@capacitor/preferences";
 import { callServer } from '../api.js';
 import { THEMES, MODELS } from '../constants.js';
 
-// ─── GIT DIFF PANEL ───────────────────────────────────────────────────────────
+// ─── BOTTOM SHEET (reusable mobile-first wrapper) ─────────────────────────────
+export function BottomSheet({ children, onClose, height='88%', noPad=false }) {
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startY = useRef(null);
+
+  function onTouchStart(e) { startY.current = e.touches[0].clientY; setDragging(true); }
+  function onTouchMove(e) {
+    if (startY.current === null) return;
+    const delta = Math.max(0, e.touches[0].clientY - startY.current);
+    setDragY(delta);
+  }
+  function onTouchEnd() {
+    if (dragY > 110) { onClose(); } else { setDragY(0); }
+    setDragging(false); startY.current = null;
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:99,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}
+      onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+      <div onClick={onClose} style={{position:'absolute',inset:0,background:'rgba(0,0,0,.55)'}} />
+      <div style={{
+        position:'relative', background:'#111113',
+        borderRadius:'18px 18px 0 0',
+        maxHeight:height, display:'flex', flexDirection:'column',
+        transform:`translateY(${dragY}px)`,
+        transition: dragging ? 'none' : 'transform .3s cubic-bezier(.32,.72,0,1)',
+        boxShadow:'0 -8px 40px rgba(0,0,0,.6)',
+      }}>
+        {/* drag handle zone */}
+        <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+          style={{padding:'10px 0 4px',display:'flex',justifyContent:'center',flexShrink:0,touchAction:'none',cursor:'grab'}}>
+          <div style={{width:'40px',height:'4px',borderRadius:'2px',background:'rgba(255,255,255,.18)'}} />
+        </div>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',paddingBottom:'env(safe-area-inset-bottom,8px)'}}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export function GitDiffPanel({ folder, onClose }) {
   const [diff, setDiff] = useState('');
   const [loading, setLoading] = useState(true);
@@ -34,7 +76,7 @@ export function GitDiffPanel({ folder, onClose }) {
   }
 
   return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column'}}>
+    <BottomSheet onClose={onClose}>
       <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
         <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>◐ Git Diff</span>
         <button onClick={()=>{setStaged(false);load(false);}} style={{background:!staged?'rgba(255,255,255,.1)':'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'5px',padding:'2px 8px',color:!staged?'#f0f0f0':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>unstaged</button>
@@ -44,7 +86,7 @@ export function GitDiffPanel({ folder, onClose }) {
       <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
         {loading ? <div style={{padding:'16px',color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Loading···</div> : renderDiff(diff)}
       </div>
-    </div>
+  </BottomSheet>
   );
 }
 
@@ -81,7 +123,7 @@ export function FileHistoryPanel({ folder, filePath, onClose }) {
   }
 
   return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex'}}>
+    <BottomSheet onClose={onClose}>
       <div style={{width:'200px',borderRight:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',flexShrink:0}}>
         <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center'}}>
           <span style={{fontSize:'12px',fontWeight:'600',color:'#f0f0f0',flex:1}}>📜 File History</span>
@@ -118,7 +160,7 @@ export function FileHistoryPanel({ folder, filePath, onClose }) {
           <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,.2)',fontSize:'12px'}}>Pilih commit untuk preview</div>
         )}
       </div>
-    </div>
+  </BottomSheet>
   );
 }
 
@@ -147,7 +189,7 @@ export function CustomActionsPanel({ folder, onRun, onClose }) {
   }
 
   return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+    <BottomSheet onClose={onClose}><div style={{padding:'0 16px 8px',display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
       <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
         <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⚡ Custom Actions</span>
         <button onClick={()=>setAdding(!adding)} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>+ New</button>
@@ -176,6 +218,7 @@ export function CustomActionsPanel({ folder, onRun, onClose }) {
         ))}
       </div>
     </div>
+  </BottomSheet>
   );
 }
 
@@ -195,7 +238,7 @@ export function ShortcutsPanel({ onClose }) {
     ['Tanya Yuyu', 'Tanya tentang file ini'],
   ];
   return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.88)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+    <BottomSheet onClose={onClose}><div style={{padding:'0 16px 8px',display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
       <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
         <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⌨ Keyboard Shortcuts</span>
         <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
@@ -207,6 +250,7 @@ export function ShortcutsPanel({ onClose }) {
         </div>
       ))}
     </div>
+  </BottomSheet>
   );
 }
 
@@ -232,7 +276,7 @@ export function GitBlamePanel({ folder, filePath, onClose }) {
   }, [filePath]);
 
   return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column'}}>
+    <BottomSheet onClose={onClose}>
       <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',background:'rgba(255,255,255,.02)',flexShrink:0}}>
         <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>👁 Git Blame — {filePath.split('/').pop()}</span>
         <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
@@ -247,7 +291,7 @@ export function GitBlamePanel({ folder, filePath, onClose }) {
           </div>
         ))}
       </div>
-    </div>
+  </BottomSheet>
   );
 }
 
@@ -276,7 +320,7 @@ export function SnippetLibrary({ onInsert, onClose }) {
   }
 
   return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column'}}>
+    <BottomSheet onClose={onClose}>
       <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
         <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>✦ Snippet Library</span>
         <button onClick={()=>setAdding(!adding)} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'11px',cursor:'pointer'}}>+ New</button>
@@ -304,7 +348,7 @@ export function SnippetLibrary({ onInsert, onClose }) {
           </div>
         ))}
       </div>
-    </div>
+  </BottomSheet>
   );
 }
 
@@ -319,7 +363,7 @@ export function ThemeBuilder({ current, onSave, onClose }) {
     {key:'border', label:'Border'},
   ];
   return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+    <BottomSheet onClose={onClose}><div style={{padding:'0 16px 8px',display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
       <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
         <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🎨 Theme Builder</span>
         <button onClick={()=>onSave(t)} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 10px',color:'#4ade80',fontSize:'11px',cursor:'pointer',marginRight:'8px'}}>Simpan</button>
@@ -343,6 +387,7 @@ export function ThemeBuilder({ current, onSave, onClose }) {
         </div>
       </div>
     </div>
+  </BottomSheet>
   );
 }
 
@@ -405,10 +450,8 @@ export function CommandPalette({ onClose, onRun, folder, memories, checkpoints, 
   const display = filtered ? [{label:'Results', items:filtered}] : sections;
 
   return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(8px)',zIndex:200,display:'flex',flexDirection:'column',alignItems:'center',paddingTop:'60px'}}
-      onClick={onClose}>
-      <div style={{width:'100%',maxWidth:'480px',background:'#111113',border:'1px solid rgba(255,255,255,.1)',borderRadius:'12px',overflow:'hidden',boxShadow:'0 24px 60px rgba(0,0,0,.8)'}}
-        onClick={e=>e.stopPropagation()}>
+    <BottomSheet onClose={onClose} height='95%'>
+      <div style={{width:'100%',display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
         <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 14px',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
           <span style={{fontSize:'13px',color:'rgba(255,255,255,.3)'}}>⌘</span>
           <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)}
@@ -445,6 +488,7 @@ export function CommandPalette({ onClose, onRun, folder, memories, checkpoints, 
         </div>
       </div>
     </div>
+  </BottomSheet>
   );
 }
 
@@ -548,7 +592,7 @@ export function DepGraphPanel({ depGraph, onClose }) {
   const edgeCount = depGraph?.edges?.length || depGraph?.imports?.length || 0;
 
   return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.93)',zIndex:99,display:'flex',flexDirection:'column'}}>
+    <BottomSheet onClose={onClose} height='92%'>
       <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:'8px',flexShrink:0,background:'rgba(255,255,255,.02)'}}>
         <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🕸 Dep Graph — <span style={{fontFamily:'monospace',color:'#a78bfa'}}>{depGraph?.file}</span></span>
         <span style={{fontSize:'10px',color:'rgba(5,150,105,.7)'}}>● {localCount} local</span>
@@ -568,7 +612,7 @@ export function DepGraphPanel({ depGraph, onClose }) {
         <span style={{fontSize:'9px',color:'rgba(29,78,216,.7)'}}>● npm</span>
         <span style={{fontSize:'9px',color:'rgba(255,255,255,.2)',marginLeft:'auto'}}>drag nodes to reposition</span>
       </div>
-    </div>
+  </BottomSheet>
   );
 }
 
@@ -693,7 +737,7 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
   const previewData  = data?.previews || [];
 
   return (
-    <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.96)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+    <BottomSheet onClose={onClose}><div style={{padding:'0 16px 8px',display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
       {/* Header */}
       <div style={{display:'flex',alignItems:'center',marginBottom:'10px'}}>
         <span style={{fontSize:'14px',fontWeight:'600',color:'#f87171',flex:1}}>⚠ Merge Conflict — {conflictList.length} file</span>
@@ -754,5 +798,6 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
         </button>
       </div>
     </div>
+  </BottomSheet>
   );
 }

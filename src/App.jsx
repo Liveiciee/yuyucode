@@ -10,7 +10,7 @@ import { FileEditor } from './components/FileEditor.jsx';
 import { Terminal } from './components/Terminal.jsx';
 import { SearchBar, UndoBar } from './components/SearchBar.jsx';
 import { VoiceBtn, PushToTalkBtn } from './components/VoiceBtn.jsx';
-import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel } from './components/panels.jsx';
+import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel, BottomSheet } from './components/panels.jsx';
 import { parseElicitation } from './features.js';
 import { useSlashCommands } from './hooks/useSlashCommands.js';
 import { useUIStore }      from './hooks/useUIStore.js';
@@ -676,24 +676,33 @@ export default function App() {
       {project.sessionColor&&<div style={{height:'2px',background:project.sessionColor,flexShrink:0}}/>}
 
       {/* HEADER */}
-      <div style={{height:'44px',padding:'0 10px',borderBottom:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'8px',background:T.bg,flexShrink:0}}>
-        <button onClick={()=>ui.setShowSidebar(!ui.showSidebar)} style={{background:'none',border:'none',color:ui.showSidebar?T.accent:'rgba(255,255,255,.3)',fontSize:'15px',cursor:'pointer',padding:'4px',borderRadius:'5px',lineHeight:1}}>☰</button>
-        <div style={{width:'6px',height:'6px',borderRadius:'50%',background:project.serverOk?'#4ade80':'#f87171',flexShrink:0}}/>
-        <div style={{flex:1,cursor:'pointer',minWidth:0,overflow:'hidden'}} onClick={()=>ui.setShowFolder(!ui.showFolder)}>
-          <span style={{fontSize:'13px',fontWeight:'600',color:T.text,letterSpacing:'-0.2px'}}>YuyuCode</span>
-          <span style={{fontSize:'11px',color:'rgba(255,255,255,.25)',marginLeft:'8px'}}>{project.folder}</span>
-          <span style={{fontSize:'10px',color:'rgba(255,255,255,.18)',marginLeft:'4px'}}>⎇ {project.branch}</span>
-          {project.skill&&<span style={{fontSize:'9px',color:'rgba(74,222,128,.5)',marginLeft:'6px',fontWeight:'600'}}>SKILL</span>}
-          <span style={{fontSize:'10px',color:project.effort==='low'?'rgba(74,222,128,.6)':project.effort==='high'?'rgba(248,113,113,.6)':'rgba(255,255,255,.2)',marginLeft:'4px'}}>{project.effort==='low'?'○':project.effort==='high'?'●':'◐'}</span>
+      {/* ── HEADER ── */}
+      <div style={{flexShrink:0,background:T.bg,borderBottom:'1px solid '+T.border}}>
+        {/* Main row */}
+        <div style={{height:'50px',padding:'0 10px',display:'flex',alignItems:'center',gap:'8px'}}>
+          <button onClick={()=>ui.setShowSidebar(!ui.showSidebar)} style={{background:'none',border:'none',color:ui.showSidebar?T.accent:'rgba(255,255,255,.3)',fontSize:'18px',cursor:'pointer',padding:'6px',borderRadius:'8px',lineHeight:1,minWidth:'36px',minHeight:'36px',display:'flex',alignItems:'center',justifyContent:'center'}}>☰</button>
+          <div style={{flex:1,cursor:'pointer',minWidth:0,overflow:'hidden'}} onClick={()=>ui.setShowFolder(!ui.showFolder)}>
+            <div style={{fontSize:'14px',fontWeight:'700',color:T.text,letterSpacing:'-0.3px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              YuyuCode
+              <span style={{fontSize:'11px',fontWeight:'400',color:'rgba(255,255,255,.3)',marginLeft:'8px'}}>{project.folder?.split('/').pop()}</span>
+            </div>
+          </div>
+          <button onClick={()=>ui.setShowPalette(true)} style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.09)',borderRadius:'10px',padding:'7px 12px',color:'rgba(255,255,255,.5)',fontSize:'13px',cursor:'pointer',minWidth:'40px',minHeight:'38px',display:'flex',alignItems:'center',justifyContent:'center'}}>⌘</button>
+          <button onClick={()=>{chat.setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});chat.setShowFollowUp(false);haptic('light');}}
+            style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'10px',padding:'7px 12px',color:'rgba(255,255,255,.35)',fontSize:'12px',cursor:'pointer',minHeight:'38px'}}>new</button>
         </div>
-        <button onClick={()=>{const i=MODELS.findIndex(m=>m.id===project.model);const next=MODELS[(i+1)%MODELS.length];project.setModel(next.id);Preferences.set({key:'yc_model',value:next.id});}}
-          style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'99px',padding:'3px 9px',color:'rgba(255,255,255,.45)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>
-          {MODELS.find(m=>m.id===project.model)?.label||'AI'}
-        </button>
-        <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)',flexShrink:0}}>~{tokens}tk</span>
-        <button onClick={()=>ui.setShowPalette(true)} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'7px',padding:'4px 8px',color:'rgba(255,255,255,.4)',fontSize:'12px',cursor:'pointer',flexShrink:0}}>⌘</button>
-        <button onClick={()=>{chat.setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});chat.setShowFollowUp(false);haptic('light');}}
-          style={{background:'none',border:'1px solid rgba(255,255,255,.07)',borderRadius:'7px',padding:'4px 8px',color:'rgba(255,255,255,.3)',fontSize:'11px',cursor:'pointer',flexShrink:0}}>new</button>
+        {/* Status subrow */}
+        <div style={{display:'flex',alignItems:'center',gap:'10px',padding:'0 12px 6px',overflowX:'auto'}}>
+          <div style={{width:'6px',height:'6px',borderRadius:'50%',background:project.serverOk?'#4ade80':'#f87171',flexShrink:0}}/>
+          <button onClick={()=>{const i=MODELS.findIndex(m=>m.id===project.model);const next=MODELS[(i+1)%MODELS.length];project.setModel(next.id);Preferences.set({key:'yc_model',value:next.id});}}
+            style={{background:'none',border:'none',padding:0,color:'rgba(255,255,255,.35)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0,fontFamily:'monospace'}}>
+            {MODELS.find(m=>m.id===project.model)?.label||'AI'}
+          </button>
+          <span style={{fontSize:'10px',color:'rgba(255,255,255,.18)',flexShrink:0,fontFamily:'monospace'}}>⎇ {project.branch}</span>
+          <span style={{fontSize:'10px',color:'rgba(255,255,255,.18)',flexShrink:0,fontFamily:'monospace'}}>~{tokens}tk</span>
+          {project.skill&&<span style={{fontSize:'9px',color:'rgba(74,222,128,.5)',flexShrink:0,fontWeight:'600',fontFamily:'monospace'}}>SKILL</span>}
+          <span style={{fontSize:'10px',color:project.effort==='low'?'rgba(74,222,128,.5)':project.effort==='high'?'rgba(248,113,113,.5)':'rgba(255,255,255,.18)',flexShrink:0}}>{project.effort==='low'?'low':project.effort==='high'?'high':'med'}</span>
+        </div>
       </div>
 
       {ui.showFolder&&(
@@ -701,7 +710,8 @@ export default function App() {
           <input value={project.folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(project.folderInput)}
             style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'6px 10px',color:T.text,fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
           <button onClick={()=>saveFolder(project.folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}>set</button>
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       <UndoBar history={file.editHistory} onUndo={undoLastEdit}/>
@@ -744,8 +754,8 @@ export default function App() {
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
 
           {/* TABS */}
-          <div style={{display:'flex',borderBottom:'1px solid '+T.border,flexShrink:0,background:T.bg,height:'34px',alignItems:'stretch'}}>
-            <button onClick={()=>file.setActiveTab('chat')} style={{padding:'0 14px',background:'none',border:'none',borderBottom:file.activeTab==='chat'?'2px solid '+T.accent:'2px solid transparent',color:file.activeTab==='chat'?T.accent:'rgba(255,255,255,.3)',fontSize:'12px',cursor:'pointer',fontWeight:file.activeTab==='chat'?'500':'400'}}>Chat</button>
+          <div style={{display:'flex',borderBottom:'1px solid '+T.border,flexShrink:0,background:T.bg,height:'48px',alignItems:'stretch'}}>
+            <button onClick={()=>file.setActiveTab('chat')} style={{padding:'0 14px',background:'none',border:'none',borderBottom:file.activeTab==='chat'?'2px solid '+T.accent:'2px solid transparent',color:file.activeTab==='chat'?T.accent:'rgba(255,255,255,.3)',fontSize:'13px',cursor:'pointer',fontWeight:file.activeTab==='chat'?'600':'400'}}>Chat</button>
             {file.selectedFile&&(
               <>
                 <button onClick={()=>{file.setActiveTab('file');file.setEditMode(false);}} style={{padding:'0 12px',background:'none',border:'none',borderBottom:file.activeTab==='file'&&!file.editMode?'2px solid '+T.accent:'2px solid transparent',color:file.activeTab==='file'&&!file.editMode?T.accent:'rgba(255,255,255,.3)',fontSize:'12px',cursor:'pointer',maxWidth:'140px',overflow:'hidden',textOverflow:'ellipsis'}}>{file.selectedFile.split('/').pop()}</button>
@@ -840,7 +850,7 @@ export default function App() {
 
           {/* QUICK BAR */}
           {!ui.showTerminal&&(
-            <div style={{height:'32px',padding:'0 10px',borderTop:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'2px',flexShrink:0,overflowX:'auto'}}>
+            <div style={{height:'44px',padding:'0 10px',borderTop:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'2px',flexShrink:0,overflowX:'auto'}}>
               {GIT_SHORTCUTS.map(s=>(
                 <button key={s.label} disabled={chat.loading}
                   onClick={()=>{
@@ -866,7 +876,7 @@ export default function App() {
 
           {/* INPUT */}
           {!ui.showTerminal&&(
-            <div style={{padding:'8px 10px',borderTop:'1px solid '+T.border,background:T.bg,flexShrink:0,position:'relative'}}>
+            <div style={{padding:'8px 10px',paddingBottom:'calc(8px + env(safe-area-inset-bottom, 0px))',borderTop:'1px solid '+T.border,background:T.bg,flexShrink:0,position:'relative'}}>
               {chat.slashSuggestions.length>0&&(
                 <div style={{position:'absolute',bottom:'100%',left:'10px',right:'10px',background:'#111113',border:'1px solid rgba(255,255,255,.1)',borderRadius:'10px',zIndex:99,marginBottom:'6px',boxShadow:'0 12px 32px rgba(0,0,0,.6)',maxHeight:'260px',overflowY:'auto'}}>
                   {chat.slashSuggestions.map(s=>(
@@ -947,7 +957,8 @@ export default function App() {
 
       {/* MEMORY */}
       {ui.showMemory&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+        <BottomSheet onClose={()=>ui.setShowMemory(false)}>
+          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
           <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
             <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🧠 Auto Memories ({chat.memories.length})</span>
             <button onClick={()=>{chat.setMemories([]);Preferences.remove({key:'yc_memories'});}} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>clear all</button>
@@ -965,12 +976,14 @@ export default function App() {
               </div>
             ))}
           </div>
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       {/* CHECKPOINTS */}
       {ui.showCheckpoints&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+        <BottomSheet onClose={()=>ui.setShowCheckpoints(false)}>
+          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
           <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
             <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>📍 Checkpoints</span>
             <button onClick={saveCheckpoint} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>+ Save now</button>
@@ -989,7 +1002,8 @@ export default function App() {
               </div>
             ))}
           </div>
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       {/* SWARM LOG */}
@@ -997,7 +1011,8 @@ export default function App() {
         <div style={{position:'fixed',bottom:'80px',right:'12px',background:'rgba(0,0,0,.92)',border:'1px solid rgba(124,58,237,.3)',borderRadius:'10px',padding:'12px',zIndex:98,maxWidth:'280px',maxHeight:'200px',overflowY:'auto'}}>
           <div style={{fontSize:'11px',fontWeight:'600',color:'#a78bfa',marginBottom:'6px'}}>🐝 Agent Swarm Running···</div>
           {chat.swarmLog.map((l,i)=><div key={i} style={{fontSize:'10px',color:'rgba(255,255,255,.6)',marginBottom:'2px'}}>{l}</div>)}
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       {/* DEP GRAPH — d3 force layout */}
@@ -1053,12 +1068,14 @@ export default function App() {
               Mulai Coding! 🚀
             </button>
           </div>
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       {/* MCP */}
       {ui.showMCP&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+        <BottomSheet onClose={()=>ui.setShowMCP(false)}>
+          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
           <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
             <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔌 MCP Tools</span>
             <button onClick={()=>ui.setShowMCP(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
@@ -1074,12 +1091,14 @@ export default function App() {
               </div>
             </div>
           ))}
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       {/* GITHUB */}
       {ui.showGitHub&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+        <BottomSheet onClose={()=>ui.setShowGitHub(false)}>
+          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
           <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
             <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⑂ GitHub</span>
             <button onClick={()=>ui.setShowGitHub(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
@@ -1101,12 +1120,14 @@ export default function App() {
               </div>
             ))}
           </div>
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       {/* SESSIONS */}
       {ui.showSessions&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.95)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+        <BottomSheet onClose={()=>ui.setShowSessions(false)}>
+          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
           <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
             <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>💾 Saved Sessions</span>
             <button onClick={()=>ui.setShowSessions(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
@@ -1123,12 +1144,14 @@ export default function App() {
               </div>
             ))}
           </div>
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       {/* PERMISSIONS */}
       {ui.showPermissions&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.95)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+        <BottomSheet onClose={()=>ui.setShowPermissions(false)}>
+          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
           <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
             <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔐 Tool Permissions</span>
             <button onClick={()=>ui.setShowPermissions(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
@@ -1147,12 +1170,14 @@ export default function App() {
             ))}
           </div>
           <button onClick={()=>{const reset={read_file:true,write_file:false,exec:false,list_files:true,search:true,mcp:false,delete_file:false,browse:false};project.setPermissions(reset);Preferences.set({key:'yc_permissions',value:JSON.stringify(reset)});}} style={{marginTop:'12px',background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'8px',padding:'8px',color:'#f87171',fontSize:'12px',cursor:'pointer'}}>Reset ke Default</button>
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       {/* PLUGINS */}
       {ui.showPlugins&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.95)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+        <BottomSheet onClose={()=>ui.setShowPlugins(false)}>
+          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
           <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
             <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔌 Plugin Marketplace</span>
             <button onClick={()=>ui.setShowPlugins(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
@@ -1199,12 +1224,14 @@ export default function App() {
             );
           })}
           <div style={{marginTop:'8px',fontSize:'10px',color:'rgba(255,255,255,.2)',textAlign:'center'}}>Plugin aktif terpasang otomatis ke hooks system</div>
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       {/* CONFIG */}
       {ui.showConfig&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.95)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+        <BottomSheet onClose={()=>ui.setShowConfig(false)}>
+          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
           <div style={{display:'flex',alignItems:'center',marginBottom:'16px'}}>
             <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⚙️ Config</span>
             <button onClick={()=>ui.setShowConfig(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
@@ -1234,12 +1261,14 @@ export default function App() {
               </button>
             </div>
           </div>
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       {/* DEPLOY */}
       {ui.showDeploy&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.92)',zIndex:99,display:'flex',flexDirection:'column',padding:'16px'}}>
+        <BottomSheet onClose={()=>ui.setShowDeploy(false)}>
+          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
           <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
             <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🚀 Deploy</span>
             <button onClick={()=>ui.setShowDeploy(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
@@ -1252,7 +1281,8 @@ export default function App() {
             ))}
           </div>
           {ui.deployLog?<div style={{flex:1,background:'#0a0a0b',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px',padding:'12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(255,255,255,.7)',overflowY:'auto',whiteSpace:'pre-wrap'}}>{ui.deployLog}</div>:<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Pilih platform untuk deploy~</div>}
-        </div>
+              </div>
+  </BottomSheet>
       )}
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleImageAttach}/>
@@ -1294,7 +1324,8 @@ export default function App() {
               </button>
             </div>
           </div>
-        </div>
+              </div>
+  </BottomSheet>
       )}
     </div>
   );

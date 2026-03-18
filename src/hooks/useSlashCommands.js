@@ -54,9 +54,20 @@ export function useSlashCommands({
       setMessages(m=>[...m,{role:'assistant',content:tokenTracker.summary(),actions:[]}]);
 
     } else if (base==='/review') {
-      if (!selectedFile) { setMessages(m=>[...m,{role:'assistant',content:'Buka file dulu Papa~',actions:[]}]); return; }
-      const reviewContent = fileContent ? '\n\n```\n'+fileContent.slice(0,4000)+'\n```' : '';
-      await sendMsg('Lakukan code review menyeluruh pada file '+selectedFile+'. Cari: bugs potensial, performance issues, security issues, dan saran improvement.'+reviewContent);
+      const targetPath = parts.slice(1).join(' ').trim();
+      if (targetPath) {
+        // /review src/api.js — load file directly
+        setLoading(true);
+        const r = await callServer({type:'read', path: folder+'/'+targetPath.replace(/^\//,'')});
+        setLoading(false);
+        if (!r.ok) { setMessages(m=>[...m,{role:'assistant',content:'❌ File tidak ditemukan: '+targetPath,actions:[]}]); return; }
+        await sendMsg('Lakukan code review menyeluruh pada file '+targetPath+'. Cari: bugs potensial, performance issues, security issues, dan saran improvement.\n\n```\n'+r.data.slice(0,5000)+'\n```');
+      } else if (selectedFile) {
+        const reviewContent = fileContent ? '\n\n```\n'+fileContent.slice(0,5000)+'\n```' : '';
+        await sendMsg('Lakukan code review menyeluruh pada file '+selectedFile+'. Cari: bugs potensial, performance issues, security issues, dan saran improvement.'+reviewContent);
+      } else {
+        setMessages(m=>[...m,{role:'assistant',content:'Usage: /review atau /review src/file.js',actions:[]}]);
+      }
 
     } else if (base==='/clear') {
       setMessages([{role:'assistant',content:'Chat dibersihkan. Mau ngerjain apa Papa? 🌸'}]);
