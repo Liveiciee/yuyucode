@@ -133,33 +133,53 @@ function handle(payload) {
     const q = (payload.query || '').trim();
     if (!q) return { ok: false, data: 'Query diperlukan' };
     const encoded = encodeURIComponent(q);
-    const r = execSafe(
-      'curl -sL --max-time 12 -A "Mozilla/5.0" "https://api.duckduckgo.com/?q=' + encoded + '&format=json&no_html=1&skip_disambig=1" 2>/dev/null',
+    // 1. Wikipedia search API
+    const wikiSearch = execSafe(
+      'curl -sL --max-time 12 "https://en.wikipedia.org/w/api.php?action=search&srsearch=' + encoded + '&format=json&utf8=1&srlimit=3" 2>/dev/null',
       HOME, 15000
     );
     let results = [];
-    if (r.ok && r.data) {
+    if (wikiSearch.ok && wikiSearch.data) {
       try {
-        const d = JSON.parse(r.data);
-        if (d.AbstractText) results.push('📌 ' + d.AbstractText);
-        if (d.Answer) results.push('✅ ' + d.Answer);
-        if (d.Definition) results.push('📖 ' + d.Definition);
-        (d.RelatedTopics || []).slice(0, 6).forEach(function(t) {
-          if (t.Text) results.push('• ' + t.Text.slice(0, 200));
+        const d = JSON.parse(wikiSearch.data);
+        const hits = (d.query && d.query.search) || [];
+        hits.forEach(function(h) {
+          const snippet = h.snippet.replace(/<[^>]*>/g, '');
+          results.push('📖 **' + h.title + '**\n' + snippet);
         });
       } catch(e) {}
     }
+    // 2. Jina AI fetch first result for richer content
+    if (results.length > 0) {
+      try {
+        const d = JSON.parse(wikiSearch.data);
+        const first = d.query && d.query.search && d.query.search[0];
+        if (first) {
+          const wikiUrl = 'https://en.wikipedia.org/wiki/' + encodeURIComponent(first.title.replace(/ /g,'_'));
+          const jinaR = execSafe(
+            'curl -sL --max-time 15 "https://r.jina.ai/' + wikiUrl + '" 2>/dev/null | head -60',
+            HOME, 18000
+          );
+          if (jinaR.ok && jinaR.data) {
+            results.push('\n---\n🌐 **Detail: ' + first.title + '**\n' + jinaR.data.trim().slice(0, 1500));
+          }
+        }
+      } catch(e) {}
+    }
+    // 3. Fallback: Jina fetch direct search if no wiki results
     if (results.length === 0) {
-      const lite = execSafe(
-        'curl -sL --max-time 12 -A "Mozilla/5.0" "https://lite.duckduckgo.com/lite/?q=' + encoded + '" 2>/dev/null | sed "s/<[^>]*>//g" | grep -v "^[[:space:]]*$" | head -30',
-        HOME, 15000
+      const jinaFallback = execSafe(
+        'curl -sL --max-time 15 "https://r.jina.ai/https://en.wikipedia.org/w/index.php?search=' + encoded + '" 2>/dev/null | head -40',
+        HOME, 18000
       );
-      if (lite.ok && lite.data) results.push(lite.data.trim());
+      if (jinaFallback.ok && jinaFallback.data) {
+        results.push('🌐 ' + jinaFallback.data.trim().slice(0, 1000));
+      }
     }
     return { ok: true, data: results.join('\n\n') || 'Tidak ada hasil untuk: ' + q };
   }
 
-  if (type === 'exec') {
+    if (type === 'exec') {
     const cwd = filePath ? resolvePath(filePath) : HOME;
     return execSafe(command, cwd);
   }
