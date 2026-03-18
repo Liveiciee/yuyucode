@@ -276,9 +276,23 @@ export function checkPermission(permissions, actionType) {
 
 // ─── ELICITATION ─────────────────────────────────────────────────────────────
 export function parseElicitation(reply) {
-  const m = reply.match(/ELICIT:\s*({[\s\S]*?})/);
-  if (!m) return null;
-  try { return JSON.parse(m[1]); } catch { return null; }
+  const idx = reply.indexOf('ELICIT:');
+  if (idx === -1) return null;
+  // Find the opening brace after ELICIT:
+  const start = reply.indexOf('{', idx);
+  if (start === -1) return null;
+  // Walk forward counting braces to find the matching closing brace
+  let depth = 0;
+  let end = -1;
+  for (let i = start; i < reply.length; i++) {
+    if (reply[i] === '{') depth++;
+    else if (reply[i] === '}') {
+      depth--;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+  if (end === -1) return null;
+  try { return JSON.parse(reply.slice(start, end + 1)); } catch { return null; }
 }
 
 // ─── TF-IDF MEMORY RANKING ───────────────────────────────────────────────────
