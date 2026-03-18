@@ -99,13 +99,12 @@ export function useAgentLoop({
         actions: [],
       }]);
       await compactContext();
+      // compactContext sudah update chat.messages — tapi kita gunakan history lama
+      // untuk allMessages awal (messages baru akan terpakai di iter berikutnya via getState)
     }
 
     try {
       const cfg = project.effortCfg;
-
-      // Pakai messages terbaru — bisa sudah dicompact oleh auto-compact di atas
-      const freshHistory = chat.messages;
 
       // ── Build system context ──
       const notesCtx   = project.notes ? '\n\nProject notes:\n' + project.notes : '';
@@ -139,7 +138,7 @@ export function useAgentLoop({
       }
 
       const MAX_ITER = cfg.maxIter || 10;
-      let iter = 0, allMessages = [...freshHistory], finalContent = '', finalActions = [];
+      let iter = 0, allMessages = [...history], finalContent = '', finalActions = [];
       let autoContext = { ...(autoContextRef.current || {}) };
 
       // ── MAIN AGENT LOOP ──
@@ -175,44 +174,42 @@ export function useAgentLoop({
         const allActs = parseActions(reply);
 
         // ── Separate actions by type ──
-        // patch_file → auto-execute (no approval, safe find-and-replace)
-        // write_file → queue for user approval
-        // everything else → execute inline
+        // patch_file  → auto-execute (find-and-replace)
+        // write_file  → auto-execute WITH backup (Claude Code behavior)
+        // read_file   → parallel
+        // web_search  → parallel
+        // safe others (list,tree,search,mkdir,file_info,find_symbol) → parallel
+        // exec        → serial (side effects, order matters)
+        // mcp         → serial
         const patchActions     = allActs.filter(a => a.type === 'patch_file');
         const fullWriteActions = allActs.filter(a => a.type === 'write_file');
         const readActions      = allActs.filter(a => a.type === 'read_file');
         const webSearchActions = allActs.filter(a => a.type === 'web_search');
-        const otherActions     = allActs.filter(a =>
-          a.type !== 'write_file' && a.type !== 'patch_file' &&
-          a.type !== 'read_file'  && a.type !== 'web_search'
-        );
+        const safeParallelTypes = new Set(['list_files','tree','search','mkdir','file_info','find_symbol','move_file']);
+        const safeActions      = allActs.filter(a => safeParallelTypes.has(a.type));
+        const execActions      = allActs.filter(a => a.type === 'exec' || a.type === 'mcp');
 
-        // ── Read files (parallel if > 1) ──
-        if (readActions.length > 1) {
+        // ── Read files (parallel) ──
+        if (readActions.length > 0) {
           await runHooksV2(project.hooks.preToolCall, 'read_file:batch', project.folder);
           const res = await Promise.all(readActions.map(a => executeAction(a, project.folder)));
           readActions.forEach((a, i) => { a.result = res[i]; });
           await runHooksV2(project.hooks.postToolCall, 'read_file:batch', project.folder);
-        } else {
-          for (const a of readActions) {
-            await runHooksV2(project.hooks.preToolCall, 'read_file:' + a.path, project.folder);
-            a.result = await executeAction(a, project.folder);
-            await runHooksV2(project.hooks.postToolCall, 'read_file:' + a.path, project.folder);
-          }
         }
 
-        // ── Web search (parallel) ──
-        if (webSearchActions.length > 0) {
-          const res = await Promise.all(webSearchActions.map(a => executeAction(a, project.folder)));
-          webSearchActions.forEach((a, i) => { a.result = res[i]; });
+        // ── Web search + safe actions (all parallel) ──
+        if (webSearchActions.length > 0 || safeActions.length > 0) {
+          const combined = [...webSearchActions, ...safeActions];
+          const res = await Promise.all(combined.map(a => executeWithPermission(a, project.folder)));
+          combined.forEach((a, i) => { a.result = res[i]; });
         }
 
-        // ── Other actions with permission check ──
-        for (const a of otherActions) {
+        // ── Exec / MCP (serial — order matters) ──
+        for (const a of execActions) {
           a.result = await executeWithPermission(a, project.folder);
         }
 
-        // ── AUTO-EXECUTE patch_file (no approval needed, like Claude Code edits) ──
+        // ── AUTO-EXECUTE patch_file ──
         if (patchActions.length > 0) {
           await runHooksV2(project.hooks.preWrite, patchActions.map(a => a.path).join(','), project.folder);
           const patchResults = await Promise.all(patchActions.map(a => executeAction(a, project.folder)));
@@ -222,10 +219,9 @@ export function useAgentLoop({
           });
           await runHooksV2(project.hooks.postWrite, patchActions.map(a => a.path).join(','), project.folder);
 
-          // Notify failures
+          // Patch failed → self-correct
           const failed = patchActions.filter(a => !a.result?.ok);
           if (failed.length > 0) {
-            // Patch failed — feed back to AI for self-correction
             const failInfo = failed.map(a =>
               'patch_file GAGAL di ' + a.path + ': ' + (a.result?.data || '?')
             ).join('\n');
@@ -242,6 +238,28 @@ export function useAgentLoop({
             ];
             continue;
           }
+        }
+
+        // ── AUTO-EXECUTE write_file (Claude Code style: backup → write → continue) ──
+        if (fullWriteActions.length > 0) {
+          await runHooksV2(project.hooks.preWrite, fullWriteActions.map(a => a.path).join(','), project.folder);
+          const writeResults = await Promise.all(fullWriteActions.map(async a => {
+            // Backup dulu untuk undo
+            const backup = await callServer({ type: 'read', path: resolvePath(project.folder, a.path) });
+            if (backup.ok) a.original = backup.data;
+            return executeAction(a, project.folder);
+          }));
+          fullWriteActions.forEach((a, i) => {
+            a.result   = writeResults[i];
+            a.executed = true;
+          });
+          await runHooksV2(project.hooks.postWrite, fullWriteActions.map(a => a.path).join(','), project.folder);
+
+          // Store backups for undo
+          const backups = fullWriteActions
+            .filter(a => a.original !== undefined)
+            .map(a => ({ path: resolvePath(project.folder, a.path), content: a.original }));
+          if (backups.length) file.setEditHistory(h => [...h.slice(-(10 - backups.length)), ...backups]);
         }
 
         // ── Auto-load imports dari file yang dibaca ──
@@ -264,7 +282,7 @@ export function useAgentLoop({
         }
 
         // ── Exec error → auto-fix loop ──
-        const execErrors = otherActions.filter(a => {
+        const execErrors = execActions.filter(a => {
           if (a.type !== 'exec') return false;
           const out = (a.result?.data || '').toLowerCase();
           if (!out.trim()) return false;
@@ -289,10 +307,13 @@ export function useAgentLoop({
           continue;
         }
 
-        // ── Build feedback data untuk loop berikutnya ──
-        const allInlineActions = [...readActions, ...webSearchActions, ...otherActions, ...patchActions];
+        // ── Build feedback ──
+        const allInlineActions = [
+          ...readActions, ...webSearchActions, ...safeActions,
+          ...execActions, ...patchActions, ...fullWriteActions,
+        ];
 
-        const fileData = allInlineActions
+        const fileData = [...readActions, ...safeActions]
           .filter(a => a.result?.ok && !['exec', 'web_search', 'patch_file'].includes(a.type))
           .map(a => '=== ' + (a.path || a.type) + ' ===\n' + (a.result?.data || ''))
           .join('\n\n');
@@ -308,25 +329,20 @@ export function useAgentLoop({
             ).join('\n')
           : '';
 
-        const execData = otherActions
+        const writeData = fullWriteActions.length
+          ? fullWriteActions.map(a =>
+              (a.result?.ok ? '✅ written ' : '❌ write failed ') + a.path
+            ).join('\n')
+          : '';
+
+        const execData = execActions
           .filter(a => a.type === 'exec' && a.result?.data)
           .map(a => '$ ' + a.command + '\n' + (a.result?.data || '').slice(0, 800))
           .join('\n\n');
 
-        const combinedData = [fileData, webData, patchData, execData].filter(Boolean).join('\n\n');
+        const combinedData = [fileData, webData, patchData, writeData, execData].filter(Boolean).join('\n\n');
 
-        // ── Jika ada write_file → break, queue untuk approval ──
-        if (fullWriteActions.length > 0) {
-          await runHooksV2(project.hooks.preWrite, fullWriteActions.map(a => a.path).join(','), project.folder);
-          finalContent = reply;
-          finalActions = [
-            ...allInlineActions,
-            ...fullWriteActions.map(a => ({ ...a, executed: false })),
-          ];
-          break;
-        }
-
-        // ── Tidak ada data baru dan tidak ada write → done ──
+        // ── Tidak ada data baru → done ──
         if (!combinedData) {
           finalContent = reply;
           finalActions  = allInlineActions;

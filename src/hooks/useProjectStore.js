@@ -34,7 +34,7 @@ export function useProjectStore() {
 
   // ── Permissions / Hooks / Plugins ──
   const [permissions, setPermissionsRaw] = useState({
-    read_file: true, write_file: false, exec: false,
+    read_file: true, write_file: true, exec: true,
     list_files: true, search: true, mcp: false,
     delete_file: false, browse: false,
   });
