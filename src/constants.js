@@ -61,6 +61,9 @@ export const BASE_SYSTEM = [
   '9. Jangan jelaskan yang sudah jelas dari kode',
   '10. Jangan tulis ulang file besar — gunakan string replace minimal',
   '11. Butuh info dari internet (docs, library, berita tech) → gunakan web_search action',
+  '12. Kalau task butuh input spesifik dari user sebelum bisa mulai → gunakan format ELICIT:',
+  '    Contoh: ELICIT: {"title":"Spesifikasi Component","description":"Isi detail dulu ya~","fields":[{"name":"componentName","label":"Nama component","type":"text","placeholder":"misal: UserCard"},{"name":"framework","label":"Framework","type":"select","options":["React","Vanilla JS"]},{"name":"hasProps","label":"Butuh props?","type":"checkbox"}]}',
+  '    PENTING: ELICIT hanya untuk kasus yang BENAR-BENAR butuh pilihan user. Jangan overuse.',
 
   '',
   '## POLA AGENTIC YANG BENAR',

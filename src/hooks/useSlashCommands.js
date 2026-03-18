@@ -370,7 +370,7 @@ export function useSlashCommands({
       } else {
         setFileWatcherActive(true);
         setFileSnapshots({});
-        setMessages(m=>[...m,{role:'assistant',content:'👁 File watcher aktif. Yuyu akan notify kalau ada file yang berubah dari luar app (check tiap 30 detik).',actions:[]}]);
+        setMessages(m=>[...m,{role:'assistant',content:'👁 File watcher aktif. Yuyu akan notify real-time via WebSocket kalau ada file berubah dari luar app.',actions:[]}]);
       }
 
     } else if (base==='/refactor') {
