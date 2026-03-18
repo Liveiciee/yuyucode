@@ -58,7 +58,7 @@ export default function App() {
       Preferences.get({key:'yc_permissions'}),
     ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr,sc,pl,ef,tk,perm])=>{
       ui.loadUIPrefs({theme:th.value,fontSize:fs.value,sidebarWidth:sw.value,customTheme:ct.value,onboarded:ob.value});
-      project.loadProjectPrefs({folder:f.value,cmdHistory:ch.value,model:mo.value,hooks:hk.value,githubToken:ght.value,githubRepo:ghr.value,sessionColor:sc.value,plugins:pl.value,effort:ef.value,project.thinkingEnabled:tk.value,permissions:perm.value});
+      project.loadProjectPrefs({folder:f.value,cmdHistory:ch.value,model:mo.value,hooks:hk.value,githubToken:ght.value,githubRepo:ghr.value,sessionColor:sc.value,plugins:pl.value,effort:ef.value,thinkingEnabled:tk.value,permissions:perm.value});
       file.loadFilePrefs({pinned:pi.value,recent:re.value});
       chat.loadChatPrefs({history:h.value,memories:mem.value,checkpoints:ckp.value});
     });
@@ -434,7 +434,7 @@ export default function App() {
 
     try{
       const project.effortCfg = EFFORT_CONFIG[effort] || EFFORT_CONFIG.medium;
-      const notesCtx=project.notes?'\n\nProject project.notes:\n'+project.notes:'';
+      const notesCtx=project.notes?'\n\nProject notes:\n'+project.notes:'';
       const skillCtx=project.skill?'\n\nSKILL.md:\n'+project.skill:'';
       const pinnedCtx=file.pinnedFiles.length?'\n\nPinned files: '+file.pinnedFiles.join(', '):'';
       const fileCtx=file.selectedFile&&file.fileContent?'\n\nFile terbuka: '+file.selectedFile+'\n```\n'+fileContent.slice(0,1500)+'\n```':'';
