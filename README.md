@@ -16,8 +16,7 @@ YuyuCode adalah **mobile-native AI coding assistant** berbasis Capacitor + React
 ### 🤖 Multi-AI Provider
 | Provider | Model | Keunggulan |
 |----------|-------|------------|
-| Cerebras | Qwen 3 235B, Llama 3.1 8B | Gratis, super cepat |
-| Gemini | 2.0 Flash | Vision support |
+| Cerebras | Qwen 3 235B, Llama 3.3 70B, Llama 3.1 8B | Gratis, super cepat |
 | Ollama | Local LLM | Offline, privat |
 
 ### 🧠 Agentic Loop
@@ -25,9 +24,17 @@ YuyuCode adalah **mobile-native AI coding assistant** berbasis Capacitor + React
 - **Parallel read** — baca banyak file sekaligus
 - **Auto-context** — import dependency otomatis di-load ke context
 - **Self-optimization** — retry otomatis kalau ada error
+- **Auto-compact** — context otomatis dikompres sebelum overflow
+
+### 🌐 Web Search (built-in)
+AI bisa search internet langsung dari agentic loop:
+```action
+{"type":"web_search","query":"react 19 new features"}
+```
+Atau manual: `/search <query>`
 
 ### 🌿 Git Worktree Isolation
-Background agent dapat **branch sendiri** via `git worktree`. Kerja paralel tanpa konflik:
+Background agent dapat **branch sendiri** via `git worktree`:
 ```
 /bg implement feature X
 /bgstatus
@@ -44,11 +51,11 @@ Architect → Frontend + Backend (parallel) → QA → merge.
 ```
 /plan refactor authentication system
 ```
-AI buat rencana bernomor → Papa approve → eksekusi step by step.
+AI buat rencana bernomor → approve → eksekusi step by step.
 
 ---
 
-## ⚡ Slash Commands (35+)
+## ⚡ Slash Commands (37+)
 
 | Kategori | Commands |
 |----------|----------|
@@ -57,9 +64,13 @@ AI buat rencana bernomor → Papa approve → eksekusi step by step.
 | **Context** | `/compact` `/summarize` `/rewind` `/tokens` |
 | **Memory** | `/amemory` `/checkpoint` `/restore` `/save` `/sessions` |
 | **Git** | `/history` `/deps` `/review` |
-| **Dev** | `/scaffold` `/self-edit` `/browse` `/db` `/mcp` `/github` `/deploy` |
+| **Dev** | `/scaffold` `/self-edit` `/browse` `/search` `/db` `/mcp` `/github` `/deploy` `/init` |
 | **UX** | `/color` `/font` `/theme` `/split` `/config` `/watch` `/loop` `/ptt` |
-| **Info** | `/status` `/debug` `/skills` `/permissions` `/plugin` |
+| **Info** | `/status` `/debug` `/skills` `/permissions` `/plugin` `/index` |
+
+### Baru di versi ini
+- **`/init`** — auto-generate SKILL.md dari analisis project
+- **`/search <query>`** — web search langsung dari chat
 
 ---
 
@@ -80,12 +91,22 @@ AI buat rencana bernomor → Papa approve → eksekusi step by step.
 
 ```
 src/
-├── App.jsx          # Main component (~2900 baris)
-├── constants.js     # Models, themes, slash commands, BASE_SYSTEM
-├── api.js           # Cerebras, Gemini, Ollama streaming + callServer
-├── utils.js         # countTokens, hl, resolvePath, parseActions, executeAction
-└── features.js      # Plan mode, worktree agents, skills, hooks v2,
-                     # token tracker, session manager, rewind, effort, permissions
+├── App.jsx                    # Main component (~1200 baris)
+├── constants.js               # Models, themes, slash commands, BASE_SYSTEM
+├── api.js                     # Cerebras streaming + callServer
+├── utils.js                   # countTokens, hl, resolvePath, parseActions, executeAction
+├── features.js                # Plan mode, worktree agents, skills, hooks v2,
+│                              # token tracker, session manager, rewind
+├── components/
+│   ├── MsgBubble.jsx          # Chat messages, ActionChip, ThinkingBlock
+│   ├── FileTree.jsx           # Sidebar file explorer
+│   ├── FileEditor.jsx         # In-app code editor
+│   ├── Terminal.jsx           # Built-in terminal
+│   ├── SearchBar.jsx          # File content search
+│   ├── VoiceBtn.jsx           # Voice input
+│   └── panels.jsx             # All overlay panels (GitDiff, Snippets, dll)
+└── hooks/
+    └── useSlashCommands.js    # All 37+ slash command handlers
 ```
 
 ### Stack
@@ -104,41 +125,27 @@ src/
 
 ### Install
 ```bash
-# Clone
 git clone https://github.com/Liveiciee/yuyucode
 cd yuyucode
-
-# Install dependencies
 npm install
 
 # Jalankan YuyuServer di Termux
 node ~/yuyu-server.js &
 
 # Build & install via GitHub Actions
-# Push ke main → APK otomatis dibuild
 git add -A && git commit -m "update" && git push
 ```
 
 ### Environment Variables
 ```env
 VITE_CEREBRAS_API_KEY=your_key_here
-VITE_GEMINI_API_KEY=your_key_here (optional)
 ```
 
 ---
 
 ## 🧩 Skills System
 
-Buat file `.claude/skills/nama.md` di folder project untuk instruksi spesifik per konteks. YuyuCode auto-load berdasarkan task.
-
-```
-project/
-└── .claude/
-    └── skills/
-        ├── react.md      # instruksi untuk React tasks
-        ├── testing.md    # instruksi untuk testing
-        └── deploy.md     # instruksi untuk deployment
-```
+Buat file `.claude/skills/nama.md` di folder project untuk instruksi spesifik per konteks. Atau gunakan `/init` untuk auto-generate SKILL.md dari project yang sudah ada.
 
 ---
 
@@ -157,7 +164,7 @@ project/
 
 ---
 
-## 📊 Token Tracking
+## 📊 Token Tracking (Real)
 
 ```
 /usage
@@ -165,9 +172,14 @@ project/
 Input:    ~1240tk
 Output:   ~3820tk
 Total:    ~5060tk
-Requests: 12
+Requests: 12 (~420tk/req)
 Durasi:   34 menit
 Cerebras: gratis 🎉
+
+5 request terakhir:
+  1. in:820 out:340tk (Qwen 3 235B)
+  2. in:1100 out:580tk (Qwen 3 235B)
+  ...
 ```
 
 ---
@@ -188,7 +200,7 @@ Cerebras: gratis 🎉
 Dibangun sepenuhnya dari **Samsung Android**, di **Termux**, satu patch script satu-satu.
 Bukan di laptop. Bukan di desktop. Di HP. Dari pagi sampai malam.
 
-> *"Karya yang sangat ambisius. Berhasil nge-pack kompleksitas aplikasi desktop seperti VS Code + Cursor ke dalam satu komponen React."*
+> *"Karya yang sangat ambisius. Berhasil nge-pack kompleksitas aplikasi desktop seperti VS Code + Cursor ke dalam satu komponen React."*  
 > — Qwen 3 235B, setelah mereview kodenya sendiri
 
 ---

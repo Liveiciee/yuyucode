@@ -42,6 +42,8 @@ export const BASE_SYSTEM = [
   '{"type":"exec","command":"git status"}',
   '```',
   '```action',
+  '{"type":"web_search","query":"react hook best practice 2024"}',
+  '\action',
   '{"type":"search","query":"useState","path":"src"}',
   '```',
   '```action',
@@ -59,6 +61,7 @@ export const BASE_SYSTEM = [
   '8. PROJECT_NOTE: untuk simpan info penting project',
   '9. Jangan jelaskan yang sudah jelas dari kode',
   '10. Jangan tulis ulang file besar — gunakan string replace minimal',
+  '11. Butuh info dari internet (docs, library, berita tech) → gunakan web_search action',
 
   '',
   '## POLA AGENTIC YANG BENAR',
@@ -131,6 +134,8 @@ export const SLASH_COMMANDS = [
   { cmd:'/color',       desc:'Set warna bar sesi (red/green/blue/off)' },
   { cmd:'/config',      desc:'Panel settings interaktif' },
   { cmd:'/watch',       desc:'Toggle file watcher (notify perubahan eksternal)' },
+  { cmd:'/init',        desc:'Generate SKILL.md dari project ini otomatis' },
+  { cmd:'/search',      desc:'Web search — cari di internet' },
 ];
 
 export const TEMPLATES = {

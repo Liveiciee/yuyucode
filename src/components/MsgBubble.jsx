@@ -94,7 +94,7 @@ export function MsgContent({ text }) {
 
 export function ActionChip({ action }) {
   const [expanded, setExpanded] = useState(false);
-  const icon = action.type === 'read_file' ? '📄' : action.type === 'write_file' ? '✏️' : action.type === 'list_files' ? '📁' : action.type === 'exec' ? '⚡' : action.type === 'search' ? '🔍' : '🔧';
+  const icon = action.type === 'read_file' ? '📄' : action.type === 'write_file' ? '✏️' : action.type === 'list_files' ? '📁' : action.type === 'exec' ? '⚡' : action.type === 'search' ? '🔍' : action.type === 'web_search' ? '🌐' : '🔧';
   const label = action.type === 'exec' ? (action.command || '').slice(0, 40) : (action.path || action.type);
   const ok = action.result ? action.result.ok : null;
   return (

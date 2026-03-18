@@ -357,6 +357,55 @@ export function useSlashCommands({
       setMessages(m=>[...m,{role:'assistant',content:`🔧 **Self-edit dimulai...**\n\nTask: _${task}_`,actions:[]}]);
       setLoading(false);
       await sendMsg(`MODE: SELF-EDIT\n\nTask: ${task}\n\nBaca src/App.jsx secara bertahap dengan read_file (from/to 100 baris per request). Setelah baca bagian yang relevan, gunakan write_file untuk patch minimal. Jangan tulis ulang seluruh file.`);
+
+    } else if (base==='/search') {
+      const query = parts.slice(1).join(' ').trim();
+      if (!query) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /search <query>\nContoh: /search react useEffect cleanup',actions:[]}]); return; }
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'🔍 Searching: **'+query+'**...',actions:[]}]);
+      const r = await callServer({type:'web_search', query});
+      if (r.ok && r.data) {
+        setMessages(m=>[...m,{role:'assistant',content:'🌐 **Web Search: '+query+'**\n\n'+r.data,actions:[]}]);
+      } else {
+        setMessages(m=>[...m,{role:'assistant',content:'❌ Search gagal: '+(r.data||'unknown error'),actions:[]}]);
+      }
+      setLoading(false);
+
+    } else if (base==='/init') {
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'🌱 Menganalisis project untuk generate SKILL.md...',actions:[]}]);
+      // Gather project info
+      const [pkgR, structR, gitR, existR] = await Promise.all([
+        callServer({type:'read', path:folder+'/package.json'}),
+        callServer({type:'list', path:folder+'/src'}),
+        callServer({type:'exec', path:folder, command:'git log --oneline -5 2>/dev/null || echo "no git"'}),
+        callServer({type:'read', path:folder+'/SKILL.md'}),
+      ]);
+      if (existR.ok && existR.data) {
+        setMessages(m=>[...m,{role:'assistant',content:'⚠️ SKILL.md sudah ada. Ketik `/init overwrite` untuk timpa.',actions:[]}]);
+        if (parts[1] !== 'overwrite') { setLoading(false); return; }
+      }
+      const pkgInfo = pkgR.ok ? pkgR.data.slice(0,800) : 'tidak ada package.json';
+      const srcFiles = structR.ok && Array.isArray(structR.data) ? structR.data.filter(f=>!f.isDir).map(f=>f.name).join(', ') : 'tidak diketahui';
+      const gitLog = gitR.ok ? gitR.data.trim() : '';
+      await sendMsg(`Generate SKILL.md untuk project ini. Analisis:
+
+package.json:
+\`\`\`
+${pkgInfo}
+\`\`\`
+File di src/: ${srcFiles}
+Git log: ${gitLog}
+
+Buat SKILL.md yang berisi:
+1. Tentang project (1-2 baris)
+2. Stack & dependencies utama
+3. Struktur file penting
+4. Aturan coding project ini (naming convention, dll)
+5. Command penting (dev, build, test)
+
+Tulis ke SKILL.md menggunakan write_file. Format singkat, padat, max 50 baris.`);
+      setLoading(false);
     }
   }, [model, folder, branch, messages, selectedFile, fileContent, notes, memories, skills,
       thinkingEnabled, effort, loopActive, loopIntervalRef, agentMemory, splitView,

@@ -98,6 +98,7 @@ export async function executeAction(action, baseFolder) {
   }
   if (action.type === 'exec') return callServer({ type: 'exec', path: base, command: action.command });
   if (action.type === 'search') return callServer({ type: 'search', path: resolvePath(base, action.path || ''), content: action.query });
+  if (action.type === 'web_search') return callServer({ type: 'web_search', query: action.query });
   if (action.type === 'file_info') return callServer({ type: 'info', path: resolvePath(base, action.path) });
   if (action.type === 'delete_file') return callServer({ type: 'delete', path: resolvePath(base, action.path) });
   if (action.type === 'find_symbol') return callServer({ type: 'search', path: resolvePath(base, action.path || ''), content: action.symbol });

@@ -183,12 +183,35 @@ export async function runHooksV2(hookList, context, folder) {
 // ─── TOKEN TRACKER ────────────────────────────────────────────────────────────
 export class TokenTracker {
   constructor() { this.reset(); }
-  reset() { this.inputTokens = 0; this.outputTokens = 0; this.requests = 0; this.startTime = Date.now(); }
-  record(inTk, outTk) { this.inputTokens += inTk || 0; this.outputTokens += outTk || 0; this.requests += 1; }
+  reset() { this.inputTokens = 0; this.outputTokens = 0; this.requests = 0; this.startTime = Date.now(); this.history = []; }
+  record(inTk, outTk, model) {
+    this.inputTokens += inTk || 0;
+    this.outputTokens += outTk || 0;
+    this.requests += 1;
+    this.history.push({ inTk: inTk||0, outTk: outTk||0, model: model||'?', ts: Date.now() });
+    if (this.history.length > 100) this.history = this.history.slice(-100);
+  }
+  lastCost() {
+    const last = this.history[this.history.length - 1];
+    if (!last) return '';
+    return '[' + last.inTk + '→' + last.outTk + 'tk]';
+  }
   summary() {
     const total = this.inputTokens + this.outputTokens;
     const mins = Math.round((Date.now() - this.startTime) / 60000);
-    return '📊 **Token Usage**\nInput: ~' + this.inputTokens + 'tk\nOutput: ~' + this.outputTokens + 'tk\nTotal: ~' + total + 'tk\nRequests: ' + this.requests + '\nDurasi: ' + mins + ' menit\nCerebras: gratis';
+    const avg = this.requests > 0 ? Math.round(total / this.requests) : 0;
+    const recent = this.history.slice(-5).map((h,i) => '  '+(i+1)+'. in:'+h.inTk+' out:'+h.outTk+'tk ('+h.model+')').join('
+');
+    return '📊 **Token Usage**
+Input:    ~'+this.inputTokens+'tk
+Output:   ~'+this.outputTokens+'tk
+Total:    ~'+total+'tk
+Requests: '+this.requests+' (~'+avg+'tk/req)
+Durasi:   '+mins+' menit
+Cerebras: gratis 🎉
+
+**5 request terakhir:**
+'+recent;
   }
 }
 export const tokenTracker = new TokenTracker();

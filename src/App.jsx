@@ -503,6 +503,15 @@ export default function App() {
     const history=[...messages,userMsg];
     setMessages(history);setLoading(true);setStreaming('');
     const ctrl=new AbortController();abortRef.current=ctrl;
+
+    // ── AUTO-COMPACT: trigger at 80k chars to prevent context overflow ──
+    const AUTO_COMPACT_THRESHOLD = 80000;
+    const totalChars = history.reduce((a,m)=>a+(m.content?.length||0),0);
+    if (totalChars > AUTO_COMPACT_THRESHOLD && history.length > 12) {
+      setMessages(m=>[...m,{role:'assistant',content:'📦 Auto-compact — context terlalu besar (~'+Math.round(totalChars/1000)+'K chars). Mengkompress...',actions:[]}]);
+      await compactContext();
+    }
+
     try{
       const notesCtx=notes?'\n\nProject notes:\n'+notes:'';
       const skillCtx=skill?'\n\nSKILL.md:\n'+skill:'';
@@ -533,6 +542,10 @@ export default function App() {
         ];
         let reply=await callAI(groqMsgs,setStreaming,ctrl.signal,iter===1?visionImage:null);
         setStreaming('');
+        // track tokens per request
+        const inTk = Math.round(groqMsgs.reduce((a,m)=>a+(m.content?.length||0),0)/4);
+        const outTk = Math.round(reply.length/4);
+        tokenTracker.record(inTk, outTk, model);
 
         if(reply.includes('❌')&&selfOptRetry<2){
           selfOptRetry++;
@@ -544,10 +557,13 @@ export default function App() {
         const writes=allActs.filter(a=>a.type==='write_file');
         const nonWrites=allActs.filter(a=>a.type!=='write_file');
         const readActions=nonWrites.filter(a=>a.type==='read_file');
-        const otherActions=nonWrites.filter(a=>a.type!=='read_file');
+        const webSearchActions=nonWrites.filter(a=>a.type==='web_search');
+        const otherActions=nonWrites.filter(a=>a.type!=='read_file'&&a.type!=='web_search');
 
         if(readActions.length>1){const res=await Promise.all(readActions.map(a=>executeAction(a,folder)));readActions.forEach((a,i)=>{a.result=res[i];});}
         else{for(const a of readActions) a.result=await executeAction(a,folder);}
+        // web_search runs in parallel
+        if(webSearchActions.length>0){const res=await Promise.all(webSearchActions.map(a=>executeAction(a,folder)));webSearchActions.forEach((a,i)=>{a.result=res[i];});}
         for(const a of otherActions) a.result=await executeAction(a,folder);
 
         // auto-load imports
@@ -579,11 +595,15 @@ export default function App() {
           continue;
         }
 
-        const fileData=[...readActions,...otherActions].filter(a=>a.result?.ok&&a.type!=='exec').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
-        if(!fileData&&writes.length===0){finalContent=reply;finalActions=[...readActions,...otherActions];break;}
-        if(writes.length>0){await runHooks('preWrite',writes.map(a=>a.path).join(','));finalContent=reply;finalActions=[...readActions,...otherActions,...writes.map(a=>({...a,executed:false}))];break;}
+        // combine all non-write results for context feeding
+        const allNonWrites=[...readActions,...webSearchActions,...otherActions];
+        const webData=webSearchActions.filter(a=>a.result?.ok).map(a=>'🌐 Web Search: '+a.query+'\n'+a.result.data).join('\n\n');
+        const fileData=allNonWrites.filter(a=>a.result?.ok&&a.type!=='exec'&&a.type!=='web_search').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
+        const combinedData=[fileData,webData].filter(Boolean).join('\n\n');
+        if(!combinedData&&writes.length===0){finalContent=reply;finalActions=allNonWrites;break;}
+        if(writes.length>0){await runHooks('preWrite',writes.map(a=>a.path).join(','));finalContent=reply;finalActions=[...allNonWrites,...writes.map(a=>({...a,executed:false}))];break;}
         const agentNote=iter<MAX_ITER?'':'\n\n(Iterasi terakhir, berikan jawaban final.)';
-        allMessages=[...allMessages,{role:'assistant',content:reply.replace(/```action[\s\S]*?```/g,'').trim()},{role:'user',content:'Hasil aksi:\n'+fileData+'\n\nLanjutkan.'+agentNote}];
+        allMessages=[...allMessages,{role:'assistant',content:reply.replace(/```action[\s\S]*?```/g,'').trim()},{role:'user',content:'Hasil aksi:\n'+combinedData+'\n\nLanjutkan.'+agentNote}];
       }
 
       setAgentRunning(false);
