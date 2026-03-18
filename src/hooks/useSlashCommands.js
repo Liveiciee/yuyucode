@@ -539,7 +539,7 @@ Buat SKILL.md yang berisi:
 
 Tulis ke SKILL.md menggunakan write_file. Format singkat, padat, max 50 baris.`);
       setLoading(false);
-    }
+
     } else if (base==='/tree') {
       setLoading(true);
       const depth = parseInt(parts[1]) || 2;
