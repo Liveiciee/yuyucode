@@ -44,7 +44,8 @@ function resolvePath(filePath) {
 
 function execSafe(command, cwd, timeoutMs = 60000) {
   try {
-    const out = execSync(command, {
+    const mergedCmd = command.includes("2>") ? command : command + " 2>&1";
+    const out = execSync(mergedCmd, {
       cwd: cwd || HOME,
       encoding: 'utf8',
       timeout: timeoutMs,
