@@ -710,8 +710,7 @@ export default function App() {
           <input value={project.folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(project.folderInput)}
             style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'6px 10px',color:T.text,fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
           <button onClick={()=>saveFolder(project.folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}>set</button>
-              </div>
-  </BottomSheet>
+        </div>
       )}
 
       <UndoBar history={file.editHistory} onUndo={undoLastEdit}/>
@@ -1011,8 +1010,7 @@ export default function App() {
         <div style={{position:'fixed',bottom:'80px',right:'12px',background:'rgba(0,0,0,.92)',border:'1px solid rgba(124,58,237,.3)',borderRadius:'10px',padding:'12px',zIndex:98,maxWidth:'280px',maxHeight:'200px',overflowY:'auto'}}>
           <div style={{fontSize:'11px',fontWeight:'600',color:'#a78bfa',marginBottom:'6px'}}>🐝 Agent Swarm Running···</div>
           {chat.swarmLog.map((l,i)=><div key={i} style={{fontSize:'10px',color:'rgba(255,255,255,.6)',marginBottom:'2px'}}>{l}</div>)}
-              </div>
-  </BottomSheet>
+        </div>
       )}
 
       {/* DEP GRAPH — d3 force layout */}
@@ -1068,8 +1066,7 @@ export default function App() {
               Mulai Coding! 🚀
             </button>
           </div>
-              </div>
-  </BottomSheet>
+        </div>
       )}
 
       {/* MCP */}
@@ -1186,7 +1183,7 @@ export default function App() {
             {id:'auto_commit',   name:'Auto Commit',    desc:'Commit otomatis setelah write_file', hookType:'postWrite', cmd:'cd {{context}} && git add -A && git commit -m "auto: yuyu save $(date +%H:%M)"'},
             {id:'lint_on_save',  name:'Lint on Save',   desc:'ESLint check setiap sebelum save',   hookType:'preWrite',  cmd:'cd {{context}} && npx eslint src --max-warnings 0 2>&1 | tail -5'},
             {id:'test_runner',   name:'Test Runner',    desc:'Jalankan tests setelah write',        hookType:'postWrite', cmd:'cd {{context}} && npm test -- --watchAll=false --passWithNoTests 2>&1 | tail -10'},
-            {id:'auto_push',    name:'Git Auto Push',  desc:'Push ke remote setelah commit',       hookType:'postWrite', cmd:'node ~/yugit.cjs "auto push"'},
+            {id:'auto_push',    name:'Git Auto Push',  desc:'Push ke remote setelah commit',       hookType:'postWrite', cmd:'node yugit.cjs "auto push"'},
           ].map(p=>{
             const isActive=!!project.activePlugins[p.id];
             function togglePlugin(){
@@ -1292,7 +1289,7 @@ export default function App() {
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}}>
           <div style={{background:'#111113',border:'1px solid rgba(255,255,255,.1)',borderRadius:'14px',padding:'20px',width:'100%',maxWidth:'380px',boxShadow:'0 20px 60px rgba(0,0,0,.7)'}}>
             <div style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',marginBottom:'4px'}}>↑ Push ke Remote</div>
-            <div style={{fontSize:'11px',color:'rgba(255,255,255,.3)',marginBottom:'14px'}}>node ~/yugit.cjs "..."</div>
+            <div style={{fontSize:'11px',color:'rgba(255,255,255,.3)',marginBottom:'14px'}}>node yugit.cjs "..."</div>
             <input
               autoFocus
               value={ui.commitMsg}
@@ -1300,7 +1297,7 @@ export default function App() {
               onKeyDown={e=>{
                 if(e.key==='Enter'&&ui.commitMsg.trim()){
                   ui.setCommitModal(false);
-                  runShortcut('node ~/yugit.cjs "'+ui.commitMsg.trim().replace(/"/g,'\\"')+'"');
+                  runShortcut('node yugit.cjs "'+ui.commitMsg.trim().replace(/"/g,'\\"')+'"');
                 }
                 if(e.key==='Escape') ui.setCommitModal(false);
               }}
@@ -1317,15 +1314,14 @@ export default function App() {
                 disabled={!ui.commitMsg.trim()}
                 onClick={()=>{
                   ui.setCommitModal(false);
-                  runShortcut('node ~/yugit.cjs "'+ui.commitMsg.trim().replace(/"/g,'\\"')+'"');
+                  runShortcut('node yugit.cjs "'+ui.commitMsg.trim().replace(/"/g,'\\"')+'"');
                 }}
                 style={{flex:2,background:ui.commitMsg.trim()?T.accent:'rgba(255,255,255,.05)',border:'none',borderRadius:'8px',padding:'9px',color:'white',fontSize:'12px',cursor:ui.commitMsg.trim()?'pointer':'default',fontWeight:'600',opacity:ui.commitMsg.trim()?1:.4}}>
                 ↑ Push
               </button>
             </div>
           </div>
-              </div>
-  </BottomSheet>
+        </div>
       )}
     </div>
   );
