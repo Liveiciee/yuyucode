@@ -413,7 +413,7 @@ export default function App() {
 
   // ── SEND MESSAGE ──
   async function sendMsg(override){
-    const txt=(override||input).trim();
+    const txt=(override||chat.input).trim();
     if(!txt||chat.loading) return;
     if(txt.startsWith('/')){chat.setInput('');chat.setSlashSuggestions([]);await handleSlashCommand(txt);return;}
     chat.setInput('');project.setHistIdx(-1);addHistory(txt);
@@ -600,7 +600,7 @@ export default function App() {
       <div style={{height:'44px',padding:'0 10px',borderBottom:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'8px',background:T.bg,flexShrink:0}}>
         <button onClick={()=>ui.setShowSidebar(!ui.showSidebar)} style={{background:'none',border:'none',color:ui.showSidebar?T.accent:'rgba(255,255,255,.3)',fontSize:'15px',cursor:'pointer',padding:'4px',borderRadius:'5px',lineHeight:1}}>☰</button>
         <div style={{width:'6px',height:'6px',borderRadius:'50%',background:project.serverOk?'#4ade80':'#f87171',flexShrink:0}}/>
-        <div style={{flex:1,cursor:'pointer',minWidth:0,overflow:'hidden'}} onClick={()=>ui.setShowFolder(!showFolder)}>
+        <div style={{flex:1,cursor:'pointer',minWidth:0,overflow:'hidden'}} onClick={()=>ui.setShowFolder(!ui.showFolder)}>
           <span style={{fontSize:'13px',fontWeight:'600',color:T.text,letterSpacing:'-0.2px'}}>YuyuCode</span>
           <span style={{fontSize:'11px',color:'rgba(255,255,255,.25)',marginLeft:'8px'}}>{project.folder}</span>
           <span style={{fontSize:'10px',color:'rgba(255,255,255,.18)',marginLeft:'4px'}}>⎇ {project.branch}</span>
@@ -625,7 +625,7 @@ export default function App() {
         </div>
       )}
 
-      <UndoBar history={editHistory} onUndo={undoLastEdit}/>
+      <UndoBar history={file.editHistory} onUndo={undoLastEdit}/>
 
       {/* STATUS BANNERS */}
       {!project.netOnline&&<div style={{padding:'3px 12px',background:'rgba(248,113,113,.08)',borderBottom:'1px solid rgba(248,113,113,.12)',fontSize:'10px',color:'#f87171',flexShrink:0}}>📡 Offline</div>}
@@ -669,12 +669,12 @@ export default function App() {
             <button onClick={()=>file.setActiveTab('chat')} style={{padding:'0 14px',background:'none',border:'none',borderBottom:file.activeTab==='chat'?'2px solid '+T.accent:'2px solid transparent',color:file.activeTab==='chat'?T.accent:'rgba(255,255,255,.3)',fontSize:'12px',cursor:'pointer',fontWeight:file.activeTab==='chat'?'500':'400'}}>Chat</button>
             {file.selectedFile&&(
               <>
-                <button onClick={()=>{file.setActiveTab('file');file.setEditMode(false);}} style={{padding:'0 12px',background:'none',border:'none',borderBottom:file.activeTab==='file'&&!file.editMode?'2px solid '+T.accent:'2px solid transparent',color:file.activeTab==='file'&&!file.editMode?T.accent:'rgba(255,255,255,.3)',fontSize:'12px',cursor:'pointer',maxWidth:'140px',overflow:'hidden',textOverflow:'ellipsis'}}>{selectedFile.split('/').pop()}</button>
+                <button onClick={()=>{file.setActiveTab('file');file.setEditMode(false);}} style={{padding:'0 12px',background:'none',border:'none',borderBottom:file.activeTab==='file'&&!file.editMode?'2px solid '+T.accent:'2px solid transparent',color:file.activeTab==='file'&&!file.editMode?T.accent:'rgba(255,255,255,.3)',fontSize:'12px',cursor:'pointer',maxWidth:'140px',overflow:'hidden',textOverflow:'ellipsis'}}>{file.selectedFile.split('/').pop()}</button>
                 <button onClick={()=>{file.setActiveTab('file');file.setEditMode(true);}} style={{padding:'0 10px',background:'none',border:'none',borderBottom:file.editMode?'2px solid #f59e0b':'2px solid transparent',color:file.editMode?'#f59e0b':'rgba(255,255,255,.25)',fontSize:'11px',cursor:'pointer'}}>edit</button>
               </>
             )}
             <div style={{flex:1}}/>
-            <button onClick={()=>ui.setShowTerminal(!ui.showTerminal)} style={{padding:'0 12px',background:'none',border:'none',borderBottom:showTerminal?'2px solid rgba(255,255,255,.3)':'2px solid transparent',color:showTerminal?'rgba(255,255,255,.6)':'rgba(255,255,255,.2)',fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>$</button>
+            <button onClick={()=>ui.setShowTerminal(!ui.showTerminal)} style={{padding:'0 12px',background:'none',border:'none',borderBottom:ui.showTerminal?'2px solid rgba(255,255,255,.3)':'2px solid transparent',color:ui.showTerminal?'rgba(255,255,255,.6)':'rgba(255,255,255,.2)',fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>$</button>
           </div>
 
           {/* CHAT */}
@@ -706,7 +706,7 @@ export default function App() {
           {file.activeTab==='file'&&file.selectedFile&&!file.editMode&&!ui.showTerminal&&(
             <div style={{flex:1,overflow:'auto'}}>
               <div style={{padding:'5px 12px',borderBottom:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'6px',background:T.bg2,position:'sticky',top:0,flexWrap:'wrap'}}>
-                <span style={{fontSize:'11px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{selectedFile}</span>
+                <span style={{fontSize:'11px',color:'rgba(255,255,255,.4)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{file.selectedFile}</span>
                 <button onClick={()=>togglePin(file.selectedFile)} style={{background:file.pinnedFiles.includes(file.selectedFile)?'rgba(99,102,241,.15)':'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:file.pinnedFiles.includes(file.selectedFile)?'#818cf8':'rgba(255,255,255,.3)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📌</button>
                 <button onClick={()=>sendMsg('Yu, jalankan git log --oneline -10 -- '+file.selectedFile.replace(project.folder+'/',''))} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'5px',padding:'2px 6px',color:'rgba(255,255,255,.35)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>📜</button>
                 <button onClick={()=>ui.setShowBlame(true)} style={{background:'rgba(99,102,241,.06)',border:'1px solid rgba(99,102,241,.15)',borderRadius:'5px',padding:'2px 6px',color:'rgba(99,102,241,.7)',fontSize:'10px',cursor:'pointer',flexShrink:0}}>👁 blame</button>
@@ -748,7 +748,7 @@ export default function App() {
           )}
 
           {/* TERMINAL */}
-          {ui.showTerminal&&<div style={{flex:1,overflow:'hidden'}}><Terminal folder={project.folder} cmdHistory={cmdHistory} addHistory={addHistory} onSendToAI={txt=>{ui.setShowTerminal(false);file.setActiveTab('chat');sendMsg(txt);}}/></div>}
+          {ui.showTerminal&&<div style={{flex:1,overflow:'hidden'}}><Terminal folder={project.folder} cmdHistory={project.cmdHistory} addHistory={addHistory} onSendToAI={txt=>{ui.setShowTerminal(false);file.setActiveTab('chat');sendMsg(txt);}}/></div>}
 
           {/* FOLLOW UPS */}
           {chat.showFollowUp&&!chat.loading&&file.activeTab==='chat'&&!ui.showTerminal&&(
@@ -808,7 +808,7 @@ export default function App() {
                   </div>
                 )}
                 <button onClick={()=>fileInputRef.current?.click()} style={{background:'none',border:'none',padding:'8px 4px',color:'rgba(255,255,255,.2)',fontSize:'15px',cursor:'pointer',flexShrink:0,borderRadius:'8px'}}>📎</button>
-                <textarea ref={inputRef} value={input}
+                <textarea ref={inputRef} value={chat.input}
                   onChange={e=>{
                     chat.setInput(e.target.value);
                     e.target.style.height='auto';
@@ -824,7 +824,7 @@ export default function App() {
                   placeholder="Tanya Yuyu, atau / untuk commands"
                   disabled={chat.loading} rows={1}
                   style={{flex:1,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'10px',padding:'9px 12px',color:chat.loading?'rgba(255,255,255,.25)':T.text,fontSize:'13px',resize:'none',outline:'none',fontFamily:'inherit',lineHeight:'1.5'}}/>
-                {loading
+                {chat.loading
                   ?<button onClick={cancel} style={{background:'rgba(248,113,113,.1)',border:'none',borderRadius:'10px',padding:'9px 14px',color:'#f87171',fontSize:'14px',cursor:'pointer',flexShrink:0}}>■</button>
                   :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'10px',padding:'9px 16px',color:'white',fontSize:'14px',cursor:'pointer',fontWeight:'600',flexShrink:0}}>↑</button>
                 }
@@ -855,7 +855,7 @@ export default function App() {
           onModelChange={id=>{project.setModel(id);Preferences.set({key:'yc_model',value:id});}}
           onNewChat={()=>{chat.setMessages([{role:'assistant',content:'Chat baru. Mau ngerjain apa Papa? 🌸'}]);Preferences.remove({key:'yc_history'});chat.setShowFollowUp(false);}}
           theme={ui.theme} onThemeChange={t=>ui.setTheme(t)}
-          showSidebar={showSidebar} onToggleSidebar={()=>ui.setShowSidebar(s=>!s)}
+          showSidebar={ui.showSidebar} onToggleSidebar={()=>ui.setShowSidebar(s=>!s)}
           onShowMemory={()=>ui.setShowMemory(true)} onShowCheckpoints={()=>ui.setShowCheckpoints(true)}
           onShowMCP={()=>ui.setShowMCP(true)} onShowGitHub={()=>ui.setShowGitHub(true)} onShowDeploy={()=>ui.setShowDeploy(true)}
           onShowSessions={()=>{loadSessions().then(s=>{ui.setSessionList(s);ui.setShowSessions(true);});}}
