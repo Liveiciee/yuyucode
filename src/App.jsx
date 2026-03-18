@@ -3,7 +3,7 @@ import { Preferences } from "@capacitor/preferences";
 import { MAX_HISTORY, MODELS, THEMES, BASE_SYSTEM, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { askCerebrasStream, callServer } from './api.js';
 import { countTokens, hl, resolvePath, parseActions, executeAction } from './utils.js';
-import { generatePlan, parsePlanSteps, executePlanStep, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages } from './features.js';
+import { generatePlan, parsePlanSteps, executePlanStep, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages, EFFORT_CONFIG, checkPermission, runHooksV2 } from './features.js';
 import { MsgBubble, MsgContent } from './components/MsgBubble.jsx';
 import { FileTree } from './components/FileTree.jsx';
 import { FileEditor } from './components/FileEditor.jsx';
@@ -56,6 +56,9 @@ export default function App() {
   const [showMemory, setShowMemory] = useState(false);
   const [showCheckpoints, setShowCheckpoints] = useState(false);
   const [hooks, setHooks] = useState({ preWrite:[], postWrite:[], postPush:[] });
+  const [activePlugins, setActivePlugins] = useState({});
+  const [commitModal, setCommitModal] = useState(false);
+  const [commitMsg, setCommitMsg] = useState('');
   const [slashSuggestions, setSlashSuggestions] = useState([]);
   const [showFileHistory, setShowFileHistory] = useState(false);
   const [showCustomActions, setShowCustomActions] = useState(false);
@@ -144,6 +147,7 @@ export default function App() {
       if(ght.value) setGithubToken(ght.value);
       if(ghr.value) setGithubRepo(ghr.value);
       Preferences.get({key:'yc_session_color'}).then(scr=>{if(scr.value)setSessionColor(scr.value||null);});
+      Preferences.get({key:'yc_plugins'}).then(pl=>{if(pl.value){try{setActivePlugins(JSON.parse(pl.value));}catch{}}});
     });
     callServer({type:'ping'}).then(r=>{setServerOk(r.ok);if(r.mcp)setMcpTools(r.mcp);});
   },[]);
@@ -227,7 +231,8 @@ export default function App() {
       const step=steps[i];
       setMessages(m=>[...m,{role:'assistant',content:`⚙️ **Step ${step.num}/${steps.length}:** ${step.text}`,actions:[]}]);
       try{
-        const {reply,actions}=await executePlanStep(step,folder,callAI,ctrl.signal);
+        const {reply,actions}=await executePlanStep(step,folder,callAI,ctrl.signal,setStreaming);
+        setStreaming('');
         const writes=actions.filter(a=>a.type==='write_file');
         const cleaned=reply.replace(/```action[\s\S]*?```/g,'').trim();
         if(writes.length>0){
@@ -267,7 +272,7 @@ export default function App() {
     results.forEach((r,i)=>{targets[i].result=r;targets[i].executed=true;});
     setMessages(m=>m.map((x,i)=>i===idx?{...x}:x));
     if(targets.length>1) setMessages(m=>[...m,{role:'assistant',content:'✅ '+targets.length+' file berhasil ditulis~',actions:[]}]);
-    await runHooks('postWrite',targets.map(a=>a.path).join(','));
+    await runHooksV2(hooks.postWrite, targets.map(a=>a.path).join(','), folder);
     if(permissions.exec){
       for(const wr of targets){
         const ext=(wr.path||'').split('.').pop().toLowerCase();
@@ -346,8 +351,8 @@ export default function App() {
   }
 
   // ── HOOKS RUNNER ──
-  async function runHooks(type,context=''){
-    for(const hook of(hooks[type]||[])){try{await callServer({type:'exec',path:folder,command:hook.replace('{{context}}',context)});}catch{}}
+  async function runHooks(type, context=''){
+    await runHooksV2(hooks[type] || [], context, folder);
   }
 
   // ── PARALLEL READ ──
@@ -400,9 +405,12 @@ export default function App() {
   function stopTts(){window.speechSynthesis?.cancel();}
 
   // ── AI ROUTER ──
-  async function callAI(msgs,onChunk,signal){
-    const effortTokens={low:1024,medium:2048,high:4000};
-    return askCerebrasStream(msgs,model,onChunk,signal,{maxTokens:effortTokens[effort]||1500});
+  async function callAI(msgs, onChunk, signal, imageBase64) {
+    const effortCfg = EFFORT_CONFIG[effort] || EFFORT_CONFIG.medium;
+    return askCerebrasStream(msgs, model, onChunk, signal, {
+      maxTokens: effortCfg.maxTokens || { low: 1024, medium: 2048, high: 4000 }[effort] || 1500,
+      imageBase64,
+    });
   }
 
   // ── BROWSE ──
@@ -440,16 +448,19 @@ export default function App() {
         {role:'system',content:'QA Engineer. Review kode dari FE dan BE. Temukan dan sebutkan bug kritis saja.'},
         {role:'user',content:'FE:\n'+feReply.slice(0,800)+'\n\nBE:\n'+beReply.slice(0,800)}
       ],()=>{},ctrl.signal);
-      const writes=[...parseActions(feReply),...parseActions(beReply)].filter(a=>a.type==='write_file');
-      log('💾 Menulis '+writes.length+' file...');
-      for(const w of writes){
-        await executeAction(w,folder);
-        log('✅ '+w.path.split('/').pop());
-      }
+
+      // Deduplikasi: BE menang jika ada path yang sama
+      const feWrites=parseActions(feReply).filter(a=>a.type==='write_file');
+      const beWrites=parseActions(beReply).filter(a=>a.type==='write_file');
+      const bePaths=new Set(beWrites.map(a=>a.path));
+      const dedupedWrites=[...feWrites.filter(a=>!bePaths.has(a.path)),...beWrites];
+
+      log('👀 '+dedupedWrites.length+' file siap — menunggu approval...');
+      // Kirim ke approval flow, bukan langsung tulis
       setMessages(m=>[...m,{role:'assistant',content:
-        `🐝 **Swarm Selesai!** (${writes.length} file ditulis)\n\n**Plan:**\n${archReply.slice(0,400)}\n\n**QA Notes:**\n${qaReply.slice(0,300)}`,
-        actions:[]}]);
-      sendNotification('YuyuCode 🐝','Swarm selesai! '+writes.length+' file.');haptic('heavy');
+        `🐝 **Swarm selesai!** (${dedupedWrites.length} file)\n\n**Plan:**\n${archReply.slice(0,400)}\n\n**QA Notes:**\n${qaReply.slice(0,300)}\n\nTinjau dan approve file di bawah~`,
+        actions:dedupedWrites.map(a=>({...a,executed:false}))}]);
+      sendNotification('YuyuCode 🐝','Swarm siap! '+dedupedWrites.length+' file menunggu approval.');haptic('heavy');
     }catch(e){if(e.name!=='AbortError') log('❌ '+e.message);}
     setSwarmRunning(false);
   }
@@ -556,24 +567,31 @@ export default function App() {
     }
 
     try{
+      const effortCfg = EFFORT_CONFIG[effort] || EFFORT_CONFIG.medium;
       const notesCtx=notes?'\n\nProject notes:\n'+notes:'';
       const skillCtx=skill?'\n\nSKILL.md:\n'+skill:'';
       const pinnedCtx=pinnedFiles.length?'\n\nPinned files: '+pinnedFiles.join(', '):'';
       const fileCtx=selectedFile&&fileContent?'\n\nFile terbuka: '+selectedFile+'\n```\n'+fileContent.slice(0,1500)+'\n```':'';
-      const memCtx=memories.length?'\n\nMemories:\n'+memories.slice(0,10).map(m=>'• '+m.text).join('\n'):'';
+      // Memory retrieval: filter by keyword relevance bukan hanya ambil 10 pertama
+      const msgWords = txt.toLowerCase().split(/\s+/).filter(w=>w.length>3);
+      const relevantMems = memories.filter(m => msgWords.some(w => m.text.toLowerCase().includes(w))).slice(0,5);
+      const memPool = relevantMems.length ? relevantMems : memories.slice(0,5);
+      const memCtx=memPool.length?'\n\nMemories:\n'+memPool.map(m=>'• '+m.text).join('\n'):'';
       const visionCtx=visionImage?'\n\n[Gambar dilampirkan]':'';
       const agentMemCtx=['user','project','local'].map(s=>(agentMemory[s]||[]).length?'\n\n['+s+' memory]:\n'+(agentMemory[s]||[]).map(mx=>'• '+mx.text).join('\n'):'').join('');
       const thinkInstruction=thinkingEnabled?'\n\nSebelum respons, tulis reasoning singkat dalam <think>...</think>. Singkat, max 2 kalimat.':'';
-      const systemPrompt=BASE_SYSTEM+thinkInstruction+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+agentMemCtx+visionCtx;
+      const systemPrompt=BASE_SYSTEM+effortCfg.systemSuffix+thinkInstruction+'\n\nFolder aktif: '+folder+'\nBranch: '+branch+notesCtx+skillCtx+pinnedCtx+fileCtx+memCtx+agentMemCtx+visionCtx;
 
+      // Reset autoContext setiap pesan baru — cegah context stale dari percakapan lama
+      autoContextRef.current = {};
       if(pinnedFiles.length){
         const loaded=await readFilesParallel(pinnedFiles.slice(0,3));
         Object.entries(loaded).forEach(([p,r])=>{if(r.ok) autoContextRef.current[p]=r.data;});
       }
 
-      const MAX_ITER=10;
+      const MAX_ITER = effortCfg.maxIter || 10;
       let iter=0,allMessages=[...history],finalContent='',finalActions=[];
-      let autoContext={...(autoContextRef.current||{})},selfOptRetry=0;
+      let autoContext={...(autoContextRef.current||{})};
 
       while(iter<MAX_ITER){
         iter++;
@@ -590,12 +608,6 @@ export default function App() {
         const outTk = Math.round(reply.length/4);
         tokenTracker.record(inTk, outTk, model);
 
-        if(reply.includes('❌')&&selfOptRetry<2){
-          selfOptRetry++;
-          allMessages=[...allMessages,{role:'assistant',content:reply.replace(/```action[\s\S]*?```/g,'').trim()},{role:'user',content:'Ada error. Coba pendekatan berbeda. Retry ke-'+selfOptRetry+'.'}];
-          continue;
-        }
-
         const allActs=parseActions(reply);
         const writes=allActs.filter(a=>a.type==='write_file');
         const nonWrites=allActs.filter(a=>a.type!=='write_file');
@@ -607,7 +619,14 @@ export default function App() {
         else{for(const a of readActions) a.result=await executeAction(a,folder);}
         // web_search runs in parallel
         if(webSearchActions.length>0){const res=await Promise.all(webSearchActions.map(a=>executeAction(a,folder)));webSearchActions.forEach((a,i)=>{a.result=res[i];});}
-        for(const a of otherActions) a.result=await executeAction(a,folder);
+        // permission check sebelum exec/mcp/browse
+        for(const a of otherActions){
+          if(!checkPermission(permissions, a.type)){
+            a.result={ok:false,data:'⛔ Permission ditolak untuk action: '+a.type+'. Aktifkan di /permissions.'};
+          } else {
+            a.result=await executeAction(a,folder);
+          }
+        }
 
         // auto-load imports
         for(const a of readActions){
@@ -644,7 +663,7 @@ export default function App() {
         const fileData=allNonWrites.filter(a=>a.result?.ok&&a.type!=='exec'&&a.type!=='web_search').map(a=>'=== '+a.path+' ===\n'+a.result.data).join('\n\n');
         const combinedData=[fileData,webData].filter(Boolean).join('\n\n');
         if(!combinedData&&writes.length===0){finalContent=reply;finalActions=allNonWrites;break;}
-        if(writes.length>0){await runHooks('preWrite',writes.map(a=>a.path).join(','));finalContent=reply;finalActions=[...allNonWrites,...writes.map(a=>({...a,executed:false}))];break;}
+        if(writes.length>0){await runHooksV2(hooks.preWrite, writes.map(a=>a.path).join(','), folder);finalContent=reply;finalActions=[...allNonWrites,...writes.map(a=>({...a,executed:false}))];break;}
         const agentNote=iter<MAX_ITER?'':'\n\n(Iterasi terakhir, berikan jawaban final.)';
         allMessages=[...allMessages,{role:'assistant',content:reply.replace(/```action[\s\S]*?```/g,'').trim()},{role:'user',content:'Hasil aksi:\n'+combinedData+'\n\nLanjutkan.'+agentNote}];
       }
@@ -880,7 +899,16 @@ export default function App() {
           {!showTerminal&&(
             <div style={{height:'32px',padding:'0 10px',borderTop:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'2px',flexShrink:0,overflowX:'auto'}}>
               {GIT_SHORTCUTS.map(s=>(
-                <button key={s.label} onClick={()=>runShortcut(s.cmd)} disabled={loading}
+                <button key={s.label} disabled={loading}
+                  onClick={()=>{
+                    // Push shortcut: tampilkan modal input commit message
+                    if(s.cmd.includes('yugit.cjs')){
+                      setCommitMsg('');
+                      setCommitModal(true);
+                    } else {
+                      runShortcut(s.cmd);
+                    }
+                  }}
                   style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.3)',fontSize:'10px',cursor:'pointer',whiteSpace:'nowrap',fontFamily:'monospace',borderRadius:'5px',display:'flex',alignItems:'center',gap:'3px'}}
                   onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.05)'} onMouseLeave={e=>e.currentTarget.style.background='none'}>
                   <span style={{opacity:.6}}>{s.icon}</span><span>{s.label}</span>
@@ -1168,13 +1196,48 @@ export default function App() {
             <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔌 Plugin Marketplace</span>
             <button onClick={()=>setShowPlugins(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
           </div>
-          {[{name:'Auto Commit',desc:'Commit otomatis setelah write_file',cmd:'hooks.postWrite'},{name:'Lint on Save',desc:'ESLint setiap save',cmd:'hooks.preWrite'},{name:'Test Runner',desc:'Auto-run tests setelah perubahan',cmd:'/test setelah write'},{name:'Browser Preview',desc:'Buka preview setelah build',cmd:'/browse localhost:5173'},{name:'Git Auto Push',desc:'Push otomatis setelah commit',cmd:'hooks.postWrite'}].map(p=>(
-            <div key={p.name} style={{padding:'10px 12px',marginBottom:'6px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px'}}>
-              <div style={{fontSize:'13px',color:'#f0f0f0',fontWeight:'500',marginBottom:'2px'}}>{p.name}</div>
-              <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'4px'}}>{p.desc}</div>
-              <div style={{fontSize:'10px',color:'#a78bfa',fontFamily:'monospace'}}>{p.cmd}</div>
-            </div>
-          ))}
+          {[
+            {id:'auto_commit',   name:'Auto Commit',    desc:'Commit otomatis setelah write_file', hookType:'postWrite', cmd:'cd {{context}} && git add -A && git commit -m "auto: yuyu save $(date +%H:%M)"'},
+            {id:'lint_on_save',  name:'Lint on Save',   desc:'ESLint check setiap sebelum save',   hookType:'preWrite',  cmd:'cd {{context}} && npx eslint src --max-warnings 0 2>&1 | tail -5'},
+            {id:'test_runner',   name:'Test Runner',    desc:'Jalankan tests setelah write',        hookType:'postWrite', cmd:'cd {{context}} && npm test -- --watchAll=false --passWithNoTests 2>&1 | tail -10'},
+            {id:'auto_push',    name:'Git Auto Push',  desc:'Push ke remote setelah commit',       hookType:'postWrite', cmd:'node ~/yugit.cjs "auto push"'},
+          ].map(p=>{
+            const isActive=!!activePlugins[p.id];
+            function togglePlugin(){
+              const newActive={...activePlugins,[p.id]:!isActive};
+              setActivePlugins(newActive);
+              Preferences.set({key:'yc_plugins',value:JSON.stringify(newActive)});
+              // Wire/unwire ke hooks system
+              setHooks(prev=>{
+                const hooksForType=[...(prev[p.hookType]||[])];
+                const idx=hooksForType.findIndex(h=>typeof h==='object'&&h._pluginId===p.id);
+                if(!isActive){
+                  // Aktifkan: tambah hook jika belum ada
+                  if(idx===-1) hooksForType.push({type:'shell',command:p.cmd.replace('{{context}}',folder)+'',_pluginId:p.id});
+                } else {
+                  // Nonaktifkan: hapus hook
+                  if(idx!==-1) hooksForType.splice(idx,1);
+                }
+                const next={...prev,[p.hookType]:hooksForType};
+                Preferences.set({key:'yc_hooks',value:JSON.stringify(next)});
+                return next;
+              });
+              setMessages(m=>[...m,{role:'assistant',content:(isActive?'🔌 Plugin **'+p.name+'** dinonaktifkan.':'✅ Plugin **'+p.name+'** aktif! Hook terpasang di '+p.hookType+'.'),actions:[]}]);
+            }
+            return(
+              <div key={p.id} style={{padding:'10px 12px',marginBottom:'8px',background:isActive?'rgba(74,222,128,.04)':'rgba(255,255,255,.03)',border:'1px solid '+(isActive?'rgba(74,222,128,.18)':'rgba(255,255,255,.07)'),borderRadius:'8px',display:'flex',alignItems:'center',gap:'10px'}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'13px',color:isActive?'#4ade80':'#f0f0f0',fontWeight:'500',marginBottom:'2px'}}>{p.name}</div>
+                  <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'3px'}}>{p.desc}</div>
+                  <div style={{fontSize:'9px',color:'rgba(255,255,255,.2)',fontFamily:'monospace'}}>{p.hookType}</div>
+                </div>
+                <div onClick={togglePlugin} style={{width:'42px',height:'24px',borderRadius:'12px',background:isActive?'#4ade80':'rgba(255,255,255,.1)',cursor:'pointer',position:'relative',transition:'all .2s',flexShrink:0}}>
+                  <div style={{position:'absolute',top:'3px',left:isActive?'21px':'3px',width:'18px',height:'18px',borderRadius:'50%',background:'white',transition:'all .2s'}}/>
+                </div>
+              </div>
+            );
+          })}
+          <div style={{marginTop:'8px',fontSize:'10px',color:'rgba(255,255,255,.2)',textAlign:'center'}}>Plugin aktif terpasang otomatis ke hooks system</div>
         </div>
       )}
 
@@ -1232,6 +1295,46 @@ export default function App() {
       )}
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleImageAttach}/>
+
+      {/* COMMIT MESSAGE MODAL */}
+      {commitModal&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}}>
+          <div style={{background:'#111113',border:'1px solid rgba(255,255,255,.1)',borderRadius:'14px',padding:'20px',width:'100%',maxWidth:'380px',boxShadow:'0 20px 60px rgba(0,0,0,.7)'}}>
+            <div style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',marginBottom:'4px'}}>↑ Push ke Remote</div>
+            <div style={{fontSize:'11px',color:'rgba(255,255,255,.3)',marginBottom:'14px'}}>node ~/yugit.cjs "..."</div>
+            <input
+              autoFocus
+              value={commitMsg}
+              onChange={e=>setCommitMsg(e.target.value)}
+              onKeyDown={e=>{
+                if(e.key==='Enter'&&commitMsg.trim()){
+                  setCommitModal(false);
+                  runShortcut('node ~/yugit.cjs "'+commitMsg.trim().replace(/"/g,'\\"')+'"');
+                }
+                if(e.key==='Escape') setCommitModal(false);
+              }}
+              placeholder="commit message..."
+              style={{width:'100%',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:'8px',padding:'10px 12px',color:'#f0f0f0',fontSize:'13px',outline:'none',fontFamily:'monospace',marginBottom:'12px',boxSizing:'border-box'}}
+            />
+            <div style={{display:'flex',gap:'8px'}}>
+              <button
+                onClick={()=>setCommitModal(false)}
+                style={{flex:1,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px',padding:'9px',color:'rgba(255,255,255,.4)',fontSize:'12px',cursor:'pointer'}}>
+                Batal
+              </button>
+              <button
+                disabled={!commitMsg.trim()}
+                onClick={()=>{
+                  setCommitModal(false);
+                  runShortcut('node ~/yugit.cjs "'+commitMsg.trim().replace(/"/g,'\\"')+'"');
+                }}
+                style={{flex:2,background:commitMsg.trim()?T.accent:'rgba(255,255,255,.05)',border:'none',borderRadius:'8px',padding:'9px',color:'white',fontSize:'12px',cursor:commitMsg.trim()?'pointer':'default',fontWeight:'600',opacity:commitMsg.trim()?1:.4}}>
+                ↑ Push
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

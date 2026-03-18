@@ -22,11 +22,11 @@ export async function generatePlan(task, folder, callAI, signal) {
   return { reply, steps: parsePlanSteps(reply) };
 }
 
-export async function executePlanStep(step, folder, callAI, signal) {
+export async function executePlanStep(step, folder, callAI, signal, onChunk) {
   const reply = await callAI([
     { role: 'system', content: 'Eksekusi: "' + step.text + '"\nFolder: ' + folder + '\nGunakan action blocks.' },
     { role: 'user', content: step.text },
-  ], () => {}, signal);
+  ], onChunk || (() => {}), signal);
   const actions = parseActions(reply);
   const results = [];
   for (const a of actions) {
@@ -231,9 +231,9 @@ export function rewindMessages(messages, turns) {
 
 // ─── EFFORT LEVELS ───────────────────────────────────────────────────────────
 export const EFFORT_CONFIG = {
-  low:    { maxIter: 3,  systemSuffix: '\n\nMode: LOW EFFORT. Jawab singkat.', label: 'Low' },
-  medium: { maxIter: 10, systemSuffix: '', label: 'Medium' },
-  high:   { maxIter: 15, systemSuffix: '\n\nMode: HIGH EFFORT. Analisis mendalam.', label: 'High' },
+  low:    { maxIter: 3,  maxTokens: 1024, systemSuffix: '\n\nMode: LOW EFFORT. Jawab singkat.', label: 'Low' },
+  medium: { maxIter: 10, maxTokens: 2048, systemSuffix: '', label: 'Medium' },
+  high:   { maxIter: 15, maxTokens: 4000, systemSuffix: '\n\nMode: HIGH EFFORT. Analisis mendalam.', label: 'High' },
 };
 
 // ─── PERMISSIONS ─────────────────────────────────────────────────────────────

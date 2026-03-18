@@ -50,9 +50,7 @@ export function useSlashCommands({
       setShowCheckpoints(true);
 
     } else if (base==='/cost') {
-      const total = messages.reduce((a,m)=>a+m.content.length,0);
-      const tokens = Math.round(total/4);
-      setMessages(m=>[...m,{role:'assistant',content:`💰 Estimasi token: ~${tokens}tk | ~${messages.length} pesan | Cerebras gratis jadi $0 😄`,actions:[]}]);
+      setMessages(m=>[...m,{role:'assistant',content:tokenTracker.summary(),actions:[]}]);
 
     } else if (base==='/review') {
       if (!selectedFile) { setMessages(m=>[...m,{role:'assistant',content:'Buka file dulu Papa~',actions:[]}]); return; }

@@ -77,7 +77,8 @@ export const GIT_SHORTCUTS = [
   { label: 'status', icon: '◎', cmd: 'git status' },
   { label: 'log',    icon: '◈', cmd: 'git log --oneline -10' },
   { label: 'pull',   icon: '↓', cmd: 'git pull' },
-  { label: 'push',   icon: '↑', cmd: 'git add -A && git commit -m "update" && git push' },
+  { label: 'push',   icon: '↑', cmd: 'node ~/yugit.cjs "update"' },
+  { label: 'cp dl',  icon: '📥', cmd: 'cp /sdcard/Download/* . 2>/dev/null && echo "✅ Copy selesai" || echo "⚠ Tidak ada file baru"' },
 ];
 
 export const FOLLOW_UPS = ['Jelaskan lebih detail', 'Ada bug?', 'Bisa dioptimasi?', 'Langkah selanjutnya?'];
