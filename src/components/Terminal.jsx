@@ -44,7 +44,7 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI }) {
     if (addHistory) addHistory(c);
     try {
       const res = await callServer({ type:'exec', path:folder, command:c });
-      const output = JSON.stringify(res);
+      const output = res.data || res.output || res.error || '(selesai)';
       const hasError = detectError(output);
       setOutputs(prev => [...prev.slice(-50), { cmd:c, output, hasError }]);
     } catch(e) {
