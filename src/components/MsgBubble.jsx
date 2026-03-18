@@ -119,7 +119,8 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   const thinkText = thinkMatch ? thinkMatch[1] : null;
   const cleanText = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim();
   const actions = msg.actions || [];
-  const hasPendingWrite = actions.some(a => (a.type === 'write_file' || a.type === 'patch_file') && !a.executed);
+  const hasPendingWrite = actions.some(a => a.type === 'patch_file' && !a.executed);
+  // write_file sudah auto-execute — hanya show approved/failed status
   const isContinued = msg.content.trim().endsWith('CONTINUE');
   const hasPlan = !msg.planApproved && msg.content.includes('📋 **Plan (');
 
@@ -145,62 +146,29 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
           <div style={S.aiBubble}><MsgContent text={cleanText} /></div>
           {actions.map((a, i) => <ActionChip key={i} action={a} />)}
 
-          {/* ── Write approvals ── */}
+          {/* ── Write approvals (patch_file yang gagal saja) ── */}
           {hasPendingWrite && onApprove && (
             <div style={{margin:'8px 0',display:'flex',flexDirection:'column',gap:'6px'}}>
-              {actions.filter(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed).map((a,i)=>(
+              {actions.filter(a=>a.type==='patch_file'&&!a.executed).map((a,i)=>(
                 <div key={i} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'10px',overflow:'hidden'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'8px 12px'}}>
-                    <span style={{fontSize:'12px',color:'rgba(255,255,255,.55)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.type==='patch_file'?'🩹':'✏️'} {a.path}</span>
-                    <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',flexShrink:0}}>{a.content?(Math.round(a.content.length/1024*10)/10)+'KB':''}</span>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'8px 12px'}}>\
+                    <span style={{fontSize:'12px',color:'rgba(255,255,255,.55)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🩹 {a.path}</span>
                   </div>
-                  {/* diff preview */}
-                  {a.content&&a.original&&(
-                    <div style={{paddingBottom:'6px',borderTop:'1px solid rgba(255,255,255,.04)',fontSize:'11px',fontFamily:'monospace',maxHeight:'180px',overflow:'auto'}}>
-                      {(()=>{
-                        const oldLines=(a.original||'').split('\n');
-                        const newLines=(a.content||'').split('\n');
-                        const maxLen=Math.max(oldLines.length,newLines.length);
-                        const result=[];
-                        for(let i=0;i<Math.min(maxLen,50);i++){
-                          const o=oldLines[i],n=newLines[i];
-                          if(o===n) continue;
-                          if(o!==undefined&&n===undefined) result.push({type:'del',text:o,ln:i+1});
-                          else if(o===undefined&&n!==undefined) result.push({type:'add',text:n,ln:i+1});
-                          else { result.push({type:'del',text:o,ln:i+1}); result.push({type:'add',text:n,ln:i+1}); }
-                        }
-                        return result.slice(0,40).map((line,j)=>(
-                          <div key={j} style={{display:'flex',gap:'6px',padding:'1px 12px',background:line.type==='add'?'rgba(74,222,128,.07)':'rgba(248,113,113,.07)'}}>
-                            <span style={{color:line.type==='add'?'#4ade80':'#f87171',flexShrink:0,width:'12px'}}>{line.type==='add'?'+':'-'}</span>
-                            <span style={{color:'rgba(255,255,255,.3)',flexShrink:0,width:'30px',textAlign:'right'}}>{line.ln}</span>
-                            <span style={{color:line.type==='add'?'rgba(74,222,128,.9)':'rgba(248,113,113,.7)',whiteSpace:'pre',overflow:'hidden',textOverflow:'ellipsis'}}>{line.text||' '}</span>
-                          </div>
-                        ));
-                      })()}
-                      <div style={{padding:'3px 12px',color:'rgba(255,255,255,.2)',fontSize:'10px'}}>{a.content.split('\n').length} baris total</div>
-                    </div>
-                  )}
-                  {a.content&&!a.original&&(
-                    <div style={{padding:'6px 12px',borderTop:'1px solid rgba(255,255,255,.04)',fontSize:'11px',fontFamily:'monospace',color:'rgba(255,255,255,.3)',maxHeight:'80px',overflow:'hidden'}}>
-                      {a.content.split('\n').slice(0,5).map((l,j)=><div key={j} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l||' '}</div>)}
-                      {a.content.split('\n').length>5&&<div style={{color:'rgba(255,255,255,.15)'}}>... {a.content.split('\n').length} baris</div>}
-                    </div>
-                  )}
-                  {/* per-file approve buttons */}
                   <div style={{display:'flex',gap:'8px',padding:'8px 12px',borderTop:'1px solid rgba(255,255,255,.04)'}}>
                     <button onClick={()=>onApprove(true,a.path)} style={{...approveBtn,flex:1}}>✓ Apply</button>
                     <button onClick={()=>onApprove(false,a.path)} style={rejectBtn}>✗</button>
                   </div>
                 </div>
               ))}
-              {actions.filter(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed).length>1&&(
-                <div style={{display:'flex',gap:'8px',marginTop:'2px'}}>
-                  <button onClick={()=>onApprove(true,'__all__')} style={{...approveBtn,flex:1}}>✓ Tulis semua ({actions.filter(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed).length} file)</button>
-                  <button onClick={()=>onApprove(false,'__all__')} style={rejectBtn}>✗ Batal</button>
-                </div>
-              )}
             </div>
           )}
+
+          {/* ── write_file: tampilkan status auto-execute ── */}
+          {actions.filter(a=>a.type==='write_file'&&a.executed).map((a,i)=>(
+            <div key={'w'+i} style={{display:'inline-flex',alignItems:'center',gap:'5px',background:a.result?.ok?'rgba(74,222,128,.06)':'rgba(248,113,113,.06)',border:'1px solid '+(a.result?.ok?'rgba(74,222,128,.15)':'rgba(248,113,113,.15)'),borderRadius:'6px',padding:'6px 12px',fontSize:'12px',fontFamily:'monospace',color:a.result?.ok?'#4ade80':'#f87171',margin:'4px 0'}}>
+              {a.result?.ok?'✓':'✗'} {a.path?.split('/').pop()}
+            </div>
+          ))}
 
           {/* ── Plan approval ── */}
           {hasPlan && onPlanApprove && (

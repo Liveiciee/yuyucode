@@ -19,17 +19,17 @@ export function useAgentSwarm({
         { role: 'user',   content: 'Task: ' + task + '\nFolder: ' + folder },
       ], () => {}, ctrl.signal);
 
-      log('⚛ Frontend Agent...');
-      const feReply = await callAI([
-        { role: 'system', content: 'Frontend Engineer. Implementasikan UI/React. Gunakan write_file action dengan path lengkap dimulai dari ' + folder + '.' },
-        { role: 'user',   content: 'Plan:\n' + archReply + '\n\nTask: ' + task },
-      ], () => {}, ctrl.signal);
-
-      log('⚙ Backend Agent...');
-      const beReply = await callAI([
-        { role: 'system', content: 'Backend Engineer. Implementasikan server/API/logic. Gunakan write_file action dengan path lengkap dimulai dari ' + folder + '.' },
-        { role: 'user',   content: 'Plan:\n' + archReply + '\n\nTask: ' + task },
-      ], () => {}, ctrl.signal);
+      log('⚛ Frontend + ⚙ Backend Agent (parallel)...');
+      const [feReply, beReply] = await Promise.all([
+        callAI([
+          { role: 'system', content: 'Frontend Engineer. Implementasikan UI/React. Gunakan write_file action dengan path lengkap dimulai dari ' + folder + '.' },
+          { role: 'user',   content: 'Plan:\n' + archReply + '\n\nTask: ' + task },
+        ], () => {}, ctrl.signal),
+        callAI([
+          { role: 'system', content: 'Backend Engineer. Implementasikan server/API/logic. Gunakan write_file action dengan path lengkap dimulai dari ' + folder + '.' },
+          { role: 'user',   content: 'Plan:\n' + archReply + '\n\nTask: ' + task },
+        ], () => {}, ctrl.signal),
+      ]);
 
       log('🧪 QA Review...');
       const qaReply = await callAI([

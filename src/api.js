@@ -1,7 +1,23 @@
 import { CEREBRAS_KEY, YUYU_SERVER, WS_SERVER } from './constants.js';
 
-// ── CEREBRAS STREAMING ─────────────────────────────────────────────────────────
-export async function askCerebrasStream(messages, model, onChunk, signal, options = {}) {
+// ── CEREBRAS STREAMING (with auto-retry) ──────────────────────────────────────
+export async function askCerebrasStream(messages, model, onChunk, signal, options = {}, _attempt = 0) {
+  try {
+    return await _askCerebrasStreamOnce(messages, model, onChunk, signal, options);
+  } catch (e) {
+    // Auto-retry on transient server errors (not rate limit, not abort)
+    if (e.name === 'AbortError') throw e;
+    if (e.message.startsWith('RATE_LIMIT:')) throw e;
+    if (_attempt < 2 && (e.message.startsWith('CEREBRAS_SERVER:') || e.message.includes('fetch'))) {
+      const delay = ((_attempt + 1) * 2000); // 2s, 4s
+      await new Promise(r => setTimeout(r, delay));
+      return askCerebrasStream(messages, model, onChunk, signal, options, _attempt + 1);
+    }
+    throw e;
+  }
+}
+
+async function _askCerebrasStreamOnce(messages, model, onChunk, signal, options = {}) {
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new Error('Messages must be a non-empty array');
   }
@@ -45,6 +61,10 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
   if (resp.status === 429) {
     const retry = parseInt(resp.headers.get('retry-after') || '60', 10);
     throw new Error(`RATE_LIMIT:${retry}`);
+  }
+  if (resp.status >= 500) {
+    const errText = await resp.text();
+    throw new Error(`CEREBRAS_SERVER:${resp.status}:${errText.slice(0, 100)}`);
   }
   if (!resp.ok) {
     const errText = await resp.text();

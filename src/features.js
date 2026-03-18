@@ -92,6 +92,7 @@ export async function runBackgroundAgent(task, folder, callAI, onDone) {
       ].join('\n');
 
       let bgMessages = [{ role: 'user', content: task }];
+      let totalPatches = 0;
 
       for (let iter = 0; iter < MAX_BG_ITER; iter++) {
         agent.log.push(`Iter ${iter + 1}/${MAX_BG_ITER}`);
@@ -125,7 +126,7 @@ export async function runBackgroundAgent(task, folder, callAI, onDone) {
           const p = a.path.startsWith(wtPath) ? a.path : wtPath + '/' + a.path.replace(/^\//, '');
           const r = await callServer({ type: 'patch', path: p, old_str: a.old_str, new_str: a.new_str || '' });
           a.result = r;
-          if (r.ok) agent.log.push('✅ patch: ' + p.split('/').pop());
+          if (r.ok) { totalPatches++; agent.log.push('✅ patch: ' + p.split('/').pop()); }
           else       agent.log.push('❌ patch GAGAL: ' + (r.data || '').slice(0, 100));
         }
 
@@ -154,7 +155,7 @@ export async function runBackgroundAgent(task, folder, callAI, onDone) {
       }
 
       // 3. Commit semua perubahan
-      if (allWrites.length > 0 || patches.length > 0) {
+      if (allWrites.length > 0 || totalPatches > 0) {
         await execGit(wtPath, 'git add -A');
         const commitMsg = 'agent(' + id.slice(-6) + '): ' + task.slice(0, 50);
         await execGit(wtPath, 'git commit -m "' + commitMsg + '"');
