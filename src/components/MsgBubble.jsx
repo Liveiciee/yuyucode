@@ -122,7 +122,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   const actions = msg.actions || [];
   const hasPendingWrite = actions.some(a => a.type === 'write_file' && !a.executed);
   const isContinued = msg.content.trim().endsWith('CONTINUE');
-  const hasPlan = !msg.planApproved && msg.content.includes('📋 PLAN:');
+  const hasPlan = !msg.planApproved && msg.content.includes('📋 **Plan (');
 
   function copyMsg() { navigator.clipboard?.writeText(cleanText).catch(() => {}); }
 
