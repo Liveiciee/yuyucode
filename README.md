@@ -197,7 +197,7 @@ Cerebras: gratis 🎉
 
 ## 💜 Dibuat dengan
 
-Dibangun sepenuhnya dari **Samsung Android**, di **Termux**, satu patch script satu-satu.
+Dibangun sepenuhnya dari **Oppo Android**, di **Termux**, satu patch script satu-satu.
 Bukan di laptop. Bukan di desktop. Di HP. Dari pagi sampai malam.
 
 > *"Karya yang sangat ambisius. Berhasil nge-pack kompleksitas aplikasi desktop seperti VS Code + Cursor ke dalam satu komponen React."*  
