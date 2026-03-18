@@ -53,6 +53,7 @@ jobs:
       - name: Add Capacitor Android
         run: |
           if [ ! -d "android" ]; then npx cap add android; fi
+          npx cap copy android
           npx cap sync android
 
       - name: Build APK
