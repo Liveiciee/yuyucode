@@ -618,18 +618,24 @@ export default function App() {
       )}
 
       {/* MCP */}
-      {ui.showMCP&&(
+      {ui.showMCP&&(\
         <BottomSheet onClose={()=>ui.setShowMCP(false)}>
           <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
             <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
               <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔌 MCP Tools</span>
               <button onClick={()=>ui.setShowMCP(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
             </div>
-            {['git','fetch','sqlite','github','system','filesystem'].map(tool=>(
+            {Object.keys(project.mcpTools).length === 0 && (
+              <div style={{color:'rgba(255,255,255,.3)',fontSize:'12px',padding:'8px 0'}}>Tidak ada MCP tools terdeteksi dari server.<br/>Pastikan yuyu-server.js sudah jalan.</div>
+            )}
+            {(Object.keys(project.mcpTools).length > 0
+              ? Object.entries(project.mcpTools)
+              : [['git',['status','log','diff']],['fetch',['browse']],['sqlite',['tables']],['github',['issues','pulls']],['system',['disk','memory']],['filesystem',['list']]]
+            ).map(([tool, actions])=>(\
               <div key={tool} style={{padding:'10px 12px',marginBottom:'6px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(74,222,128,.1)',borderRadius:'8px'}}>
                 <span style={{fontSize:'13px',color:'#4ade80',fontFamily:'monospace',fontWeight:'600'}}>{tool}</span>
                 <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginTop:'6px'}}>
-                  {(tool==='git'?['status','log','diff']:tool==='fetch'?['browse']:tool==='sqlite'?['tables']:tool==='github'?['issues','pulls']:tool==='system'?['disk','memory']:['list']).map(act=>(
+                  {(Array.isArray(actions) ? actions : Object.keys(actions)).map(act=>(
                     <button key={act} onClick={async()=>{const r=await callServer({type:'mcp',tool,action:act,params:{path:project.folder}});chat.setMessages(m=>[...m,{role:'assistant',content:`🔌 ${tool}/${act}:\n\`\`\`\n${(r.data||'').slice(0,1000)}\n\`\`\``,actions:[]}]);ui.setShowMCP(false);}}
                       style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'4px',padding:'2px 8px',color:'rgba(74,222,128,.8)',fontSize:'10px',cursor:'pointer',fontFamily:'monospace'}}>{act}</button>
                   ))}

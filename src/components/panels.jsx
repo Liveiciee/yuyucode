@@ -124,6 +124,7 @@ export function FileHistoryPanel({ folder, filePath, onClose }) {
 
   return (
     <BottomSheet onClose={onClose}>
+      <div style={{display:'flex',flexDirection:'row',flex:1,overflow:'hidden'}}>
       <div style={{width:'200px',borderRight:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',flexShrink:0}}>
         <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center'}}>
           <span style={{fontSize:'12px',fontWeight:'600',color:'#f0f0f0',flex:1}}>📜 File History</span>
@@ -159,6 +160,7 @@ export function FileHistoryPanel({ folder, filePath, onClose }) {
         ) : (
           <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,.2)',fontSize:'12px'}}>Pilih commit untuk preview</div>
         )}
+      </div>
       </div>
   </BottomSheet>
   );

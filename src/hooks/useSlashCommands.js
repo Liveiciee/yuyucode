@@ -1,8 +1,7 @@
 import { useCallback } from 'react';
 import { Preferences } from '@capacitor/preferences';
-import { callServer } from '../api.js';
+import { callServer, askCerebrasStream } from '../api.js';
 import { MODELS } from '../constants.js';
-import { askCerebrasStream } from '../api.js';
 import { countTokens, parseActions, executeAction } from '../utils.js';
 import { generatePlan, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages } from '../features.js';
 
@@ -223,7 +222,7 @@ export function useSlashCommands({
       const next = !thinkingEnabled;
       setThinkingEnabled(next);
       Preferences.set({key:'yc_thinking',value:next?'1':'0'});
-      setMessages(m=>[...m,{role:'assistant',content:'🧠 Extended thinking '+(next?'aktif':'nonaktif'),actions:[]}]);
+      setMessages(m=>[...m,{role:'assistant',content:'🧠 Think-aloud mode '+(next?'aktif — Yuyu akan tulis reasoning singkat dalam <think> sebelum jawab.':'nonaktif.'),actions:[]}]);
 
     } else if (base==='/permissions') {
       setShowPermissions(true);
@@ -274,6 +273,10 @@ export function useSlashCommands({
 
     } else if (base==='/effort') {
       const lvl = parts[1]?.toLowerCase();
+      if (!['low','medium','high'].includes(lvl)) {
+        setMessages(m=>[...m,{role:'assistant',content:'⚡ Effort sekarang: **'+effort+'**\nUsage: /effort low|medium|high',actions:[]}]);
+        return;
+      }
       setEffort(lvl);
       Preferences.set({key:'yc_effort',value:lvl});
       setMessages(m=>[...m,{role:'assistant',content:'⚡ Effort: **'+lvl+'**',actions:[]}]);
@@ -296,7 +299,7 @@ export function useSlashCommands({
     } else if (base==='/bg') {
       const task = parts.slice(1).join(' ').trim();
       const id = await runBackgroundAgent(task, folder, callAI, (id, agent) => {
-        sendNotification('YuyuCode 🤖', 'Background agent selesai! '+agent.result?.writes?.length+' file. /bgmerge '+id);
+        sendNotification('YuyuCode 🤖', 'Background agent selesai! '+(agent.result?.allWrites?.length||0)+' file. /bgmerge '+id);
         haptic('heavy');
       });
       setMessages(m=>[...m,{role:'assistant',content:'🤖 Background agent: '+task+'\nID: '+id,actions:[]}]);
@@ -536,6 +539,43 @@ Buat SKILL.md yang berisi:
 
 Tulis ke SKILL.md menggunakan write_file. Format singkat, padat, max 50 baris.`);
       setLoading(false);
+    }
+    } else if (base==='/tree') {
+      setLoading(true);
+      const depth = parseInt(parts[1]) || 2;
+      const r = await callServer({type:'tree', path:folder, depth});
+      setMessages(m=>[...m,{role:'assistant',content:'📁 **Tree (depth '+depth+'):**\n```\n'+(r.data||'(kosong)').slice(0,2000)+'\n```',actions:[]}]);
+      setLoading(false);
+
+    } else if (base==='/summarize') {
+      const fromN = parseInt(parts[1]) || 0;
+      const slice = fromN > 0 ? messages.slice(fromN) : messages.slice(1, -6);
+      if (slice.length < 3) { setMessages(m=>[...m,{role:'assistant',content:'Tidak cukup pesan untuk disummarize.',actions:[]}]); return; }
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'📦 Summarizing '+slice.length+' pesan...',actions:[]}]);
+      const ctrl = new AbortController(); abortRef.current = ctrl;
+      try {
+        const summary = await askCerebrasStream([
+          {role:'system', content:'Buat ringkasan padat percakapan coding ini. Fokus: keputusan teknis, file yang diubah, bug fix, status. Maks 200 kata. Bahasa Indonesia.'},
+          {role:'user', content:slice.map(m=>m.role+': '+(m.content||'').slice(0,300)).join('\n\n')},
+        ], 'llama3.1-8b', ()=>{}, ctrl.signal, {maxTokens:512});
+        const kept = fromN > 0 ? messages.slice(0, fromN) : [messages[0], ...messages.slice(-6)];
+        setMessages([...kept, {role:'assistant',content:'📦 **Summary ('+slice.length+' pesan):**\n\n'+summary,actions:[]}]);
+      } catch(e) { if(e.name!=='AbortError') setMessages(m=>[...m,{role:'assistant',content:'❌ '+e.message,actions:[]}]); }
+      setLoading(false);
+
+    } else if (base==='/scaffold') {
+      const tpl = parts[1]?.toLowerCase();
+      const validTemplates = ['react','node','express'];
+      if (!tpl || !validTemplates.includes(tpl)) {
+        setMessages(m=>[...m,{role:'assistant',content:'🏗 Usage: /scaffold react|node|express\n\n**react** — Vite + React 19\n**node** — Node.js CLI app\n**express** — Express REST API',actions:[]}]);
+        return;
+      }
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'🏗 Scaffolding **'+tpl+'** project di '+folder+'...',actions:[]}]);
+      await sendMsg('Scaffold project '+tpl+' di folder '+folder+'. Buat struktur file lengkap dengan write_file: package.json, file utama, README.md singkat. Pakai dependencies terbaru 2025. Langsung buat tanpa tanya.');
+      setLoading(false);
+
     }
   }, [model, folder, branch, messages, selectedFile, fileContent, notes, memories, skills,
       thinkingEnabled, effort, loopActive, loopIntervalRef, agentMemory, splitView,
