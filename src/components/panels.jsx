@@ -487,7 +487,6 @@ export function CommandPalette({ onClose, onRun, folder, memories, checkpoints, 
           <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)'}}>/ untuk slash commands</span>
         </div>
       </div>
-    </div>
   </BottomSheet>
   );
 }
