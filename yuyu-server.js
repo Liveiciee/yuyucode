@@ -129,6 +129,36 @@ function handle(payload) {
     return { ok: true, data: r.data.trim() || 'Tidak ditemukan' };
   }
 
+  if (type === 'web_search') {
+    const q = (payload.query || '').trim();
+    if (!q) return { ok: false, data: 'Query diperlukan' };
+    const encoded = encodeURIComponent(q);
+    const r = execSafe(
+      'curl -sL --max-time 12 -A "Mozilla/5.0" "https://api.duckduckgo.com/?q=' + encoded + '&format=json&no_html=1&skip_disambig=1" 2>/dev/null',
+      HOME, 15000
+    );
+    let results = [];
+    if (r.ok && r.data) {
+      try {
+        const d = JSON.parse(r.data);
+        if (d.AbstractText) results.push('📌 ' + d.AbstractText);
+        if (d.Answer) results.push('✅ ' + d.Answer);
+        if (d.Definition) results.push('📖 ' + d.Definition);
+        (d.RelatedTopics || []).slice(0, 6).forEach(function(t) {
+          if (t.Text) results.push('• ' + t.Text.slice(0, 200));
+        });
+      } catch(e) {}
+    }
+    if (results.length === 0) {
+      const lite = execSafe(
+        'curl -sL --max-time 12 -A "Mozilla/5.0" "https://lite.duckduckgo.com/lite/?q=' + encoded + '" 2>/dev/null | sed "s/<[^>]*>//g" | grep -v "^[[:space:]]*$" | head -30',
+        HOME, 15000
+      );
+      if (lite.ok && lite.data) results.push(lite.data.trim());
+    }
+    return { ok: true, data: results.join('\n\n') || 'Tidak ada hasil untuk: ' + q };
+  }
+
   if (type === 'exec') {
     const cwd = filePath ? resolvePath(filePath) : HOME;
     return execSafe(command, cwd);
