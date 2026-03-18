@@ -1,19 +1,19 @@
-import { CEREBRAS_KEY, YUYU_SERVER } from './constants.js';
+import { CEREBRAS_KEY, YUYU_SERVER, WS_SERVER } from './constants.js';
 
+// ── CEREBRAS STREAMING ─────────────────────────────────────────────────────────
 export async function askCerebrasStream(messages, model, onChunk, signal, options = {}) {
-  // Validasi input minimal
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new Error('Messages must be a non-empty array');
   }
 
-  // Inject vision image ke pesan user terakhir jika ada
+  // Inject vision image ke user message terakhir
   let finalMessages = messages;
   if (options.imageBase64 && typeof options.imageBase64 === 'string') {
     finalMessages = messages.map((m, i) => {
       if (i === messages.length - 1 && m.role === 'user') {
-        const textContent = typeof m.content === 'string' ? m.content :
-                             Array.isArray(m.content) ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ') :
-                             '';
+        const textContent = typeof m.content === 'string' ? m.content
+          : Array.isArray(m.content) ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ')
+          : '';
         return {
           ...m,
           content: [
@@ -30,14 +30,15 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
     method: 'POST',
     signal,
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type':  'application/json',
       'Authorization': 'Bearer ' + CEREBRAS_KEY,
     },
     body: JSON.stringify({
       model,
       messages: finalMessages,
-      max_tokens: options.maxTokens || 1500,
-      stream: true
+      max_tokens: options.maxTokens || 4096,
+      stream: true,
+      temperature: options.temperature || 0.3,
     }),
   });
 
@@ -45,15 +46,14 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
     const retry = parseInt(resp.headers.get('retry-after') || '60', 10);
     throw new Error(`RATE_LIMIT:${retry}`);
   }
-
   if (!resp.ok) {
     const errText = await resp.text();
     throw new Error(`Cerebras error: HTTP ${resp.status} - ${errText}`);
   }
 
-  const reader = resp.body.getReader();
+  const reader  = resp.body.getReader();
   const decoder = new TextDecoder();
-  let full = '';
+  let full   = '';
   let buffer = '';
 
   try {
@@ -62,72 +62,133 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
       try {
         ({ done, value } = await reader.read());
       } catch (readErr) {
-        // Stream bisa terputus saat AbortController di-cancel — bukan error fatal
         if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
         console.warn('Stream read error:', readErr);
         break;
       }
-
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-
       const lines = buffer.split('\n');
-      buffer = lines.pop(); // Simpan sisa yang belum penuh
+      buffer = lines.pop();
 
       for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        if (line === 'data: [DONE]') continue;
-
+        if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
         try {
-          const parsed = JSON.parse(line.slice(6));
+          const parsed  = JSON.parse(line.slice(6));
           const content = parsed.choices?.[0]?.delta?.content || '';
           full += content;
           onChunk(full);
-        } catch (e) {
-          console.warn('Failed to parse stream chunk:', e, 'line:', line);
-        }
+        } catch {}
       }
     }
 
-    // Flush sisa buffer jika ada
-    if (buffer.length > 0) {
+    // Flush remaining buffer
+    if (buffer.startsWith('data: ') && buffer !== 'data: [DONE]') {
       try {
-        if (buffer.startsWith('data: ') && buffer !== 'data: [DONE]') {
-          const parsed = JSON.parse(buffer.slice(6));
-          const content = parsed.choices?.[0]?.delta?.content || '';
-          full += content;
-          onChunk(full);
-        }
-      } catch (e) {
-        console.warn('Failed to parse final buffer:', e, 'buffer:', buffer);
-      }
+        const parsed  = JSON.parse(buffer.slice(6));
+        const content = parsed.choices?.[0]?.delta?.content || '';
+        full += content;
+        onChunk(full);
+      } catch {}
     }
   } finally {
-    // Selalu release lock — cegah ReadableStream locked error di request berikutnya
     try { reader.releaseLock(); } catch {}
   }
 
   return full;
 }
 
+// ── CALL SERVER (HTTP) ─────────────────────────────────────────────────────────
 export async function callServer(payload) {
   try {
     const resp = await fetch(YUYU_SERVER, {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body:    JSON.stringify(payload),
     });
-
     if (!resp.ok) {
       const err = await resp.text();
-      console.warn('Server error response:', err);
       return { ok: false, data: `Server error: ${resp.status}` };
     }
-
     return await resp.json();
-  } catch (e) {
-    console.error('Network error when calling YuyuServer:', e);
-    return { ok: false, data: 'YuyuServer tidak dapat dihubungi. Pastikan server sedang berjalan.' };
+  } catch(e) {
+    return { ok: false, data: 'YuyuServer tidak dapat dihubungi. Jalankan: node ~/yuyu-server.js &' };
   }
+}
+
+// ── EXEC STREAM via WebSocket ──────────────────────────────────────────────────
+// Live terminal output. onLine(text, stream:'stdout'|'stderr'|'exit') dipanggil tiap ada data.
+// Returns promise yang resolve {exitCode, output} saat proses selesai.
+export function execStream(command, cwd, onLine, signal) {
+  return new Promise((resolve, reject) => {
+    let ws;
+    try {
+      ws = new WebSocket(WS_SERVER);
+    } catch(e) {
+      reject(new Error('WebSocket tidak tersedia'));
+      return;
+    }
+
+    const id     = 'exec_' + Date.now();
+    let output   = '';
+    let settled  = false;
+
+    function cleanup() {
+      try { ws.close(); } catch {}
+    }
+
+    function done(exitCode) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve({ exitCode, output });
+    }
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'exec_stream', id, command, cwd }));
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.id !== id) return;
+        if (msg.type === 'stdout' || msg.type === 'stderr') {
+          output += msg.data;
+          onLine?.(msg.data, msg.type);
+        } else if (msg.type === 'exit') {
+          onLine?.('\n[exit ' + msg.code + ']', 'exit');
+          done(msg.code);
+        } else if (msg.type === 'error') {
+          onLine?.('\n[error: ' + msg.data + ']', 'stderr');
+          done(-1);
+        }
+      } catch {}
+    };
+
+    ws.onerror = (e) => {
+      if (!settled) {
+        settled = true;
+        reject(new Error('WebSocket error — streaming exec tidak tersedia'));
+      }
+    };
+
+    ws.onclose = () => {
+      if (!settled) done(-1);
+    };
+
+    // Abort support
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        try { ws.send(JSON.stringify({ type: 'kill', id })); } catch {}
+        cleanup();
+        if (!settled) { settled = true; reject(new DOMException('Aborted', 'AbortError')); }
+      }, { once: true });
+    }
+  });
+}
+
+// ── CALL SERVER BATCH (parallel HTTP calls) ────────────────────────────────────
+export async function callServerBatch(payloads) {
+  return Promise.all(payloads.map(p => callServer(p)));
 }

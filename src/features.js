@@ -1,4 +1,4 @@
-// ── FEATURES v2 — Git Worktree Isolation ─────────────────────────────────────
+// ── FEATURES v3 — Overhaul ─────────────────────────────────────────────────────
 import { callServer } from './api.js';
 import { parseActions, executeAction } from './utils.js';
 import { Preferences } from '@capacitor/preferences';
@@ -16,16 +16,16 @@ export function parsePlanSteps(reply) {
 
 export async function generatePlan(task, folder, callAI, signal) {
   const reply = await callAI([
-    { role: 'system', content: 'Buat rencana eksekusi bernomor.\nFormat:\n1. [action singkat]\nMaksimal 8 langkah.' },
-    { role: 'user', content: 'Task: ' + task + '\nFolder: ' + folder },
+    { role: 'system', content: 'Buat rencana eksekusi bernomor.\nFormat:\n1. [action singkat]\nMaksimal 8 langkah. Bahasa Indonesia. Singkat dan konkret.' },
+    { role: 'user',   content: 'Task: ' + task + '\nFolder: ' + folder },
   ], () => {}, signal);
   return { reply, steps: parsePlanSteps(reply) };
 }
 
 export async function executePlanStep(step, folder, callAI, signal, onChunk) {
   const reply = await callAI([
-    { role: 'system', content: 'Eksekusi: "' + step.text + '"\nFolder: ' + folder + '\nGunakan action blocks.' },
-    { role: 'user', content: step.text },
+    { role: 'system', content: 'Eksekusi langkah: "' + step.text + '"\nFolder: ' + folder + '\nGunakan action blocks. patch_file untuk edit, write_file untuk file baru.' },
+    { role: 'user',   content: step.text },
   ], onChunk || (() => {}), signal);
   const actions = parseActions(reply);
   const results = [];
@@ -48,59 +48,124 @@ async function execGit(folder, cmd) {
   return r.data || '';
 }
 
+// Background agent dengan REAL agentic loop (tidak hanya satu call)
 export async function runBackgroundAgent(task, folder, callAI, onDone) {
-  const id = 'bg_' + Date.now();
-  const branch = 'agent-' + id;
+  const id     = 'bg_' + Date.now();
+  const branch = 'agent-' + id.slice(-8);
   const wtPath = WORKTREE_BASE + '/' + id;
-  const agent = { task, status: 'preparing', log: [], result: null, branch, wtPath, folder };
+  const agent  = { task, status: 'preparing', log: [], result: null, branch, wtPath, folder, startedAt: Date.now() };
   bgAgents.set(id, agent);
+
   const ctrl = new AbortController();
   agent.abort = () => {
     ctrl.abort();
     callServer({ type: 'exec', path: folder, command: 'git worktree remove --force ' + wtPath + ' 2>/dev/null; git branch -D ' + branch + ' 2>/dev/null' });
   };
 
+  // Async agent loop in background
   (async () => {
     try {
-      agent.log.push('Creating worktree: ' + branch);
+      // 1. Setup worktree
+      agent.log.push('Setup worktree: ' + branch);
       const wtResult = await execGit(folder, 'git worktree add ' + wtPath + ' -b ' + branch + ' 2>&1');
       if (wtResult.includes('fatal') || (wtResult.toLowerCase().includes('error:') && !wtResult.includes('HEAD is now'))) {
-        throw new Error('Worktree failed: ' + wtResult.slice(0, 100));
+        throw new Error('Worktree gagal: ' + wtResult.slice(0, 100));
       }
       agent.status = 'running';
-      agent.log.push('Worktree ready: ' + wtPath);
+      agent.log.push('Worktree siap: ' + wtPath);
 
-      const reply = await callAI([
-        {
-          role: 'system',
-          content: 'Kamu adalah isolated background agent.\nWorking dir: ' + wtPath + '\nBranch: ' + branch + '\nTask: ' + task + '\nWAJIB: gunakan write_file action dengan path lengkap ' + wtPath + '/nama-file\nContoh action block:\n```action\n{"type":"write_file","path":"' + wtPath + '/test.md","content":"isi"}\n```\nSetelah tulis file, commit semua.',
-        },
-        { role: 'user', content: task },
-      ], () => {}, ctrl.signal);
+      // 2. Real agentic loop (up to 8 iterations)
+      const MAX_BG_ITER = 8;
+      const allWrites = [];
+      const sysPrompt = [
+        'Kamu adalah isolated background coding agent.',
+        'Working dir: ' + wtPath,
+        'Branch: ' + branch,
+        'Task: ' + task,
+        '',
+        'ATURAN:',
+        '- Gunakan read_file dengan path relatif terhadap ' + wtPath,
+        '- patch_file untuk edit file yang ada',
+        '- write_file untuk file baru (path wajib absolute: ' + wtPath + '/filename)',
+        '- exec untuk jalankan command di ' + wtPath,
+        '- Setelah selesai tulis DONE di akhir response',
+      ].join('\n');
 
-      const actions = parseActions(reply);
-      const writes = actions.filter(a => a.type === 'write_file');
+      let bgMessages = [{ role: 'user', content: task }];
 
-      for (const a of actions.filter(a => a.type !== 'write_file')) {
-        a.result = await executeAction(a, wtPath);
+      for (let iter = 0; iter < MAX_BG_ITER; iter++) {
+        agent.log.push(`Iter ${iter + 1}/${MAX_BG_ITER}`);
+        const msgs = [{ role: 'system', content: sysPrompt }, ...bgMessages];
+
+        let reply;
+        try {
+          reply = await callAI(msgs, () => {}, ctrl.signal);
+        } catch(e) {
+          if (e.name === 'AbortError') throw e;
+          agent.log.push('AI error: ' + e.message);
+          break;
+        }
+
+        const actions = parseActions(reply);
+        const writes  = actions.filter(a => a.type === 'write_file');
+        const patches  = actions.filter(a => a.type === 'patch_file');
+        const others   = actions.filter(a => !['write_file', 'patch_file'].includes(a.type));
+
+        const results = [];
+        for (const a of others) {
+          const r = await executeAction(a, wtPath);
+          a.result = r;
+          results.push(r);
+          if (r.ok) agent.log.push('✅ ' + a.type + ': ' + (a.path || a.command || '').slice(0, 50));
+          else       agent.log.push('❌ ' + a.type + ': ' + (r.data || '').slice(0, 80));
+        }
+
+        // Auto-execute patches in bg agent
+        for (const a of patches) {
+          const p = a.path.startsWith(wtPath) ? a.path : wtPath + '/' + a.path.replace(/^\//, '');
+          const r = await callServer({ type: 'patch', path: p, old_str: a.old_str, new_str: a.new_str || '' });
+          a.result = r;
+          if (r.ok) agent.log.push('✅ patch: ' + p.split('/').pop());
+          else       agent.log.push('❌ patch GAGAL: ' + (r.data || '').slice(0, 100));
+        }
+
+        // Write new files
+        for (const a of writes) {
+          const p = a.path.startsWith(wtPath) ? a.path : wtPath + '/' + a.path.replace(/^\//, '');
+          const r = await callServer({ type: 'write', path: p, content: a.content });
+          a.result = r;
+          if (r.ok) { allWrites.push({ path: p, content: a.content }); agent.log.push('✅ write: ' + p.split('/').pop()); }
+        }
+
+        // Break if done
+        const isDone = reply.includes('DONE') || (!actions.length && iter > 0);
+        if (isDone) { agent.log.push('Task selesai!'); break; }
+
+        // Feed results back
+        const resultText = [...others, ...patches, ...writes]
+          .filter(a => a.result)
+          .map(a => (a.result.ok ? '✅' : '❌') + ' ' + a.type + ': ' + (a.result.data || '').slice(0, 200))
+          .join('\n');
+        bgMessages = [
+          ...bgMessages,
+          { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
+          { role: 'user',      content: resultText ? 'Hasil:\n' + resultText + '\n\nLanjutkan.' : 'Lanjutkan atau tulis DONE jika sudah selesai.' },
+        ];
       }
 
-      for (const a of writes) {
-        const p = a.path.startsWith(wtPath) ? a.path : wtPath + '/' + a.path.replace(folder + '/', '').replace(/^\//, '');
-        await callServer({ type: 'write', path: p, content: a.content });
-        agent.log.push('Written: ' + p.split('/').pop());
-      }
-
-      if (writes.length > 0) {
+      // 3. Commit semua perubahan
+      if (allWrites.length > 0 || patches.length > 0) {
         await execGit(wtPath, 'git add -A');
-        await execGit(wtPath, 'git commit -m "agent(' + id.slice(-6) + '): ' + task.slice(0, 40) + '"');
-        agent.log.push('Committed ' + writes.length + ' files on ' + branch);
+        const commitMsg = 'agent(' + id.slice(-6) + '): ' + task.slice(0, 50);
+        await execGit(wtPath, 'git commit -m "' + commitMsg + '"');
+        agent.log.push('Committed ke ' + branch);
       }
 
-      agent.result = { reply, writes, branch, wtPath };
+      agent.result = { allWrites, branch, wtPath };
       agent.status = 'done';
-      agent.log.push('Done. ' + writes.length + ' file. /bgmerge ' + id + ' untuk merge.');
+      agent.log.push('Selesai. ' + allWrites.length + ' file. Gunakan /bgmerge ' + id + ' untuk merge.');
       if (typeof onDone === 'function') onDone(id, agent);
+
     } catch (e) {
       agent.status = 'error';
       agent.log.push('Error: ' + (e.message || String(e)));
@@ -120,11 +185,9 @@ export async function mergeBackgroundAgent(id, folder) {
   try {
     const mergeResult = await execGit(folder, 'git merge ' + agent.branch + ' --no-ff -m "merge: agent ' + id.slice(-6) + ' — ' + agent.task.slice(0, 40) + '" 2>&1');
     if (mergeResult.includes('CONFLICT')) {
-      // Get list of conflicting files
       const conflictOut = await execGit(folder, 'git diff --name-only --diff-filter=U 2>&1');
-      const conflicts = conflictOut.trim().split('\n').filter(Boolean);
-      // Read previews: extract just conflict markers from each file
-      const previews = [];
+      const conflicts   = conflictOut.trim().split('\n').filter(Boolean);
+      const previews    = [];
       for (const cf of conflicts.slice(0, 4)) {
         const r = await callServer({ type: 'read', path: folder + '/' + cf });
         if (r.ok && r.data) {
@@ -138,21 +201,13 @@ export async function mergeBackgroundAgent(id, folder) {
         }
       }
       agent.status = 'conflict';
-      return {
-        ok: false,
-        hasConflicts: true,
-        conflicts,
-        previews,
-        branch: agent.branch,
-        task: agent.task,
-        msg: 'Konflik di ' + conflicts.length + ' file.',
-      };
+      return { ok: false, hasConflicts: true, conflicts, previews, branch: agent.branch, task: agent.task, msg: 'Konflik di ' + conflicts.length + ' file.' };
     }
     await execGit(folder, 'git worktree remove --force ' + agent.wtPath + ' 2>/dev/null');
     await execGit(folder, 'git branch -D ' + agent.branch + ' 2>/dev/null');
     agent.status = 'merged';
-    agent.log.push('Merged ke main, worktree dihapus.');
-    return { ok: true, msg: 'Merged! ' + (agent.result?.writes?.length || 0) + ' file masuk ke main.' };
+    agent.log.push('Merged ke main.');
+    return { ok: true, msg: 'Merged! ' + (agent.result?.allWrites?.length || 0) + ' file masuk ke main.' };
   } catch (e) {
     return { ok: false, msg: 'Merge error: ' + e.message };
   }
@@ -185,21 +240,12 @@ export function selectSkills(skills, taskText) {
   const kw = taskText.toLowerCase();
   return skills.filter(s => {
     const sn = s.name.toLowerCase().replace('.md', '');
-    // Always include root SKILL.md
     if (sn === 'skill') return true;
-    // Name match
     if (kw.includes(sn)) return true;
-    // Content-based: extract first 5 meaningful words from skill as keywords
     if (s.content) {
-      const contentWords = s.content
-        .toLowerCase()
-        .replace(/[#*`>_\-\[\]()]/g, ' ')
-        .split(/\s+/)
-        .filter(w => w.length > 3)
-        .slice(0, 20);
+      const contentWords = s.content.toLowerCase().replace(/[#*`>_\-\[\]()]/g, ' ').split(/\s+/).filter(w => w.length > 3).slice(0, 20);
       if (contentWords.some(w => kw.includes(w))) return true;
     }
-    // Always include small skills (under 2KB) — cheap to include
     if (s.content && s.content.length < 2048) return true;
     return false;
   });
@@ -230,33 +276,39 @@ export class TokenTracker {
   constructor() { this.reset(); }
   reset() { this.inputTokens = 0; this.outputTokens = 0; this.requests = 0; this.startTime = Date.now(); this.history = []; }
   record(inTk, outTk, model) {
-    this.inputTokens += inTk || 0;
+    this.inputTokens  += inTk  || 0;
     this.outputTokens += outTk || 0;
     this.requests += 1;
-    this.history.push({ inTk: inTk||0, outTk: outTk||0, model: model||"?" });
+    this.history.push({ inTk: inTk || 0, outTk: outTk || 0, model: model || '?' });
     if (this.history.length > 100) this.history = this.history.slice(-100);
   }
   lastCost() {
     const last = this.history[this.history.length - 1];
-    return last ? "[" + last.inTk + "->" + last.outTk + "tk]" : "";
+    return last ? '[' + last.inTk + '->' + last.outTk + 'tk]' : '';
   }
   summary() {
     const total = this.inputTokens + this.outputTokens;
-    const mins = Math.round((Date.now() - this.startTime) / 60000);
-    const avg = this.requests > 0 ? Math.round(total / this.requests) : 0;
-    const rec = this.history.slice(-5).map(function(h,i) {
-      return "  "+(i+1)+". in:"+h.inTk+" out:"+h.outTk+"tk ("+h.model+")";
-    }).join("\n");
-    return "📊 **Token Usage**\nInput:    ~"+this.inputTokens+"tk\nOutput:   ~"+this.outputTokens+"tk\nTotal:    ~"+total+"tk\nRequests: "+this.requests+" (~"+avg+"tk/req)\nDurasi:   "+mins+" menit\nCerebras: gratis 🎉\n\n**5 request terakhir:**\n"+rec;
+    const mins  = Math.round((Date.now() - this.startTime) / 60000);
+    const avg   = this.requests > 0 ? Math.round(total / this.requests) : 0;
+    const rec   = this.history.slice(-5).map((h, i) =>
+      '  ' + (i + 1) + '. in:' + h.inTk + ' out:' + h.outTk + 'tk (' + h.model + ')'
+    ).join('\n');
+    return '📊 **Token Usage**\nInput:    ~' + this.inputTokens + 'tk\nOutput:   ~' + this.outputTokens + 'tk\nTotal:    ~' + total + 'tk\nRequests: ' + this.requests + ' (~' + avg + 'tk/req)\nDurasi:   ' + mins + ' menit\nCerebras: gratis 🎉\n\n**5 request terakhir:**\n' + rec;
   }
 }
 export const tokenTracker = new TokenTracker();
 
 // ─── SESSION MANAGER ─────────────────────────────────────────────────────────
 export async function saveSession(name, messages, folder, branch) {
-  const session = { id: Date.now(), name: name || 'Session ' + new Date().toLocaleString('id'), messages: messages.slice(-50), folder, branch, savedAt: new Date().toISOString() };
+  const session = {
+    id:      Date.now(),
+    name:    name || 'Session ' + new Date().toLocaleString('id'),
+    messages: messages.slice(-50),
+    folder, branch,
+    savedAt: new Date().toISOString(),
+  };
   const existing = await loadSessions();
-  const updated = [session, ...existing.filter(s => s.name !== name)].slice(0, 20);
+  const updated  = [session, ...existing.filter(s => s.name !== name)].slice(0, 20);
   await Preferences.set({ key: 'yc_sessions', value: JSON.stringify(updated) });
   return session;
 }
@@ -275,74 +327,71 @@ export function rewindMessages(messages, turns) {
 
 // ─── EFFORT LEVELS ───────────────────────────────────────────────────────────
 export const EFFORT_CONFIG = {
-  low:    { maxIter: 3,  maxTokens: 1024, systemSuffix: '\n\nMode: LOW EFFORT. Jawab singkat.', label: 'Low' },
-  medium: { maxIter: 10, maxTokens: 2048, systemSuffix: '', label: 'Medium' },
-  high:   { maxIter: 15, maxTokens: 4000, systemSuffix: '\n\nMode: HIGH EFFORT. Analisis mendalam.', label: 'High' },
+  low:    { maxIter: 3,  maxTokens: 2048,  systemSuffix: '\n\nMode: LOW EFFORT. Jawab singkat dan langsung.',                     label: 'Low'    },
+  medium: { maxIter: 10, maxTokens: 8192,  systemSuffix: '',                                                                       label: 'Medium' },
+  high:   { maxIter: 20, maxTokens: 16384, systemSuffix: '\n\nMode: HIGH EFFORT. Analisis mendalam. Pastikan kualitas tinggi.',   label: 'High'   },
 };
 
 // ─── PERMISSIONS ─────────────────────────────────────────────────────────────
 export const DEFAULT_PERMISSIONS = {
-  read_file: true, write_file: false, exec: false, list_files: true, search: true, mcp: false, delete_file: false, browse: false,
+  read_file:   true,
+  write_file:  false,
+  patch_file:  true,   // patch is safer than full write — default on
+  exec:        false,
+  list_files:  true,
+  tree:        true,
+  search:      true,
+  mcp:         false,
+  delete_file: false,
+  move_file:   false,
+  mkdir:       true,
+  browse:      false,
+  web_search:  true,
 };
 
 export function checkPermission(permissions, actionType) {
   if (!permissions) return false;
-  return permissions[actionType] !== undefined ? permissions[actionType] : (DEFAULT_PERMISSIONS[actionType] || false);
+  // normalize: patch_file and write_file use separate permissions now
+  const key = actionType;
+  if (permissions[key] !== undefined) return permissions[key];
+  return DEFAULT_PERMISSIONS[key] !== undefined ? DEFAULT_PERMISSIONS[key] : false;
 }
 
 // ─── ELICITATION ─────────────────────────────────────────────────────────────
 export function parseElicitation(reply) {
   const idx = reply.indexOf('ELICIT:');
   if (idx === -1) return null;
-  // Find the opening brace after ELICIT:
   const start = reply.indexOf('{', idx);
   if (start === -1) return null;
-  // Walk forward counting braces to find the matching closing brace
-  let depth = 0;
-  let end = -1;
+  let depth = 0, end = -1;
   for (let i = start; i < reply.length; i++) {
     if (reply[i] === '{') depth++;
-    else if (reply[i] === '}') {
-      depth--;
-      if (depth === 0) { end = i; break; }
-    }
+    else if (reply[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
   }
   if (end === -1) return null;
   try { return JSON.parse(reply.slice(start, end + 1)); } catch { return null; }
 }
 
 // ─── TF-IDF MEMORY RANKING ───────────────────────────────────────────────────
-// Returns memories sorted by relevance to queryText using TF-IDF scoring.
 export function tfidfRank(memories, queryText, topN = 5) {
   if (!memories.length) return [];
   if (!queryText) return memories.slice(0, topN);
-
   const queryWords = queryText.toLowerCase().split(/\s+/).filter(w => w.length > 2);
   if (!queryWords.length) return memories.slice(0, topN);
-
   const N = memories.length;
-
   const scored = memories.map(mem => {
     const memWords = mem.text.toLowerCase().split(/\s+/);
     let score = 0;
     for (const qw of queryWords) {
-      // TF: how often query word appears in this memory
       const tf = memWords.filter(w => w === qw).length / (memWords.length || 1);
-      // IDF: log(N / num docs containing term) — rare terms weighted higher
       const df = memories.filter(m => m.text.toLowerCase().includes(qw)).length;
       const idf = df > 0 ? Math.log((N + 1) / df) : 0;
       score += tf * idf;
     }
-    // Boost recent memories — gunakan mem.id (Date.now()-based) untuk umur sebenarnya
-    // mem.id = Date.now() + Math.random(), jadi Math.floor(mem.id) = ms epoch saat dibuat
     const createdMs = mem.id ? Math.floor(mem.id) : 0;
-    const ageDays = createdMs > 0 ? (Date.now() - createdMs) / 86400000 : 999;
-    // Linear decay: boost 0.15 di hari-0, turun ke 0 di hari-14
+    const ageDays   = createdMs > 0 ? (Date.now() - createdMs) / 86400000 : 999;
     score += Math.max(0, 0.15 * (1 - ageDays / 14));
     return { ...mem, _score: score };
   });
-
-  return scored
-    .sort((a, b) => b._score - a._score)
-    .slice(0, topN);
+  return scored.sort((a, b) => b._score - a._score).slice(0, topN);
 }
