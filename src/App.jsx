@@ -198,7 +198,7 @@ export default function App() {
         {role:'user',content:'User: '+userMsg.slice(0,500)+'\n\nAI: '+aiReply.slice(0,800)}
       ],'llama3.1-8b',()=>{},ctrl.signal);
       if(reply.trim()==='none'||!reply.includes('•')) return;
-      const newMems=reply.split('\n').filter(l=>l.startsWith('•')).map(l=>({id:Date.now()+Math.random(),text:l.slice(1).trim(),project.folder,ts:new Date().toLocaleDateString('id')}));
+      const newMems=reply.split('\n').filter(l=>l.startsWith('•')).map(l=>({id:Date.now()+Math.random(),text:l.slice(1).trim(),folder:project.folder,ts:new Date().toLocaleDateString('id')}));
       if(!newMems.length) return;
       chat.setMemories(prev=>{const merged=[...newMems,...prev].slice(0,50);Preferences.set({key:'yc_memories',value:JSON.stringify(merged)});return merged;});
     }catch{}
