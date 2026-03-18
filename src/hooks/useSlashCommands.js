@@ -26,6 +26,7 @@ export function useSlashCommands({
   // functions
   sendMsg, compactContext, saveCheckpoint, exportChat, generateCommitMsg,
   runTests, browseTo, runAgentSwarm, callAI, addHistory, runHooks,
+  sendNotification, haptic,
   // refs
   abortRef,
 }) {
@@ -34,9 +35,10 @@ export function useSlashCommands({
     const base = parts[0];
 
     if (base==='/model') {
-      const next = model===MODELS[0].id ? MODELS[1].id : MODELS[0].id;
-      setModel(next); Preferences.set({key:'yc_model',value:next});
-      setMessages(m=>[...m,{role:'assistant',content:'🔄 Model diganti ke: '+MODELS.find(m=>m.id===next)?.label,actions:[]}]);
+      const idx = MODELS.findIndex(m => m.id === model);
+      const next = MODELS[(idx + 1) % MODELS.length];
+      setModel(next.id); Preferences.set({key:'yc_model',value:next.id});
+      setMessages(m=>[...m,{role:'assistant',content:'🔄 Model: **'+next.label+'** ('+((idx+1)%MODELS.length+1)+'/'+MODELS.length+')',actions:[]}]);
 
     } else if (base==='/compact') {
       await compactContext();
@@ -142,10 +144,15 @@ export function useSlashCommands({
 
     } else if (base==='/index') {
       setLoading(true);
-      setMessages(m=>[...m,{role:'assistant',content:'🔍 Indexing...',actions:[]}]);
+      setMessages(m=>[...m,{role:'assistant',content:'🔍 Indexing src/...',actions:[]}]);
       const idxR = await callServer({type:'list', path:folder+'/src'});
-      const idxCount = idxR.ok && Array.isArray(idxR.data) ? idxR.data.filter(f=>!f.isDir).length : 0;
-      setMessages(m=>[...m,{role:'assistant',content:'✅ Index: '+idxCount+' files di src/~',actions:[]}]);
+      if (idxR.ok && Array.isArray(idxR.data)) {
+        const files = idxR.data.filter(f=>!f.isDir);
+        const list = files.map(f=>f.name+(f.size?` (${Math.round(f.size/1024)}KB)`:'')).join('\n');
+        setMessages(m=>[...m,{role:'assistant',content:`✅ **Index: ${files.length} file di src/**\n\`\`\`\n${list}\n\`\`\``,actions:[]}]);
+      } else {
+        setMessages(m=>[...m,{role:'assistant',content:'❌ Tidak bisa index src/',actions:[]}]);
+      }
       setLoading(false);
 
     } else if (base==='/skills') {
@@ -230,7 +237,10 @@ export function useSlashCommands({
 
     } else if (base==='/bg') {
       const task = parts.slice(1).join(' ').trim();
-      const id = await runBackgroundAgent(task, folder, callAI);
+      const id = await runBackgroundAgent(task, folder, callAI, (id, agent) => {
+        sendNotification('YuyuCode 🤖', 'Background agent selesai! '+agent.result?.writes?.length+' file. /bgmerge '+id);
+        haptic('heavy');
+      });
       setMessages(m=>[...m,{role:'assistant',content:'🤖 Background agent: '+task+'\nID: '+id,actions:[]}]);
 
     } else if (base==='/bgstatus') {
@@ -295,13 +305,35 @@ export function useSlashCommands({
 
     } else if (base==='/batch') {
       const batchCmd = parts.slice(1).join(' ').trim();
-      if (!batchCmd) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /batch <command>\nContoh: /batch tambah console.log di setiap fungsi\nAkan dijalankan ke semua file di src/',actions:[]}]); return; }
+      if (!batchCmd) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /batch <command>\nContoh: /batch tambah JSDoc ke setiap fungsi\nAkan dijalankan ke semua file di src/',actions:[]}]); return; }
       setLoading(true);
-      setMessages(m=>[...m,{role:'assistant',content:'📦 Batch operation: **'+batchCmd+'**\nMengambil daftar file...',actions:[]}]);
       const listR = await callServer({type:'list', path:folder+'/src'});
       if (!listR.ok) { setMessages(m=>[...m,{role:'assistant',content:'❌ Tidak bisa list src/',actions:[]}]); setLoading(false); return; }
-      const files = (listR.data||[]).filter(f=>!f.isDir && (f.name.endsWith('.jsx')||f.name.endsWith('.js')||f.name.endsWith('.ts')));
-      await sendMsg('BATCH OPERATION pada '+files.length+' file di src/:\n'+files.map(f=>f.name).join(', ')+'\n\nTask: '+batchCmd+'\n\nUntuk setiap file, gunakan read_file lalu write_file jika perlu perubahan. Lakukan per file satu-satu.');
+      const files = (listR.data||[]).filter(f=>!f.isDir && (f.name.endsWith('.jsx')||f.name.endsWith('.js')||f.name.endsWith('.ts')||f.name.endsWith('.tsx')));
+      setMessages(m=>[...m,{role:'assistant',content:`📦 **Batch: ${batchCmd}**\n${files.length} file akan diproses...`,actions:[]}]);
+      const ctrl = new AbortController(); abortRef.current = ctrl;
+      let done = 0, failed = 0;
+      for (const f of files) {
+        if (ctrl.signal.aborted) break;
+        const filePath = folder+'/src/'+f.name;
+        const r = await callServer({type:'read', path:filePath, from:1, to:120});
+        if (!r.ok) { failed++; continue; }
+        try {
+          const reply = await callAI([
+            {role:'system', content:'Kamu adalah code editor. Task: '+batchCmd+'\nFile: '+filePath+'\nGunakan write_file action untuk apply perubahan. Kalau tidak ada yang perlu diubah, balas "SKIP".'},
+            {role:'user', content:'```\n'+r.data.slice(0,3000)+'\n```'},
+          ], ()=>{}, ctrl.signal);
+          const writes = parseActions(reply).filter(a=>a.type==='write_file');
+          for (const w of writes) await executeAction(w, folder);
+          done++;
+          setMessages(m=>[...m,{role:'assistant',content:`  ${writes.length>0?'✅':'⏭'} ${f.name}${writes.length>0?' — diubah':''}`,actions:[]}]);
+        } catch(e) {
+          if (e.name==='AbortError') break;
+          failed++;
+          setMessages(m=>[...m,{role:'assistant',content:`  ❌ ${f.name}: ${e.message.slice(0,60)}`,actions:[]}]);
+        }
+      }
+      setMessages(m=>[...m,{role:'assistant',content:`✅ Batch selesai: ${done}/${files.length} file (${failed} gagal)`,actions:[]}]);
       setLoading(false);
 
     } else if (base==='/simplify') {

@@ -3,7 +3,7 @@ import { Preferences } from "@capacitor/preferences";
 import { MAX_HISTORY, MODELS, THEMES, BASE_SYSTEM, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { askCerebrasStream, callServer } from './api.js';
 import { countTokens, hl, resolvePath, parseActions, executeAction } from './utils.js';
-import { generatePlan, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages } from './features.js';
+import { generatePlan, parsePlanSteps, executePlanStep, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages } from './features.js';
 import { MsgBubble, MsgContent } from './components/MsgBubble.jsx';
 import { FileTree } from './components/FileTree.jsx';
 import { FileEditor } from './components/FileEditor.jsx';
@@ -216,7 +216,33 @@ export default function App() {
   async function handlePlanApprove(idx,approved){
     if(!approved){setMessages(m=>m.map((x,i)=>i===idx?{...x,planApproved:false}:x));await sendMsg('Ubah plan.');return;}
     setMessages(m=>m.map((x,i)=>i===idx?{...x,planApproved:true}:x));
-    await sendMsg('Plan diapprove. Mulai eksekusi step by step.');
+    const msg=messages[idx];
+    const steps=parsePlanSteps(msg.content||'');
+    if(steps.length===0){await sendMsg('Plan diapprove. Mulai eksekusi step by step.');return;}
+    setLoading(true);
+    const ctrl=new AbortController();abortRef.current=ctrl;
+    setMessages(m=>[...m,{role:'assistant',content:`🚀 Eksekusi plan — ${steps.length} step...`,actions:[]}]);
+    for(let i=0;i<steps.length;i++){
+      if(ctrl.signal.aborted) break;
+      const step=steps[i];
+      setMessages(m=>[...m,{role:'assistant',content:`⚙️ **Step ${step.num}/${steps.length}:** ${step.text}`,actions:[]}]);
+      try{
+        const {reply,actions}=await executePlanStep(step,folder,callAI,ctrl.signal);
+        const writes=actions.filter(a=>a.type==='write_file');
+        const cleaned=reply.replace(/```action[\s\S]*?```/g,'').trim();
+        if(writes.length>0){
+          setMessages(m=>[...m,{role:'assistant',content:cleaned,actions:writes.map(a=>({...a,executed:false}))}]);
+        } else if(cleaned){
+          setMessages(m=>[...m,{role:'assistant',content:cleaned,actions:[]}]);
+        }
+      }catch(e){
+        if(e.name==='AbortError') break;
+        setMessages(m=>[...m,{role:'assistant',content:'❌ Step '+step.num+' error: '+e.message,actions:[]}]);
+      }
+    }
+    setLoading(false);
+    setMessages(m=>[...m,{role:'assistant',content:'✅ Plan selesai! ('+steps.length+' steps)',actions:[]}]);
+    sendNotification('YuyuCode ✅','Plan selesai!');haptic('heavy');
   }
 
   async function handleApprove(idx,ok,targetPath){
@@ -394,17 +420,36 @@ export default function App() {
     const log=msg=>setSwarmLog(prev=>[...prev,msg]);
     const ctrl=new AbortController();abortRef.current=ctrl;
     try{
-      log('🏗 Architect...');
-      const archReply=await callAI([{role:'system',content:'Software Architect. Buat rencana implementasi.'},{role:'user',content:task}],()=>{},ctrl.signal);
+      log('🏗 Architect planning...');
+      const archReply=await callAI([
+        {role:'system',content:'Software Architect. Buat rencana implementasi singkat dan konkret. Max 5 poin.'},
+        {role:'user',content:'Task: '+task+'\nFolder: '+folder}
+      ],()=>{},ctrl.signal);
       log('⚛ Frontend Agent...');
-      const feReply=await callAI([{role:'system',content:'Frontend Engineer. Implementasikan UI/React. Gunakan action blocks.'},{role:'user',content:'Plan:\n'+archReply+'\n\nTask: '+task}],()=>{},ctrl.signal);
+      const feReply=await callAI([
+        {role:'system',content:'Frontend Engineer. Implementasikan UI/React. Gunakan write_file action dengan path lengkap dimulai dari '+folder+'.'},
+        {role:'user',content:'Plan:\n'+archReply.slice(0,600)+'\n\nTask: '+task}
+      ],()=>{},ctrl.signal);
       log('⚙ Backend Agent...');
-      const beReply=await callAI([{role:'system',content:'Backend Engineer. Implementasikan server/API. Gunakan action blocks.'},{role:'user',content:'Plan:\n'+archReply+'\n\nTask: '+task}],()=>{},ctrl.signal);
-      log('🧪 QA Agent...');
-      const qaReply=await callAI([{role:'system',content:'QA Engineer. Review kode, temukan bugs.'},{role:'user',content:'FE:\n'+feReply.slice(0,1000)+'\n\nBE:\n'+beReply.slice(0,1000)}],()=>{},ctrl.signal);
+      const beReply=await callAI([
+        {role:'system',content:'Backend Engineer. Implementasikan server/API/logic. Gunakan write_file action dengan path lengkap dimulai dari '+folder+'.'},
+        {role:'user',content:'Plan:\n'+archReply.slice(0,600)+'\n\nTask: '+task}
+      ],()=>{},ctrl.signal);
+      log('🧪 QA Review...');
+      const qaReply=await callAI([
+        {role:'system',content:'QA Engineer. Review kode dari FE dan BE. Temukan dan sebutkan bug kritis saja.'},
+        {role:'user',content:'FE:\n'+feReply.slice(0,800)+'\n\nBE:\n'+beReply.slice(0,800)}
+      ],()=>{},ctrl.signal);
       const writes=[...parseActions(feReply),...parseActions(beReply)].filter(a=>a.type==='write_file');
-      setMessages(m=>[...m,{role:'assistant',content:`🐝 **Swarm Selesai!**\n\n**Plan:**\n${archReply.slice(0,400)}\n\n**QA:**\n${qaReply.slice(0,300)}`,actions:writes.map(a=>({...a,executed:false}))}]);
-      sendNotification('YuyuCode 🐝','Swarm selesai!');haptic('heavy');
+      log('💾 Menulis '+writes.length+' file...');
+      for(const w of writes){
+        await executeAction(w,folder);
+        log('✅ '+w.path.split('/').pop());
+      }
+      setMessages(m=>[...m,{role:'assistant',content:
+        `🐝 **Swarm Selesai!** (${writes.length} file ditulis)\n\n**Plan:**\n${archReply.slice(0,400)}\n\n**QA Notes:**\n${qaReply.slice(0,300)}`,
+        actions:[]}]);
+      sendNotification('YuyuCode 🐝','Swarm selesai! '+writes.length+' file.');haptic('heavy');
     }catch(e){if(e.name!=='AbortError') log('❌ '+e.message);}
     setSwarmRunning(false);
   }
@@ -485,7 +530,8 @@ export default function App() {
     setShowCustomActions,setShowFileHistory,setShowThemeBuilder,
     setShowDiff,setShowSearch,setShowSnippets,setShowDepGraph,setDepGraph,setFontSize,
     sendMsg,compactContext,saveCheckpoint,exportChat,generateCommitMsg,
-    runTests,browseTo,runAgentSwarm,callAI,addHistory,runHooks,abortRef,
+    runTests,browseTo,runAgentSwarm,callAI,addHistory,runHooks,
+    sendNotification,haptic,abortRef,
   });
 
   // ── SEND MESSAGE ──

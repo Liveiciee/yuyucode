@@ -48,7 +48,7 @@ async function execGit(folder, cmd) {
   return r.data || '';
 }
 
-export async function runBackgroundAgent(task, folder, callAI) {
+export async function runBackgroundAgent(task, folder, callAI, onDone) {
   const id = 'bg_' + Date.now();
   const branch = 'agent-' + id;
   const wtPath = WORKTREE_BASE + '/' + id;
@@ -100,6 +100,7 @@ export async function runBackgroundAgent(task, folder, callAI) {
       agent.result = { reply, writes, branch, wtPath };
       agent.status = 'done';
       agent.log.push('Done. ' + writes.length + ' file. /bgmerge ' + id + ' untuk merge.');
+      if (typeof onDone === 'function') onDone(id, agent);
     } catch (e) {
       agent.status = 'error';
       agent.log.push('Error: ' + (e.message || String(e)));
