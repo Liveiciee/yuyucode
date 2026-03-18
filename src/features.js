@@ -327,9 +327,9 @@ export function rewindMessages(messages, turns) {
 
 // ─── EFFORT LEVELS ───────────────────────────────────────────────────────────
 export const EFFORT_CONFIG = {
-  low:    { maxIter: 3,  maxTokens: 2048,  systemSuffix: '\n\nMode: LOW EFFORT. Jawab singkat dan langsung.',                     label: 'Low'    },
-  medium: { maxIter: 10, maxTokens: 8192,  systemSuffix: '',                                                                       label: 'Medium' },
-  high:   { maxIter: 20, maxTokens: 16384, systemSuffix: '\n\nMode: HIGH EFFORT. Analisis mendalam. Pastikan kualitas tinggi.',   label: 'High'   },
+  low:    { maxIter: 3,  maxTokens: 1500,  systemSuffix: '\n\nMode: LOW EFFORT. Jawab singkat dan langsung.',                     label: 'Low'    },
+  medium: { maxIter: 10, maxTokens: 2048,  systemSuffix: '',                                                                       label: 'Medium' },
+  high:   { maxIter: 20, maxTokens: 4000, systemSuffix: '\n\nMode: HIGH EFFORT. Analisis mendalam. Pastikan kualitas tinggi.',   label: 'High'   },
 };
 
 // ─── PERMISSIONS ─────────────────────────────────────────────────────────────
