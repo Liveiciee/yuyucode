@@ -181,11 +181,27 @@ export async function loadSkills(folder) {
 
 export function selectSkills(skills, taskText) {
   if (!skills.length) return [];
+  if (!taskText) return skills.filter(s => s.name === 'SKILL.md' || s.name === 'skill.md');
+  const kw = taskText.toLowerCase();
   return skills.filter(s => {
-    if (!taskText) return s.name === 'SKILL.md';
-    const kw = taskText.toLowerCase();
     const sn = s.name.toLowerCase().replace('.md', '');
-    return sn === 'skill' || kw.includes(sn);
+    // Always include root SKILL.md
+    if (sn === 'skill') return true;
+    // Name match
+    if (kw.includes(sn)) return true;
+    // Content-based: extract first 5 meaningful words from skill as keywords
+    if (s.content) {
+      const contentWords = s.content
+        .toLowerCase()
+        .replace(/[#*`>_\-\[\]()]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 3)
+        .slice(0, 20);
+      if (contentWords.some(w => kw.includes(w))) return true;
+    }
+    // Always include small skills (under 2KB) — cheap to include
+    if (s.content && s.content.length < 2048) return true;
+    return false;
   });
 }
 

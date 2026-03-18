@@ -3,7 +3,7 @@ import { Preferences } from "@capacitor/preferences";
 import { MAX_HISTORY, MODELS, THEMES, BASE_SYSTEM, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { askCerebrasStream, callServer } from './api.js';
 import { countTokens, hl, resolvePath, parseActions, executeAction } from './utils.js';
-import { generatePlan, parsePlanSteps, executePlanStep, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages, EFFORT_CONFIG, checkPermission, runHooksV2 } from './features.js';
+import { generatePlan, parsePlanSteps, executePlanStep, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages, EFFORT_CONFIG, checkPermission, runHooksV2, tfidfRank } from './features.js';
 import { MsgBubble, MsgContent } from './components/MsgBubble.jsx';
 import { FileTree } from './components/FileTree.jsx';
 import { FileEditor } from './components/FileEditor.jsx';
@@ -34,6 +34,7 @@ export default function App() {
   const abortRef     = useRef(null);
   const autoContextRef = useRef({});
   const wsRef        = useRef(null); // WebSocket file watcher
+  const fileSnapshotsRef = useRef({}); // For file watcher diff preview
   const T = ui.T;
 
   // ── EFFECTS ──
@@ -89,12 +90,40 @@ export default function App() {
       const ws=new WebSocket('ws://127.0.0.1:8766');
       wsRef.current=ws;
       ws.onopen=()=>ws.send(JSON.stringify({type:'watch',path:project.folder}));
-      ws.onmessage=(e)=>{
+      ws.onmessage=async(e)=>{
         try{
           const {event,filename}=JSON.parse(e.data);
           if(event==='watching'||!filename) return;
-          chat.setMessages(m=>[...m,{role:'assistant',content:'👁 **File berubah:** `'+filename+'`',actions:[]}]);
-          sendNotification('YuyuCode 👁',filename+' berubah');
+          const absPath=project.folder+(filename.startsWith('/')?filename:'/'+filename);
+          const prev=fileSnapshotsRef.current[absPath];
+          const r=await callServer({type:'read',path:absPath});
+          if(!r.ok){
+            chat.setMessages(m=>[...m,{role:'assistant',content:'👁 **File berubah:** `'+filename+'`',actions:[]}]);
+            sendNotification('YuyuCode 👁',filename+' berubah');
+            return;
+          }
+          const curr=r.data||'';
+          fileSnapshotsRef.current[absPath]=curr;
+          if(!prev){
+            chat.setMessages(m=>[...m,{role:'assistant',content:'👁 **File berubah:** `'+filename+'` _(snapshot awal disimpan)_',actions:[]}]);
+            return;
+          }
+          const prevLines=prev.split('\n'), currLines=curr.split('\n');
+          const added=[], removed=[];
+          const maxL=Math.max(prevLines.length,currLines.length);
+          for(let i=0;i<maxL;i++){
+            if(prevLines[i]!==undefined&&currLines[i]===undefined) removed.push({n:i+1,text:prevLines[i]});
+            else if(prevLines[i]===undefined&&currLines[i]!==undefined) added.push({n:i+1,text:currLines[i]});
+            else if(prevLines[i]!==currLines[i]){removed.push({n:i+1,text:prevLines[i]});added.push({n:i+1,text:currLines[i]});}
+          }
+          const diffLines=[
+            ...removed.slice(0,8).map(l=>`- L${l.n}: ${l.text}`),
+            ...added.slice(0,8).map(l=>`+ L${l.n}: ${l.text}`),
+          ];
+          const diffText=diffLines.length?'\n```diff\n'+diffLines.join('\n')+'\n```':'';
+          const summary=`${added.length} baris berubah/ditambah, ${removed.length} dihapus`;
+          chat.setMessages(m=>[...m,{role:'assistant',content:`👁 **File berubah:** \`${filename}\` — ${summary}${diffText}`,actions:[]}]);
+          sendNotification('YuyuCode 👁',filename+' berubah: '+summary);
         }catch{}
       };
       ws.onerror=()=>{};
@@ -297,29 +326,50 @@ export default function App() {
       log('⚛ Frontend Agent...');
       const feReply=await callAI([
         {role:'system',content:'Frontend Engineer. Implementasikan UI/React. Gunakan write_file action dengan path lengkap dimulai dari '+project.folder+'.'},
-        {role:'user',content:'Plan:\n'+archReply.slice(0,600)+'\n\nTask: '+task}
+        {role:'user',content:'Plan:\n'+archReply+'\n\nTask: '+task}
       ],()=>{},ctrl.signal);
       log('⚙ Backend Agent...');
       const beReply=await callAI([
         {role:'system',content:'Backend Engineer. Implementasikan server/API/logic. Gunakan write_file action dengan path lengkap dimulai dari '+project.folder+'.'},
-        {role:'user',content:'Plan:\n'+archReply.slice(0,600)+'\n\nTask: '+task}
+        {role:'user',content:'Plan:\n'+archReply+'\n\nTask: '+task}
       ],()=>{},ctrl.signal);
       log('🧪 QA Review...');
       const qaReply=await callAI([
-        {role:'system',content:'QA Engineer. Review kode dari FE dan BE. Temukan dan sebutkan bug kritis saja.'},
-        {role:'user',content:'FE:\n'+feReply.slice(0,800)+'\n\nBE:\n'+beReply.slice(0,800)}
+        {role:'system',content:'QA Engineer. Review kode dari FE dan BE. List bug kritis dengan format "BUG: [FE|BE] <deskripsi>" satu per baris. Kalau tidak ada bug, tulis "NO_BUGS".'},
+        {role:'user',content:'FE:\n'+feReply+'\n\nBE:\n'+beReply}
       ],()=>{},ctrl.signal);
 
+      // QA fix pass jika ada bug
+      let fixedFeReply=feReply, fixedBeReply=beReply;
+      const qaBugs=qaReply.split('\n').filter(l=>l.startsWith('BUG:'));
+      if(qaBugs.length>0&&!ctrl.signal.aborted){
+        log('🔧 QA found '+qaBugs.length+' bug(s), running fix pass...');
+        const feBugs=qaBugs.filter(l=>l.includes('[FE]')).join('\n');
+        const beBugs=qaBugs.filter(l=>l.includes('[BE]')).join('\n');
+        if(feBugs){
+          fixedFeReply=await callAI([
+            {role:'system',content:'Frontend Engineer. Fix bugs berikut di kode yang sudah ada. Gunakan write_file untuk output. Path dimulai dari '+project.folder+'.'},
+            {role:'user',content:'Kode FE:\n'+feReply.slice(0,2000)+'\n\nBug yang harus difix:\n'+feBugs}
+          ],()=>{},ctrl.signal);
+        }
+        if(beBugs){
+          fixedBeReply=await callAI([
+            {role:'system',content:'Backend Engineer. Fix bugs berikut. Gunakan write_file untuk output. Path dimulai dari '+project.folder+'.'},
+            {role:'user',content:'Kode BE:\n'+beReply.slice(0,2000)+'\n\nBug yang harus difix:\n'+beBugs}
+          ],()=>{},ctrl.signal);
+        }
+      }
+
       // Deduplikasi: BE menang jika ada path yang sama
-      const feWrites=parseActions(feReply).filter(a=>a.type==='write_file');
-      const beWrites=parseActions(beReply).filter(a=>a.type==='write_file');
+      const feWrites=parseActions(fixedFeReply).filter(a=>a.type==='write_file');
+      const beWrites=parseActions(fixedBeReply).filter(a=>a.type==='write_file');
       const bePaths=new Set(beWrites.map(a=>a.path));
       const dedupedWrites=[...feWrites.filter(a=>!bePaths.has(a.path)),...beWrites];
 
       log('👀 '+dedupedWrites.length+' file siap — menunggu approval...');
       // Kirim ke approval flow, bukan langsung tulis
       chat.setMessages(m=>[...m,{role:'assistant',content:
-        `🐝 **Swarm selesai!** (${dedupedWrites.length} file)\n\n**Plan:**\n${archReply.slice(0,400)}\n\n**QA Notes:**\n${qaReply.slice(0,300)}\n\nTinjau dan approve file di bawah~`,
+        `🐝 **Swarm selesai!** (${dedupedWrites.length} file)${qaBugs.length>0?' — QA fixed '+qaBugs.length+' bug(s)':' — QA clean ✅'}\n\n**Plan:**\n${archReply.slice(0,400)}\n\n**QA Notes:**\n${qaReply.slice(0,300)}\n\nTinjau dan approve file di bawah~`,
         actions:dedupedWrites.map(a=>({...a,executed:false}))}]);
       sendNotification('YuyuCode 🐝','Swarm siap! '+dedupedWrites.length+' file menunggu approval.');haptic('heavy');
     }catch(e){if(e.name!=='AbortError') log('❌ '+e.message);}
@@ -448,10 +498,8 @@ export default function App() {
       const skillCtx=project.skill?'\n\nSKILL.md:\n'+project.skill:'';
       const pinnedCtx=file.pinnedFiles.length?'\n\nPinned files: '+file.pinnedFiles.join(', '):'';
       const fileCtx=file.selectedFile&&file.fileContent?'\n\nFile terbuka: '+file.selectedFile+'\n```\n'+file.fileContent.slice(0,1500)+'\n```':'';
-      // Memory retrieval: filter by keyword relevance bukan hanya ambil 10 pertama
-      const msgWords = txt.toLowerCase().split(/\s+/).filter(w=>w.length>3);
-      const relevantMems = chat.memories.filter(m => msgWords.some(w => m.text.toLowerCase().includes(w))).slice(0,5);
-      const memPool = relevantMems.length ? relevantMems : chat.memories.slice(0,5);
+      // Memory retrieval: TF-IDF ranking by relevance to current message
+      const memPool = tfidfRank(chat.memories, txt, 5);
       const memCtx=memPool.length?'\n\nMemories:\n'+memPool.map(m=>'• '+m.text).join('\n'):'';
       const visionCtx=chat.visionImage?'\n\n[Gambar dilampirkan]':'';
       const agentMemCtx=['user','project','local'].map(s=>(project.agentMemory[s]||[]).length?'\n\n['+s+' memory]:\n'+(project.agentMemory[s]||[]).map(mx=>'• '+mx.text).join('\n'):'').join('');
@@ -491,16 +539,32 @@ export default function App() {
         const webSearchActions=nonWrites.filter(a=>a.type==='web_search');
         const otherActions=nonWrites.filter(a=>a.type!=='read_file'&&a.type!=='web_search');
 
-        if(readActions.length>1){const res=await Promise.all(readActions.map(a=>executeAction(a,project.folder)));readActions.forEach((a,i)=>{a.result=res[i];});}
-        else{for(const a of readActions) a.result=await executeAction(a,project.folder);}
+        if(readActions.length>1){
+          await runHooksV2(project.hooks.preToolCall, 'read_file:batch', project.folder);
+          const res=await Promise.all(readActions.map(a=>executeAction(a,project.folder)));readActions.forEach((a,i)=>{a.result=res[i];});
+          await runHooksV2(project.hooks.postToolCall, 'read_file:batch', project.folder);
+        }
+        else{
+          for(const a of readActions){
+            await runHooksV2(project.hooks.preToolCall, 'read_file:'+a.path, project.folder);
+            a.result=await executeAction(a,project.folder);
+            await runHooksV2(project.hooks.postToolCall, 'read_file:'+a.path, project.folder);
+          }
+        }
         // web_search runs in parallel
-        if(webSearchActions.length>0){const res=await Promise.all(webSearchActions.map(a=>executeAction(a,project.folder)));webSearchActions.forEach((a,i)=>{a.result=res[i];});}
+        if(webSearchActions.length>0){
+          await runHooksV2(project.hooks.preToolCall, 'web_search:batch', project.folder);
+          const res=await Promise.all(webSearchActions.map(a=>executeAction(a,project.folder)));webSearchActions.forEach((a,i)=>{a.result=res[i];});
+          await runHooksV2(project.hooks.postToolCall, 'web_search:batch', project.folder);
+        }
         // permission check sebelum exec/mcp/browse
         for(const a of otherActions){
           if(!checkPermission(project.permissions, a.type)){
             a.result={ok:false,data:'⛔ Permission ditolak untuk action: '+a.type+'. Aktifkan di /permissions.'};
           } else {
+            await runHooksV2(project.hooks.preToolCall, a.type+':'+(a.path||a.command||''), project.folder);
             a.result=await executeAction(a,project.folder);
+            await runHooksV2(project.hooks.postToolCall, a.type+':'+(a.path||a.command||''), project.folder);
           }
         }
 
@@ -557,7 +621,8 @@ export default function App() {
     }catch(e){
       chat.setAgentRunning(false);
       if(e.name!=='AbortError'){
-        if(e.message.startsWith('RATE_LIMIT:')){
+        await runHooksV2(project.hooks.onError, e.message, project.folder).catch(()=>{});
+        if(e.message.startsWith('RATE_LIMIT:')){ 
           const secs=parseInt(e.message.split(':')[1]);
           chat.startRateLimitTimer(secs);
           chat.setMessages(m=>[...m,{role:'assistant',content:'⏳ Rate limit — tunggu '+secs+' detik ya Papa~'}]);
@@ -1054,7 +1119,7 @@ export default function App() {
                   <div style={{fontSize:'13px',color:'#f0f0f0',fontWeight:'500'}}>{s.name}</div>
                   <div style={{fontSize:'10px',color:'rgba(255,255,255,.35)'}}>{s.folder} · {new Date(s.savedAt).toLocaleString('id')} · {s.messages?.length||0} pesan</div>
                 </div>
-                <button onClick={()=>{chat.setMessages(s.messages||[]);project.setFolder(s.folder);project.setFolderInput(s.project.folder);ui.setShowSessions(false);chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Sesi **'+s.name+'** dipulihkan.',actions:[]}]);}} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'6px',padding:'4px 10px',color:'#a78bfa',fontSize:'11px',cursor:'pointer'}}>Restore</button>
+                <button onClick={()=>{chat.setMessages(s.messages||[]);project.setFolder(s.folder||'');project.setFolderInput(s.folder||'');ui.setShowSessions(false);chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Sesi **'+s.name+'** dipulihkan.',actions:[]}]);}} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'6px',padding:'4px 10px',color:'#a78bfa',fontSize:'11px',cursor:'pointer'}}>Restore</button>
               </div>
             ))}
           </div>

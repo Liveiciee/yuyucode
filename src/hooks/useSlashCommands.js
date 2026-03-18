@@ -3,7 +3,7 @@ import { Preferences } from '@capacitor/preferences';
 import { callServer } from '../api.js';
 import { MODELS } from '../constants.js';
 import { askCerebrasStream } from '../api.js';
-import { countTokens } from '../utils.js';
+import { countTokens, parseActions, executeAction } from '../utils.js';
 import { generatePlan, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages } from '../features.js';
 
 export function useSlashCommands({
@@ -55,7 +55,8 @@ export function useSlashCommands({
 
     } else if (base==='/review') {
       if (!selectedFile) { setMessages(m=>[...m,{role:'assistant',content:'Buka file dulu Papa~',actions:[]}]); return; }
-      await sendMsg('Lakukan code review menyeluruh pada file '+selectedFile+'. Cari: bugs potensial, performance issues, security issues, dan saran improvement.');
+      const reviewContent = fileContent ? '\n\n```\n'+fileContent.slice(0,4000)+'\n```' : '';
+      await sendMsg('Lakukan code review menyeluruh pada file '+selectedFile+'. Cari: bugs potensial, performance issues, security issues, dan saran improvement.'+reviewContent);
 
     } else if (base==='/clear') {
       setMessages([{role:'assistant',content:'Chat dibersihkan. Mau ngerjain apa Papa? 🌸'}]);
@@ -77,14 +78,47 @@ export function useSlashCommands({
 
     } else if (base==='/deps') {
       if (!selectedFile) { setMessages(m=>[...m,{role:'assistant',content:'Buka file dulu Papa~',actions:[]}]); return; }
-      const r = await callServer({type:'read', path:selectedFile});
-      if (!r.ok) return;
-      const imports = [];
-      const regex = /(?:import|require)\s+.*?['"](.+?)['"]/g;
-      let m;
-      while ((m=regex.exec(r.data))!==null) imports.push(m[1]);
-      setDepGraph({file:selectedFile.split('/').pop(), imports});
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'🕸 Building dep graph (2 levels)...',actions:[]}]);
+      const importRegex = /(?:import|require)\s+.*?['"](.+?)['"]/g;
+      const nodesMap = {};
+      const edges = [];
+      async function parseFile(path, depth) {
+        if (depth > 2 || nodesMap[path]) return;
+        const r = await callServer({type:'read', path});
+        if (!r.ok) return;
+        const isRoot = depth===0;
+        const label = path.split('/').pop().replace(/\.(jsx?|tsx?)$/,'');
+        nodesMap[path] = { id: path, label, type: isRoot ? 'root' : 'local' };
+        const src = r.data || '';
+        let m2;
+        const re = new RegExp(importRegex.source, 'g');
+        while ((m2=re.exec(src))!==null) {
+          const imp = m2[1];
+          if (!imp.startsWith('.')) {
+            const extId = imp;
+            if (!nodesMap[extId]) nodesMap[extId] = { id: extId, label: extId.split('/').pop(), type: 'external' };
+            edges.push({ source: path, target: extId });
+          } else {
+            const base2 = path.split('/').slice(0,-1).join('/');
+            const candidates = [imp, imp+'.jsx', imp+'.js', imp+'.ts', imp+'.tsx'].map(s=>base2+'/'+s.replace('./','/').replace('//','/')).concat([base2+'/'+imp.replace('./','').replace('//','/')]);
+            for (const cand of candidates) {
+              const cr = await callServer({type:'read', path:cand});
+              if (cr.ok) {
+                if (!nodesMap[cand]) await parseFile(cand, depth+1);
+                edges.push({ source: path, target: cand });
+                break;
+              }
+            }
+          }
+        }
+      }
+      await parseFile(selectedFile, 0);
+      const nodes = Object.values(nodesMap);
+      setDepGraph({ file: selectedFile.split('/').pop(), nodes, edges });
       setShowDepGraph(true);
+      setMessages(m=>[...m,{role:'assistant',content:`🕸 Dep graph: **${nodes.length}** nodes, **${edges.length}** edges`,actions:[]}]);
+      setLoading(false);
 
     } else if (base==='/browse') {
       const url = parts.slice(1).join(' ');
@@ -117,8 +151,22 @@ export function useSlashCommands({
       const q = parts.slice(1).join(' ');
       if (!q) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /db SELECT * FROM table',actions:[]}]); return; }
       setLoading(true);
-      const r = await callServer({type:'mcp',tool:'sqlite',action:'query',params:{dbPath:folder+'/data.db',query:q}});
-      setMessages(m=>[...m,{role:'assistant',content:'🗄 Query result:\n```\n'+(r.data||'kosong')+'\n```',actions:[]}]);
+      // Auto-discover .db files
+      const listR = await callServer({type:'list', path:folder});
+      const dbFiles = listR.ok && Array.isArray(listR.data) ? listR.data.filter(f=>!f.isDir&&f.name.endsWith('.db')).map(f=>folder+'/'+f.name) : [];
+      let dbPath = folder+'/data.db';
+      if (dbFiles.length===1) {
+        dbPath = dbFiles[0];
+      } else if (dbFiles.length>1) {
+        setMessages(m=>[...m,{role:'assistant',content:'🗄 Ditemukan '+dbFiles.length+' DB: '+dbFiles.map(f=>f.split('/').pop()).join(', ')+'\nUsage: /db <query> — pakai `/db use <nama.db>` untuk pilih.\nDefault: '+dbPath.split('/').pop(),actions:[]}]);
+      }
+      // /db use <file.db> — just switch default
+      if (parts[1]==='use' && parts[2]) {
+        setMessages(m=>[...m,{role:'assistant',content:'🗄 DB aktif: **'+parts[2]+'**. Query berikutnya akan pakai file ini.',actions:[]}]);
+        setLoading(false); return;
+      }
+      const r = await callServer({type:'mcp',tool:'sqlite',action:'query',params:{dbPath,query:q}});
+      setMessages(m=>[...m,{role:'assistant',content:'🗄 **'+dbPath.split('/').pop()+'** → `'+q+'`\n```\n'+(r.data||'kosong')+'\n```',actions:[]}]);
       setLoading(false);
 
     } else if (base==='/status') {
@@ -316,30 +364,35 @@ export function useSlashCommands({
       const listR = await callServer({type:'list', path:folder+'/src'});
       if (!listR.ok) { setMessages(m=>[...m,{role:'assistant',content:'❌ Tidak bisa list src/',actions:[]}]); setLoading(false); return; }
       const files = (listR.data||[]).filter(f=>!f.isDir && (f.name.endsWith('.jsx')||f.name.endsWith('.js')||f.name.endsWith('.ts')||f.name.endsWith('.tsx')));
-      setMessages(m=>[...m,{role:'assistant',content:`📦 **Batch: ${batchCmd}**\n${files.length} file akan diproses...`,actions:[]}]);
+      setMessages(m=>[...m,{role:'assistant',content:'📦 **Batch: '+batchCmd+'**\n'+files.length+' file akan dianalisis (baca penuh)...',actions:[]}]);
       const ctrl = new AbortController(); abortRef.current = ctrl;
-      let done = 0, failed = 0;
+      const allWrites = []; let skipped = 0, failed = 0;
       for (const f of files) {
         if (ctrl.signal.aborted) break;
         const filePath = folder+'/src/'+f.name;
-        const r = await callServer({type:'read', path:filePath, from:1, to:120});
+        const r = await callServer({type:'read', path:filePath});
         if (!r.ok) { failed++; continue; }
         try {
           const reply = await callAI([
-            {role:'system', content:'Kamu adalah code editor. Task: '+batchCmd+'\nFile: '+filePath+'\nGunakan write_file action untuk apply perubahan. Kalau tidak ada yang perlu diubah, balas "SKIP".'},
-            {role:'user', content:'```\n'+r.data.slice(0,3000)+'\n```'},
+            {role:'system', content:'Kamu adalah code editor. Task: '+batchCmd+'\nFile: '+filePath+'\nGunakan write_file action untuk apply perubahan. Kalau tidak ada yang perlu diubah, balas hanya kata SKIP.'},
+            {role:'user', content:'```\n'+r.data.slice(0,6000)+'\n```'},
           ], ()=>{}, ctrl.signal);
+          if (reply.trim().toUpperCase().startsWith('SKIP')) { skipped++; continue; }
           const writes = parseActions(reply).filter(a=>a.type==='write_file');
-          for (const w of writes) await executeAction(w, folder);
-          done++;
-          setMessages(m=>[...m,{role:'assistant',content:`  ${writes.length>0?'✅':'⏭'} ${f.name}${writes.length>0?' — diubah':''}`,actions:[]}]);
+          writes.forEach(w=>{ if(!w.path.startsWith('/')) w.path=folder+'/src/'+w.path.replace(/^\.?\//,''); });
+          allWrites.push(...writes);
+          setMessages(m=>[...m,{role:'assistant',content:'  '+(writes.length>0?'✅':'⏭')+' '+f.name+(writes.length>0?' — '+writes.length+' perubahan':''),actions:[]}]);
         } catch(e) {
           if (e.name==='AbortError') break;
           failed++;
-          setMessages(m=>[...m,{role:'assistant',content:`  ❌ ${f.name}: ${e.message.slice(0,60)}`,actions:[]}]);
+          setMessages(m=>[...m,{role:'assistant',content:'  ❌ '+f.name+': '+e.message.slice(0,60),actions:[]}]);
         }
       }
-      setMessages(m=>[...m,{role:'assistant',content:`✅ Batch selesai: ${done}/${files.length} file (${failed} gagal)`,actions:[]}]);
+      if (allWrites.length > 0) {
+        setMessages(m=>[...m,{role:'assistant',content:'📦 **Batch siap — menunggu approval!**\n'+allWrites.length+' perubahan di '+new Set(allWrites.map(w=>w.path.split('/').pop())).size+' file ('+skipped+' di-skip, '+failed+' gagal).\nReview dan approve di bawah~',actions:allWrites.map(a=>({...a,executed:false}))}]);
+      } else {
+        setMessages(m=>[...m,{role:'assistant',content:'📦 Batch selesai — tidak ada perubahan diperlukan ('+skipped+' di-skip, '+failed+' gagal).',actions:[]}]);
+      }
       setLoading(false);
 
     } else if (base==='/simplify') {

@@ -461,15 +461,23 @@ export function DepGraphPanel({ depGraph, onClose }) {
 
     d3.select(el).selectAll('*').remove();
 
-    const nodes = [
-      { id: depGraph.file, type: 'root', label: depGraph.file },
-      ...depGraph.imports.map(imp => ({
-        id: imp,
-        type: imp.startsWith('.') ? 'local' : 'external',
-        label: imp.split('/').pop().replace(/\.(jsx?|tsx?)$/, ''),
-      })),
-    ];
-    const links = depGraph.imports.map(imp => ({ source: depGraph.file, target: imp }));
+    // Support both new {nodes, edges} format and legacy {file, imports} format
+    let nodes, links;
+    if (depGraph.nodes && depGraph.edges) {
+      nodes = depGraph.nodes.map(n => ({ ...n }));
+      links = depGraph.edges.map(e => ({ source: e.source, target: e.target }));
+    } else {
+      // Legacy fallback
+      nodes = [
+        { id: depGraph.file, type: 'root', label: depGraph.file },
+        ...(depGraph.imports||[]).map(imp => ({
+          id: imp,
+          type: imp.startsWith('.') ? 'local' : 'external',
+          label: imp.split('/').pop().replace(/\.(jsx?|tsx?)$/, ''),
+        })),
+      ];
+      links = (depGraph.imports||[]).map(imp => ({ source: depGraph.file, target: imp }));
+    }
 
     const svg = d3.select(el).append('svg').attr('width', W).attr('height', H);
 
@@ -531,8 +539,13 @@ export function DepGraphPanel({ depGraph, onClose }) {
     return () => { sim.stop(); d3.select(el).selectAll('*').remove(); };
   }, [depGraph]);
 
-  const localCount = depGraph?.imports.filter(i => i.startsWith('.')).length || 0;
-  const extCount   = depGraph?.imports.filter(i => !i.startsWith('.')).length || 0;
+  const localCount = depGraph?.nodes
+    ? depGraph.nodes.filter(n => n.type === 'local').length
+    : (depGraph?.imports||[]).filter(i => i.startsWith('.')).length;
+  const extCount = depGraph?.nodes
+    ? depGraph.nodes.filter(n => n.type === 'external').length
+    : (depGraph?.imports||[]).filter(i => !i.startsWith('.')).length;
+  const edgeCount = depGraph?.edges?.length || depGraph?.imports?.length || 0;
 
   return (
     <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.93)',zIndex:99,display:'flex',flexDirection:'column'}}>
@@ -540,6 +553,7 @@ export function DepGraphPanel({ depGraph, onClose }) {
         <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🕸 Dep Graph — <span style={{fontFamily:'monospace',color:'#a78bfa'}}>{depGraph?.file}</span></span>
         <span style={{fontSize:'10px',color:'rgba(5,150,105,.7)'}}>● {localCount} local</span>
         <span style={{fontSize:'10px',color:'rgba(96,165,250,.7)'}}>● {extCount} npm</span>
+        <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)'}}>→ {edgeCount} edges</span>
         <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
       </div>
       {hovered && (
