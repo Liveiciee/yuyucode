@@ -166,26 +166,17 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
                     <div key={ci} onClick={()=>{
                       // Toggle: mark for removal by wrapping in ~~REMOVE~~
                       setEditText(prev => {
-                        const parts = prev.split(/
-(?=```|\*\*|##|===|---|
-)/);
+                        const parts = prev.split(/\n(?=```|\*\*|##|===|---|\n)/);
                         parts[ci] = parts[ci].startsWith('~~REMOVE~~') ? parts[ci].slice(10) : '~~REMOVE~~' + parts[ci];
-                        return parts.join('
-');
+                        return parts.join('\n');
                       });
                     }} style={{
                       padding:'6px 10px',borderRadius:'7px',cursor:'pointer',
-                      background: editText.split(/
-(?=```|\*\*|##|===|---|
-)/)[ci]?.startsWith('~~REMOVE~~')
+                      background: editText.split(/\n(?=```|\*\*|##|===|---|\n)/)[ci]?.startsWith('~~REMOVE~~')
                         ? 'rgba(248,113,113,.12)' : isCode ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.02)',
-                      border: '1px solid ' + (editText.split(/
-(?=```|\*\*|##|===|---|
-)/)[ci]?.startsWith('~~REMOVE~~')
+                      border: '1px solid ' + (editText.split(/\n(?=```|\*\*|##|===|---|\n)/)[ci]?.startsWith('~~REMOVE~~')
                         ? 'rgba(248,113,113,.25)' : 'rgba(255,255,255,.06)'),
-                      opacity: editText.split(/
-(?=```|\*\*|##|===|---|
-)/)[ci]?.startsWith('~~REMOVE~~') ? 0.5 : 1,
+                      opacity: editText.split(/\n(?=```|\*\*|##|===|---|\n)/)[ci]?.startsWith('~~REMOVE~~') ? 0.5 : 1,
                       transition:'all .15s',
                     }}>
                       <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)',fontFamily:'monospace',marginBottom:'2px'}}>{isCode?'code block':isResult?'exec result':'text'}</div>
@@ -203,10 +194,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
               <button onClick={()=>{setEditing(false);setSurgical(false);}} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'8px',padding:'5px 12px',color:'rgba(255,255,255,.5)',fontSize:'12px',cursor:'pointer'}}>Batal</button>
               <button onClick={()=>{
                 const cleaned = surgical
-                  ? editText.split(/
-(?=```|\*\*|##|===|---|
-)/).filter(s=>!s.startsWith('~~REMOVE~~')).join('
-').trim()
+                  ? editText.split(/\n(?=```|\*\*|##|===|---|\n)/).filter(s=>!s.startsWith('~~REMOVE~~')).join('\n').trim()
                   : editText.trim();
                 onEdit(cleaned);
                 setEditing(false);
