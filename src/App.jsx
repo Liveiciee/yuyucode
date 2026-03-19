@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Activity } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { MAX_HISTORY, MODELS, THEMES, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
+import { MAX_HISTORY, MODELS, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { callServer } from './api.js';
 import { countTokens, hl } from './utils.js';
 import { loadSessions, getBgAgents, mergeBackgroundAgent, abortBgAgent } from './features.js';
