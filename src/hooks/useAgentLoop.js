@@ -110,15 +110,12 @@ export function useAgentLoop({
 
       // ── Build system context ──
       const notesCtx   = project.notes ? '\n\nProject notes:\n' + project.notes : '';
-      // Merge SKILL.md root + relevant .claude/skills/ files
+      // Inject active + relevant skills dari .claude/skills/
       const _stripFrontmatter = s => s.replace(/^---[\s\S]*?---\n?/, '').trim();
       const _selectedSkills = selectSkills((project.skills || []).filter(s => s.active !== false), txt);
-      const _skillParts = [];
-      if (project.skill) _skillParts.push('## SKILL.md\n' + _stripFrontmatter(project.skill));
-      _selectedSkills.filter(s => s.name !== 'SKILL.md').forEach(s => {
-        _skillParts.push('## ' + s.name + '\n' + _stripFrontmatter(s.content || ''));
-      });
-      const skillCtx = _skillParts.length ? '\n\nSkill context:\n' + _skillParts.join('\n\n---\n\n') : '';
+      const skillCtx = _selectedSkills.length
+        ? '\n\nSkill context:\n' + _selectedSkills.map(s => '## ' + s.name + '\n' + _stripFrontmatter(s.content || '')).join('\n\n---\n\n')
+        : '';
       const pinnedCtx  = file.pinnedFiles.length ? '\n\nPinned files: ' + file.pinnedFiles.join(', ') : '';
       const fileCtx    = file.selectedFile && file.fileContent
         ? '\n\nFile terbuka: ' + file.selectedFile + '\n```\n' + file.fileContent.slice(0, 2000) + '\n```'

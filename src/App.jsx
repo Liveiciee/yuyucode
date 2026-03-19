@@ -299,7 +299,7 @@ export default function App() {
               <span style={{display:'inline-block',width:'5px',height:'5px',borderRadius:'50%',background:project.serverOk?T.success:T.error,flexShrink:0}}/>
               <span style={{fontFamily:'monospace'}}>{project.folder?.split('/').pop()||'no folder'}</span>
               <span style={{color:T.textMute,opacity:.6}}>⎇ {project.branch}</span>
-              {project.skill&&<span style={{color:T.success,fontSize:'9px',fontWeight:'700',letterSpacing:'.06em'}}>SKILL</span>}
+              {project.skills?.some(s=>s.active)&&<span style={{color:T.success,fontSize:'9px',fontWeight:'700',letterSpacing:'.06em'}}>SKILL</span>}
             </div>
           </div>
 
