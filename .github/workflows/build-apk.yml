@@ -111,8 +111,9 @@ jobs:
           echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
 
-      # Create GitHub Release — APK attached, downloadable dari Releases tab
+      # Create GitHub Release — hanya jika commit message diawali 'release:'
       - name: Create Release
+        if: startsWith(github.event.head_commit.message, 'release:')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}

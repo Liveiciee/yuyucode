@@ -32,6 +32,12 @@ cd ~/yuyucode && node yugit.cjs "pesan commit"
 ```
 Bukan `~/yugit.cjs`. File `yugit.cjs` ada di dalam folder project.
 
+**CI/CD — Release strategy:**
+- Setiap push ke `main` → CI tetap build + lint + test
+- GitHub Release + APK **hanya dibuat** kalau commit message diawali `release:`
+- Contoh: `node yugit.cjs "release: v1.1 — fitur X dan fix Y"`
+- Commit biasa (feat/fix/chore/docs) → build jalan tapi tidak bikin release baru
+
 **Encode keystore** (kalau perlu update GitHub Secrets):
 ```bash
 openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
@@ -43,6 +49,8 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
 - `global.TextDecoder` override di test file → infinite recursion, jangan override, Node 24 sudah punya native
 - Cerebras tidak support vision → auto-fallback ke Llama 4 Scout (Groq)
 - `readSSEStream` harus di-export dari `api.js` supaya bisa di-test
+- Skills disimpan di `.claude/skills/` — kelola via `/skills` panel, tidak ada SKILL.md root
+- Hapus releases lama via GitHub web atau `gh release delete` — jaga maks 5 terbaru
 
 ---
 
