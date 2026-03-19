@@ -26,7 +26,8 @@ export function useSlashCommands({
   setShowSkills, setShowBgAgents,
   // functions
   sendMsg, compactContext, saveCheckpoint, exportChat,
-  browseTo, runAgentSwarm, callAI,
+  browseTo, runAgentSwarm, callAI, abTest,
+  growth,
   sendNotification, haptic,
   // refs
   abortRef,
@@ -575,6 +576,42 @@ Tulis ke SKILL.md menggunakan write_file. Format singkat, padat, max 50 baris.`)
       setMessages(m=>[...m,{role:'assistant',content:'🏗 Scaffolding **'+tpl+'** project di '+folder+'...',actions:[]}]);
       await sendMsg('Scaffold project '+tpl+' di folder '+folder+'. Buat struktur file lengkap dengan write_file: package.json, file utama, README.md singkat. Pakai dependencies terbaru 2025. Langsung buat tanpa tanya.');
       setLoading(false);
+
+    } else if (base==='/ab') {
+      const task = parts.slice(1).join(' ').trim();
+      if (!task) {
+        setMessages(m=>[...m,{role:'assistant',content:'Usage: /ab <task>\nContoh: /ab implementasi dark mode toggle\n\nOtomatis test dua model terbaik secara paralel.',actions:[]}]);
+        return;
+      }
+      const modelA = 'qwen-3-235b-a22b-instruct-2507';
+      const modelB = 'moonshotai/kimi-k2-instruct-0905';
+      await abTest(task, modelA, modelB);
+
+    } else if (base==='/xp') {
+      const g = growth;
+      if (!g) { setMessages(m=>[...m,{role:'assistant',content:'Growth system tidak aktif.',actions:[]}]); return; }
+      const badgeList = g.badges.length
+        ? g.badges.map(id => {
+            const b = [
+              {id:'first_blood',label:'🩸 First Blood'},{id:'apprentice',label:'🌱 Apprentice'},
+              {id:'coder',label:'⚡ Coder'},{id:'hacker',label:'🔥 Hacker'},
+              {id:'streak_3',label:'📅 Konsisten'},{id:'streak_7',label:'🗓 Seminggu Penuh'},
+              {id:'streak_30',label:'👑 One Month'},
+            ].find(x=>x.id===id);
+            return b ? b.label : id;
+          }).join(', ')
+        : 'Belum ada';
+      const styleInfo = g.learnedStyle
+        ? '\n\n**🧬 Gaya coding yang dipelajari:**\n' + g.learnedStyle
+        : '\n\n_Yuyu belum belajar gaya codingmu. Lanjutkan sesi!_';
+      setMessages(m=>[...m,{role:'assistant',content:
+        `🎮 **YuyuCode Growth**\n\n` +
+        `**Level:** ${g.level}\n` +
+        `**XP:** ${g.xp}${g.nextXp?' / '+g.nextXp+' ('+g.progress+'%)':' — MAX LEVEL 👑'}\n` +
+        `**Streak:** 🔥 ${g.streak} hari\n` +
+        `**Badge:** ${badgeList}` +
+        styleInfo,
+        actions:[]}]);
 
     } else if (base==='/test') {
       const targetPath = parts.slice(1).join(' ').trim();

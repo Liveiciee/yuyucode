@@ -25,6 +25,7 @@ import { useAgentSwarm }     from './hooks/useAgentSwarm.js';
 import { useApprovalFlow }   from './hooks/useApprovalFlow.js';
 import { useDevTools }       from './hooks/useDevTools.js';
 import { useAgentLoop }      from './hooks/useAgentLoop.js';
+import { useGrowth }         from './hooks/useGrowth.js';
 
 export default function App() {
   // ── STORES ──
@@ -33,6 +34,7 @@ export default function App() {
   const file    = useFileStore();
   const chat    = useChatStore();
   const T       = ui.T;
+  const growth  = useGrowth();
 
   // ── REFS ──
   const abortRef             = useRef(null);
@@ -53,10 +55,11 @@ export default function App() {
   });
 
   // ── AGENT LOOP (sendMsg, callAI, compactContext) ──
-  const { sendMsg, callAI, compactContext, cancelMsg, continueMsg, retryLast } = useAgentLoop({
+  const { sendMsg, callAI, compactContext, cancelMsg, continueMsg, retryLast, abTest } = useAgentLoop({
     project, chat, file, ui,
     sendNotification, haptic, speakText,
     abortRef, handleSlashCommandRef,
+    growth,
   });
 
   // ── AGENT SWARM ──
@@ -134,7 +137,8 @@ export default function App() {
     sendMsg, compactContext,
     saveCheckpoint: () => chat.saveCheckpoint(project.folder, project.branch, project.notes),
     exportChat: chat.exportChat, generateCommitMsg, runTests, browseTo, runAgentSwarm,
-    callAI, addHistory: project.addHistory, runHooks: project.runHooks,
+    callAI, abTest, addHistory: project.addHistory, runHooks: project.runHooks,
+    growth,
     sendNotification, haptic, abortRef,
   });
   // Update ref setiap render — cegah stale closure di sendMsg
@@ -171,6 +175,25 @@ export default function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { bottomRef.current?.scrollIntoView({behavior:'smooth'}); }, [chat.messages, chat.streaming]);
+
+  // ── Battery API ──
+  useEffect(() => {
+    if (!('getBattery' in navigator)) return;
+    navigator.getBattery().then(bat => {
+      project.setBatteryLevel(bat.level);
+      project.setBatteryCharging(bat.charging);
+      bat.addEventListener('levelchange', () => project.setBatteryLevel(bat.level));
+      bat.addEventListener('chargingchange', () => project.setBatteryCharging(bat.charging));
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Battery-aware effort — auto turun ke low kalau < 20% dan tidak charging ──
+  useEffect(() => {
+    if (!project.batteryCharging && project.batteryLevel < 0.20 && project.effort !== 'low') {
+      project.setEffort('low');
+      chat.setMessages(m => [...m, { role: 'assistant', content: '🔋 Baterai < 20% — effort otomatis turun ke **low** untuk hemat daya.', actions: [] }]);
+    }
+  }, [project.batteryLevel, project.batteryCharging]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const on=()=>project.setNetOnline(true), off=()=>project.setNetOnline(false);
@@ -266,6 +289,16 @@ export default function App() {
       onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}>
       {ui.dragOver&&<div style={{position:'absolute',inset:0,background:'rgba(124,58,237,.15)',border:'2px dashed rgba(124,58,237,.5)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:'#a78bfa'}}>Drop file di sini~</span></div>}
       <ThemeEffects T={T}/>
+      {/* Badge toast */}
+      {growth.newBadge&&(
+        <div style={{position:'fixed',top:'60px',left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.92)',border:'1px solid rgba(124,58,237,.4)',borderRadius:'14px',padding:'12px 20px',zIndex:999,display:'flex',alignItems:'center',gap:'10px',boxShadow:'0 8px 32px rgba(0,0,0,.6)',animation:'fadeUp .3s ease'}}>
+          <span style={{fontSize:'22px'}}>{growth.newBadge.label.split(' ')[0]}</span>
+          <div>
+            <div style={{fontSize:'13px',fontWeight:'700',color:'#f0f0f0'}}>{growth.newBadge.label}</div>
+            <div style={{fontSize:'11px',color:'rgba(255,255,255,.5)'}}>{growth.newBadge.desc}</div>
+          </div>
+        </div>
+      )}
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         ::-webkit-scrollbar{width:3px;height:3px;}
@@ -313,6 +346,13 @@ export default function App() {
 
           {/* tokens */}
           <span style={{fontSize:'10px',color:T.textMute,flexShrink:0,fontFamily:'monospace',opacity:.6}}>~{countTokens(chat.messages)}tk</span>
+
+          {/* XP + streak */}
+          <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',flexShrink:0,cursor:'pointer'}}
+            onClick={()=>chat.setMessages(m=>[...m,{role:'assistant',content:`🎮 **${growth.level}** — ${growth.xp} XP\n🔥 Streak: ${growth.streak} hari\n🏅 Badge: ${growth.badges.length}/${7}\n${growth.nextXp?`Progress: ${growth.progress}%`:'MAX LEVEL 👑'}`,actions:[]}])}>
+            <span style={{fontSize:'9px',color:T.accent,fontFamily:'monospace',fontWeight:'700'}}>{growth.level}</span>
+            <span style={{fontSize:'9px',color:T.textMute,fontFamily:'monospace'}}>{growth.xp}xp 🔥{growth.streak}</span>
+          </div>
 
           {/* command palette */}
           <button onClick={()=>ui.setShowPalette(true)}

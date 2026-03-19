@@ -5,6 +5,10 @@ import { callServer } from '../api.js';
 import { runHooksV2, EFFORT_CONFIG, loadSkills, saveSkillFile, deleteSkillFile } from '../features.js';
 
 export function useProjectStore() {
+  // ── Battery ──
+  const [batteryLevel, setBatteryLevel]     = useState(1);
+  const [batteryCharging, setBatteryCharging] = useState(true);
+
   // ── Project / Folder ──
   const [folder, setFolderRaw]     = useState('yuyucode');
   const [folderInput, setFolderInput] = useState('yuyucode');
@@ -215,5 +219,7 @@ export function useProjectStore() {
     fileSnapshots, setFileSnapshots,
     addHistory, runHooks,
     loadProjectPrefs, loadFolderPrefs,
+    batteryLevel, setBatteryLevel,
+    batteryCharging, setBatteryCharging,
   };
 }

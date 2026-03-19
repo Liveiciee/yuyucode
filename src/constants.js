@@ -174,6 +174,8 @@ export const SLASH_COMMANDS = [
   { cmd:'/history',    desc:'Lihat file history (git log)' },
   { cmd:'/actions',    desc:'Custom actions panel' },
   { cmd:'/split',      desc:'Toggle split view' },
+  { cmd:'/ab',         desc:'A/B test dua model AI secara paralel' },
+  { cmd:'/xp',         desc:'Lihat XP, streak, badge, dan gaya coding yang dipelajari Yuyu' },
   { cmd:'/test',       desc:'Generate unit tests untuk file aktif atau file tertentu' },
   { cmd:'/scaffold',   desc:'Project template scaffold' },
   { cmd:'/deps',       desc:'Lihat dependency graph file' },

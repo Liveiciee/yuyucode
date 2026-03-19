@@ -8,6 +8,7 @@ export function useAgentLoop({
   project, chat, file, ui,
   sendNotification, haptic, speakText,
   abortRef, handleSlashCommandRef,
+  growth,
 }) {
   const autoContextRef = useRef({});
 
@@ -20,6 +21,61 @@ export function useAgentLoop({
       maxTokens: cfg.maxTokens,
       imageBase64,
     });
+  }
+
+  // ── abTest — kirim ke dua model paralel, tampilkan side by side ──
+  async function abTest(task, modelA, modelB) {
+    const cfg  = project.effortCfg;
+    const msgs = [{ role: 'user', content: task }];
+    const sys  = buildSystemPrompt(task, cfg);
+    const full = [{ role: 'system', content: sys }, ...msgs];
+
+    chat.setMessages(m => [...m,
+      { role: 'user', content: task, actions: [] },
+      { role: 'assistant', content: `⚗️ **A/B Test:** \`${modelA.split('/').pop()}\` vs \`${modelB.split('/').pop()}\`
+Menunggu kedua model...`, actions: [] }
+    ]);
+
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    chat.setLoading(true);
+
+    let outA = '', outB = '';
+    try {
+      const [replyA, replyB] = await Promise.all([
+        askCerebrasStream(full, modelA, (t) => { outA = t; }, ctrl.signal, { maxTokens: cfg.maxTokens }),
+        askCerebrasStream(full, modelB, (t) => { outB = t; }, ctrl.signal, { maxTokens: cfg.maxTokens }),
+      ]);
+      outA = replyA; outB = replyB;
+    } catch (_e) {
+      chat.setMessages(m => [...m, { role: 'assistant', content: '❌ A/B test gagal.', actions: [] }]);
+      chat.setLoading(false);
+      return;
+    }
+
+    // Tampilkan hasil side by side
+    const labelA = modelA.split('/').pop().slice(0, 20);
+    const labelB = modelB.split('/').pop().slice(0, 20);
+    chat.setMessages(m => [
+      ...m.slice(0, -1), // hapus "Menunggu..." bubble
+      {
+        role: 'assistant',
+        content: `⚗️ **A/B Test selesai!**
+
+**🅰 ${labelA}:**
+${outA.slice(0, 1500)}
+
+---
+
+**🅱 ${labelB}:**
+${outB.slice(0, 1500)}
+
+*Pilih yang terbaik untuk dilanjutkan, atau ketik pesan baru.*`,
+        actions: [],
+      }
+    ]);
+    chat.setLoading(false);
+    growth?.addXP('message_sent');
   }
 
   // ── compactContext ──
@@ -138,7 +194,10 @@ export function useAgentLoop({
     const thinkNote   = project.thinkingEnabled
       ? '\n\nSebelum respons, tulis reasoning dalam <think>...</think>. Singkat, max 2 kalimat.'
       : '';
-    return BASE_SYSTEM + cfg.systemSuffix + thinkNote +
+    const styleCtx = growth?.learnedStyle
+      ? '\n\n[Gaya coding yang dipelajari dari sesi sebelumnya]:\n' + growth.learnedStyle
+      : '';
+    return BASE_SYSTEM + cfg.systemSuffix + thinkNote + styleCtx +
       '\n\nFolder aktif: ' + project.folder +
       '\nBranch: ' + project.branch +
       agentsMdCtx + notesCtx + skillCtx + pinnedCtx + fileCtx + memCtx + agentMemCtx + visionCtx;
@@ -483,6 +542,9 @@ export function useAgentLoop({
       }
 
       chat.setAgentRunning(false);
+    // Tambah XP per sesi dan pelajari style
+    growth?.addXP('message_sent');
+    growth?.learnFromSession(chat.messages, project.folder);
       if (iter > 1) sendNotification('YuyuCode ✅', 'Agent selesai: ' + txt.slice(0, 40));
 
       // Auto-continue
@@ -508,6 +570,9 @@ export function useAgentLoop({
 
     } catch (e) {
       chat.setAgentRunning(false);
+    // Tambah XP per sesi dan pelajari style
+    growth?.addXP('message_sent');
+    growth?.learnFromSession(chat.messages, project.folder);
       if (e.name !== 'AbortError') {
         await runHooksV2(project.hooks.onError, e.message, project.folder).catch(() => {});
         if (e.message.startsWith('RATE_LIMIT:')) {
@@ -530,6 +595,9 @@ export function useAgentLoop({
     chat.setLoading(false);
     chat.setStreaming('');
     chat.setAgentRunning(false);
+    // Tambah XP per sesi dan pelajari style
+    growth?.addXP('message_sent');
+    growth?.learnFromSession(chat.messages, project.folder);
   }
 
   async function continueMsg() {
@@ -546,5 +614,5 @@ export function useAgentLoop({
     await sendMsg(lastUser.content);
   }
 
-  return { sendMsg, callAI, compactContext, cancelMsg, continueMsg, retryLast };
+  return { sendMsg, callAI, compactContext, cancelMsg, continueMsg, retryLast, abTest };
 }
