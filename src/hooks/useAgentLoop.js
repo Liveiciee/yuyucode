@@ -159,10 +159,13 @@ export function useAgentLoop({
 
         const groqMsgs = [
           { role: 'system', content: systemPrompt + DECISION_HINT + autoCtxBlock },
-          ...chat.trimHistory(allMessages).map(m => ({
-            role:    m.role,
-            content: (m.content || '').replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim(),
-          })),
+          ...chat.trimHistory(allMessages).map(m => {
+            // content bisa array (vision) atau string — handle keduanya
+            const rawContent = Array.isArray(m.content)
+              ? m.content  // pertahankan array format untuk vision
+              : (m.content || '').replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim();
+            return { role: m.role, content: rawContent };
+          }),
         ];
 
         let reply = await callAI(groqMsgs, chat.setStreaming, ctrl.signal, iter === 1 ? chat.visionImage : null);
