@@ -53,6 +53,10 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
 - Skills disimpan di `.claude/skills/` — kelola via `/skills` panel, tidak ada SKILL.md root
 - Hapus releases lama via GitHub web atau `gh release delete` — jaga maks 5 terbaru
 - **Regex literal di JSX tidak boleh mengandung newline fisik** — pakai `\n` escape. Contoh: `/\n(?=```|\*\*|##)/` bukan regex multiline literal. Vite/esbuild akan error "Unterminated regular expression".
+- `hl()` di `utils.js` pakai pattern `protect()` untuk melindungi `<span>` yang sudah digenerate dari regex pass berikutnya — jangan hilangkan pattern ini
+- `Date.now()` di dalam render JSX → error `react-hooks/purity`. Solusi: pindah ke komponen terpisah dengan `useState(() => Date.now())` + `setInterval`
+- `\"` di dalam single-quoted string JS adalah useless escape → pakai `"` biasa
+- `\x00` dilarang di regex ESLint → pakai Unicode Private Use Area (`\uE000`) sebagai placeholder
 
 ---
 
@@ -64,36 +68,53 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
 └── yuyucode/
     ├── src/
     │   ├── App.jsx             # Root component — UI, init, semua panel
-    │   ├── constants.js        # BASE_SYSTEM prompt, models, themes, slash commands
+    │   ├── constants.js        # BASE_SYSTEM prompt, models, themes, slash commands, limits
     │   ├── api.js              # Cerebras+Groq streaming, callServer, execStream (WS)
-    │   ├── utils.js            # parseActions, executeAction, resolvePath, hl()
-    │   ├── features.js         # Plan, bg agents, skills, hooks v2, tokenTracker, sessions
+    │   ├── utils.js            # parseActions, executeAction, resolvePath, hl(), generateDiff
+    │   ├── features.js         # Plan, bg agents, skills, hooks v2, tokenTracker, sessions,
+    │   │                       # permissions, elicitation, tfidfRank
+    │   ├── theme.js            # (legacy) theme resolver
     │   ├── components/
-    │   │   ├── MsgBubble.jsx   # Chat bubbles, ActionChip, thinking block, surgical editor
-    │   │   ├── FileTree.jsx    # Sidebar file explorer
+    │   │   ├── MsgBubble.jsx   # Chat bubbles, ActionChip, ThinkingBlock, surgical editor
+    │   │   ├── FileTree.jsx    # Sidebar file explorer dengan context menu
     │   │   ├── FileEditor.jsx  # In-app code editor
     │   │   ├── Terminal.jsx    # Built-in terminal — live streaming via WebSocket
     │   │   ├── SearchBar.jsx   # File content search + undo bar
+    │   │   ├── ThemeEffects.jsx # Visual overlays (orbs, scanlines, aurora, grain)
     │   │   ├── VoiceBtn.jsx    # Voice input + push-to-talk + partial results
-    │   │   └── panels.jsx      # Semua BottomSheet panel overlay (termasuk BgAgentPanel)
-    │   └── hooks/
-    │       ├── useAgentLoop.js      # Core agent loop — sendMsg, auto-execute
-    │       ├── useSlashCommands.js  # 60+ slash command handlers
-    │       ├── useAgentSwarm.js     # Parallel FE+BE+QA swarm
-    │       ├── useApprovalFlow.js   # Plan approval + syntax verify
-    │       ├── useChatStore.js      # Messages, memories, checkpoints + fs-snapshot
-    │       ├── useProjectStore.js   # Folder, model, permissions, hooks
-    │       ├── useFileStore.js      # File open, pin, edit history
-    │       ├── useUIStore.js        # Panels, theme, sidebar
-    │       ├── useMediaHandlers.js  # Camera capture, gallery pick, drag & drop image/file
-    │       ├── useDevTools.js       # GitHub, deploy, commit msg gen, tests, browse, shortcuts
-    │       └── useNotifications.js  # Push notification, haptic feedback, TTS (id-ID)
+    │   │   └── panels.jsx      # Semua BottomSheet panel (21 panel)
+    │   ├── hooks/
+    │   │   ├── useAgentLoop.js      # Core agent loop — sendMsg, gatherContext, auto-execute
+    │   │   ├── useSlashCommands.js  # 56+ slash command handlers
+    │   │   ├── useAgentSwarm.js     # Architect → FE+BE parallel → QA → auto-fix
+    │   │   ├── useApprovalFlow.js   # Plan approval + syntax verify
+    │   │   ├── useChatStore.js      # Messages, memories, checkpoints, plan, swarm state
+    │   │   ├── useProjectStore.js   # Folder, model, effort, permissions, hooks, skills
+    │   │   ├── useFileStore.js      # File open, pin, edit history, split view
+    │   │   ├── useUIStore.js        # Panels, theme, sidebar, modals
+    │   │   ├── useMediaHandlers.js  # Camera capture, gallery pick, drag & drop image/file
+    │   │   ├── useDevTools.js       # GitHub, deploy, commit msg gen, tests, browse, shortcuts
+    │   │   └── useNotifications.js  # Push notification, haptic feedback, TTS (id-ID)
+    │   ├── themes/
+    │   │   ├── index.js        # Theme registry — import & export THEMES_MAP
+    │   │   ├── obsidian.js     # Obsidian Warm (default)
+    │   │   ├── aurora.js       # Aurora Glass
+    │   │   ├── ink.js          # Ink & Paper
+    │   │   ├── neon.js         # Neon Terminal
+    │   │   └── mybrand.js      # Template untuk custom theme baru
+    │   └── tests/
+    │       ├── api.test.js                # Unit — readSSEStream
+    │       ├── utils.test.js              # Unit — countTokens, getFileIcon, hl, resolvePath, parseActions
+    │       ├── utils.integration.test.js  # Integration + Fuzz — parseActions→executeAction, generateDiff
+    │       ├── utils.snapshot.test.js     # Snapshot — hl() output per bahasa
+    │       └── features.test.js           # Unit — parsePlanSteps, selectSkills, checkPermission, dll
     ├── .github/
     │   ├── workflows/build-apk.yml  # CI/CD — signed APK → Releases
-    │   └── icons/                   # Icon PNG backup untuk CI
+    │   └── icons/                   # Icon backup (di-restore setelah cap sync)
     ├── android/                     # Capacitor Android (jangan edit manual)
     ├── yuyu-server.js               # Server v4-async
     ├── yugit.cjs                    # Git push helper
+    ├── eslint.config.js             # ESLint flat config
     ├── package.json                 # Vite 5 + rollup wasm override
     └── vite.config.js
 ```
@@ -104,16 +125,18 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
 
 Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 
-1. Kirim ke AI API (streaming)
-2. Parse semua `action` blocks dari response
-3. Eksekusi actions:
+1. **Auto-compact** — kalau context > 80.000 chars dan pesan > 12, kompres otomatis
+2. **gatherProjectContext** — sebelum iter 1, baca tree + file kunci project secara paralel
+3. Kirim ke AI API (streaming)
+4. Parse semua `action` blocks dari response
+5. Eksekusi actions:
    - `read_file`, `web_search`, `list_files`, `tree`, `search`, `mkdir` → **parallel**
    - `exec`, `mcp` → **serial** (side effects, urutan penting)
    - `patch_file` → **auto-execute** dengan 3 fallback di server
    - `write_file` → **auto-execute** + backup otomatis untuk undo
-4. Feed hasil balik ke AI → lanjut loop
-5. Error di `exec` → auto-fix langsung
-6. `patch_file` gagal → feed error, AI retry
+6. Feed hasil balik ke AI → lanjut loop
+7. Error di `exec` → auto-fix langsung
+8. `patch_file` gagal → feed error, AI retry
 
 **Effort levels:**
 
@@ -122,6 +145,16 @@ Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 | `low` | 3 | 1500 | Pertanyaan singkat |
 | `medium` | 10 | 2048 | Default harian |
 | `high` | 20 | 4000 | Task kompleks |
+
+**Context limits (constants.js):**
+
+| Konstanta | Nilai | Keterangan |
+|-----------|-------|------------|
+| `AUTO_COMPACT_CHARS` | 80.000 | Trigger auto-compact |
+| `AUTO_COMPACT_MIN_MSG` | 12 | Min pesan sebelum compact |
+| `MAX_FILE_PREVIEW` | 2.000 | Chars file aktif di context |
+| `MAX_SKILL_PREVIEW` | 6.000 | Max chars per skill |
+| `CONTEXT_RECENT_KEEP` | 6 | Pesan tersimpan setelah compact |
 
 ---
 
@@ -137,10 +170,22 @@ Capture foto langsung dari kamera native Android via Capacitor Camera API, atau 
 Di setiap message bubble, ada mode "surgical" untuk menghapus bagian tertentu dari context AI tanpa hapus seluruh pesan. Tiap section (code block, exec result, teks) bisa di-tap untuk di-mark remove, lalu simpan — AI tidak akan "lihat" bagian itu di next turn.
 
 ### 🤖 Bg Agent Live Panel
-Background agents berjalan di git worktree terpisah dengan live progress tracking via `BgAgentPanel`. Bisa abort kapan saja, merge hasilnya ke main branch setelah selesai.
+Background agents berjalan di git worktree terpisah dengan live progress tracking via `BgAgentPanel`. Bisa abort kapan saja, merge hasilnya ke main branch setelah selesai. Konflik merge ditangani via `MergeConflictPanel`.
+
+### 🐝 Agent Swarm
+`/swarm <task>` menjalankan pipeline multi-agent: **Architect** buat rencana → **FE Agent + BE Agent** jalan paralel → **QA Engineer** review dan list bugs → **auto-fix pass** kalau ada bug. Semua log live di `BgAgentPanel`.
+
+### 🧠 TF-IDF Memory Ranking
+Memories di-rank pakai TF-IDF + age decay sebelum di-inject ke system prompt. Makin relevan dengan task sekarang dan makin baru → makin diprioritaskan. Logic ada di `tfidfRank()` di `features.js`.
+
+### 📊 Token Tracker
+`tokenTracker` (singleton di `features.js`) merekam input/output tokens per request, track model yang dipakai, dan bisa summary via `/usage` atau `/cost`. History 100 request terakhir.
 
 ### 🔊 TTS & Haptic
 `useNotifications.js` menyediakan TTS bahasa Indonesia (`id-ID`, prefer female voice), haptic feedback (light/medium/heavy), dan push notification native.
+
+### 🎨 Theme System
+4 built-in themes + custom builder. Setiap theme punya token lengkap: warna, efek visual (orbs, scanlines, aurora, grain), dan CSS animations. Tambah theme baru dengan copy `src/themes/mybrand.js`, isi token, import di `src/themes/index.js`.
 
 ---
 
@@ -239,11 +284,28 @@ Ubah lewat `/permissions` atau `/config`.
 ## Testing
 
 ```bash
-npm run lint          # ESLint — harus 0 errors
-npx vitest run        # Unit tests — harus semua pass
+npm run lint          # ESLint — harus 0 errors, 0 warnings
+npx vitest run        # Semua tests — harus 81/81 pass
 ```
 
-**Status:** 0 lint errors, 5/5 tests passing.
+**Status:** 0 lint errors, 0 warnings, 81/81 tests passing.
+
+### Test Files
+
+| File | Tipe | Tests | Coverage |
+|------|------|-------|----------|
+| `src/api.test.js` | Unit | 5 | `readSSEStream` — streaming, abort, flush |
+| `src/utils.test.js` | Unit | 22 | `countTokens`, `getFileIcon`, `hl`, `resolvePath`, `parseActions` |
+| `src/features.test.js` | Unit | 29 | `parsePlanSteps`, `selectSkills`, `rewindMessages`, `checkPermission`, `parseElicitation`, `tfidfRank`, `EFFORT_CONFIG` |
+| `src/utils.integration.test.js` | Integration + Fuzz | 18 | `parseActions → executeAction` end-to-end, `generateDiff`, fuzz robustness |
+| `src/utils.snapshot.test.js` | Snapshot | 7 | Output `hl()` untuk json/bash/py/css/js/unknown/xss |
+
+### Update Snapshot
+
+Kalau `hl()` diubah secara intentional dan output baru sudah benar:
+```bash
+npx vitest run --update-snapshots
+```
 
 **Catatan vitest:** Pakai `vitest@1` — v4 crash silent di Termux ARM64. Jangan upgrade.
 
@@ -254,6 +316,16 @@ npx vitest run        # Unit tests — harus semua pass
 ## CI/CD
 
 Setiap push ke `main` → GitHub Actions build signed APK → upload ke Releases tab. Waktu build ~1 menit dengan cache.
+
+**Steps CI:**
+1. Install deps (cached by `package-lock.json`)
+2. `npm run build` (Vite → dist/)
+3. Setup Java 21 + Android SDK 34
+4. `cap sync android` + restore custom icons
+5. Auto-bump `versionCode` = GitHub run number, `versionName` = `1.0.N`
+6. `./gradlew assembleRelease` (cached Gradle)
+7. Sign APK dengan keystore dari Secrets
+8. Upload artifact + buat GitHub Release (hanya kalau commit diawali `release:`)
 
 **GitHub Secrets:**
 ```
@@ -277,11 +349,12 @@ Warning CI yang bisa diabaikan: `set-output deprecated`, `flatDir`, `punycode de
 **Hooks v2:**
 ```javascript
 {
-  preWrite:     ["echo 'akan nulis: {{context}}'"],
-  postWrite:    [{ type: "http", url: "https://..." }],
-  preToolCall:  [],
-  postToolCall: [],
-  onError:      [],
+  preWrite:        ["echo 'akan nulis: {{context}}'"],
+  postWrite:       [{ type: "http", url: "https://..." }],
+  preToolCall:     [],
+  postToolCall:    [],
+  onError:         [],
+  onNotification:  [],
 }
 ```
 
@@ -291,13 +364,18 @@ Plugin built-in (`/plugin`): Auto Commit, Lint on Save, Test Runner, Git Auto Pu
 
 ## Themes
 
-| Theme | Accent | Vibe |
-|-------|--------|------|
-| `dark` | `#7c3aed` | Default gelap |
-| `darker` | `#6d28d9` | Lebih pekat |
-| `midnight` | `#6366f1` | Biru malam |
-| `rose` | `#e879a0` | Pink sakura |
-| Custom | — | `/theme` builder |
+| Theme | Nama | Vibe |
+|-------|------|------|
+| `obsidian` | Obsidian Warm | Default gelap, CRT scanlines |
+| `aurora` | Aurora Glass | Biru/hijau, animasi aurora |
+| `ink` | Ink & Paper | Terang, paper grain texture |
+| `neon` | Neon Terminal | Hijau neon, neon grid |
+| Custom | — | Copy `mybrand.js`, `/theme` builder |
+
+**Tambah theme baru:**
+1. Copy `src/themes/mybrand.js`, rename sesuai nama theme
+2. Isi semua token warna dan efek visual
+3. Import dan daftarkan di `src/themes/index.js`
 
 ---
 
@@ -320,6 +398,9 @@ git commit --allow-empty -m "release: v1.x — ..." && git push
 
 # Copy file dari Downloads
 cp /sdcard/Download/NamaFile.jsx ~/yuyucode/src/components/
+
+# Lint + test sebelum push
+npm run lint && npx vitest run
 ```
 
 ---
