@@ -14,7 +14,9 @@ export function useAgentLoop({
   // ── callAI ──
   function callAI(msgs, onChunk, signal, imageBase64) {
     const cfg = project.effortCfg;
-    return askCerebrasStream(msgs, project.model, onChunk, signal, {
+    // Cerebras tidak support vision — kalau ada gambar, pakai Groq llama-3.3
+    const model = imageBase64 ? 'llama-3.3-70b-versatile' : project.model;
+    return askCerebrasStream(msgs, model, onChunk, signal, {
       maxTokens: cfg.maxTokens,
       imageBase64,
     });
