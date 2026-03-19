@@ -3,7 +3,7 @@ import * as d3 from "d3";
 import { Preferences } from "@capacitor/preferences";
 import { callServer } from '../api.js';
 import { THEMES, MODELS } from '../constants.js';
-import { Settings, GitBranch, Search, Plug, Github, Key, Puzzle, Brain, MapPin, Scissors, Bookmark, Zap, Globe, RotateCcw, Trash2, Check, X, ChevronDown, ChevronUp, ChevronRight, AlertTriangle, Eye, ScrollText, Pin, FileText, Pencil, Copy, Package, Terminal, Play, Square, ArrowRight, GitMerge, Plus, RefreshCw, BookOpen, Layers, Palette, Save, Upload, Download, Power, Shield, List, History, GitDiff, XCircle, MessageSquare, Network } from 'lucide-react';
+import { Settings, GitBranch, Search, Plug, Github, Key, Puzzle, Brain, MapPin, Scissors, Bookmark, Zap, Globe, RotateCcw, Trash2, Check, X, ChevronDown, ChevronUp, ChevronRight, AlertTriangle, Eye, ScrollText, Pin, FileText, Pencil, Copy, Package, Terminal, Play, Square, ArrowRight, GitMerge, Plus, RefreshCw, BookOpen, Layers, Palette, Save, Upload, Download, Power, Shield, List, History, GitCompare, XCircle, MessageSquare, Network } from 'lucide-react';
 
 // ─── BOTTOM SHEET (reusable mobile-first wrapper) ─────────────────────────────
 export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=false }) {
@@ -48,7 +48,7 @@ export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=fals
 }
 
 
-export function GitDiffPanel({ folder, onClose }) {
+export function GitComparePanel({ folder, onClose }) {
   const [diff, setDiff]       = useState('');
   const [loading, setLoading] = useState(true);
   const [staged, setStaged]   = useState(false);
@@ -581,9 +581,9 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
                       plug:<Plug size={14}/>, save:<Save size={14}/>, key:<Key size={14}/>,
                       puzzle:<Puzzle size={14}/>, zap:<Zap size={14}/>, search:<Search size={14}/>,
                       menu:<List size={14}/>, settings:<Settings size={14}/>, eye:<Eye size={14}/>,
-                      gitdiff:<GitDiff size={14}/>, plus:<Plus size={14}/>, play:<Play size={14}/>,
+                      gitdiff:<GitCompare size={14}/>, plus:<Plus size={14}/>, play:<Play size={14}/>,
                       github:<Github size={14}/>, rocket:<Zap size={14}/>, scissors:<Scissors size={14}/>,
-                      brain:<Brain size={14}/>, mappin:<MapPin size={14}/>, history:<History size={14}/>, palette:<Palette size={14}/>, rocket:<Zap size={14}/>,
+                      brain:<Brain size={14}/>, mappin:<MapPin size={14}/>, history:<History size={14}/>, palette:<Palette size={14}/>,
                     };
                     return iconMap[item.icon] || <span style={{fontSize:'13px'}}>{item.icon}</span>;
                   })()}</span>
