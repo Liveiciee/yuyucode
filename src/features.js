@@ -221,18 +221,52 @@ export function abortBgAgent(id) {
 }
 
 // ─── SKILLS SYSTEM ────────────────────────────────────────────────────────────
-export async function loadSkills(folder) {
+// ── loadSkills: unified SKILL.md root + .claude/skills/* ─────────────────────
+export async function loadSkills(folder, activeMap = {}) {
   const skills = [];
+  // SKILL.md root → always first, path = folder/SKILL.md
   const classic = await callServer({ type: 'read', path: folder + '/SKILL.md' });
-  if (classic.ok && classic.data) skills.push({ name: 'SKILL.md', content: classic.data, active: true });
+  if (classic.ok && classic.data) {
+    skills.push({
+      name: 'SKILL.md', content: classic.data,
+      path: folder + '/SKILL.md', builtin: true,
+      active: activeMap['SKILL.md'] !== false,   // default on
+    });
+  }
+  // .claude/skills/*.md
   const list = await callServer({ type: 'list', path: folder + '/.claude/skills' });
   if (list.ok && Array.isArray(list.data)) {
-    await Promise.all(list.data.filter(f => !f.isDir && f.name.endsWith('.md')).map(async f => {
-      const r = await callServer({ type: 'read', path: folder + '/.claude/skills/' + f.name });
-      if (r.ok) skills.push({ name: f.name, content: r.data, active: true });
-    }));
+    const files = list.data.filter(f => !f.isDir && f.name.endsWith('.md'));
+    const reads = await Promise.all(files.map(f =>
+      callServer({ type: 'read', path: folder + '/.claude/skills/' + f.name })
+    ));
+    files.forEach((f, i) => {
+      if (reads[i].ok && reads[i].data)
+        skills.push({
+          name: f.name, content: reads[i].data,
+          path: folder + '/.claude/skills/' + f.name, builtin: false,
+          active: activeMap[f.name] !== false,   // default on
+        });
+    });
   }
   return skills;
+}
+
+// ── Upload / save skill to .claude/skills/ ────────────────────────────────────
+export async function saveSkillFile(folder, name, content) {
+  const safeName = name.replace(/[^a-z0-9._-]/gi, '-').replace(/\.md$/i, '') + '.md';
+  const path = folder + '/.claude/skills/' + safeName;
+  await callServer({ type: 'mkdir', path: folder + '/.claude/skills' });
+  return callServer({ type: 'write', path, content });
+}
+
+// ── Delete skill file ─────────────────────────────────────────────────────────
+export async function deleteSkillFile(folder, name) {
+  if (name === 'SKILL.md') {
+    // overwrite root SKILL.md with empty (don't delete — Capacitor FS safer)
+    return callServer({ type: 'write', path: folder + '/SKILL.md', content: '' });
+  }
+  return callServer({ type: 'delete', path: folder + '/.claude/skills/' + name });
 }
 
 export function selectSkills(skills, taskText) {

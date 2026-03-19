@@ -399,6 +399,7 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
   onShowMemory, onShowCheckpoints, onShowMCP, onShowGitHub, onShowDeploy,
   onShowDiff, onShowSearch, onShowSnippets, onShowCustomActions,
   onShowSessions, onShowPermissions, onShowPlugins, onShowConfig,
+  onShowSkills,
   runTests, generateCommitMsg, exportChat, compactContext }) {
   const [q, setQ] = useState('');
   const inputRef = useRef(null);
@@ -423,6 +424,7 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
       { icon:'🔐', label:'Permissions', sub:'Kelola tool permissions', action:()=>{ onShowPermissions&&onShowPermissions(); onClose(); } },
       { icon:'🔌', label:'Plugins', sub:'Plugin marketplace', action:()=>{ onShowPlugins&&onShowPlugins(); onClose(); } },
       { icon:'⚙️', label:'Config', sub:'Settings interaktif', action:()=>{ onShowConfig&&onShowConfig(); onClose(); } },
+      { icon:'🧩', label:'Skills', sub:'Kelola & upload skill files', action:()=>{ onShowSkills&&onShowSkills(); onClose(); } },
       { icon:'✂', label:'Snippets', sub:'Code snippet library', action:()=>{ onShowSnippets(); onClose(); } },
       { icon:'⚡', label:'Custom actions', sub:'Shortcut commands', action:()=>{ onShowCustomActions(); onClose(); } },
     ]},
@@ -797,5 +799,120 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
       </div>
     </div>
   </BottomSheet>
+  );
+}
+
+// ── SkillsPanel ───────────────────────────────────────────────────────────────
+export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClose, accentColor }) {
+  const [adding, setAdding]       = useState(false);
+  const [newName, setNewName]     = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [busy, setBusy]           = useState(false);
+  const T = accentColor || '#7c3aed';
+
+  async function handleUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    const text = await file.text();
+    await onUpload(file.name, text);
+    setBusy(false);
+    onClose();
+  }
+
+  async function handleAdd() {
+    if (!newName.trim() || !newContent.trim()) return;
+    setBusy(true);
+    await onAdd(newName.trim(), newContent.trim());
+    setNewName(''); setNewContent(''); setAdding(false);
+    setBusy(false);
+  }
+
+  const inputStyle = {
+    background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)',
+    borderRadius:'7px', padding:'8px 10px', color:'#f0f0f0', fontSize:'12px',
+    outline:'none', fontFamily:'monospace', width:'100%', boxSizing:'border-box',
+  };
+
+  return (
+    <BottomSheet onClose={onClose}>
+      <div style={{padding:'0 16px 8px', flex:1, display:'flex', flexDirection:'column', overflow:'hidden'}}>
+
+        {/* Header */}
+        <div style={{display:'flex', alignItems:'center', marginBottom:'12px', gap:'6px'}}>
+          <span style={{fontSize:'14px', fontWeight:'600', color:'#f0f0f0', flex:1}}>🧩 Skills</span>
+          <label style={{background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.22)', borderRadius:'7px', padding:'6px 10px', color:'#a78bfa', fontSize:'11px', cursor:'pointer', minHeight:'32px', display:'flex', alignItems:'center'}}>
+            ↑ Upload .md
+            <input type="file" accept=".md,text/markdown,text/plain" style={{display:'none'}} disabled={busy} onChange={handleUpload}/>
+          </label>
+          <button onClick={()=>setAdding(a=>!a)}
+            style={{background:'rgba(74,222,128,.08)', border:'1px solid rgba(74,222,128,.18)', borderRadius:'7px', padding:'6px 10px', color:'#4ade80', fontSize:'11px', cursor:'pointer', minHeight:'32px'}}>
+            {adding ? '✕ Batal' : '+ Baru'}
+          </button>
+          <button onClick={onClose} style={{background:'none', border:'none', color:'rgba(255,255,255,.4)', fontSize:'16px', cursor:'pointer', padding:'4px'}}>×</button>
+        </div>
+
+        {/* Inline add form */}
+        {adding && (
+          <div style={{marginBottom:'12px', display:'flex', flexDirection:'column', gap:'6px', padding:'10px', background:'rgba(255,255,255,.03)', borderRadius:'8px', border:'1px solid rgba(255,255,255,.07)'}}>
+            <input value={newName} onChange={e=>setNewName(e.target.value)}
+              placeholder="nama-skill  (tanpa .md)" style={inputStyle}/>
+            <textarea value={newContent} onChange={e=>setNewContent(e.target.value)}
+              placeholder="Isi skill dalam Markdown&#10;&#10;Gunakan frontmatter:&#10;---&#10;name: nama&#10;description: ...&#10;---"
+              style={{...inputStyle, resize:'vertical', minHeight:'120px', lineHeight:'1.6'}}/>
+            <button onClick={handleAdd} disabled={!newName.trim()||!newContent.trim()||busy}
+              style={{background:'rgba(124,58,237,.18)', border:'1px solid rgba(124,58,237,.3)', borderRadius:'7px', padding:'9px', color:'#a78bfa', fontSize:'12px', cursor:'pointer', fontWeight:'500', opacity:(!newName.trim()||!newContent.trim()||busy)?0.45:1}}>
+              {busy ? 'Menyimpan...' : '💾 Simpan ke .claude/skills/'}
+            </button>
+          </div>
+        )}
+
+        {/* Skill list */}
+        <div style={{flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:'6px'}}>
+          {skills.length === 0 && (
+            <div style={{color:'rgba(255,255,255,.3)', fontSize:'12px', padding:'8px 0'}}>
+              Belum ada skill.<br/>Upload .md atau ketik <code style={{color:'#a78bfa'}}>/init</code> untuk generate dari project ini.
+            </div>
+          )}
+          {skills.map(s => (
+            <div key={s.name} style={{
+              padding:'10px 12px', borderRadius:'8px', display:'flex', alignItems:'center', gap:'10px',
+              background: s.active ? 'rgba(124,58,237,.05)' : 'rgba(255,255,255,.02)',
+              border: '1px solid ' + (s.active ? 'rgba(124,58,237,.2)' : 'rgba(255,255,255,.06)'),
+            }}>
+              <div style={{flex:1, minWidth:0}}>
+                <div style={{fontSize:'13px', fontWeight:'500', color: s.active ? '#c4b5fd' : 'rgba(255,255,255,.4)', marginBottom:'2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                  {s.name}
+                </div>
+                <div style={{fontSize:'10px', color:'rgba(255,255,255,.22)', fontFamily:'monospace'}}>
+                  {Math.round((s.content||'').length/100)/10}KB
+                  {s.builtin ? ' · SKILL.md (root)' : ' · .claude/skills/'}
+                  {!s.active && <span style={{color:'rgba(255,255,255,.2)'}}> · dimatikan</span>}
+                </div>
+              </div>
+
+              {/* Delete — hanya non-builtin */}
+              {!s.builtin && (
+                <button onClick={()=>{ if(window.confirm('Hapus '+s.name+'?')) onRemove(s.name); }}
+                  style={{background:'rgba(248,113,113,.07)', border:'1px solid rgba(248,113,113,.14)', borderRadius:'6px', padding:'4px 8px', color:'#f87171', fontSize:'10px', cursor:'pointer', flexShrink:0}}>
+                  hapus
+                </button>
+              )}
+
+              {/* Toggle */}
+              <div onClick={()=>onToggle(s.name)}
+                style={{width:'42px', height:'24px', borderRadius:'12px', background: s.active ? T : 'rgba(255,255,255,.1)', cursor:'pointer', position:'relative', transition:'all .2s', flexShrink:0}}>
+                <div style={{position:'absolute', top:'3px', left: s.active ? '21px' : '3px', width:'18px', height:'18px', borderRadius:'50%', background:'white', transition:'all .2s'}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer hint */}
+        <div style={{marginTop:'10px', fontSize:'10px', color:'rgba(255,255,255,.2)', textAlign:'center'}}>
+          Skill aktif otomatis di-inject ke context AI berdasarkan relevansi task
+        </div>
+      </div>
+    </BottomSheet>
   );
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { MODELS } from '../constants.js';
 import { callServer } from '../api.js';
-import { runHooksV2, EFFORT_CONFIG, loadSkills } from '../features.js';
+import { runHooksV2, EFFORT_CONFIG, loadSkills, saveSkillFile, deleteSkillFile } from '../features.js';
 
 export function useProjectStore() {
   // ── Project / Folder ──
@@ -149,15 +149,45 @@ export function useProjectStore() {
     setNotesRaw(notesR.value || '');
     setSkill(skillR.ok ? skillR.data : '');
     if (branchR.ok) setBranch(branchR.data.trim());
-    // Auto-load .claude/skills/ array
-    loadSkills(f).then(loaded => { if (loaded.length) setSkills(loaded); });
+    // Auto-load skills (unified: SKILL.md + .claude/skills/*), respect saved active map
+    (async () => {
+      let activeMap = {};
+      try { const r = await Preferences.get({ key: 'yc_skills_active_' + f }); activeMap = r.value ? JSON.parse(r.value) : {}; } catch (_e) {}
+      const loaded = await loadSkills(f, activeMap);
+      if (loaded.length) setSkills(loaded);
+    })();
+  }
+
+  // ── Skill helpers ──
+  async function toggleSkill(name) {
+    const next = skills.map(s => s.name === name ? { ...s, active: !s.active } : s);
+    setSkills(next);
+    const activeMap = Object.fromEntries(next.map(s => [s.name, s.active]));
+    Preferences.set({ key: 'yc_skills_active_' + folder, value: JSON.stringify(activeMap) });
+  }
+  async function uploadSkill(name, mdContent) {
+    const r = await saveSkillFile(folder, name, mdContent);
+    if (r.ok) {
+      let activeMap = {};
+      try { const pr = await Preferences.get({ key: 'yc_skills_active_' + folder }); activeMap = pr.value ? JSON.parse(pr.value) : {}; } catch (_e) {}
+      const loaded = await loadSkills(folder, activeMap);
+      setSkills(loaded);
+    }
+    return r;
+  }
+  async function removeSkill(name) {
+    const r = await deleteSkillFile(folder, name);
+    if (r.ok) {
+      setSkills(prev => prev.filter(s => s.name !== name));
+    }
+    return r;
   }
 
   return {
     folder, setFolder, saveFolder, folderInput, setFolderInput,
     branch, setBranch,
     notes, setNotes,
-    skill, setSkill, skills, setSkills,
+    skill, setSkill, skills, setSkills, toggleSkill, uploadSkill, removeSkill,
     serverOk, setServerOk,
     netOnline, setNetOnline,
     reconnectTimer, setReconnectTimer,

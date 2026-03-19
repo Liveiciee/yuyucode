@@ -23,6 +23,7 @@ export function useSlashCommands({
   setShowDiff, setShowSearch, setShowSnippets, setShowDepGraph,
   setDepGraph, setFontSize,
   setShowMergeConflict, setMergeConflictData,
+  setShowSkills,
   // functions
   sendMsg, compactContext, saveCheckpoint, exportChat, generateCommitMsg,
   runTests, browseTo, runAgentSwarm, callAI, addHistory, runHooks,
@@ -216,10 +217,7 @@ export function useSlashCommands({
       setLoading(false);
 
     } else if (base==='/skills') {
-      const loaded = await loadSkills(folder);
-      setSkills(loaded);
-      const list = loaded.map(s=>'• '+s.name+' ('+Math.round(s.content.length/100)/10+'KB)').join('\n');
-      setMessages(m=>[...m,{role:'assistant',content:'🧩 **Skills loaded ('+loaded.length+'):**\n\n'+(list||'Tidak ada skill files.'),actions:[]}]);
+      setShowSkills(true);
 
     } else if (base==='/thinking') {
       const next = !thinkingEnabled;

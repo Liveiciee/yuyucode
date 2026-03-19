@@ -112,7 +112,7 @@ export function useAgentLoop({
       const notesCtx   = project.notes ? '\n\nProject notes:\n' + project.notes : '';
       // Merge SKILL.md root + relevant .claude/skills/ files
       const _stripFrontmatter = s => s.replace(/^---[\s\S]*?---\n?/, '').trim();
-      const _selectedSkills = selectSkills(project.skills || [], txt);
+      const _selectedSkills = selectSkills((project.skills || []).filter(s => s.active !== false), txt);
       const _skillParts = [];
       if (project.skill) _skillParts.push('## SKILL.md\n' + _stripFrontmatter(project.skill));
       _selectedSkills.filter(s => s.name !== 'SKILL.md').forEach(s => {

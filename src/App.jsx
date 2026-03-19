@@ -10,7 +10,7 @@ import { FileEditor } from './components/FileEditor.jsx';
 import { Terminal } from './components/Terminal.jsx';
 import { SearchBar, UndoBar } from './components/SearchBar.jsx';
 import { VoiceBtn, PushToTalkBtn } from './components/VoiceBtn.jsx';
-import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel, BottomSheet } from './components/panels.jsx';
+import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel, BottomSheet, SkillsPanel } from './components/panels.jsx';
 import { useSlashCommands } from './hooks/useSlashCommands.js';
 import { useUIStore }        from './hooks/useUIStore.js';
 import { useProjectStore }   from './hooks/useProjectStore.js';
@@ -127,6 +127,7 @@ export default function App() {
     setShowSearch: ui.setShowSearch, setShowSnippets: ui.setShowSnippets,
     setShowDepGraph: ui.setShowDepGraph, setDepGraph: ui.setDepGraph, setFontSize: ui.setFontSize,
     setShowMergeConflict: ui.setShowMergeConflict, setMergeConflictData: ui.setMergeConflictData,
+    setShowSkills: ui.setShowSkills,
     sendMsg, compactContext,
     saveCheckpoint: () => chat.saveCheckpoint(project.folder, project.branch, project.notes),
     exportChat: chat.exportChat, generateCommitMsg, runTests, browseTo, runAgentSwarm,
@@ -603,6 +604,7 @@ export default function App() {
           onShowMCP={()=>ui.setShowMCP(true)} onShowGitHub={()=>ui.setShowGitHub(true)} onShowDeploy={()=>ui.setShowDeploy(true)}
           onShowSessions={()=>{loadSessions().then(s=>{ui.setSessionList(s);ui.setShowSessions(true);});}}
           onShowPermissions={()=>ui.setShowPermissions(true)} onShowPlugins={()=>ui.setShowPlugins(true)} onShowConfig={()=>ui.setShowConfig(true)}
+          onShowSkills={()=>ui.setShowSkills(true)}
           onShowDiff={()=>ui.setShowDiff(true)} onShowSearch={()=>ui.setShowSearch(true)}
           onShowSnippets={()=>ui.setShowSnippets(true)} onShowCustomActions={()=>ui.setShowCustomActions(true)}
           runTests={runTests} generateCommitMsg={generateCommitMsg} exportChat={chat.exportChat} compactContext={compactContext}
@@ -853,6 +855,28 @@ export default function App() {
             })}
           </div>
         </BottomSheet>
+      )}
+
+      {/* SKILLS */}
+      {ui.showSkills&&(
+        <SkillsPanel
+          skills={project.skills}
+          onToggle={name=>project.toggleSkill(name)}
+          onUpload={async (name, text)=>{
+            const r=await project.uploadSkill(name,text);
+            chat.setMessages(m=>[...m,{role:'assistant',content:r.ok?'🧩 Skill **'+name+'** di-upload!':'❌ Upload gagal: '+r.data,actions:[]}]);
+          }}
+          onAdd={async (name, text)=>{
+            const r=await project.uploadSkill(name,text);
+            chat.setMessages(m=>[...m,{role:'assistant',content:r.ok?'🧩 Skill **'+name+'.md** disimpan!':'❌ Gagal: '+r.data,actions:[]}]);
+          }}
+          onRemove={async name=>{
+            const r=await project.removeSkill(name);
+            if(r.ok) chat.setMessages(m=>[...m,{role:'assistant',content:'🗑 Skill **'+name+'** dihapus.',actions:[]}]);
+          }}
+          onClose={()=>ui.setShowSkills(false)}
+          accentColor={T.accent}
+        />
       )}
 
       {/* CONFIG */}

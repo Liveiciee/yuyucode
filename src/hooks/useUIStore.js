@@ -23,6 +23,7 @@ export function useUIStore() {
   const [showSessions, setShowSessions]       = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
   const [showPlugins, setShowPlugins]         = useState(false);
+  const [showSkills, setShowSkills]           = useState(false);
   const [showConfig, setShowConfig]           = useState(false);
   const [showPalette, setShowPalette]         = useState(false);
   const [showThemeBuilder, setShowThemeBuilder] = useState(false);
@@ -97,6 +98,7 @@ export function useUIStore() {
     showSessions, setShowSessions,
     showPermissions, setShowPermissions,
     showPlugins, setShowPlugins,
+    showSkills, setShowSkills,
     showConfig, setShowConfig,
     showPalette, setShowPalette,
     showThemeBuilder, setShowThemeBuilder,
