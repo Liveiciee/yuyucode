@@ -48,45 +48,137 @@ export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=fals
 
 
 export function GitDiffPanel({ folder, onClose }) {
-  const [diff, setDiff] = useState('');
+  const [diff, setDiff]       = useState('');
   const [loading, setLoading] = useState(true);
-  const [staged, setStaged] = useState(false);
+  const [staged, setStaged]   = useState(false);
+  const [view, setView]       = useState('unified'); // 'unified' | 'split'
+  const [stats, setStats]     = useState({ added:0, removed:0, files:0 });
 
   async function load(s) {
     setLoading(true);
     const cmd = s ? 'git diff --cached' : 'git diff';
-    const r = await callServer({ type:'exec', path:folder, command:cmd });
-    setDiff(r.data || '(tidak ada perubahan)');
+    const r   = await callServer({ type:'exec', path:folder, command: cmd });
+    const raw = r.data || '';
+    setDiff(raw);
+    // Compute stats
+    const lines   = raw.split('\n');
+    const added   = lines.filter(l => l.startsWith('+') && !l.startsWith('+++')).length;
+    const removed = lines.filter(l => l.startsWith('-') && !l.startsWith('---')).length;
+    const files   = lines.filter(l => l.startsWith('diff --git')).length;
+    setStats({ added, removed, files });
     setLoading(false);
   }
 
   useEffect(() => { load(false); }, []);
 
-  function renderDiff(text) {
-    return text.split('\n').map((line, i) => {
-      let color = 'rgba(255,255,255,.5)';
-      let bg = 'transparent';
-      if (line.startsWith('+++') || line.startsWith('---')) color = 'rgba(255,255,255,.3)';
-      else if (line.startsWith('+')) { color = '#4ade80'; bg = 'rgba(74,222,128,.04)'; }
-      else if (line.startsWith('-')) { color = '#f87171'; bg = 'rgba(248,113,113,.04)'; }
-      else if (line.startsWith('@@')) { color = '#a78bfa'; bg = 'rgba(124,58,237,.06)'; }
-      else if (line.startsWith('diff ')) { color = '#60a5fa'; bg = 'rgba(96,165,250,.04)'; }
-      return <div key={i} style={{ color, background:bg, fontFamily:'monospace', fontSize:'11px', lineHeight:'1.6', padding:'0 12px', whiteSpace:'pre-wrap', wordBreak:'break-all' }}>{line||' '}</div>;
+  function lineStyle(line) {
+    if (line.startsWith('diff --git'))  return { color:'#60a5fa', bg:'rgba(96,165,250,.06)',   bold:true };
+    if (line.startsWith('@@'))           return { color:'#a78bfa', bg:'rgba(124,58,237,.08)',  bold:false };
+    if (line.startsWith('+++') || line.startsWith('---')) return { color:'rgba(255,255,255,.3)', bg:'transparent', bold:false };
+    if (line.startsWith('+'))            return { color:'#4ade80', bg:'rgba(74,222,128,.07)',   bold:false };
+    if (line.startsWith('-'))            return { color:'#f87171', bg:'rgba(248,113,113,.07)',  bold:false };
+    return { color:'rgba(255,255,255,.55)', bg:'transparent', bold:false };
+  }
+
+  function renderUnified() {
+    let fileHeader = '';
+    return diff.split('\n').map((line, i) => {
+      if (line.startsWith('diff --git')) fileHeader = line.replace('diff --git a/', '').split(' b/')[0];
+      const { color, bg, bold } = lineStyle(line);
+      const lineNum = line.startsWith('@@') ? null :
+        line.startsWith('+') ? <span style={{color:'rgba(74,222,128,.4)',userSelect:'none',marginRight:'8px',fontSize:'9px'}}>+</span> :
+        line.startsWith('-') ? <span style={{color:'rgba(248,113,113,.4)',userSelect:'none',marginRight:'8px',fontSize:'9px'}}>-</span> : null;
+      return (
+        <div key={i} style={{background:bg, display:'flex', alignItems:'flex-start'}}>
+          <div style={{width:'3px',flexShrink:0,background:line.startsWith('+')?'#4ade80':line.startsWith('-')?'#f87171':'transparent',alignSelf:'stretch'}}/>
+          <div style={{padding:'0 8px 0 6px',flex:1,fontFamily:'monospace',fontSize:'11px',lineHeight:'1.7',color,fontWeight:bold?'600':'400',whiteSpace:'pre-wrap',wordBreak:'break-all'}}>
+            {lineNum}{line||' '}
+          </div>
+        </div>
+      );
     });
   }
 
+  function renderSplit() {
+    // Parse hunk into left (old) and right (new) columns
+    const hunks = [];
+    let currentFile = '';
+    diff.split('\n').forEach(line => {
+      if (line.startsWith('diff --git')) { currentFile = line.replace('diff --git a/', '').split(' b/')[0]; return; }
+      if (line.startsWith('---') || line.startsWith('+++')) return;
+      if (line.startsWith('@@')) { hunks.push({ file: currentFile, header: line, pairs: [] }); return; }
+      if (!hunks.length) return;
+      const last = hunks[hunks.length - 1];
+      if (line.startsWith('+')) last.pairs.push({ left: null, right: line.slice(1) });
+      else if (line.startsWith('-')) {
+        // Try to pair with next + line
+        const nextUnpaired = last.pairs.findIndex(p => p.left === null && p.right !== null);
+        if (nextUnpaired !== -1) last.pairs[nextUnpaired].left = line.slice(1);
+        else last.pairs.push({ left: line.slice(1), right: null });
+      }
+      else last.pairs.push({ left: line, right: line });
+    });
+
+    return hunks.map((hunk, hi) => (
+      <div key={hi} style={{marginBottom:'12px'}}>
+        <div style={{padding:'4px 10px',background:'rgba(124,58,237,.08)',color:'#a78bfa',fontSize:'10px',fontFamily:'monospace',borderBottom:'1px solid rgba(124,58,237,.15)'}}>
+          {hunk.file} {hunk.header}
+        </div>
+        <div style={{display:'flex'}}>
+          {/* Left (old) */}
+          <div style={{flex:1,borderRight:'1px solid rgba(255,255,255,.06)'}}>
+            {hunk.pairs.map((p,i) => (
+              <div key={i} style={{padding:'0 8px',background:p.left===null?'rgba(74,222,128,.03)':p.right===null?'rgba(248,113,113,.07)':'transparent',fontFamily:'monospace',fontSize:'11px',lineHeight:'1.7',color:p.right===null?'#f87171':'rgba(255,255,255,.5)',whiteSpace:'pre-wrap',wordBreak:'break-all'}}>
+                {p.left ?? <span style={{opacity:.2}}>···</span>}
+              </div>
+            ))}
+          </div>
+          {/* Right (new) */}
+          <div style={{flex:1}}>
+            {hunk.pairs.map((p,i) => (
+              <div key={i} style={{padding:'0 8px',background:p.right===null?'rgba(248,113,113,.03)':p.left===null?'rgba(74,222,128,.07)':'transparent',fontFamily:'monospace',fontSize:'11px',lineHeight:'1.7',color:p.left===null?'#4ade80':'rgba(255,255,255,.55)',whiteSpace:'pre-wrap',wordBreak:'break-all'}}>
+                {p.right ?? <span style={{opacity:.2}}>···</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    ));
+  }
+
+  const tabBtn = (label, active, onClick) => (
+    <button onClick={onClick} style={{background:active?'rgba(255,255,255,.1)':'none',border:'1px solid '+(active?'rgba(255,255,255,.15)':'rgba(255,255,255,.07)'),borderRadius:'5px',padding:'3px 9px',color:active?'#f0f0f0':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>{label}</button>
+  );
+
   return (
     <BottomSheet onClose={onClose}>
-      <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
-        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>◐ Git Diff</span>
-        <button onClick={()=>{setStaged(false);load(false);}} style={{background:!staged?'rgba(255,255,255,.1)':'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'5px',padding:'2px 8px',color:!staged?'#f0f0f0':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>unstaged</button>
-        <button onClick={()=>{setStaged(true);load(true);}} style={{background:staged?'rgba(255,255,255,.1)':'none',border:'1px solid rgba(255,255,255,.1)',borderRadius:'5px',padding:'2px 8px',color:staged?'#f0f0f0':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>staged</button>
-        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+      {/* Header */}
+      <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:'6px',background:'rgba(255,255,255,.02)',flexShrink:0,flexWrap:'wrap'}}>
+        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',marginRight:'4px'}}>◐ Git Diff</span>
+        {/* Stats */}
+        {!loading&&<>
+          <span style={{fontSize:'10px',color:'rgba(255,255,255,.3)'}}>{stats.files} file</span>
+          <span style={{fontSize:'10px',color:'#4ade80',fontFamily:'monospace'}}>+{stats.added}</span>
+          <span style={{fontSize:'10px',color:'#f87171',fontFamily:'monospace'}}>-{stats.removed}</span>
+        </>}
+        <div style={{flex:1}}/>
+        {tabBtn('unstaged', !staged, ()=>{setStaged(false);load(false);})}
+        {tabBtn('staged',    staged, ()=>{setStaged(true);load(true);})}
+        <div style={{width:'1px',height:'16px',background:'rgba(255,255,255,.1)'}}/>
+        {tabBtn('unified', view==='unified', ()=>setView('unified'))}
+        {tabBtn('split',   view==='split',   ()=>setView('split'))}
+        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer',marginLeft:'2px'}}>×</button>
       </div>
-      <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
-        {loading ? <div style={{padding:'16px',color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Loading···</div> : renderDiff(diff)}
+      {/* Diff content */}
+      <div style={{flex:1,overflowY:'auto',padding:'4px 0'}}>
+        {loading
+          ? <div style={{padding:'16px',color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Loading···</div>
+          : !diff.trim()
+          ? <div style={{padding:'16px',color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Tidak ada perubahan~</div>
+          : view==='split' ? renderSplit() : renderUnified()
+        }
       </div>
-  </BottomSheet>
+    </BottomSheet>
   );
 }
 

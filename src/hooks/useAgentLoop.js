@@ -63,6 +63,54 @@ export function useAgentLoop({
     return result;
   }
 
+
+  // ── gatherProjectContext — "read before act" ─────────────────────────────────
+  // Sebelum iter 1, Yuyu baca struktur + file-file kunci project secara paralel
+  async function gatherProjectContext(txt, signal) {
+    if (!project.folder) return {};
+    const ctx = {};
+
+    // 1. Tree struktur (selalu)
+    const treeR = await callServer({ type: 'tree', path: project.folder, depth: 2 });
+    if (treeR.ok) ctx['__tree__'] = treeR.data;
+
+    // 2. File kunci yang relevan dengan task — heuristik keyword
+    const keywords = txt.toLowerCase();
+    const keyFiles = [];
+
+    // Selalu baca package.json kalau ada
+    keyFiles.push(project.folder + '/package.json');
+
+    // Task mention file name langsung
+    const fileMatch = txt.match(/\b([\w/-]+\.(?:js|jsx|ts|tsx|json|md|css|py|sh))\b/g);
+    if (fileMatch) fileMatch.forEach(f => keyFiles.push(
+      f.startsWith('/') ? f : project.folder + '/src/' + f
+    ));
+
+    // Keyword → file yang relevan
+    if (keywords.includes('api') || keywords.includes('fetch') || keywords.includes('cerebras') || keywords.includes('groq'))
+      keyFiles.push(project.folder + '/src/api.js');
+    if (keywords.includes('agent') || keywords.includes('loop') || keywords.includes('sendmsg'))
+      keyFiles.push(project.folder + '/src/hooks/useAgentLoop.js');
+    if (keywords.includes('panel') || keywords.includes('ui') || keywords.includes('modal'))
+      keyFiles.push(project.folder + '/src/components/panels.jsx');
+    if (keywords.includes('constant') || keywords.includes('model') || keywords.includes('theme'))
+      keyFiles.push(project.folder + '/src/constants.js');
+    if (keywords.includes('server') || keywords.includes('yuyu-server') || keywords.includes('exec'))
+      keyFiles.push('/home/claude/yuyu-server.js', project.folder + '/yuyu-server.js');
+    if (keywords.includes('feature') || keywords.includes('skill') || keywords.includes('plan') || keywords.includes('agent'))
+      keyFiles.push(project.folder + '/src/features.js');
+
+    // 3. Baca paralel, skip yang tidak ada
+    const unique = [...new Set(keyFiles)].slice(0, 6);
+    const reads  = await Promise.all(unique.map(p => callServer({ type: 'read', path: p, from: 1, to: 60 })));
+    unique.forEach((p, i) => {
+      if (reads[i].ok && reads[i].data) ctx[p.split('/').pop()] = reads[i].data;
+    });
+
+    return ctx;
+  }
+
   // ── buildSystemPrompt ───────────────────────────────────────────────────────
   function buildSystemPrompt(txt, cfg) {
     const stripFrontmatter = s => s.replace(/^---[\s\S]*?---\n?/, '').trim();
@@ -144,6 +192,14 @@ export function useAgentLoop({
       if (file.pinnedFiles.length) {
         const loaded = await file.readFilesParallel(file.pinnedFiles.slice(0, 3), project.folder);
         Object.entries(loaded).forEach(([p, r]) => { if (r.ok) autoContextRef.current[p] = r.data; });
+      }
+
+      // ── Read before act — gather project context sebelum iter 1 ──
+      if (project.folder && txt.length > 10 && !txt.startsWith('/')) {
+        chat.setStreaming('🔍 Membaca project context...');
+        const gathered = await gatherProjectContext(txt, ctrl.signal);
+        Object.assign(autoContextRef.current, gathered);
+        chat.setStreaming('');
       }
 
       const MAX_ITER = cfg.maxIter || 10;
@@ -275,6 +331,33 @@ export function useAgentLoop({
             .filter(a => a.original !== undefined)
             .map(a => ({ path: resolvePath(project.folder, a.path), content: a.original }));
           if (backups.length) file.setEditHistory(h => [...h.slice(-(10 - backups.length)), ...backups]);
+
+          // ── Auto-verify after write — run file, feed error back ──
+          if (project.permissions?.exec) {
+            for (const wr of fullWriteActions.filter(a => a.result?.ok)) {
+              const ext  = (wr.path || '').split('.').pop().toLowerCase();
+              const abs  = resolvePath(project.folder, wr.path);
+              let runCmd = null;
+              if (['js','mjs','cjs'].includes(ext))  runCmd = `node "${abs}" 2>&1 | head -30`;
+              else if (ext === 'py')                  runCmd = `python3 "${abs}" 2>&1 | head -30`;
+              else if (ext === 'sh')                  runCmd = `bash "${abs}" 2>&1 | head -30`;
+              else if (wr.path?.includes('.test.'))   runCmd = `cd "${project.folder}" && npx vitest run "${abs}" 2>&1 | tail -20`;
+              if (!runCmd) continue;
+              const vr  = await callServer({ type: 'exec', path: project.folder, command: runCmd });
+              const out = (vr.data || '').trim();
+              if (!out) continue;
+              const hasErr = /error|exception|traceback|syntaxerror|typeerror|referenceerror|cannot find/i.test(out)
+                && !/syntax ok|passed|✅|0 error/i.test(out);
+              if (hasErr && iter < MAX_ITER) {
+                allMessages = [
+                  ...allMessages,
+                  { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
+                  { role: 'user', content: '⚡ Auto-verify: run **' + wr.path.split('/').pop() + '**\n```\n' + out.slice(0, 600) + '\n```\nAda error — fix langsung.' },
+                ];
+                break; // re-enter loop with error context
+              }
+            }
+          }
         }
 
         // ── Auto-load imports dari file yang dibaca ──
