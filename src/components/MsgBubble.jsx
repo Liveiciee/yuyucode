@@ -42,19 +42,19 @@ export function MsgContent({ text }) {
         if (p.t === 'text') return (
           <div key={i} style={{lineHeight:'1.75',wordBreak:'break-word'}}>
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
-              table: ({node:_node,...props})=><div style={{overflowX:'auto',margin:'10px 0'}}><table style={{width:'100%',borderCollapse:'collapse',background:'rgba(255,255,255,.02)',borderRadius:'10px',overflow:'hidden'}} {...props}/></div>,
-              th: ({node:_node,...props})=><th style={{padding:'8px 14px',fontSize:'11px',color:'rgba(255,255,255,.4)',fontWeight:'600',borderBottom:'1px solid rgba(255,255,255,.08)',textAlign:'left',whiteSpace:'nowrap'}} {...props}/>,
-              td: ({node:_node,...props})=><td style={{padding:'8px 14px',fontSize:'13px',borderBottom:'1px solid rgba(255,255,255,.04)',verticalAlign:'top'}} {...props}/>,
-              h1: ({node:_node,...props})=><div style={{fontSize:'17px',fontWeight:'700',color:'#f0f0f0',margin:'16px 0 6px',letterSpacing:'-.3px'}} {...props}/>,
-              h2: ({node:_node,...props})=><div style={{fontSize:'15px',fontWeight:'700',color:'#f0f0f0',margin:'14px 0 5px'}} {...props}/>,
-              h3: ({node:_node,...props})=><div style={{fontSize:'14px',fontWeight:'600',color:'#e8e8e8',margin:'12px 0 4px'}} {...props}/>,
-              code: ({node:_node,inline,...props})=>inline
+              table: ({node:_,...props})=><div style={{overflowX:'auto',margin:'10px 0'}}><table style={{width:'100%',borderCollapse:'collapse',background:'rgba(255,255,255,.02)',borderRadius:'10px',overflow:'hidden'}} {...props}/></div>,
+              th: ({node:_,...props})=><th style={{padding:'8px 14px',fontSize:'11px',color:'rgba(255,255,255,.4)',fontWeight:'600',borderBottom:'1px solid rgba(255,255,255,.08)',textAlign:'left',whiteSpace:'nowrap'}} {...props}/>,
+              td: ({node:_,...props})=><td style={{padding:'8px 14px',fontSize:'13px',borderBottom:'1px solid rgba(255,255,255,.04)',verticalAlign:'top'}} {...props}/>,
+              h1: ({node:_,...props})=><div style={{fontSize:'17px',fontWeight:'700',color:'#f0f0f0',margin:'16px 0 6px',letterSpacing:'-.3px'}} {...props}/>,
+              h2: ({node:_,...props})=><div style={{fontSize:'15px',fontWeight:'700',color:'#f0f0f0',margin:'14px 0 5px'}} {...props}/>,
+              h3: ({node:_,...props})=><div style={{fontSize:'14px',fontWeight:'600',color:'#e8e8e8',margin:'12px 0 4px'}} {...props}/>,
+              code: ({node:_,inline,...props})=>inline
                 ? <code style={{background:'rgba(255,255,255,.09)',padding:'2px 7px',borderRadius:'5px',fontFamily:'monospace',fontSize:'12px',color:'#c4b5fd'}} {...props}/>
                 : <pre style={{background:'#111114',padding:'12px 14px',borderRadius:'10px',overflow:'auto',fontSize:'12px',margin:'8px 0',lineHeight:'1.6'}} {...props}/>,
-              hr: ({node:_node,...props})=><hr style={{border:'none',borderTop:'1px solid rgba(255,255,255,.07)',margin:'12px 0'}} />,
-              strong: ({node:_node,...props})=><strong style={{color:'#f0f0f0',fontWeight:'600'}} {...props}/>,
-              li: ({node:_node,...props})=><li style={{margin:'4px 0',lineHeight:'1.65'}} {...props}/>,
-              a: ({node:_node,...props})=><a style={{color:'#a78bfa',textDecoration:'none',borderBottom:'1px solid rgba(167,139,250,.3)'}} {...props}/>,
+              hr: ({node:_,...props})=><hr style={{border:'none',borderTop:'1px solid rgba(255,255,255,.07)',margin:'12px 0'}} />,
+              strong: ({node:_,...props})=><strong style={{color:'#f0f0f0',fontWeight:'600'}} {...props}/>,
+              li: ({node:_,...props})=><li style={{margin:'4px 0',lineHeight:'1.65'}} {...props}/>,
+              a: ({node:_,...props})=><a style={{color:'#a78bfa',textDecoration:'none',borderBottom:'1px solid rgba(167,139,250,.3)'}} {...props}/>,
             }}>{p.c}</ReactMarkdown>
           </div>
         );

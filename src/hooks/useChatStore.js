@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { MAX_HISTORY } from '../constants.js';
 import { askCerebrasStream } from '../api.js';
-import { tokenTracker, tfidfRank } from '../features.js';
+import { tfidfRank } from '../features.js';
 
 export function useChatStore() {
   // ── Core chat ──

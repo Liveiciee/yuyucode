@@ -5,7 +5,7 @@ import { runHooksV2, executePlanStep, parsePlanSteps } from '../features.js';
 export function useApprovalFlow({
   messages, setMessages,
   folder, hooks, permissions,
-  editHistory, setEditHistory,
+  _editHistory, setEditHistory,
   sendMsgRef, callAI, abortRef,
   setLoading,
 }) {

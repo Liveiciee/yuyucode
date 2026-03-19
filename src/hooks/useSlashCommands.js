@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { callServer, askCerebrasStream } from '../api.js';
 import { MODELS } from '../constants.js';
-import { countTokens, parseActions, executeAction } from '../utils.js';
+import { countTokens, parseActions } from '../utils.js';
 import { generatePlan, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages } from '../features.js';
 
 export function useSlashCommands({
