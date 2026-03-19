@@ -123,16 +123,16 @@ export function useProjectStore() {
     sessionColor: sc, plugins, effort: ef, thinkingEnabled: th, permissions: perm,
   }) {
     if (f)  { setFolderRaw(f); setFolderInput(f); }
-    if (ch) { try { setCmdHistory(JSON.parse(ch)); } catch {} }
+    if (ch) { try { setCmdHistory(JSON.parse(ch)); } catch (_e) { } }
     if (mo) setModelRaw(mo);
-    if (hk) { try { setHooksRaw(JSON.parse(hk)); } catch {} }
+    if (hk) { try { setHooksRaw(JSON.parse(hk)); } catch (_e) { } }
     if (ght) setGithubTokenRaw(ght);
     if (ghr) setGithubRepo(ghr);
     if (sc)  setSessionColorRaw(sc || null);
-    if (plugins) { try { setActivePluginsRaw(JSON.parse(plugins)); } catch {} }
+    if (plugins) { try { setActivePluginsRaw(JSON.parse(plugins)); } catch (_e) { } }
     if (ef)  setEffortRaw(ef);
     if (th)  setThinkingEnabled(th === '1');
-    if (perm) { try { setPermissionsRaw(JSON.parse(perm)); } catch {} }
+    if (perm) { try { setPermissionsRaw(JSON.parse(perm)); } catch (_e) { } }
   }
 
   // ── Load folder-specific prefs ──

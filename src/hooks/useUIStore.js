@@ -72,7 +72,7 @@ export function useUIStore() {
     if (t && ['dark','darker','midnight','rose'].includes(t)) setThemeRaw(t);
     if (fs) setFontSizeRaw(parseInt(fs) || 14);
     if (sw) setSidebarWidthRaw(parseInt(sw) || 180);
-    if (ct) { try { setCustomTheme(JSON.parse(ct)); } catch {} }
+    if (ct) { try { setCustomTheme(JSON.parse(ct)); } catch (_e) { } }
     if (!onboarded) setShowOnboarding(true);
   }
 

@@ -172,7 +172,7 @@ export async function runBackgroundAgent(task, folder, callAI, onDone) {
       agent.log.push('Error: ' + (e.message || String(e)));
       try {
         await callServer({ type: 'exec', path: folder, command: 'git worktree remove --force ' + wtPath + ' 2>/dev/null; git branch -D ' + branch + ' 2>/dev/null' });
-      } catch {}
+      } catch (_e) { }
     }
   })();
 
@@ -268,7 +268,7 @@ export async function runHooksV2(hookList, context, folder) {
       } else if (hook.type === 'shell') {
         await callServer({ type: 'exec', path: folder || '', command: (hook.command || '').replace('{{context}}', context || '') });
       }
-    } catch {}
+    } catch (_e) { }
   }
 }
 

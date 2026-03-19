@@ -43,9 +43,9 @@ export function useChatStore() {
 
   // ── Load from Preferences ──
   function loadChatPrefs({ history, memories: mem, checkpoints: ckp }) {
-    if (history) { try { setMessages(JSON.parse(history)); } catch {} }
-    if (mem)     { try { setMemoriesRaw(JSON.parse(mem)); } catch {} }
-    if (ckp)     { try { setCheckpointsRaw(JSON.parse(ckp)); } catch {} }
+    if (history) { try { setMessages(JSON.parse(history)); } catch (_e) { } }
+    if (mem)     { try { setMemoriesRaw(JSON.parse(mem)); } catch (_e) { } }
+    if (ckp)     { try { setCheckpointsRaw(JSON.parse(ckp)); } catch (_e) { } }
   }
 
   // ── Persist messages on change (called from useEffect in App) ──
@@ -95,7 +95,7 @@ export function useChatStore() {
         .map(l => ({ id: Date.now() + Math.random(), text: l.slice(1).trim(), folder, ts: new Date().toLocaleDateString('id') }));
       if (!newMems.length) return;
       setMemories([...newMems, ...memories].slice(0, 50));
-    } catch {}
+    } catch (_e) { }
   }
 
   // ── getRelevantMemories (TF-IDF scoring) ──

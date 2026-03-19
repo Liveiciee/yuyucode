@@ -9,7 +9,7 @@ async function readSSEStream(resp, onChunk, signal) {
     while (true) {
       let done, value;
       try { ({ done, value } = await reader.read()); }
-      catch (readErr) {
+      catch (_readErr) {
         if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
         break;
       }
@@ -23,7 +23,7 @@ async function readSSEStream(resp, onChunk, signal) {
           const content = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content || '';
           full += content;
           onChunk(full);
-        } catch {}
+        } catch (_e) { }
       }
     }
     // flush
@@ -31,10 +31,10 @@ async function readSSEStream(resp, onChunk, signal) {
       try {
         const content = JSON.parse(buffer.slice(6)).choices?.[0]?.delta?.content || '';
         full += content; onChunk(full);
-      } catch {}
+      } catch (_e) { }
     }
   } finally {
-    try { reader.releaseLock(); } catch {}
+    try { reader.releaseLock(); } catch (_e) { }
   }
   return full;
 }
@@ -165,7 +165,7 @@ export async function callServer(payload) {
       return { ok: false, data: `Server error: ${resp.status} — ${err.slice(0, 200)}` };
     }
     return await resp.json();
-  } catch(e) {
+  } catch(_e) {
     return { ok: false, data: 'YuyuServer tidak dapat dihubungi. Jalankan: node ~/yuyu-server.js &' };
   }
 }
@@ -180,7 +180,7 @@ export function execStream(command, cwd, onLine, signal) {
     const id = 'exec_' + Date.now();
     let output = '', settled = false;
 
-    const cleanup = () => { try { ws.close(); } catch {} };
+    const cleanup = () => { try { ws.close(); } catch (_e) { } };
     const done = (exitCode) => {
       if (settled) return;
       settled = true; cleanup(); resolve({ exitCode, output });
@@ -198,14 +198,14 @@ export function execStream(command, cwd, onLine, signal) {
         } else if (msg.type === 'error') {
           onLine?.('\n[error: ' + msg.data + ']', 'stderr'); done(-1);
         }
-      } catch {}
+      } catch (_e) { }
     };
     ws.onerror = () => { if (!settled) { settled = true; reject(new Error('WebSocket error')); } };
     ws.onclose = () => { if (!settled) done(-1); };
 
     if (signal) {
       signal.addEventListener('abort', () => {
-        try { ws.send(JSON.stringify({ type: 'kill', id })); } catch {}
+        try { ws.send(JSON.stringify({ type: 'kill', id })); } catch (_e) { }
         cleanup();
         if (!settled) { settled = true; reject(new DOMException('Aborted', 'AbortError')); }
       }, { once: true });

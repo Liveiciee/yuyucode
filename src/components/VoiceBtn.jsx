@@ -5,7 +5,6 @@ export function VoiceBtn({ onResult, disabled, T }) {
   const [partial,   setPartial]     = useState('');
 
   const accent  = T?.accent  || '#7c3aed';
-  const accentBg = T?.accentBg || 'rgba(124,58,237,.15)';
   const accentBorder = T?.accentBorder || 'rgba(124,58,237,.3)';
   const error   = T?.error   || '#f87171';
   const errorBg  = T?.errorBg  || 'rgba(248,113,113,.2)';
@@ -18,7 +17,7 @@ export function VoiceBtn({ onResult, disabled, T }) {
       try {
         const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
         await SpeechRecognition.stop();
-      } catch {}
+      } catch (_e) { }
       setListening(false);
       setPartial('');
       return;
@@ -40,7 +39,7 @@ export function VoiceBtn({ onResult, disabled, T }) {
         setPartial('');
         return;
       }
-    } catch {}
+    } catch (_e) { }
     // Web fallback
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { alert('Speech recognition tidak tersedia'); return; }
@@ -101,7 +100,7 @@ export function PushToTalkBtn({ onResult, disabled, T }) {
       const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
       await SpeechRecognition.requestPermissions();
       await SpeechRecognition.start({ language: 'id-ID', maxResults: 1, partialResults: false, popup: false });
-    } catch {}
+    } catch (_e) { }
   }
 
   async function onPressOut() {
@@ -110,7 +109,7 @@ export function PushToTalkBtn({ onResult, disabled, T }) {
       const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
       const result = await SpeechRecognition.stop();
       if (result?.matches?.length > 0) onResult(result.matches[0]);
-    } catch {}
+    } catch (_e) { }
   }
 
   return (

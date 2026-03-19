@@ -3,7 +3,7 @@ import { Preferences } from "@capacitor/preferences";
 import { MAX_HISTORY, MODELS, THEMES, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { callServer } from './api.js';
 import { countTokens, hl } from './utils.js';
-import { loadSessions, tokenTracker } from './features.js';
+import { loadSessions } from './features.js';
 import { MsgBubble, MsgContent } from './components/MsgBubble.jsx';
 import { FileTree } from './components/FileTree.jsx';
 import { FileEditor } from './components/FileEditor.jsx';
@@ -134,7 +134,8 @@ export default function App() {
     sendNotification, haptic, abortRef,
   });
   // Update ref setiap render — cegah stale closure di sendMsg
-  handleSlashCommandRef.current = handleSlashCommand;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { handleSlashCommandRef.current = handleSlashCommand; });
 
   // ── INIT EFFECT ──
   useEffect(() => {
@@ -219,9 +220,9 @@ export default function App() {
           const summary=`${added.length} baris berubah/ditambah, ${removed.length} dihapus`;
           chat.setMessages(m=>[...m,{role:'assistant',content:`👁 **File berubah:** \`${filename}\` — ${summary}${diffText}`,actions:[]}]);
           sendNotification('YuyuCode 👁',filename+' berubah: '+summary);
-        } catch {}
+        } catch (_e) { /* file watcher parse error */ }
       };
-      ws.onerror  = () => {};
+      ws.onerror  = () => { /* reconnect via onclose */ };
       ws.onclose  = () => { if (!dead) setTimeout(connect, 3000); };
     }
     connect();
@@ -244,7 +245,6 @@ export default function App() {
     window.addEventListener('mousemove',onMove);window.addEventListener('mouseup',onEnd);window.addEventListener('touchmove',onMove,{passive:true});window.addEventListener('touchend',onEnd);
   }
 
-  const tokens = countTokens(chat.messages);
   const VIRTUAL_LIMIT = 60;
   const visibleMessages = chat.messages.length > VIRTUAL_LIMIT
     ? [{role:'assistant',content:`[... ${chat.messages.length-VIRTUAL_LIMIT} pesan tersembunyi. /clear untuk bersihkan]`},...chat.messages.slice(-VIRTUAL_LIMIT)]

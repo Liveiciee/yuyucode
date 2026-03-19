@@ -28,8 +28,8 @@ export function useFileStore() {
 
   // ── Load from Preferences ──
   function loadFilePrefs({ pinned, recent }) {
-    if (pinned) { try { setPinnedFilesRaw(JSON.parse(pinned)); } catch {} }
-    if (recent) { try { setRecentFilesRaw(JSON.parse(recent)); } catch {} }
+    if (pinned) { try { setPinnedFilesRaw(JSON.parse(pinned)); } catch (_e) { } }
+    if (recent) { try { setRecentFilesRaw(JSON.parse(recent)); } catch (_e) { } }
   }
 
   // ── openFile ──

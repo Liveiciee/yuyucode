@@ -75,7 +75,7 @@ export function parseActions(text) {
   const actions = [];
   let m;
   while ((m = regex.exec(text)) !== null) {
-    try { actions.push(JSON.parse(m[1].trim())); } catch {}
+    try { actions.push(JSON.parse(m[1].trim())); } catch (_e) { }
   }
   return actions;
 }

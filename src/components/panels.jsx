@@ -5,7 +5,7 @@ import { callServer } from '../api.js';
 import { THEMES, MODELS } from '../constants.js';
 
 // ─── BOTTOM SHEET (reusable mobile-first wrapper) ─────────────────────────────
-export function BottomSheet({ children, onClose, height='88%', noPad=false }) {
+export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=false }) {
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const startY = useRef(null);
@@ -167,7 +167,7 @@ export function FileHistoryPanel({ folder, filePath, onClose }) {
 }
 
 // ─── CUSTOM ACTIONS PANEL ─────────────────────────────────────────────────────
-export function CustomActionsPanel({ folder, onRun, onClose }) {
+export function CustomActionsPanel({ folder:_folder, onRun, onClose }) {
   const [actions, setActions] = useState([]);
   const [newLabel, setNewLabel] = useState('');
   const [newCmd, setNewCmd] = useState('');
@@ -175,7 +175,7 @@ export function CustomActionsPanel({ folder, onRun, onClose }) {
 
   useEffect(() => {
     Preferences.get({key:'yc_custom_actions'}).then(r => {
-      if (r.value) try { setActions(JSON.parse(r.value)); } catch {}
+      if (r.value) try { setActions(JSON.parse(r.value)); } catch (_e) { }
     });
   }, []);
 
@@ -306,7 +306,7 @@ export function SnippetLibrary({ onInsert, onClose }) {
 
   useEffect(() => {
     Preferences.get({key:'yc_snippets'}).then(r => {
-      if (r.value) try { setSnippets(JSON.parse(r.value)); } catch {}
+      if (r.value) try { setSnippets(JSON.parse(r.value)); } catch (_e) { }
     });
   }, []);
 
@@ -394,7 +394,7 @@ export function ThemeBuilder({ current, onSave, onClose }) {
 }
 
 // ─── COMMAND PALETTE ──────────────────────────────────────────────────────────
-export function CommandPalette({ onClose, onRun, folder, memories, checkpoints, model, models,
+export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories, checkpoints, model, models,
   onModelChange, onNewChat, theme, onThemeChange, showSidebar, onToggleSidebar,
   onShowMemory, onShowCheckpoints, onShowMCP, onShowGitHub, onShowDeploy,
   onShowDiff, onShowSearch, onShowSnippets, onShowCustomActions,
