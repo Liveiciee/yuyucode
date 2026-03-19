@@ -154,6 +154,8 @@ export function useChatStore() {
 
   return {
     messages, setMessages,
+    deleteMessage: (idx) => setMessages(m => m.filter((_, i) => i !== idx)),
+    editMessage:   (idx, newContent) => setMessages(m => m.map((msg, i) => i === idx ? { ...msg, content: newContent } : msg)),
     input, setInput,
     loading, setLoading,
     streaming, setStreaming,

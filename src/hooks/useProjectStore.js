@@ -11,6 +11,7 @@ export function useProjectStore() {
   const [branch, setBranch]        = useState('main');
   const [notes, setNotesRaw]       = useState('');
   const [skills, setSkills]        = useState([]);
+  const [agentsMd, setAgentsMd]    = useState('');
 
   // ── Server / Network ──
   const [serverOk, setServerOk]         = useState(true);
@@ -140,12 +141,14 @@ export function useProjectStore() {
 
   // ── Load folder-specific prefs ──
   async function loadFolderPrefs(f) {
-    const [notesR, branchR] = await Promise.all([
+    const [notesR, branchR, agentsR] = await Promise.all([
       Preferences.get({ key: 'yc_notes_' + f }),
       callServer({ type: 'exec', path: f, command: 'git branch --show-current' }),
+      callServer({ type: 'read', path: f + '/AGENTS.md' }),
     ]);
     setNotesRaw(notesR.value || '');
     if (branchR.ok) setBranch(branchR.data.trim());
+    setAgentsMd(agentsR.ok && agentsR.data ? agentsR.data : '');
     // Auto-load skills dari .claude/skills/, respect saved active map
     (async () => {
       let activeMap = {};
@@ -185,6 +188,7 @@ export function useProjectStore() {
     branch, setBranch,
     notes, setNotes,
     skills, setSkills, toggleSkill, uploadSkill, removeSkill,
+    agentsMd, setAgentsMd,
     serverOk, setServerOk,
     netOnline, setNetOnline,
     reconnectTimer, setReconnectTimer,

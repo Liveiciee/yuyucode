@@ -115,6 +115,9 @@ export function useAgentLoop({
   function buildSystemPrompt(txt, cfg) {
     const stripFrontmatter = s => s.replace(/^---[\s\S]*?---\n?/, '').trim();
     const notesCtx    = project.notes ? '\n\nProject notes:\n' + project.notes : '';
+    const agentsMdCtx = project.agentsMd
+      ? '\n\n## AGENTS.md (kontrak project — WAJIB diikuti):\n' + project.agentsMd.slice(0, 3000)
+      : '';
     const selectedSkills = selectSkills((project.skills || []).filter(s => s.active !== false), txt);
     const skillCtx    = selectedSkills.length
       ? '\n\nSkill context:\n' + selectedSkills.map(s => '## ' + s.name + '\n' + stripFrontmatter(s.content || '')).join('\n\n---\n\n')
@@ -138,7 +141,7 @@ export function useAgentLoop({
     return BASE_SYSTEM + cfg.systemSuffix + thinkNote +
       '\n\nFolder aktif: ' + project.folder +
       '\nBranch: ' + project.branch +
-      notesCtx + skillCtx + pinnedCtx + fileCtx + memCtx + agentMemCtx + visionCtx;
+      agentsMdCtx + notesCtx + skillCtx + pinnedCtx + fileCtx + memCtx + agentMemCtx + visionCtx;
   }
 
     // ── sendMsg — agent loop ──
@@ -331,6 +334,29 @@ export function useAgentLoop({
             .filter(a => a.original !== undefined)
             .map(a => ({ path: resolvePath(project.folder, a.path), content: a.original }));
           if (backups.length) file.setEditHistory(h => [...h.slice(-(10 - backups.length)), ...backups]);
+
+          // ── Defensive review pass — security & edge cases ──
+          if (project.permissions?.exec && fullWriteActions.filter(a=>a.result?.ok).length > 0 && iter < MAX_ITER) {
+            const writtenPaths = fullWriteActions.filter(a=>a.result?.ok).map(a=>a.path).join(', ');
+            const defReply = await callAI([
+              { role: 'system', content: 'Kamu adalah security reviewer. Review kode yang baru ditulis. Cari: (1) missing input validation, (2) unhandled edge cases/errors, (3) potential crashes. Jika ditemukan: tulis patch_file langsung. Jika kode sudah aman: balas hanya "LGTM" tanpa penjelasan.' },
+              { role: 'user', content: 'File yang baru ditulis: ' + writtenPaths + '\n\nBaca dan review.' },
+            ], ()=>{}, ctrl.signal);
+            if (defReply && !defReply.trim().startsWith('LGTM') && !ctrl.signal.aborted) {
+              const defActs = parseActions(defReply).filter(a => a.type === 'patch_file');
+              for (const a of defActs) {
+                const r = await executeWithPermission(a, project.folder);
+                a.result = r; a.executed = true;
+              }
+              if (defActs.some(a => a.result?.ok)) {
+                allMessages = [
+                  ...allMessages,
+                  { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
+                  { role: 'user', content: '🛡 Defensive review applied ' + defActs.filter(a=>a.result?.ok).length + ' patch. Lanjutkan.' },
+                ];
+              }
+            }
+          }
 
           // ── Auto-verify after write — run file, feed error back ──
           if (project.permissions?.exec) {

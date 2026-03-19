@@ -117,8 +117,10 @@ export function ActionChip({ action }) {
   );
 }
 
-export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix }) {
+export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix, onDelete, onEdit }) {
   const [actionsVisible, setActionsVisible] = useState(false);
+  const [editing, setEditing]   = useState(false);
+  const [editText, setEditText] = useState('');
   const isUser = msg.role === 'user';
   const thinkMatch = msg.content.match(/<think>([\s\S]*?)<\/think>/i)
     || msg.content.match(/<think>([\s\S]*?)$/i);  // unclosed (streaming)
@@ -143,14 +145,27 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   if (isUser) return (
     <div style={{display:'flex',justifyContent:'flex-end',padding:'3px 14px 3px 48px',marginBottom:'2px'}}>
       <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'4px',maxWidth:'84%'}}>
-        <div style={{background:'rgba(255,255,255,.08)',borderRadius:'18px 18px 4px 18px',padding:'11px 16px',fontSize:'14px',lineHeight:'1.65',color:'#f0f0f0',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>
-          {cleanText}
-        </div>
+        {editing ? (
+          <div style={{display:'flex',flexDirection:'column',gap:'6px',width:'100%'}}>
+            <textarea value={editText} onChange={e=>setEditText(e.target.value)} autoFocus
+              style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'12px',padding:'10px 14px',fontSize:'14px',lineHeight:'1.65',color:'#f0f0f0',resize:'vertical',minHeight:'60px',outline:'none',fontFamily:'inherit'}}/>
+            <div style={{display:'flex',gap:'6px',justifyContent:'flex-end'}}>
+              <button onClick={()=>setEditing(false)} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'8px',padding:'5px 12px',color:'rgba(255,255,255,.5)',fontSize:'12px',cursor:'pointer'}}>Batal</button>
+              <button onClick={()=>{onEdit(editText);setEditing(false);}} style={{background:'rgba(124,58,237,.2)',border:'1px solid rgba(124,58,237,.3)',borderRadius:'8px',padding:'5px 14px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',fontWeight:'500'}}>Simpan</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{background:'rgba(255,255,255,.08)',borderRadius:'18px 18px 4px 18px',padding:'11px 16px',fontSize:'14px',lineHeight:'1.65',color:'#f0f0f0',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>
+            {cleanText}
+          </div>
+        )}
         <div style={{display:'flex',gap:'4px',opacity:actionsVisible?1:0,transition:'opacity .15s'}}
           onMouseEnter={()=>setActionsVisible(true)} onMouseLeave={()=>setActionsVisible(false)}>
           <button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}}
             onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}>copy</button>
+          {onEdit&&<button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={()=>{setEditText(cleanText);setEditing(true);}}>✏</button>}
           {onRetry&&<button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={onRetry}>↺</button>}
+          {onDelete&&<button style={{background:'rgba(248,113,113,.07)',border:'1px solid rgba(248,113,113,.14)',padding:'5px 12px',color:'#f87171',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={onDelete}>🗑</button>}
         </div>
         {/* make hover zone larger */}
         <div style={{position:'absolute',width:'100%',height:'100%',top:0,left:0,pointerEvents:'none'}}
@@ -241,6 +256,10 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
             onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,.5)'}
             onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.2)'}
             onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}>copy</button>
+          {onDelete&&<button style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.15)',fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'32px'}}
+            onMouseEnter={e=>e.currentTarget.style.color='#f87171'}
+            onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.15)'}
+            onClick={onDelete}>🗑</button>}
           {isLast&&onRetry&&<button style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.2)',fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'32px'}}
             onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,.5)'}
             onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.2)'}

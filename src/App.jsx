@@ -407,6 +407,8 @@ export default function App() {
                   onRetry={i===chat.messages.length-1&&m.role==='user'?retryLast:null}
                   onContinue={i===chat.messages.length-1&&m.role==='assistant'&&m.content.trim().endsWith('CONTINUE')?continueMsg:null}
                   onAutoFix={i===chat.messages.length-1?()=>sendMsg('Ada error di output. Analisis dan fix otomatis.'):null}
+                  onDelete={()=>chat.deleteMessage(i)}
+                  onEdit={m.role==='user'?(newContent)=>chat.editMessage(i,newContent):null}
                 />
               ))}
               {chat.streaming&&(
