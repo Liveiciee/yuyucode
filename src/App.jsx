@@ -12,7 +12,7 @@ import { FileEditor } from './components/FileEditor.jsx';
 import { Terminal } from './components/Terminal.jsx';
 import { SearchBar, UndoBar } from './components/SearchBar.jsx';
 import { VoiceBtn, PushToTalkBtn } from './components/VoiceBtn.jsx';
-import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel, BottomSheet, SkillsPanel, DeployPanel, McpPanel, GitHubPanel, SessionsPanel, PermissionsPanel, PluginsPanel, ConfigPanel, BgAgentPanel } from './components/panels.jsx';
+import { GitComparePanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel, BottomSheet, SkillsPanel, DeployPanel, McpPanel, GitHubPanel, SessionsPanel, PermissionsPanel, PluginsPanel, ConfigPanel, BgAgentPanel } from './components/panels.jsx';
 import { useSlashCommands } from './hooks/useSlashCommands.js';
 import { useUIStore }        from './hooks/useUIStore.js';
 import { useProjectStore }   from './hooks/useProjectStore.js';
@@ -598,7 +598,7 @@ export default function App() {
       {/* OVERLAYS */}
       {ui.showSearch&&<SearchBar folder={project.folder} onSelectFile={p=>file.openFile(p)} onClose={()=>ui.setShowSearch(false)}/>}
       {ui.showShortcuts&&<ShortcutsPanel onClose={()=>ui.setShowShortcuts(false)}/>}
-      {ui.showDiff&&<GitDiffPanel folder={project.folder} onClose={()=>ui.setShowDiff(false)}/>}
+      {ui.showDiff&&<GitComparePanel folder={project.folder} onClose={()=>ui.setShowDiff(false)}/>}
       {ui.showBlame&&file.selectedFile&&<GitBlamePanel folder={project.folder} filePath={file.selectedFile} onClose={()=>ui.setShowBlame(false)}/>}
       {ui.showSnippets&&<SnippetLibrary onInsert={code=>{chat.setInput(i=>i?i+'\n'+code:code);ui.setShowSnippets(false);inputRef.current?.focus();}} onClose={()=>ui.setShowSnippets(false)}/>}
       {ui.showFileHistory&&file.selectedFile&&<FileHistoryPanel folder={project.folder} filePath={file.selectedFile} onClose={()=>ui.setShowFileHistory(false)}/>}
