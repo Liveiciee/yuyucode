@@ -564,7 +564,7 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
             onKeyDown={e=>{ if(e.key==='Escape') onClose(); }}
             placeholder="Cari action atau ketik command..."
             style={{flex:1,background:'none',border:'none',outline:'none',color:'#f0f0f0',fontSize:'13px',fontFamily:'inherit'}}/>
-          {q && <button onClick={()=>setQ('')} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',cursor:'pointer',fontSize:'12px'}}><X size={14}/>/button>}
+          {q && <button onClick={()=>setQ('')} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',cursor:'pointer',fontSize:'12px'}}><X size={14}/></button>}
         </div>
         <div style={{maxHeight:'60vh',overflowY:'auto',padding:'6px'}}>
           {display.map(section=>(
