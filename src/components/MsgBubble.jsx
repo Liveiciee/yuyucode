@@ -219,7 +219,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
         <div style={{display:'flex',gap:'4px',opacity:actionsVisible?1:0,transition:'opacity .15s'}}
           onMouseEnter={()=>setActionsVisible(true)} onMouseLeave={()=>setActionsVisible(false)}>
           <button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}}
-            onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}<Copy size={13}/></button>
+            onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}><Copy size={13}/></button>
           {onEdit&&<button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={()=>{setEditText(cleanText);setEditing(true);}}><Pencil size={12}/></button>}
           {onRetry&&<button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={onRetry}><RotateCcw size={12}/></button>}
           {onDelete&&<button style={{background:'rgba(248,113,113,.07)',border:'1px solid rgba(248,113,113,.14)',padding:'5px 12px',color:'#f87171',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={onDelete}><Trash2 size={12}/></button>}
@@ -312,7 +312,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
           <button style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.2)',fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'32px'}}
             onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,.5)'}
             onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.2)'}
-            onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}<Copy size={13}/></button>
+            onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}><Copy size={13}/></button>
           {onEdit&&<button style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.15)',fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'32px'}}
             onMouseEnter={e=>e.currentTarget.style.color='rgba(167,139,250,.8)'}
             onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.15)'}
