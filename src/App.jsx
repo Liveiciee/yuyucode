@@ -7,6 +7,7 @@ import { callServer } from './api.js';
 import { countTokens, hl } from './utils.js';
 import { loadSessions, getBgAgents, mergeBackgroundAgent, abortBgAgent } from './features.js';
 import { MsgBubble, MsgContent } from './components/MsgBubble.jsx';
+import { ThemeEffects } from './components/ThemeEffects.jsx';
 import { FileTree } from './components/FileTree.jsx';
 import { FileEditor } from './components/FileEditor.jsx';
 import { Terminal } from './components/Terminal.jsx';
@@ -265,6 +266,7 @@ export default function App() {
     <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:ui.fontSize+'px'}}
       onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}>
       {ui.dragOver&&<div style={{position:'absolute',inset:0,background:'rgba(124,58,237,.15)',border:'2px dashed rgba(124,58,237,.5)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:'#a78bfa'}}>Drop file di sini~</span></div>}
+      <ThemeEffects T={T}/>
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         ::-webkit-scrollbar{width:3px;height:3px;}
@@ -366,7 +368,7 @@ export default function App() {
                 </div>
               )}
               <div style={{flex:1,overflow:'hidden'}}>
-                <FileTree folder={project.folder} onSelectFile={p=>{file.openFile(p);ui.setShowSidebar(false);}} selectedFile={file.selectedFile}/>
+                <FileTree folder={project.folder} onSelectFile={p=>{file.openFile(p);ui.setShowSidebar(false);}} selectedFile={file.selectedFile} T={T}/>
               </div>
               <div onMouseDown={onSidebarDragStart} onTouchStart={onSidebarDragStart}
                 style={{position:'absolute',top:0,right:-3,bottom:0,width:'6px',cursor:'col-resize',background:ui.dragging?T.accentBg:'transparent'}}/>
@@ -406,7 +408,7 @@ export default function App() {
             <div ref={chatRef} style={{flex:1,overflowY:'auto',padding:'20px 0 8px'}}>
               <div style={{maxWidth:'720px',margin:'0 auto',padding:'0 4px'}}>
               {visibleMessages.map((m,i)=>(
-                <MsgBubble key={i} msg={m} isLast={i===chat.messages.length-1}
+                <MsgBubble key={i} msg={m} isLast={i===chat.messages.length-1} T={T}
                   onApprove={m.actions?.some(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed)?(ok,path)=>handleApprove(i,ok,path):null}
                   onPlanApprove={m.content?.includes('📋 **Plan (')&&!m.planApproved?(ok)=>handlePlanApprove(i,ok):null}
                   onRetry={i===chat.messages.length-1&&m.role==='user'?retryLast:null}
@@ -487,7 +489,7 @@ export default function App() {
           )}
 
           {/* TERMINAL */}
-          {ui.showTerminal&&<div style={{flex:1,overflow:'hidden'}}><Terminal folder={project.folder} cmdHistory={project.cmdHistory} addHistory={project.addHistory} onSendToAI={txt=>{ui.setShowTerminal(false);file.setActiveTab('chat');sendMsg(txt);}}/></div>}
+          {ui.showTerminal&&<div style={{flex:1,overflow:'hidden'}}><Terminal folder={project.folder} cmdHistory={project.cmdHistory} addHistory={project.addHistory} T={T} onSendToAI={txt=>{ui.setShowTerminal(false);file.setActiveTab('chat');sendMsg(txt);}}/></div>}
 
           {/* FOLLOW UPS */}
           {chat.showFollowUp&&!chat.loading&&file.activeTab==='chat'&&!ui.showTerminal&&(
