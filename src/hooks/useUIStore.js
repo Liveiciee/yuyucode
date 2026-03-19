@@ -4,7 +4,7 @@ import { THEMES_MAP, THEME_KEYS, DEFAULT_THEME } from '../themes/index.js';
 
 export function useUIStore() {
   // ── Panels / Overlays ──
-  const [showSidebar, setShowSidebar]         = useState(true);
+  const [showSidebar, setShowSidebar]         = useState(false);
   const [showTerminal, setShowTerminal]       = useState(false);
   const [showFolder, setShowFolder]           = useState(false);
   const [showSearch, setShowSearch]           = useState(false);

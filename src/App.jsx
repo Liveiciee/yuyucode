@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Activity } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { MAX_HISTORY, MODELS, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
+import { MAX_HISTORY, MODELS, THEMES, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { callServer } from './api.js';
 import { countTokens, hl } from './utils.js';
 import { loadSessions, getBgAgents, mergeBackgroundAgent, abortBgAgent } from './features.js';
@@ -154,7 +154,7 @@ export default function App() {
       Preferences.get({key:'yc_effort'}),    Preferences.get({key:'yc_thinking'}),
       Preferences.get({key:'yc_permissions'}),
     ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr,sc,pl,ef,tk,perm]) => {
-      ui.loadUIPrefs({theme:th.value,fontSize:fs.value,sidebarWidth:sw.value,onboarded:ob.value});
+      ui.loadUIPrefs({theme:th.value,fontSize:fs.value,sidebarWidth:sw.value,customTheme:ct.value,onboarded:ob.value});
       project.loadProjectPrefs({folder:f.value,cmdHistory:ch.value,model:mo.value,hooks:hk.value,githubToken:ght.value,githubRepo:ghr.value,sessionColor:sc.value,plugins:pl.value,effort:ef.value,thinkingEnabled:tk.value,permissions:perm.value});
       file.loadFilePrefs({pinned:pi.value,recent:re.value});
       chat.loadChatPrefs({history:h.value,memories:mem.value,checkpoints:ckp.value});
@@ -282,44 +282,43 @@ export default function App() {
 
       {project.sessionColor&&<div style={{height:'2px',background:project.sessionColor,flexShrink:0}}/>}
 
-      {/* HEADER — single row 56px */}
+      {/* HEADER — compact 48px, no sakura icon */}
       <div style={{flexShrink:0,background:T.bg,borderBottom:'1px solid '+T.border}}>
-        <div style={{height:'56px',padding:'0 12px',display:'flex',alignItems:'center',gap:'6px'}}>
+        <div style={{height:'48px',padding:'0 10px',display:'flex',alignItems:'center',gap:'6px'}}>
           {/* sidebar toggle */}
           <button onClick={()=>ui.setShowSidebar(!ui.showSidebar)}
-            style={{background:ui.showSidebar?T.accentBg:'none',border:'none',color:ui.showSidebar?T.accent:T.textMute,fontSize:'16px',cursor:'pointer',borderRadius:'10px',minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>☰</button>
+            style={{background:ui.showSidebar?T.accentBg:'none',border:'none',color:ui.showSidebar?T.accent:T.textMute,fontSize:'16px',cursor:'pointer',borderRadius:'10px',minWidth:'40px',minHeight:'40px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>☰</button>
 
           {/* title + folder — tap to change */}
           <div style={{flex:1,cursor:'pointer',minWidth:0,overflow:'hidden',padding:'4px 6px',borderRadius:'10px'}}
             onClick={()=>ui.setShowFolder(!ui.showFolder)}>
-            <div style={{fontSize:'14px',fontWeight:'700',color:T.text,letterSpacing:'-.3px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'1.2'}}>
-              YuyuCode
+            <div style={{fontSize:'13px',fontWeight:'700',color:T.text,letterSpacing:'-.3px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'1.2'}}>
+              Yuyu<span style={{fontWeight:'400',opacity:.5}}>code</span>
             </div>
-            <div style={{fontSize:'11px',color:T.textMute,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'1.3',marginTop:'1px',display:'flex',alignItems:'center',gap:'6px'}}>
-              {/* server dot */}
+            <div style={{fontSize:'10px',color:T.textMute,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'1.3',marginTop:'1px',display:'flex',alignItems:'center',gap:'5px'}}>
               <span style={{display:'inline-block',width:'5px',height:'5px',borderRadius:'50%',background:project.serverOk?T.success:T.error,flexShrink:0}}/>
               <span style={{fontFamily:'monospace'}}>{project.folder?.split('/').pop()||'no folder'}</span>
-              <span style={{color:T.textMute,opacity:.6}}>⎇ {project.branch}</span>
+              <span style={{opacity:.5}}>⎇ {project.branch}</span>
               {project.skills?.some(s=>s.active)&&<span style={{color:T.success,fontSize:'9px',fontWeight:'700',letterSpacing:'.06em'}}>SKILL</span>}
             </div>
           </div>
 
           {/* effort pill */}
           <button onClick={()=>{const lvls=['low','medium','high'];const i=lvls.indexOf(project.effort);project.setEffort(lvls[(i+1)%3]);}}
-            style={{background:project.effort==='high'?T.errorBg:project.effort==='low'?T.successBg:T.bg3,border:'1px solid '+(project.effort==='high'?T.error+'33':project.effort==='low'?T.success+'33':T.border),borderRadius:'8px',padding:'5px 10px',color:project.effort==='high'?T.error:project.effort==='low'?T.success:T.textMute,fontSize:'11px',cursor:'pointer',flexShrink:0,fontWeight:'600',minHeight:'36px'}}>
+            style={{background:project.effort==='high'?T.errorBg:project.effort==='low'?T.successBg:T.bg3,border:'1px solid '+(project.effort==='high'?T.error+'33':project.effort==='low'?T.success+'33':T.border),borderRadius:'8px',padding:'4px 9px',color:project.effort==='high'?T.error:project.effort==='low'?T.success:T.textMute,fontSize:'11px',cursor:'pointer',flexShrink:0,fontWeight:'600',fontFamily:'monospace'}}>
             {project.effort==='low'?'low':project.effort==='high'?'high':'med'}
           </button>
 
-          {/* tokens — compact */}
-          <span style={{fontSize:'10px',color:T.textMute,flexShrink:0,fontFamily:'monospace'}}>~{countTokens(chat.messages)}tk</span>
+          {/* tokens */}
+          <span style={{fontSize:'10px',color:T.textMute,flexShrink:0,fontFamily:'monospace',opacity:.6}}>~{countTokens(chat.messages)}tk</span>
 
           {/* command palette */}
           <button onClick={()=>ui.setShowPalette(true)}
-            style={{background:T.bg3,border:'1px solid '+T.border,borderRadius:'10px',padding:'0',color:T.textSec,fontSize:'15px',cursor:'pointer',minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>⌘</button>
+            style={{background:T.bg3,border:'1px solid '+T.border,borderRadius:'10px',padding:'0',color:T.textSec,fontSize:'15px',cursor:'pointer',minWidth:'40px',minHeight:'40px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>⌘</button>
 
           {/* new chat */}
           <button onClick={()=>{chat.clearChat();haptic('light');}}
-            style={{background:'none',border:'1px solid '+T.border,borderRadius:'10px',padding:'0 14px',color:T.textMute,fontSize:'12px',cursor:'pointer',minHeight:'44px',flexShrink:0}}>new</button>
+            style={{background:'none',border:'1px solid '+T.border,borderRadius:'10px',padding:'0 12px',color:T.textMute,fontSize:'12px',cursor:'pointer',minHeight:'40px',flexShrink:0}}>new</button>
         </div>
       </div>
 
@@ -345,29 +344,33 @@ export default function App() {
 
       <div style={{flex:1,display:'flex',overflow:'hidden',position:'relative'}}>
 
-        {/* SIDEBAR */}
+        {/* SIDEBAR — overlay, tap backdrop to close */}
         {ui.showSidebar&&(
-          <div style={{width:ui.sidebarWidth+'px',borderRight:'1px solid '+T.border,display:'flex',flexDirection:'column',flexShrink:0,background:T.bg2,position:'relative'}}>
-            <div style={{padding:'5px 8px',borderBottom:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'4px',alignItems:'center'}}>
-              <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{project.folder}</span>
-            </div>
-            {file.recentFiles.length>0&&(
-              <div style={{padding:'4px 8px',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
-                <div style={{fontSize:'9px',color:'rgba(255,255,255,.2)',marginBottom:'3px',letterSpacing:'.05em'}}>RECENT</div>
-                {file.recentFiles.slice(0,4).map(f=>(
-                  <div key={f} onClick={()=>file.openFile(f)} style={{fontSize:'11px',color:'rgba(255,255,255,.4)',padding:'2px 4px',cursor:'pointer',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',borderRadius:'3px'}}
-                    onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,.7)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.4)'}>
-                    {f.split('/').pop()}
-                  </div>
-                ))}
+          <>
+            <div onClick={()=>ui.setShowSidebar(false)}
+              style={{position:'absolute',inset:0,zIndex:19,background:'rgba(0,0,0,.4)',backdropFilter:'blur(2px)'}}/>
+            <div style={{position:'absolute',top:0,left:0,bottom:0,width:ui.sidebarWidth+'px',borderRight:'1px solid '+T.border,display:'flex',flexDirection:'column',background:T.bg2,zIndex:20}}>
+              <div style={{padding:'5px 8px',borderBottom:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'4px',alignItems:'center'}}>
+                <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{project.folder}</span>
               </div>
-            )}
-            <div style={{flex:1,overflow:'hidden'}}>
-              <FileTree folder={project.folder} onSelectFile={p=>file.openFile(p)} selectedFile={file.selectedFile}/>
+              {file.recentFiles.length>0&&(
+                <div style={{padding:'4px 8px',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+                  <div style={{fontSize:'9px',color:'rgba(255,255,255,.2)',marginBottom:'3px',letterSpacing:'.05em'}}>RECENT</div>
+                  {file.recentFiles.slice(0,4).map(f=>(
+                    <div key={f} onClick={()=>{file.openFile(f);ui.setShowSidebar(false);}} style={{fontSize:'11px',color:'rgba(255,255,255,.4)',padding:'2px 4px',cursor:'pointer',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',borderRadius:'3px'}}
+                      onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,.7)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.4)'}>
+                      {f.split('/').pop()}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{flex:1,overflow:'hidden'}}>
+                <FileTree folder={project.folder} onSelectFile={p=>{file.openFile(p);ui.setShowSidebar(false);}} selectedFile={file.selectedFile}/>
+              </div>
+              <div onMouseDown={onSidebarDragStart} onTouchStart={onSidebarDragStart}
+                style={{position:'absolute',top:0,right:-3,bottom:0,width:'6px',cursor:'col-resize',background:ui.dragging?T.accentBg:'transparent'}}/>
             </div>
-            <div onMouseDown={onSidebarDragStart} onTouchStart={onSidebarDragStart}
-              style={{position:'absolute',top:0,right:-3,bottom:0,width:'6px',cursor:'col-resize',background:ui.dragging?'rgba(124,58,237,.3)':'transparent'}}/>
-          </div>
+          </>
         )}
 
         {/* CENTER */}
@@ -564,7 +567,6 @@ export default function App() {
                     else chat.setSlashSuggestions([]);
                   }}
                   onKeyDown={e=>{
-                    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();return;}
                     if(e.key==='ArrowUp'&&!chat.input){const i=Math.min(project.histIdx+1,project.cmdHistory.length-1);project.setHistIdx(i);chat.setInput(project.cmdHistory[i]||'');}
                     if(e.key==='ArrowDown'&&project.histIdx>-1){const i=project.histIdx-1;project.setHistIdx(i);chat.setInput(i>=0?project.cmdHistory[i]:'');}
                   }}
@@ -691,7 +693,7 @@ export default function App() {
           onClose={()=>ui.setShowMergeConflict(false)}/>
       )}
 
-      {ui.showThemeBuilder&&<ThemeBuilder onClose={()=>ui.setShowThemeBuilder(false)} themeKey={ui.themeKey} themesMap={ui.THEMES_MAP} themeKeys={ui.THEME_KEYS} onTheme={ui.setTheme}/>}
+      {ui.showThemeBuilder&&<ThemeBuilder current={ui.customTheme||THEMES[ui.theme]} onSave={t=>{ui.setCustomTheme(t);Preferences.set({key:'yc_custom_theme',value:JSON.stringify(t)});ui.setShowThemeBuilder(false);}} onClose={()=>ui.setShowThemeBuilder(false)}/>}
 
       {/* ONBOARDING */}
       {ui.showOnboarding&&(
