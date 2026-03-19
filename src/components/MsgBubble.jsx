@@ -261,7 +261,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
             </div>
             {pendingWrites.map((a,i)=>(
               <div key={i} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px',padding:'7px 12px',fontSize:'12px',fontFamily:'monospace',color:'rgba(255,255,255,.5)',display:'flex',alignItems:'center',gap:'6px'}}>
-                <span style={{opacity:.5}}>✏️</span>
+                <span style={{opacity:.5,display:'flex'}}><Pencil size={12}/></span>
                 <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.path}</span>
               </div>
             ))}
@@ -278,7 +278,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
             {actions.filter(a=>a.type==='patch_file'&&!a.executed).map((a,i)=>(
               <div key={i} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'12px',overflow:'hidden'}}>
                 <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 14px'}}>
-                  <span style={{fontSize:'12px',color:'rgba(255,255,255,.5)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🩹 {a.path}</span>
+                  <span style={{fontSize:'12px',color:'rgba(255,255,255,.5)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}><FileDiff size={11}/> {a.path}</span>
                 </div>
                 <div style={{display:'flex',gap:'8px',padding:'8px 14px',borderTop:'1px solid rgba(255,255,255,.04)'}}>
                   <button onClick={()=>onApprove(true,a.path)} style={approveBtn}><Check size={13}/> Apply</button>

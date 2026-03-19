@@ -587,7 +587,7 @@ export default function App() {
                 {project.pushToTalk&&<PushToTalkBtn onResult={v=>{ if(v?.trim()) { chat.setInput(''); sendMsg(v.trim()); } else { chat.setInput(v); } }} disabled={chat.loading} T={T}/>}
                 <button onClick={()=>{if(chat.ttsEnabled){stopTts();chat.setTtsEnabled(false);}else chat.setTtsEnabled(true);}}
                   style={{background:chat.ttsEnabled?T.accentBg:'none',border:'1px solid '+(chat.ttsEnabled?T.accentBorder:T.border),borderRadius:'12px',color:chat.ttsEnabled?T.accent:T.textMute,fontSize:'15px',cursor:'pointer',flexShrink:0,minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s'}}>
-                  {chat.ttsEnabled?'🔊':'🔇'}
+                  {chat.ttsEnabled?<Volume2 size={16}/>:<VolumeX size={16}/>}
                 </button>
               </div>
             </div>
@@ -676,7 +676,7 @@ export default function App() {
       {/* SWARM LOG */}
       {chat.swarmRunning&&(
         <div style={{position:'fixed',bottom:'80px',right:'12px',background:'rgba(0,0,0,.92)',border:'1px solid rgba(124,58,237,.3)',borderRadius:'10px',padding:'12px',zIndex:98,maxWidth:'280px',maxHeight:'200px',overflowY:'auto'}}>
-          <div style={{fontSize:'11px',fontWeight:'600',color:'#a78bfa',marginBottom:'6px'}}>🐝 Agent Swarm Running···</div>
+          <div style={{fontSize:'11px',fontWeight:'600',color:'#a78bfa',marginBottom:'6px'}}><Zap size={13}/> Agent Swarm Running···</div>
           {chat.swarmLog.map((l,i)=><div key={i} style={{fontSize:'10px',color:'rgba(255,255,255,.6)',marginBottom:'2px'}}>{l}</div>)}
         </div>
       )}

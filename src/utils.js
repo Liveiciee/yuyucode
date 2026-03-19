@@ -9,14 +9,13 @@ export function countTokens(msgs) {
 export function getFileIcon(name) {
   const ext = name.split('.').pop()?.toLowerCase();
   const icons = {
-    jsx:'⚛', tsx:'⚛', js:'📜', ts:'📘', json:'📋',
-    md:'📝', yml:'⚙️', yaml:'⚙️', css:'🎨', html:'🌐', sh:'💻',
-    txt:'📄', png:'🖼', jpg:'🖼', svg:'🎭', py:'🐍', rb:'💎',
-    go:'🐹', rs:'🦀', java:'☕', kt:'🎯', swift:'🦅',
+    jsx:'jsx', tsx:'tsx', js:'js', ts:'ts', json:'{}',
+    md:'md', yml:'yml', yaml:'yml', css:'css', html:'html', sh:'sh',
+    txt:'txt', png:'img', jpg:'img', svg:'svg', py:'py', rb:'rb',
+    go:'go', rs:'rs', java:'java', kt:'kt', swift:'sw',
   };
-  return icons[ext] || '📄';
+  return icons[ext] || ext || '?';
 }
-
 // ── SYNTAX HIGHLIGHT ──
 export function hl(code, lang = '') {
   let s = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

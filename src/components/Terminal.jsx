@@ -1,3 +1,4 @@
+import { Wrench, ChevronRight, ChevronsRight } from 'lucide-react';
 import React, { useState, useRef, useEffect } from "react";
 import { callServer } from '../api.js';
 import { execStream } from '../api.js';
@@ -140,7 +141,7 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI }) {
             {entry.hasError && onSendToAI && (
               <button onClick={() => onSendToAI('Error di terminal:\n```bash\n$ ' + entry.cmd + '\n' + entry.output.slice(0, 600) + '\n```\nDiagnosa dan fix.')}
                 style={{ marginTop:'6px', marginLeft:'14px', background:'rgba(248,113,113,.08)', border:'1px solid rgba(248,113,113,.2)', borderRadius:'6px', padding:'5px 12px', color:'#f87171', fontSize:'11px', cursor:'pointer', minHeight:'32px' }}>
-                🔧 Fix dengan AI
+                <Wrench size={12}/> Fix dengan AI
               </button>
             )}
           </div>
@@ -177,7 +178,7 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI }) {
             {suggestions.map((s, i) => (
               <div key={i} onClick={() => { setCmd(s); setSuggs([]); }}
                 style={{ padding:'10px 14px', fontSize:'12px', cursor:'pointer', borderBottom:'1px solid rgba(255,255,255,.05)', background: i === selIdx ? 'rgba(124,58,237,.2)' : 'transparent', color: i === selIdx ? '#c4b5fd' : 'rgba(255,255,255,.5)' }}>
-                <span style={{ opacity:.4, marginRight:'8px' }}>❯</span>{s}
+                <span style={{ opacity:.4, marginRight:'8px', display:'flex', alignItems:'center' }}><ChevronRight size={11}/></span>{s}
               </div>
             ))}
           </div>

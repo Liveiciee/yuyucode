@@ -3,7 +3,7 @@ import * as d3 from "d3";
 import { Preferences } from "@capacitor/preferences";
 import { callServer } from '../api.js';
 import { THEMES, MODELS } from '../constants.js';
-import { Settings, GitBranch, Search, Plug, Github, Key, Puzzle, Brain, MapPin, Scissors, Bookmark, Zap, Globe, RotateCcw, Trash2, Check, X, ChevronDown, ChevronUp, ChevronRight, AlertTriangle, Eye, ScrollText, Pin, FileText, Pencil, Copy, Package, Terminal, Play, Square, ArrowRight, GitMerge, Plus, RefreshCw, BookOpen, Layers, Palette, Save, Upload, Download, Power, Shield, List, History, GitDiff, XCircle } from 'lucide-react';
+import { Settings, GitBranch, Search, Plug, Github, Key, Puzzle, Brain, MapPin, Scissors, Bookmark, Zap, Globe, RotateCcw, Trash2, Check, X, ChevronDown, ChevronUp, ChevronRight, AlertTriangle, Eye, ScrollText, Pin, FileText, Pencil, Copy, Package, Terminal, Play, Square, ArrowRight, GitMerge, Plus, RefreshCw, BookOpen, Layers, Palette, Save, Upload, Download, Power, Shield, List, History, GitDiff, XCircle, MessageSquare, Network } from 'lucide-react';
 
 // ─── BOTTOM SHEET (reusable mobile-first wrapper) ─────────────────────────────
 export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=false }) {
@@ -220,7 +220,7 @@ export function FileHistoryPanel({ folder, filePath, onClose }) {
       <div style={{display:'flex',flexDirection:'row',flex:1,overflow:'hidden'}}>
       <div style={{width:'200px',borderRight:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',flexShrink:0}}>
         <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center'}}>
-          <span style={{fontSize:'12px',fontWeight:'600',color:'#f0f0f0',flex:1}}>📜 File History</span>
+          <span style={{fontSize:'12px',fontWeight:'600',color:'#f0f0f0',flex:1}}><ScrollText size={14}/> File History</span>
           <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'14px',cursor:'pointer'}}><X size={16}/></button>
         </div>
         <div style={{flex:1,overflowY:'auto'}}>
@@ -286,7 +286,7 @@ export function CustomActionsPanel({ folder:_folder, onRun, onClose }) {
   return (
     <BottomSheet onClose={onClose}><div style={{padding:'0 16px 8px',display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
       <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-        <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⚡ Custom Actions</span>
+        <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}><Zap size={14}/> Custom Actions</span>
         <button onClick={()=>setAdding(!adding)} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>+ New</button>
         <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
       </div>
@@ -373,7 +373,7 @@ export function GitBlamePanel({ folder, filePath, onClose }) {
   return (
     <BottomSheet onClose={onClose}>
       <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',background:'rgba(255,255,255,.02)',flexShrink:0}}>
-        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>👁 Git Blame — {filePath.split('/').pop()}</span>
+        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}><Eye size={14}/> Git Blame — {filePath.split('/').pop()}</span>
         <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
       </div>
       <div style={{flex:1,overflowY:'auto',fontFamily:'monospace',fontSize:'11px'}}>
@@ -417,7 +417,7 @@ export function SnippetLibrary({ onInsert, onClose }) {
   return (
     <BottomSheet onClose={onClose}>
       <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:'8px',background:'rgba(255,255,255,.02)',flexShrink:0}}>
-        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>✦ Snippet Library</span>
+        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}><Bookmark size={14}/> Snippet Library</span>
         <button onClick={()=>setAdding(!adding)} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'11px',cursor:'pointer'}}>+ New</button>
         <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
       </div>
@@ -480,7 +480,7 @@ export function ThemeBuilder({ onClose, themeKey, themesMap, themeKeys, onTheme 
                   <div style={{fontSize:'13px',fontWeight:active?'700':'500',color:active?'#f0ede8':'#706860'}}>{th.name||key}</div>
                   <div style={{fontSize:'10px',color:'#3a3530',marginTop:'2px',fontFamily:'monospace'}}>{th.accent}</div>
                 </div>
-                {active && <span style={{fontSize:'11px',color:th.accent||'#888'}}>✓ aktif</span>}
+                {active && <span style={{fontSize:'11px',color:th.accent||'#888'}}><Check size={11}/> aktif</span>}
               </button>
             );
           })}
@@ -514,30 +514,30 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
       { icon:'package', label:'Compact context', sub:'Kompres history', action:()=>{ compactContext(); onClose(); } },
     ]},
     { label: 'Git', items: [
-      { icon:'◐', label:'Git diff', sub:'Lihat perubahan', action:()=>{ onShowDiff(); onClose(); } },
-      { icon:'+', label:'Generate commit', sub:'AI-powered commit msg', action:()=>{ generateCommitMsg(); onClose(); } },
-      { icon:'▶', label:'Run tests', sub:'npm test + lint', action:()=>{ runTests(); onClose(); } },
+      { icon:'gitdiff', label:'Git diff', sub:'Lihat perubahan', action:()=>{ onShowDiff(); onClose(); } },
+      { icon:'plus', label:'Generate commit', sub:'AI-powered commit msg', action:()=>{ generateCommitMsg(); onClose(); } },
+      { icon:'play', label:'Run tests', sub:'npm test + lint', action:()=>{ runTests(); onClose(); } },
     ]},
     { label: 'Tools', items: [
       { icon:'plug', label:'MCP Tools', sub:'Model Context Protocol', action:()=>{ onShowMCP(); onClose(); } },
-      { icon:'⑂', label:'GitHub', sub:'Issues & PRs', action:()=>{ onShowGitHub(); onClose(); } },
-      { icon:'🚀', label:'Deploy', sub:'Vercel / Netlify / Railway', action:()=>{ onShowDeploy(); onClose(); } },
+      { icon:'github', label:'GitHub', sub:'Issues & PRs', action:()=>{ onShowGitHub(); onClose(); } },
+      { icon:'rocket', label:'Deploy', sub:'Vercel / Netlify / Railway', action:()=>{ onShowDeploy(); onClose(); } },
       { icon:'save', label:'Sessions', sub:'Sesi tersimpan', action:()=>{ onShowSessions&&onShowSessions(); onClose(); } },
       { icon:'key', label:'Permissions', sub:'Kelola tool permissions', action:()=>{ onShowPermissions&&onShowPermissions(); onClose(); } },
       { icon:'plug', label:'Plugins', sub:'Plugin marketplace', action:()=>{ onShowPlugins&&onShowPlugins(); onClose(); } },
-      { icon:'⚙️', label:'Config', sub:'Settings interaktif', action:()=>{ onShowConfig&&onShowConfig(); onClose(); } },
+      { icon:'settings', label:'Config', sub:'Settings interaktif', action:()=>{ onShowConfig&&onShowConfig(); onClose(); } },
       { icon:'puzzle', label:'Skills', sub:'Kelola & upload skill files', action:()=>{ onShowSkills&&onShowSkills(); onClose(); } },
-      { icon:'✂', label:'Snippets', sub:'Code snippet library', action:()=>{ onShowSnippets(); onClose(); } },
+      { icon:'scissors', label:'Snippets', sub:'Code snippet library', action:()=>{ onShowSnippets(); onClose(); } },
       { icon:'zap', label:'Custom actions', sub:'Shortcut commands', action:()=>{ onShowCustomActions(); onClose(); } },
     ]},
     { label: 'Memory', items: [
-      { icon:'🧠', label:`Memories (${memories.length})`, sub:'Auto-learned patterns', action:()=>{ onShowMemory(); onClose(); } },
-      { icon:'📍', label:`Checkpoints (${checkpoints.length})`, sub:'Session snapshots', action:()=>{ onShowCheckpoints(); onClose(); } },
+      { icon:'brain', label:`Memories (${memories.length})`, sub:'Auto-learned patterns', action:()=>{ onShowMemory(); onClose(); } },
+      { icon:'mappin', label:`Checkpoints (${checkpoints.length})`, sub:'Session snapshots', action:()=>{ onShowCheckpoints(); onClose(); } },
     ]},
     { label: 'View', items: [
       { icon:'search', label:'Search files', sub:'Grep across project', action:()=>{ onShowSearch(); onClose(); } },
       { icon:'menu', label:'Toggle sidebar', sub: showSidebar?'Sembunyikan':'Tampilkan', action:()=>{ onToggleSidebar(); onClose(); } },
-      { icon:'🎨', label:'Theme: '+theme, sub:'obsidian / aurora / ink / neon', action:()=>{ const themes=['obsidian','aurora','ink','neon']; const i=themes.indexOf(theme); onThemeChange(themes[(i+1)%themes.length]); onClose(); } },
+      { icon:'palette', label:'Theme: '+theme, sub:'obsidian / aurora / ink / neon', action:()=>{ const themes=['obsidian','aurora','ink','neon']; const i=themes.indexOf(theme); onThemeChange(themes[(i+1)%themes.length]); onClose(); } },
     ]},
     { label: 'AI Model', items: models.map(m=>({
       icon: model===m.id ? '●' : '○',
@@ -575,7 +575,18 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
                   style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px 10px',borderRadius:'7px',cursor:'pointer'}}
                   onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'}
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                  <span style={{fontSize:'14px',width:'20px',textAlign:'center',flexShrink:0}}>{item.icon}</span>
+                  <span style={{fontSize:'14px',width:'20px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{(()=>{
+                    const iconMap = {
+                      chat:<MessageSquare size={14}/>, upload:<Upload size={14}/>, package:<Package size={14}/>,
+                      plug:<Plug size={14}/>, save:<Save size={14}/>, key:<Key size={14}/>,
+                      puzzle:<Puzzle size={14}/>, zap:<Zap size={14}/>, search:<Search size={14}/>,
+                      menu:<List size={14}/>, settings:<Settings size={14}/>, eye:<Eye size={14}/>,
+                      gitdiff:<GitDiff size={14}/>, plus:<Plus size={14}/>, play:<Play size={14}/>,
+                      github:<Github size={14}/>, rocket:<Zap size={14}/>, scissors:<Scissors size={14}/>,
+                      brain:<Brain size={14}/>, mappin:<MapPin size={14}/>, history:<History size={14}/>, palette:<Palette size={14}/>, rocket:<Zap size={14}/>,
+                    };
+                    return iconMap[item.icon] || <span style={{fontSize:'13px'}}>{item.icon}</span>;
+                  })()}</span>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:'12px',color:'#e8e8e8',fontWeight:'500'}}>{item.label}</div>
                     <div style={{fontSize:'10px',color:'rgba(255,255,255,.35)',marginTop:'1px'}}>{item.sub}</div>
@@ -699,7 +710,7 @@ export function DepGraphPanel({ depGraph, onClose }) {
   return (
     <BottomSheet onClose={onClose} height='92%'>
       <div style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:'8px',flexShrink:0,background:'rgba(255,255,255,.02)'}}>
-        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🕸 Dep Graph — <span style={{fontFamily:'monospace',color:'#a78bfa'}}>{depGraph?.file}</span></span>
+        <span style={{fontSize:'13px',fontWeight:'600',color:'#f0f0f0',flex:1}}><Network size={14}/> Dep Graph — <span style={{fontFamily:'monospace',color:'#a78bfa'}}>{depGraph?.file}</span></span>
         <span style={{fontSize:'10px',color:'rgba(5,150,105,.7)'}}>● {localCount} local</span>
         <span style={{fontSize:'10px',color:'rgba(96,165,250,.7)'}}>● {extCount} npm</span>
         <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)'}}>→ {edgeCount} edges</span>
@@ -842,7 +853,7 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
     <BottomSheet onClose={onClose}><div style={{padding:'0 16px 8px',display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
       {/* Header */}
       <div style={{display:'flex',alignItems:'center',marginBottom:'10px'}}>
-        <span style={{fontSize:'14px',fontWeight:'600',color:'#f87171',flex:1}}>⚠ Merge Conflict — {conflictList.length} file</span>
+        <span style={{fontSize:'14px',fontWeight:'600',color:'#f87171',flex:1}}><AlertTriangle size={14}/> Merge Conflict — {conflictList.length} file</span>
         <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
       </div>
 
@@ -896,7 +907,7 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
         </div>
         <button onClick={abortMerge} disabled={resolving}
           style={{background:'rgba(248,113,113,.07)',border:'1px solid rgba(248,113,113,.14)',borderRadius:'8px',padding:'8px',color:'#f87171',fontSize:'11px',cursor:'pointer',opacity:resolving?.5:1}}>
-          ✕ Abort merge
+          <X size={12}/> Abort merge
         </button>
       </div>
     </div>
@@ -942,14 +953,14 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
 
         {/* Header */}
         <div style={{display:'flex', alignItems:'center', marginBottom:'12px', gap:'6px'}}>
-          <span style={{fontSize:'14px', fontWeight:'600', color:'#f0f0f0', flex:1}}>🧩 Skills</span>
+          <span style={{fontSize:'14px', fontWeight:'600', color:'#f0f0f0', flex:1}}><Puzzle size={14}/> Skills</span>
           <label style={{background:'rgba(124,58,237,.1)', border:'1px solid rgba(124,58,237,.22)', borderRadius:'7px', padding:'6px 10px', color:'#a78bfa', fontSize:'11px', cursor:'pointer', minHeight:'32px', display:'flex', alignItems:'center'}}>
             ↑ Upload .md
             <input type="file" accept=".md,text/markdown,text/plain" style={{display:'none'}} disabled={busy} onChange={handleUpload}/>
           </label>
           <button onClick={()=>setAdding(a=>!a)}
             style={{background:'rgba(74,222,128,.08)', border:'1px solid rgba(74,222,128,.18)', borderRadius:'7px', padding:'6px 10px', color:'#4ade80', fontSize:'11px', cursor:'pointer', minHeight:'32px'}}>
-            {adding ? '✕ Batal' : '+ Baru'}
+            {adding ? 'Batal' : '+ Baru'}
           </button>
           <button onClick={onClose} style={{background:'none', border:'none', color:'rgba(255,255,255,.4)', fontSize:'16px', cursor:'pointer', padding:'4px'}}><X size={16}/></button>
         </div>
@@ -964,7 +975,7 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
               style={{...inputStyle, resize:'vertical', minHeight:'120px', lineHeight:'1.6'}}/>
             <button onClick={handleAdd} disabled={!newName.trim()||!newContent.trim()||busy}
               style={{background:'rgba(124,58,237,.18)', border:'1px solid rgba(124,58,237,.3)', borderRadius:'7px', padding:'9px', color:'#a78bfa', fontSize:'12px', cursor:'pointer', fontWeight:'500', opacity:(!newName.trim()||!newContent.trim()||busy)?0.45:1}}>
-              {busy ? 'Menyimpan...' : '💾 Simpan ke .claude/skills/'}
+              {busy ? 'Menyimpan...' : 'Simpan ke .claude/skills/'}
             </button>
           </div>
         )}
@@ -1032,7 +1043,7 @@ export function DeployPanel({ deployLog, loading, onDeploy, onClose }) {
           {['github','vercel','netlify','railway'].map(p=>(
             <button key={p} onClick={()=>onDeploy(p)} disabled={loading}
               style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'8px',padding:'8px 16px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',fontWeight:'500'}}>
-              {p==='github'?'📤 Git Push':p==='vercel'?'▲ Vercel':p==='netlify'?'◈ Netlify':'🚂 Railway'}
+              {p==='github'?'↑ Git Push':p==='vercel'?'▲ Vercel':p==='netlify'?'◈ Netlify':'⊟ Railway'}
             </button>
           ))}
         </div>
@@ -1088,8 +1099,8 @@ export function GitHubPanel({ githubRepo, githubToken, githubData, onRepoChange,
           <input value={githubRepo} onChange={e=>onRepoChange(e.target.value)} placeholder="owner/repo" style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
           <input value={githubToken} onChange={e=>onTokenChange(e.target.value)} placeholder="GitHub token" type="password" style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
           <div style={{display:'flex',gap:'6px'}}>
-            <button onClick={()=>onFetch('issues')} style={{background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.2)',borderRadius:'6px',padding:'5px 12px',color:'#818cf8',fontSize:'11px',cursor:'pointer',flex:1}}>📋 Issues</button>
-            <button onClick={()=>onFetch('pulls')} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'6px',padding:'5px 12px',color:'#4ade80',fontSize:'11px',cursor:'pointer',flex:1}}>🔀 PRs</button>
+            <button onClick={()=>onFetch('issues')} style={{background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.2)',borderRadius:'6px',padding:'5px 12px',color:'#818cf8',fontSize:'11px',cursor:'pointer',flex:1}}><List size={13}/> Issues</button>
+            <button onClick={()=>onFetch('pulls')} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'6px',padding:'5px 12px',color:'#4ade80',fontSize:'11px',cursor:'pointer',flex:1}}><GitMerge size={13}/> PRs</button>
           </div>
         </div>
         <div style={{flex:1,overflowY:'auto'}}>
@@ -1112,7 +1123,7 @@ export function SessionsPanel({ sessions, onRestore, onClose }) {
     <BottomSheet onClose={onClose}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>💾 Saved Sessions</span>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}><Save size={14}/> Saved Sessions</span>
           <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
         </div>
         {sessions.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada sesi tersimpan. Ketik /save~</div>}
@@ -1139,7 +1150,7 @@ export function PermissionsPanel({ permissions, accentColor, onToggle, onReset, 
     <BottomSheet onClose={onClose}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔐 Tool Permissions</span>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}><Shield size={14}/> Tool Permissions</span>
           <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
         </div>
         <div style={{flex:1,overflowY:'auto'}}>
@@ -1173,7 +1184,7 @@ export function PluginsPanel({ activePlugins, folder, onToggle, onClose }) {
     <BottomSheet onClose={onClose}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔌 Plugin Marketplace</span>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}><Plug size={14}/> Plugin Marketplace</span>
           <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
         </div>
         {BUILTIN_PLUGINS.map(p=>{
@@ -1239,7 +1250,7 @@ export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, m
 // ── BgAgentPanel — live progress tracking ────────────────────────────────────
 export function BgAgentPanel({ agents, onMerge, onAbort, onClose }) {
   const statusColor = { preparing:'#fbbf24', running:'#60a5fa', done:'#4ade80', error:'#f87171', aborted:'rgba(255,255,255,.3)', merged:'rgba(255,255,255,.2)', conflict:'#f97316' };
-  const statusIcon  = { preparing:'⏳', running:'⚙️', done:'✅', error:'❌', aborted:'⏹', merged:'🔀', conflict:'⚠️' };
+  const statusIcon  = { preparing:'…', running:'↻', done:'✓', error:'✗', aborted:'⏹', merged:'⇄', conflict:'!' };
 
   return (
     <BottomSheet onClose={onClose}>

@@ -1,3 +1,4 @@
+import { Save, X } from 'lucide-react';
 import React, { useState, useRef } from "react";
 
 export function FileEditor({ path, content, onSave, onClose }) {
@@ -52,7 +53,7 @@ export function FileEditor({ path, content, onSave, onClose }) {
           <button onClick={()=>setShowInlineDiff(!showInlineDiff)} style={tbBtn(showInlineDiff)}>◐ diff</button>
         )}
         <button onClick={save} style={{...tbBtn(false),background:'rgba(74,222,128,.12)',border:'1px solid rgba(74,222,128,.25)',color:'#4ade80',fontWeight:'500'}}>
-          💾 Save
+          <Save size={13}/> Save
         </button>
         <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'18px',cursor:'pointer',padding:'4px 6px',flexShrink:0}}>×</button>
       </div>

@@ -1,3 +1,4 @@
+import { Folder, File, FilePlus, FolderPlus, RotateCcw, Pencil, Trash2 } from 'lucide-react';
 import React, { useState, useEffect } from "react";
 import { callServer } from '../api.js';
 import { getFileIcon } from '../utils.js';
@@ -76,14 +77,14 @@ export function FileTree({ folder, onSelectFile, selectedFile }) {
                 onMouseEnter={e => !isSelected&&(e.currentTarget.style.background='rgba(255,255,255,.04)')}
                 onMouseLeave={e => !isSelected&&(e.currentTarget.style.background=isSelected?'rgba(124,58,237,.2)':'transparent')}>
                 <span style={{fontSize:'9px',flexShrink:0,width:'10px'}}>{item.isDir?(isExp?'▾':'▸'):''}</span>
-                <span style={{fontSize:'11px',flexShrink:0}}>{item.isDir?'📁':getFileIcon(item.name)}</span>
+                <span style={{fontSize:'11px',flexShrink:0}}>{item.isDir?<Folder size={11}/>:<File size={11}/>}</span>
                 <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</span>
               </div>
             )}
             {item.isDir && isExp && renderItems(isExp, fullPath, depth+1)}
             {creating && creating.parentPath === fullPath && (
               <div style={{padding:'2px 6px 2px '+(8+(depth+1)*12)+'px',display:'flex',gap:'4px'}}>
-                <span style={{fontSize:'11px'}}>{creating.isDir?'📁':'📄'}</span>
+                <span style={{fontSize:'11px'}}>{creating.isDir?<Folder size={11}/>:<File size={11}/>}</span>
                 <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)} placeholder={creating.isDir?'folder name':'file name'}
                   onKeyDown={e=>{if(e.key==='Enter')doCreate(fullPath);if(e.key==='Escape'){setCreating(null);setNewName('');}}}
                   style={{flex:1,background:'rgba(255,255,255,.1)',border:'1px solid rgba(74,222,128,.4)',borderRadius:'3px',padding:'1px 5px',color:'#f0f0f0',fontSize:'11px',outline:'none',fontFamily:'monospace'}}/>
@@ -97,13 +98,13 @@ export function FileTree({ folder, onSelectFile, selectedFile }) {
   return (
     <div style={{height:'100%',overflowY:'auto',padding:'4px 0',position:'relative'}} onClick={()=>ctxMenu&&setCtxMenu(null)}>
       <div style={{padding:'3px 8px',display:'flex',gap:'4px',borderBottom:'1px solid rgba(255,255,255,.04)',marginBottom:'2px'}}>
-        <button onClick={()=>{setCreating({parentPath:folder,isDir:false});setNewName('');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'11px',cursor:'pointer',padding:'1px 4px'}}>+ file</button>
-        <button onClick={()=>{setCreating({parentPath:folder,isDir:true});setNewName('');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'11px',cursor:'pointer',padding:'1px 4px'}}>+ folder</button>
-        <button onClick={load} style={{background:'none',border:'none',color:'rgba(255,255,255,.2)',fontSize:'10px',cursor:'pointer',padding:'1px 4px',marginLeft:'auto'}}>↺</button>
+        <button onClick={()=>{setCreating({parentPath:folder,isDir:false});setNewName('');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'11px',cursor:'pointer',padding:'1px 4px'}}><FilePlus size={12}/></button>
+        <button onClick={()=>{setCreating({parentPath:folder,isDir:true});setNewName('');}} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'11px',cursor:'pointer',padding:'1px 4px'}}><FolderPlus size={12}/></button>
+        <button onClick={load} style={{background:'none',border:'none',color:'rgba(255,255,255,.2)',fontSize:'10px',cursor:'pointer',padding:'1px 4px',marginLeft:'auto'}}><RotateCcw size={11}/></button>
       </div>
       {creating && creating.parentPath === folder && (
         <div style={{padding:'2px 8px',display:'flex',gap:'4px',alignItems:'center'}}>
-          <span style={{fontSize:'11px'}}>{creating.isDir?'📁':'📄'}</span>
+          <span style={{fontSize:'11px'}}>{creating.isDir?<Folder size={11}/>:<File size={11}/>}</span>
           <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)} placeholder={creating.isDir?'folder name':'file name'}
             onKeyDown={e=>{if(e.key==='Enter')doCreate(folder);if(e.key==='Escape'){setCreating(null);setNewName('');}}}
             style={{flex:1,background:'rgba(255,255,255,.1)',border:'1px solid rgba(74,222,128,.4)',borderRadius:'3px',padding:'2px 6px',color:'#f0f0f0',fontSize:'11px',outline:'none',fontFamily:'monospace'}}/>
@@ -113,10 +114,10 @@ export function FileTree({ folder, onSelectFile, selectedFile }) {
       {tree && renderItems(tree, folder, 0)}
       {ctxMenu && (
         <div style={{position:'fixed',top:ctxMenu.y,left:ctxMenu.x,background:'#1a1a1e',border:'1px solid rgba(255,255,255,.12)',borderRadius:'8px',padding:'4px',zIndex:999,minWidth:'140px',boxShadow:'0 8px 24px rgba(0,0,0,.5)'}}>
-          {ctxMenu.isDir&&<div onClick={()=>{setCreating({parentPath:ctxMenu.path,isDir:false});setNewName('');setCtxMenu(null);}} style={{padding:'6px 12px',fontSize:'12px',color:'rgba(255,255,255,.7)',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>📄 New file</div>}
-          {ctxMenu.isDir&&<div onClick={()=>{setCreating({parentPath:ctxMenu.path,isDir:true});setNewName('');setCtxMenu(null);}} style={{padding:'6px 12px',fontSize:'12px',color:'rgba(255,255,255,.7)',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>📁 New folder</div>}
-          <div onClick={()=>{setRenaming(ctxMenu.path);setNewName(ctxMenu.path.split('/').pop());setCtxMenu(null);}} style={{padding:'6px 12px',fontSize:'12px',color:'rgba(255,255,255,.7)',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>✏️ Rename</div>
-          <div onClick={()=>doDelete(ctxMenu.path)} style={{padding:'6px 12px',fontSize:'12px',color:'#f87171',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(248,113,113,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>🗑 Delete</div>
+          {ctxMenu.isDir&&<div onClick={()=>{setCreating({parentPath:ctxMenu.path,isDir:false});setNewName('');setCtxMenu(null);}} style={{padding:'6px 12px',fontSize:'12px',color:'rgba(255,255,255,.7)',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><File size={12}/> New file</div>}
+          {ctxMenu.isDir&&<div onClick={()=>{setCreating({parentPath:ctxMenu.path,isDir:true});setNewName('');setCtxMenu(null);}} style={{padding:'6px 12px',fontSize:'12px',color:'rgba(255,255,255,.7)',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Folder size={12}/> New folder</div>}
+          <div onClick={()=>{setRenaming(ctxMenu.path);setNewName(ctxMenu.path.split('/').pop());setCtxMenu(null);}} style={{padding:'6px 12px',fontSize:'12px',color:'rgba(255,255,255,.7)',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Pencil size={12}/> Rename</div>
+          <div onClick={()=>doDelete(ctxMenu.path)} style={{padding:'6px 12px',fontSize:'12px',color:'#f87171',cursor:'pointer',borderRadius:'4px'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(248,113,113,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Trash2 size={12}/> Delete</div>
         </div>
       )}
     </div>

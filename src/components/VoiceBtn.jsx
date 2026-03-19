@@ -1,3 +1,4 @@
+import { Mic, MicOff, Square, Circle } from 'lucide-react';
 import React, { useState } from "react";
 
 export function VoiceBtn({ onResult, disabled, T }) {
@@ -67,7 +68,7 @@ export function VoiceBtn({ onResult, disabled, T }) {
           display:'flex', alignItems:'center', justifyContent:'center',
           transition:'all .2s',
         }}>
-        {listening ? '⏹' : '🎤'}
+        {listening ? <Square size={16}/> : <Mic size={16}/>}
       </button>
       {partial && (
         <div style={{
@@ -127,7 +128,7 @@ export function PushToTalkBtn({ onResult, disabled, T }) {
         display:'flex', alignItems:'center', justifyContent:'center',
         transition:'all .2s',
       }}>
-      {recording ? '🔴' : '🎙'}
+      {recording ? <Circle size={16} fill='currentColor'/> : <Mic size={16}/>}
     </button>
   );
 }
