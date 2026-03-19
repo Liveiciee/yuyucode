@@ -402,7 +402,8 @@ export default function App() {
 
           {/* CHAT */}
           {file.activeTab==='chat'&&!ui.showTerminal&&(
-            <div ref={chatRef} style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
+            <div ref={chatRef} style={{flex:1,overflowY:'auto',padding:'20px 0 8px'}}>
+              <div style={{maxWidth:'720px',margin:'0 auto',padding:'0 4px'}}>
               {visibleMessages.map((m,i)=>(
                 <MsgBubble key={i} msg={m} isLast={i===chat.messages.length-1}
                   onApprove={m.actions?.some(a=>(a.type==='write_file'||a.type==='patch_file')&&!a.executed)?(ok,path)=>handleApprove(i,ok,path):null}
@@ -415,17 +416,17 @@ export default function App() {
                 />
               ))}
               {chat.streaming&&(
-                <div style={{padding:'2px 16px'}}>
-                  <div style={{maxWidth:'92%',fontSize:'14px',lineHeight:'1.7',color:'#e0e0e0'}}>
+                <div style={{padding:'4px 16px'}}>
+                  <div style={{fontSize:'14px',lineHeight:'1.7',color:'#e0e0e0'}}>
                     <MsgContent text={chat.streaming}/>
                     <span style={{display:'inline-block',width:'2px',height:'14px',background:'rgba(255,255,255,.6)',marginLeft:'2px',verticalAlign:'middle',animation:'blink 1s infinite'}}/>
                   </div>
                 </div>
               )}
-              {chat.loading&&!chat.streaming&&<div style={{padding:'2px 16px'}}><div style={{color:'rgba(255,255,255,.3)',fontSize:'13px'}}>Yuyu lagi mikir···</div></div>}
+              {chat.loading&&!chat.streaming&&<div style={{padding:'4px 16px'}}><div style={{color:'rgba(255,255,255,.3)',fontSize:'13px'}}>Yuyu lagi mikir···</div></div>}
               <div ref={bottomRef}/>
+              </div>
             </div>
-          )}
 
           {/* FILE VIEWER */}
           {file.activeTab==='file'&&file.selectedFile&&!file.editMode&&!ui.showTerminal&&(

@@ -144,7 +144,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   const rejectBtn  = {background:'rgba(248,113,113,.07)',border:'1px solid rgba(248,113,113,.16)',borderRadius:'10px',padding:'10px 16px',color:'#f87171',fontSize:'13px',cursor:'pointer',minHeight:'44px'};
 
   if (isUser) return (
-    <div style={{display:'flex',justifyContent:'flex-end',padding:'3px 14px 3px 48px',marginBottom:'2px'}}>
+    <div style={{display:'flex',justifyContent:'flex-end',padding:'4px 16px 4px 52px',marginBottom:'4px'}}>
       <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'4px',maxWidth:'84%'}}>
         {editing ? (
           <div style={{display:'flex',flexDirection:'column',gap:'6px',width:'100%'}}>
@@ -203,7 +203,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
             </div>
           </div>
         ) : (
-          <div style={{background:'rgba(255,255,255,.08)',borderRadius:'18px 18px 4px 18px',padding:'11px 16px',fontSize:'14px',lineHeight:'1.65',color:'#f0f0f0',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>
+          <div style={{background:'rgba(255,255,255,.08)',borderRadius:'18px 18px 4px 18px',padding:'13px 18px',fontSize:'15px',lineHeight:'1.7',color:'#f0f0f0',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>
             {cleanText}
           </div>
         )}
@@ -223,12 +223,12 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   );
 
   return (
-    <div style={{display:'flex',padding:'3px 14px',marginBottom:'2px',gap:'0'}}>
+    <div style={{display:'flex',padding:'4px 16px',marginBottom:'8px',gap:'0'}}>
       <div style={{display:'flex',flexDirection:'column',gap:'2px',width:'100%',maxWidth:'96%'}}>
         {thinkText&&<ThinkingBlock text={thinkText}/>}
 
         {/* AI message — subtle left accent */}
-        <div style={{fontSize:'14px',lineHeight:'1.75',color:'#ddd',wordBreak:'break-word',paddingLeft:'2px'}}>
+        <div style={{fontSize:'15px',lineHeight:'1.8',color:'#ddd',wordBreak:'break-word',paddingLeft:'2px'}}>
           <MsgContent text={cleanText}/>
         </div>
 
