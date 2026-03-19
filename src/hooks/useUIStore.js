@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Preferences } from '@capacitor/preferences';
-import { THEMES } from '../constants.js';
+import { THEMES_MAP, THEME_KEYS, DEFAULT_THEME } from '../themes/index.js';
 
 export function useUIStore() {
   // ── Panels / Overlays ──
@@ -27,12 +27,11 @@ export function useUIStore() {
   const [showBgAgents, setShowBgAgents]       = useState(false);
   const [showConfig, setShowConfig]           = useState(false);
   const [showPalette, setShowPalette]         = useState(false);
-  const [showThemeBuilder, setShowThemeBuilder] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [showOnboarding, setShowOnboarding]   = useState(false);
 
   // ── Theme / Display ──
-  const [theme, setThemeRaw]         = useState('dark');
-  const [customTheme, setCustomTheme] = useState(null);
+  const [themeKey, setThemeKeyRaw]   = useState(DEFAULT_THEME);
   const [fontSize, setFontSizeRaw]   = useState(14);
   const [sidebarWidth, setSidebarWidthRaw] = useState(180);
   const [dragging, setDragging]      = useState(false);
@@ -45,20 +44,22 @@ export function useUIStore() {
   const [commitMsg, setCommitMsg]     = useState('');
   const [dragOver, setDragOver]       = useState(false);
 
-  // ── Elicitation (AI-requested form input) ──
+  // ── Elicitation ──
   const [elicitationData, setElicitationData] = useState(null);
 
-  // ── Merge Conflict UI ──
+  // ── Merge Conflict ──
   const [showMergeConflict, setShowMergeConflict] = useState(false);
   const [mergeConflictData, setMergeConflictData] = useState(null);
 
-  // ── Derived ──
-  const T = customTheme || THEMES[theme] || THEMES.dark;
+  // ── Derived: T = active theme object ──────────────────────────────────────
+  // T punya semua token lama (bg, text, accent, ...) + token baru (bubble, chip, ...)
+  const T = THEMES_MAP[themeKey] || THEMES_MAP[DEFAULT_THEME];
 
-  // ── Persisted setters ──
-  function setTheme(t) {
-    setThemeRaw(t);
-    Preferences.set({ key: 'yc_theme', value: t });
+  // ── Persisted setters ──────────────────────────────────────────────────────
+  function setTheme(key) {
+    const k = THEME_KEYS.includes(key) ? key : DEFAULT_THEME;
+    setThemeKeyRaw(k);
+    Preferences.set({ key: 'yc_theme', value: k });
   }
   function setFontSize(n) {
     setFontSizeRaw(n);
@@ -69,12 +70,13 @@ export function useUIStore() {
     Preferences.set({ key: 'yc_sidebar_w', value: String(w) });
   }
 
-  // ── Load from Preferences ──
-  function loadUIPrefs({ theme: t, fontSize: fs, sidebarWidth: sw, customTheme: ct, onboarded }) {
-    if (t && ['dark','darker','midnight','rose'].includes(t)) setThemeRaw(t);
+  // ── Load from Preferences ─────────────────────────────────────────────────
+  function loadUIPrefs({ theme: t, fontSize: fs, sidebarWidth: sw, onboarded }) {
+    // support lama (dark/darker/midnight/rose) → fallback ke obsidian
+    if (t && THEME_KEYS.includes(t)) setThemeKeyRaw(t);
+    else if (t) setThemeKeyRaw(DEFAULT_THEME); // migrate dari theme lama
     if (fs) setFontSizeRaw(parseInt(fs) || 14);
     if (sw) setSidebarWidthRaw(parseInt(sw) || 180);
-    if (ct) { try { setCustomTheme(JSON.parse(ct)); } catch (_e) { } }
     if (!onboarded) setShowOnboarding(true);
   }
 
@@ -103,11 +105,13 @@ export function useUIStore() {
     showBgAgents, setShowBgAgents,
     showConfig, setShowConfig,
     showPalette, setShowPalette,
-    showThemeBuilder, setShowThemeBuilder,
+    showThemePicker, setShowThemePicker,
+    // compat alias — beberapa tempat pakai showThemeBuilder
+    showThemeBuilder: showThemePicker, setShowThemeBuilder: setShowThemePicker,
     showOnboarding, setShowOnboarding,
     // theme/display
-    theme, setTheme,
-    customTheme, setCustomTheme,
+    theme: themeKey, setTheme,
+    themeKey, THEMES_MAP, THEME_KEYS,
     fontSize, setFontSize,
     sidebarWidth, setSidebarWidth,
     dragging, setDragging,
@@ -122,7 +126,6 @@ export function useUIStore() {
     elicitationData, setElicitationData,
     showMergeConflict, setShowMergeConflict,
     mergeConflictData, setMergeConflictData,
-    // loader
     loadUIPrefs,
   };
 }

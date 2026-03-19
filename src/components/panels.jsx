@@ -447,41 +447,50 @@ export function SnippetLibrary({ onInsert, onClose }) {
 }
 
 // ─── THEME BUILDER ────────────────────────────────────────────────────────────
-export function ThemeBuilder({ current, onSave, onClose }) {
-  const [t, setT] = useState({...current});
-  const fields = [
-    {key:'bg', label:'Background'},
-    {key:'bg2', label:'Surface'},
-    {key:'text', label:'Text'},
-    {key:'accent', label:'Accent'},
-    {key:'border', label:'Border'},
-  ];
+// ThemeBuilder diganti ThemePicker — theme kini dari file src/themes/*.js
+export function ThemeBuilder({ onClose, themeKey, themesMap, themeKeys, onTheme }) {
   return (
-    <BottomSheet onClose={onClose}><div style={{padding:'0 16px 8px',display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
-      <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-        <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🎨 Theme Builder</span>
-        <button onClick={()=>onSave(t)} style={{background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 10px',color:'#4ade80',fontSize:'11px',cursor:'pointer',marginRight:'8px'}}>Simpan</button>
-        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
-      </div>
-      <div style={{flex:1,overflowY:'auto'}}>
-        {fields.map(f=>(
-          <div key={f.key} style={{display:'flex',alignItems:'center',gap:'12px',marginBottom:'10px'}}>
-            <span style={{fontSize:'12px',color:'rgba(255,255,255,.6)',width:'70px',flexShrink:0}}>{f.label}</span>
-            <input type="color" value={t[f.key]?.startsWith('#')?t[f.key]:'#1a1a2e'}
-              onChange={e=>setT(prev=>({...prev,[f.key]:e.target.value}))}
-              style={{width:'36px',height:'28px',border:'none',borderRadius:'4px',cursor:'pointer',padding:0,background:'none'}}/>
-            <input value={t[f.key]||''} onChange={e=>setT(prev=>({...prev,[f.key]:e.target.value}))}
-              style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'4px 8px',color:'#f0f0f0',fontSize:'11px',outline:'none',fontFamily:'monospace'}}/>
+    <BottomSheet onClose={onClose}>
+      <div style={{padding:'0 16px 16px',display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:'16px'}}>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🎨 Pilih Theme</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:'8px',overflowY:'auto'}}>
+          {(themeKeys||[]).map(key => {
+            const th = themesMap?.[key];
+            if (!th) return null;
+            const active = key === themeKey;
+            return (
+              <button key={key} onClick={()=>{ onTheme(key); onClose(); }} style={{
+                display:'flex', alignItems:'center', gap:'14px',
+                padding:'12px 14px', borderRadius:'12px', cursor:'pointer', textAlign:'left',
+                background: active ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.03)',
+                border: active ? '1px solid rgba(255,255,255,.12)' : '1px solid rgba(255,255,255,.05)',
+                transition:'all .15s',
+              }}>
+                {/* accent swatch */}
+                <div style={{
+                  width:32, height:32, borderRadius:8, flexShrink:0,
+                  background: th.header?.logoGrad || th.accent || '#888',
+                  boxShadow: active ? '0 0 12px '+th.accent+'66' : 'none',
+                }}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'13px',fontWeight:active?'700':'500',color:active?'#f0ede8':'#706860'}}>{th.name||key}</div>
+                  <div style={{fontSize:'10px',color:'#3a3530',marginTop:'2px',fontFamily:'monospace'}}>{th.accent}</div>
+                </div>
+                {active && <span style={{fontSize:'11px',color:th.accent||'#888'}}>✓ aktif</span>}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{marginTop:'14px',padding:'10px 12px',borderRadius:'8px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.05)'}}>
+          <div style={{fontSize:'10px',color:'rgba(255,255,255,.25)',lineHeight:'1.5'}}>
+            Tambah theme: buat file <span style={{fontFamily:'monospace',color:'rgba(255,255,255,.35)'}}>src/themes/nama.js</span> lalu tambah import di <span style={{fontFamily:'monospace',color:'rgba(255,255,255,.35)'}}>src/themes/index.js</span>
           </div>
-        ))}
-        <div style={{marginTop:'16px',padding:'12px',borderRadius:'8px',background:t.bg,border:'1px solid '+(t.border||'rgba(255,255,255,.1)')}}>
-          <div style={{fontSize:'12px',color:t.text,marginBottom:'4px',fontWeight:'600'}}>Preview</div>
-          <div style={{fontSize:'11px',color:t.text,opacity:.6}}>Ini tampilan dengan theme-mu~</div>
-          <div style={{display:'inline-block',background:t.accent,borderRadius:'4px',padding:'2px 8px',fontSize:'10px',color:'white',marginTop:'6px'}}>Button</div>
         </div>
       </div>
-    </div>
-  </BottomSheet>
+    </BottomSheet>
   );
 }
 
@@ -527,7 +536,7 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
     { label: 'View', items: [
       { icon:'🔍', label:'Search files', sub:'Grep across project', action:()=>{ onShowSearch(); onClose(); } },
       { icon:'☰', label:'Toggle sidebar', sub: showSidebar?'Sembunyikan':'Tampilkan', action:()=>{ onToggleSidebar(); onClose(); } },
-      { icon:'🎨', label:'Theme: '+theme, sub:'dark / darker / midnight', action:()=>{ const themes=['dark','darker','midnight']; const i=themes.indexOf(theme); onThemeChange(themes[(i+1)%3]); onClose(); } },
+      { icon:'🎨', label:'Theme: '+theme, sub:'obsidian / aurora / ink / neon', action:()=>{ const themes=['obsidian','aurora','ink','neon']; const i=themes.indexOf(theme); onThemeChange(themes[(i+1)%themes.length]); onClose(); } },
     ]},
     { label: 'AI Model', items: models.map(m=>({
       icon: model===m.id ? '●' : '○',
@@ -1191,7 +1200,7 @@ export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, m
   const configs = [
     {label:'Effort Level', value:effort,         options:['low','medium','high'],      onChange:onEffort},
     {label:'Font Size',    value:String(fontSize), options:['12','13','14','15','16'], onChange:v=>onFontSize(parseInt(v))},
-    {label:'Theme',        value:theme,            options:['dark','darker','midnight','rose'], onChange:onTheme},
+    {label:'Theme',        value:theme,            options:['obsidian','aurora','ink','neon'], onChange:onTheme},
     {label:'Model',        value:model,            options:models.map(m=>m.id),        onChange:onModel},
   ];
   return (

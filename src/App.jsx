@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Activity } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { MAX_HISTORY, MODELS, THEMES, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
+import { MAX_HISTORY, MODELS, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { callServer } from './api.js';
 import { countTokens, hl } from './utils.js';
 import { loadSessions, getBgAgents, mergeBackgroundAgent, abortBgAgent } from './features.js';
@@ -154,7 +154,7 @@ export default function App() {
       Preferences.get({key:'yc_effort'}),    Preferences.get({key:'yc_thinking'}),
       Preferences.get({key:'yc_permissions'}),
     ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr,sc,pl,ef,tk,perm]) => {
-      ui.loadUIPrefs({theme:th.value,fontSize:fs.value,sidebarWidth:sw.value,customTheme:ct.value,onboarded:ob.value});
+      ui.loadUIPrefs({theme:th.value,fontSize:fs.value,sidebarWidth:sw.value,onboarded:ob.value});
       project.loadProjectPrefs({folder:f.value,cmdHistory:ch.value,model:mo.value,hooks:hk.value,githubToken:ght.value,githubRepo:ghr.value,sessionColor:sc.value,plugins:pl.value,effort:ef.value,thinkingEnabled:tk.value,permissions:perm.value});
       file.loadFilePrefs({pinned:pi.value,recent:re.value});
       chat.loadChatPrefs({history:h.value,memories:mem.value,checkpoints:ckp.value});
@@ -691,7 +691,7 @@ export default function App() {
           onClose={()=>ui.setShowMergeConflict(false)}/>
       )}
 
-      {ui.showThemeBuilder&&<ThemeBuilder current={ui.customTheme||THEMES[ui.theme]} onSave={t=>{ui.setCustomTheme(t);Preferences.set({key:'yc_custom_theme',value:JSON.stringify(t)});ui.setShowThemeBuilder(false);}} onClose={()=>ui.setShowThemeBuilder(false)}/>}
+      {ui.showThemeBuilder&&<ThemeBuilder onClose={()=>ui.setShowThemeBuilder(false)} themeKey={ui.themeKey} themesMap={ui.THEMES_MAP} themeKeys={ui.THEME_KEYS} onTheme={ui.setTheme}/>}
 
       {/* ONBOARDING */}
       {ui.showOnboarding&&(
