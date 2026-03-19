@@ -14,8 +14,8 @@ export function useAgentLoop({
   // ── callAI ──
   function callAI(msgs, onChunk, signal, imageBase64) {
     const cfg = project.effortCfg;
-    // Cerebras tidak support vision — kalau ada gambar, pakai Groq llama-3.3
-    const model = imageBase64 ? 'llama-3.3-70b-versatile' : project.model;
+    // Llama 4 Scout support vision, llama-3.3-70b tidak
+    const model = imageBase64 ? 'meta-llama/llama-4-scout-17b-16e-instruct' : project.model;
     return askCerebrasStream(msgs, model, onChunk, signal, {
       maxTokens: cfg.maxTokens,
       imageBase64,
@@ -160,11 +160,14 @@ export function useAgentLoop({
         const groqMsgs = [
           { role: 'system', content: systemPrompt + DECISION_HINT + autoCtxBlock },
           ...chat.trimHistory(allMessages).map(m => {
-            // content bisa array (vision) atau string — handle keduanya
-            const rawContent = Array.isArray(m.content)
-              ? m.content  // pertahankan array format untuk vision
-              : (m.content || '').replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim();
-            return { role: m.role, content: rawContent };
+            // content bisa array (vision dari iter sebelumnya) — flatten ke string untuk history
+            const raw = Array.isArray(m.content)
+              ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ')
+              : (m.content || '');
+            return {
+              role: m.role,
+              content: raw.replace(/```action[\s\S]*?```/g, '').replace(/PROJECT_NOTE:.*?\n/g, '').trim(),
+            };
           }),
         ];
 
