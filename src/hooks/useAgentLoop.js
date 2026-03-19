@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef } from 'react';
 import { askCerebrasStream, callServer } from '../api.js';
 import { parseActions, executeAction, resolvePath } from '../utils.js';
 import { runHooksV2, checkPermission, tokenTracker, parseElicitation, tfidfRank, selectSkills } from '../features.js';

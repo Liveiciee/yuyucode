@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from "react";
+import { Activity } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { MAX_HISTORY, MODELS, THEMES, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { callServer } from './api.js';
@@ -705,6 +706,7 @@ export default function App() {
         </div>
       )}
 
+      <Activity mode={ui.showMCP?'visible':'hidden'}>
       {/* MCP */}
       {ui.showMCP&&(
         <McpPanel
@@ -715,6 +717,9 @@ export default function App() {
         />
       )}
 
+      </Activity>
+
+      <Activity mode={ui.showGitHub?'visible':'hidden'}>
       {/* GITHUB */}
       {ui.showGitHub&&(
         <GitHubPanel
@@ -729,6 +734,9 @@ export default function App() {
         />
       )}
 
+      </Activity>
+
+      <Activity mode={ui.showSessions?'visible':'hidden'}>
       {/* SESSIONS */}
       {ui.showSessions&&(
         <SessionsPanel
@@ -738,6 +746,9 @@ export default function App() {
         />
       )}
 
+      </Activity>
+
+      <Activity mode={ui.showPermissions?'visible':'hidden'}>
       {/* PERMISSIONS */}
       {ui.showPermissions&&(
         <PermissionsPanel
@@ -749,6 +760,9 @@ export default function App() {
         />
       )}
 
+      </Activity>
+
+      <Activity mode={ui.showPlugins?'visible':'hidden'}>
       {/* PLUGINS */}
       {ui.showPlugins&&(
         <PluginsPanel
@@ -770,6 +784,9 @@ export default function App() {
         />
       )}
 
+      </Activity>
+
+      <Activity mode={ui.showSkills?'visible':'hidden'}>
       {/* SKILLS */}
       {ui.showSkills&&(
         <SkillsPanel
@@ -792,6 +809,9 @@ export default function App() {
         />
       )}
 
+      </Activity>
+
+      <Activity mode={ui.showConfig?'visible':'hidden'}>
       {/* CONFIG */}
       {ui.showConfig&&(
         <ConfigPanel
@@ -810,6 +830,9 @@ export default function App() {
         />
       )}
 
+      </Activity>
+
+      <Activity mode={ui.showDeploy?'visible':'hidden'}>
       {/* DEPLOY */}
       {ui.showDeploy&&(
         <DeployPanel
@@ -819,6 +842,8 @@ export default function App() {
           onClose={()=>ui.setShowDeploy(false)}
         />
       )}
+
+      </Activity>
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleImageAttach}/>
 
