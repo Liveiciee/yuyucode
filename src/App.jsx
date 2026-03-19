@@ -564,8 +564,8 @@ export default function App() {
                   ?<button onClick={cancelMsg} style={{background:T.errorBg,border:'1px solid '+T.error+'33',borderRadius:'12px',color:T.error,fontSize:'16px',cursor:'pointer',flexShrink:0,minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center'}}>■</button>
                   :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'12px',color:'white',fontSize:'16px',cursor:'pointer',fontWeight:'700',flexShrink:0,minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center'}}>↑</button>
                 }
-                <VoiceBtn disabled={chat.loading} onResult={txt=>{chat.setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}}/>
-                {project.pushToTalk&&<PushToTalkBtn onResult={v=>{chat.setInput('');setTimeout(()=>sendMsg(v),100);}} disabled={chat.loading}/>}
+                <VoiceBtn disabled={chat.loading} T={T} onResult={txt=>{chat.setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}}/>
+                {project.pushToTalk&&<PushToTalkBtn onResult={v=>{chat.setInput('');setTimeout(()=>sendMsg(v),100);}} disabled={chat.loading} T={T}/>}
                 <button onClick={()=>{if(chat.ttsEnabled){stopTts();chat.setTtsEnabled(false);}else chat.setTtsEnabled(true);}}
                   style={{background:chat.ttsEnabled?T.accentBg:'none',border:'1px solid '+(chat.ttsEnabled?T.accentBorder:T.border),borderRadius:'12px',color:chat.ttsEnabled?T.accent:T.textMute,fontSize:'15px',cursor:'pointer',flexShrink:0,minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s'}}>
                   {chat.ttsEnabled?'🔊':'🔇'}

@@ -576,6 +576,34 @@ Tulis ke SKILL.md menggunakan write_file. Format singkat, padat, max 50 baris.`)
       await sendMsg('Scaffold project '+tpl+' di folder '+folder+'. Buat struktur file lengkap dengan write_file: package.json, file utama, README.md singkat. Pakai dependencies terbaru 2025. Langsung buat tanpa tanya.');
       setLoading(false);
 
+    } else if (base==='/test') {
+      const targetPath = parts.slice(1).join(' ').trim();
+      const filePath = targetPath
+        ? folder + '/' + targetPath.replace(/^\//, '')
+        : selectedFile;
+
+      if (!filePath) {
+        setMessages(m=>[...m,{role:'assistant',content:'Usage: /test atau /test src/api.js\nBuka file dulu, atau sebutkan path-nya.',actions:[]}]);
+        return;
+      }
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'🧪 Generating tests untuk **'+filePath.split('/').pop()+'**...',actions:[]}]);
+      const r = await callServer({type:'read', path: filePath});
+      if (!r.ok) {
+        setMessages(m=>[...m,{role:'assistant',content:'❌ Tidak bisa baca file: '+filePath,actions:[]}]);
+        setLoading(false); return;
+      }
+      const ext = filePath.split('.').pop();
+      const testPath = filePath.replace(/\.(jsx?|tsx?)$/, '.test.$1').replace(/(src\/)/, '$1');
+      await sendMsg(
+        'Generate unit tests untuk file ini:\n\nFile: ' + filePath + '\n```' + ext + '\n' + r.data.slice(0, 4000) + '\n```\n\n' +
+        'Buat test file di: ' + testPath + '\n' +
+        'Gunakan Vitest (import { describe, it, expect } from "vitest"). ' +
+        'Cover: happy path, edge case, error case. ' +
+        'Langsung write_file, jangan tanya.'
+      );
+      setLoading(false);
+
     }
   }, [model, folder, branch, messages, selectedFile, fileContent, notes, memories, skills,
       thinkingEnabled, effort, loopActive, loopIntervalRef, agentMemory, splitView,

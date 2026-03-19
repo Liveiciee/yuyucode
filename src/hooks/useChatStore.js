@@ -79,13 +79,17 @@ export function useChatStore() {
 
   // ── Auto memory extraction ──
   async function extractMemories(userMsg, aiReply, folder) {
-    if (aiReply.length < 100) return;
+    // Skip kalau reply terlalu pendek atau tidak technical
+    if (aiReply.length < 300) return;
+    const technicalSignals = /\.(jsx?|tsx?|py|sh|json|yml|md)\b|```|patch_file|write_file|exec|import |function |class |const |error|bug|fix|install|npm|git/i;
+    if (!technicalSignals.test(aiReply) && !technicalSignals.test(userMsg)) return;
+
     try {
       const ctrl = new AbortController();
       const reply = await askCerebrasStream([
-        { role: 'system', content: 'Extract 0-3 hal penting yang perlu diingat dari percakapan ini sebagai coding memories. Format: satu per baris, dimulai "• ". Hanya extract kalau benar-benar penting. Kalau tidak ada, tulis "none".' },
-        { role: 'user', content: 'User: ' + userMsg.slice(0, 500) + '\n\nAI: ' + aiReply.slice(0, 800) },
-      ], 'llama3.1-8b', () => {}, ctrl.signal);
+        { role: 'system', content: 'Extract 0-2 hal penting yang perlu diingat dari percakapan coding ini. Format: satu per baris, dimulai "• ". Hanya extract keputusan teknis, bug fix, atau fakta project yang spesifik. Kalau tidak ada, tulis "none".' },
+        { role: 'user', content: 'User: ' + userMsg.slice(0, 400) + '\n\nAI: ' + aiReply.slice(0, 600) },
+      ], 'llama3.1-8b', () => {}, ctrl.signal, { maxTokens: 256 });
       if (reply.trim() === 'none' || !reply.includes('•')) return;
       const newMems = reply.split('\n').filter(l => l.startsWith('•'))
         .map(l => ({ id: Date.now() + Math.random(), text: l.slice(1).trim(), folder, ts: new Date().toLocaleDateString('id') }));

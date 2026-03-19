@@ -120,6 +120,10 @@ export async function executeAction(action, baseFolder) {
     return callServer({ type: 'write', path: resolvePath(base, action.path), content: action.content });
   }
 
+  if (action.type === 'append_file') {
+    return callServer({ type: 'append', path: resolvePath(base, action.path), content: action.content });
+  }
+
   if (action.type === 'patch_file') {
     return callServer({
       type:    'patch',

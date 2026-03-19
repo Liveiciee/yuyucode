@@ -1,13 +1,19 @@
 export const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
+export const GROQ_KEY     = import.meta.env.VITE_GROQ_API_KEY     || '';
 export const TAVILY_KEY   = import.meta.env.VITE_TAVILY_API_KEY   || '';
 export const YUYU_SERVER  = 'http://localhost:8765';
 export const WS_SERVER    = 'ws://127.0.0.1:8766';
 export const MAX_HISTORY  = 60;
 
-// Cerebras-hosted models (ultra-fast inference)
 export const MODELS = [
-  { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥', provider:'cerebras' },
-  { id: 'llama3.1-8b', label: 'Llama 3.1 8B ⚡', provider:'cerebras' },
+  // Cerebras — ultra-fast inference
+  { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥',  provider: 'cerebras' },
+  { id: 'llama3.1-8b',                    label: 'Llama 3.1 8B ⚡',  provider: 'cerebras' },
+  // Groq — large context, fallback
+  { id: 'kimi-k2-instruct-0905',          label: 'Kimi K2 🌙',       provider: 'groq' },
+  { id: 'llama-3.3-70b-versatile',        label: 'Llama 3.3 70B 🦙', provider: 'groq' },
+  { id: 'qwen/qwen3-32b',                 label: 'Qwen 3 32B 🐼',    provider: 'groq' },
+  { id: 'llama-3.1-8b-instant',           label: 'Llama 8B Fast ⚡',  provider: 'groq' },
 ];
 
 export const THEMES = {
@@ -150,6 +156,11 @@ export const BASE_SYSTEM = [
   '{"type":"web_search","query":"react useCallback best practice 2025"}',
   '```',
   '',
+  '### Append ke file (tambah tanpa overwrite)',
+  '```action',
+  '{"type":"append_file","path":"src/log.md","content":"\\n## New section"}',
+  '```',
+  '',
   '### File operations',
   '```action',
   '{"type":"move_file","from":"src/old.js","to":"src/new.js"}',
@@ -226,6 +237,7 @@ export const SLASH_COMMANDS = [
   { cmd:'/history',    desc:'Lihat file history (git log)' },
   { cmd:'/actions',    desc:'Custom actions panel' },
   { cmd:'/split',      desc:'Toggle split view' },
+  { cmd:'/test',       desc:'Generate unit tests untuk file aktif atau file tertentu' },
   { cmd:'/scaffold',   desc:'Project template scaffold' },
   { cmd:'/deps',       desc:'Lihat dependency graph file' },
   { cmd:'/browse',     desc:'Browse URL via server' },

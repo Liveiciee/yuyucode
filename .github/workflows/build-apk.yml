@@ -37,6 +37,7 @@ jobs:
         env:
           VITE_CEREBRAS_API_KEY: ${{ secrets.VITE_CEREBRAS_API_KEY }}
           VITE_TAVILY_API_KEY: ${{ secrets.VITE_TAVILY_API_KEY }}
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
 
       - uses: actions/setup-java@v5
         with:
