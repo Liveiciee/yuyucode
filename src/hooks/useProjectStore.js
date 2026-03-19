@@ -10,7 +10,6 @@ export function useProjectStore() {
   const [folderInput, setFolderInput] = useState('yuyucode');
   const [branch, setBranch]        = useState('main');
   const [notes, setNotesRaw]       = useState('');
-  const [skill, setSkill]          = useState('');
   const [skills, setSkills]        = useState([]);
 
   // ── Server / Network ──
@@ -141,15 +140,13 @@ export function useProjectStore() {
 
   // ── Load folder-specific prefs ──
   async function loadFolderPrefs(f) {
-    const [notesR, skillR, branchR] = await Promise.all([
+    const [notesR, branchR] = await Promise.all([
       Preferences.get({ key: 'yc_notes_' + f }),
-      callServer({ type: 'read', path: f + '/SKILL.md' }),
       callServer({ type: 'exec', path: f, command: 'git branch --show-current' }),
     ]);
     setNotesRaw(notesR.value || '');
-    setSkill(skillR.ok ? skillR.data : '');
     if (branchR.ok) setBranch(branchR.data.trim());
-    // Auto-load skills (unified: SKILL.md + .claude/skills/*), respect saved active map
+    // Auto-load skills dari .claude/skills/, respect saved active map
     (async () => {
       let activeMap = {};
       try { const r = await Preferences.get({ key: 'yc_skills_active_' + f }); activeMap = r.value ? JSON.parse(r.value) : {}; } catch (_e) {}
@@ -187,7 +184,7 @@ export function useProjectStore() {
     folder, setFolder, saveFolder, folderInput, setFolderInput,
     branch, setBranch,
     notes, setNotes,
-    skill, setSkill, skills, setSkills, toggleSkill, uploadSkill, removeSkill,
+    skills, setSkills, toggleSkill, uploadSkill, removeSkill,
     serverOk, setServerOk,
     netOnline, setNetOnline,
     reconnectTimer, setReconnectTimer,
