@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { askCerebrasStream, callServer } from '../api.js';
 import { parseActions, executeAction, resolvePath } from '../utils.js';
-import { runHooksV2, checkPermission, tokenTracker, parseElicitation } from '../features.js';
+import { runHooksV2, checkPermission, tokenTracker, parseElicitation, tfidfRank } from '../features.js';
 import { BASE_SYSTEM } from '../constants.js';
 
 export function useAgentLoop({
@@ -118,11 +118,12 @@ export function useAgentLoop({
       const memPool   = chat.getRelevantMemories(txt);
       const memCtx    = memPool.length ? '\n\nMemories:\n' + memPool.map(m => '• ' + m.text).join('\n') : '';
       const visionCtx = chat.visionImage ? '\n\n[Gambar dilampirkan]' : '';
-      const agentMemCtx = ['user', 'project', 'local'].map(s =>
-        (project.agentMemory[s] || []).length
-          ? '\n\n[' + s + ' memory]:\n' + project.agentMemory[s].map(mx => '• ' + mx.text).join('\n')
-          : ''
-      ).join('');
+      const agentMemCtx = ['user', 'project', 'local'].map(s => {
+        const pool = project.agentMemory[s] || [];
+        if (!pool.length) return '';
+        const ranked = tfidfRank(pool, txt, 5);
+        return '\n\n[' + s + ' memory]:\n' + ranked.map(mx => '• ' + mx.text).join('\n');
+      }).join('');
       const thinkNote = project.thinkingEnabled
         ? '\n\nSebelum respons, tulis reasoning dalam <think>...</think>. Singkat, max 2 kalimat.'
         : '';

@@ -43,7 +43,7 @@ export function useProjectStore() {
 
   // ── GitHub ──
   const [githubToken, setGithubTokenRaw] = useState('');
-  const [githubRepo, setGithubRepo]     = useState('');
+  const [githubRepo, setGithubRepoRaw]  = useState('');
   const [githubData, setGithubData]     = useState(null);
 
   // ── Agent memory (cross-session user/project/local) ──
@@ -87,6 +87,10 @@ export function useProjectStore() {
   function setGithubToken(t) {
     setGithubTokenRaw(t);
     Preferences.set({ key: 'yc_gh_token', value: t });
+  }
+  function setGithubRepo(r) {
+    setGithubRepoRaw(r);
+    Preferences.set({ key: 'yc_gh_repo', value: r });
   }
   function setPermissions(p) {
     setPermissionsRaw(p);

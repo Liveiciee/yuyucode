@@ -120,15 +120,19 @@ export function ActionChip({ action }) {
 export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix }) {
   const [actionsVisible, setActionsVisible] = useState(false);
   const isUser = msg.role === 'user';
-  const thinkMatch = msg.content.match(/<think>([\s\S]*?)<\/think>/i);
+  const thinkMatch = msg.content.match(/<think>([\s\S]*?)<\/think>/i)
+    || msg.content.match(/<think>([\s\S]*?)$/i);  // unclosed (streaming)
   const thinkText = thinkMatch ? thinkMatch[1] : null;
   const cleanText = msg.content
     .replace(/<think>[\s\S]*?<\/think>/gi,'')
+    .replace(/<think>[\s\S]*$/gi,'')  // strip unclosed think block
     .replace(/```action[\s\S]*?```/g,'')
     .replace(/PROJECT_NOTE:.*?\n/g,'')
     .trim();
   const actions = msg.actions || [];
   const hasPendingPatch = actions.some(a=>a.type==='patch_file'&&!a.executed);
+  const pendingWrites = actions.filter(a=>a.type==='write_file'&&!a.executed);
+  const hasPendingWrites = pendingWrites.length > 0;
   const isContinued = msg.content.trim().endsWith('CONTINUE');
   const hasPlan = !msg.planApproved && msg.content.includes('📋 **Plan (');
   const hasError = msg.role==='assistant' && (msg.content.includes('❌')||msg.content.includes('Error:'));
@@ -176,6 +180,25 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
             {a.result?.ok?'✓':'✗'} {a.path?.split('/').pop()}
           </div>
         ))}
+
+        {/* write_file pending approval — batch UI */}
+        {hasPendingWrites&&onApprove&&(
+          <div style={{margin:'8px 0',display:'flex',flexDirection:'column',gap:'6px'}}>
+            <div style={{fontSize:'11px',color:'rgba(255,255,255,.35)',fontFamily:'monospace',marginBottom:'2px'}}>
+              {pendingWrites.length} file menunggu approval:
+            </div>
+            {pendingWrites.map((a,i)=>(
+              <div key={i} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px',padding:'7px 12px',fontSize:'12px',fontFamily:'monospace',color:'rgba(255,255,255,.5)',display:'flex',alignItems:'center',gap:'6px'}}>
+                <span style={{opacity:.5}}>✏️</span>
+                <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.path}</span>
+              </div>
+            ))}
+            <div style={{display:'flex',gap:'8px',marginTop:'2px'}}>
+              <button onClick={()=>onApprove(true,'__all__')} style={approveBtn}>✓ Apply All ({pendingWrites.length})</button>
+              <button onClick={()=>onApprove(false,'__all__')} style={rejectBtn}>✗</button>
+            </div>
+          </div>
+        )}
 
         {/* patch_file approval (only when failed/pending) */}
         {hasPendingPatch&&onApprove&&(

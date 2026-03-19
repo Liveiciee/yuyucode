@@ -1,4 +1,4 @@
-import { callServer } from '../api.js';
+import { callServer, execStream } from '../api.js';
 import { executeAction } from '../utils.js';
 
 export function useDevTools({
@@ -22,13 +22,22 @@ export function useDevTools({
     setDeployLog('🚀 Deploying to ' + platform + '...\n');
     setLoading(true);
     const cmds = {
-      vercel:  'vercel --prod --yes 2>&1',
-      netlify: 'netlify deploy --prod 2>&1',
+      vercel:  'vercel --prod --yes',
+      netlify: 'netlify deploy --prod',
       github:  'git add -A && git commit -m "deploy: ' + new Date().toLocaleDateString('id') + '" && git push',
-      railway: 'railway up 2>&1',
+      railway: 'railway up',
     };
-    const r = await callServer({ type: 'exec', path: folder, command: cmds[platform] || 'echo "Platform tidak dikenal"' });
-    setDeployLog(r.data || 'selesai');
+    const cmd = cmds[platform] || 'echo "Platform tidak dikenal"';
+    const ctrl = new AbortController();
+    if (abortRef) abortRef.current = ctrl;
+    try {
+      await execStream(cmd, folder, (line) => {
+        setDeployLog(prev => (prev || '') + line);
+      }, ctrl.signal);
+    } catch (e) {
+      if (e.name !== 'AbortError')
+        setDeployLog(prev => (prev || '') + '\n❌ ' + e.message);
+    }
     setLoading(false);
     sendNotification('YuyuCode 🚀', 'Deploy ' + platform + ' selesai!');
     haptic('heavy');

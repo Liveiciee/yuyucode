@@ -157,7 +157,14 @@ export default function App() {
       file.loadFilePrefs({pinned:pi.value,recent:re.value});
       chat.loadChatPrefs({history:h.value,memories:mem.value,checkpoints:ckp.value});
     });
-    callServer({type:'ping'}).then(r => { project.setServerOk(r.ok); if(r.mcp) project.setMcpTools(r.mcp); });
+    callServer({type:'ping'}).then(r => {
+      project.setServerOk(r.ok);
+      if (r.ok) {
+        callServer({type:'mcp_list'}).then(mr => {
+          if (mr.ok && mr.data && typeof mr.data === 'object') project.setMcpTools(mr.data);
+        });
+      }
+    });
   }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({behavior:'smooth'}); }, [chat.messages, chat.streaming]);

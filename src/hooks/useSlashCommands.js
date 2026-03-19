@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { callServer, askCerebrasStream } from '../api.js';
 import { MODELS } from '../constants.js';
@@ -30,6 +30,8 @@ export function useSlashCommands({
   // refs
   abortRef,
 }) {
+  const activeDbRef = useRef({});
+
   const handleSlashCommand = useCallback(async (cmd) => {
     const parts = cmd.trim().split(' ');
     const base = parts[0];
@@ -164,16 +166,17 @@ export function useSlashCommands({
       // Auto-discover .db files
       const listR = await callServer({type:'list', path:folder});
       const dbFiles = listR.ok && Array.isArray(listR.data) ? listR.data.filter(f=>!f.isDir&&f.name.endsWith('.db')).map(f=>folder+'/'+f.name) : [];
-      let dbPath = folder+'/data.db';
-      if (dbFiles.length===1) {
-        dbPath = dbFiles[0];
-      } else if (dbFiles.length>1) {
-        setMessages(m=>[...m,{role:'assistant',content:'🗄 Ditemukan '+dbFiles.length+' DB: '+dbFiles.map(f=>f.split('/').pop()).join(', ')+'\nUsage: /db <query> — pakai `/db use <nama.db>` untuk pilih.\nDefault: '+dbPath.split('/').pop(),actions:[]}]);
-      }
-      // /db use <file.db> — just switch default
+      // /db use <file.db> — persist active db per folder di ref
       if (parts[1]==='use' && parts[2]) {
-        setMessages(m=>[...m,{role:'assistant',content:'🗄 DB aktif: **'+parts[2]+'**. Query berikutnya akan pakai file ini.',actions:[]}]);
+        activeDbRef.current[folder] = folder+'/'+parts[2];
+        setMessages(m=>[...m,{role:'assistant',content:'🗄 DB aktif: **'+parts[2]+'** (sesi ini). Query berikutnya pakai file ini.',actions:[]}]);
         setLoading(false); return;
+      }
+      let dbPath = activeDbRef.current[folder] || folder+'/data.db';
+      if (!activeDbRef.current[folder] && dbFiles.length===1) {
+        dbPath = dbFiles[0];
+      } else if (!activeDbRef.current[folder] && dbFiles.length>1) {
+        setMessages(m=>[...m,{role:'assistant',content:'🗄 Ditemukan '+dbFiles.length+' DB: '+dbFiles.map(f=>f.split('/').pop()).join(', ')+'\nUsage: /db <query> — pakai `/db use <nama.db>` untuk pilih.\nAktif: '+dbPath.split('/').pop(),actions:[]}]);
       }
       const r = await callServer({type:'mcp',tool:'sqlite',action:'query',params:{dbPath,query:q}});
       setMessages(m=>[...m,{role:'assistant',content:'🗄 **'+dbPath.split('/').pop()+'** → `'+q+'`\n```\n'+(r.data||'kosong')+'\n```',actions:[]}]);
