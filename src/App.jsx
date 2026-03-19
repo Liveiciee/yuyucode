@@ -427,6 +427,7 @@ export default function App() {
               <div ref={bottomRef}/>
               </div>
             </div>
+          )}
 
           {/* FILE VIEWER */}
           {file.activeTab==='file'&&file.selectedFile&&!file.editMode&&!ui.showTerminal&&(
