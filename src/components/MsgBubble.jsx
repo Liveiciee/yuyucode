@@ -157,9 +157,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
               /* Surgical: show each "section" as toggleable chip */
               <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
                 <div style={{fontSize:'11px',color:'rgba(255,255,255,.35)',marginBottom:'2px'}}>Tap bagian yang mau dihapus dari context:</div>
-                {editText.split(/
-(?=```|\*\*|##|===|---|
-)/).map((chunk, ci) => {
+                {editText.split(/\n(?=```|\*\*|##|===|---|\n)/).map((chunk, ci) => {
                   const key = 'chunk_' + ci;
                   const [removed, setRemoved] = [false, ()=>{}]; // local state per chunk not needed — we rebuild on save
                   const isCode = chunk.trim().startsWith('```');
