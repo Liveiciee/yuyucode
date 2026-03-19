@@ -12,7 +12,7 @@ export const MODELS = [
   // Groq — large context, fallback
   { id: 'moonshotai/kimi-k2-instruct-0905', label: 'Kimi K2 🌙',       provider: 'groq' },
   { id: 'llama-3.3-70b-versatile',          label: 'Llama 3.3 70B 🦙', provider: 'groq' },
-  { id: 'qwen/qwen-3-32b',                  label: 'Qwen 3 32B 🐼',    provider: 'groq' },
+  { id: 'qwen/qwen3-32b',                   label: 'Qwen 3 32B 🐼',    provider: 'groq' },
   { id: 'llama-3.1-8b-instant',             label: 'Llama 8B Fast ⚡',  provider: 'groq' },
 ];
 
