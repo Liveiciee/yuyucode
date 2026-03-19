@@ -45,7 +45,7 @@ export default function App() {
 
   // ── NOTIFICATIONS & MEDIA ──
   const { sendNotification, haptic, speakText, stopTts } = useNotifications();
-  const { fileInputRef, handleImageAttach, handleDrop, handleCameraCapture, handleGalleryPick }  = useMediaHandlers({
+  const { fileInputRef, handleImageAttach, handleDrop, handleCameraCapture, handleGalleryPick: _handleGalleryPick }  = useMediaHandlers({
     setVisionImage: chat.setVisionImage,
     setInput:       chat.setInput,
     haptic,
@@ -138,7 +138,6 @@ export default function App() {
     sendNotification, haptic, abortRef,
   });
   // Update ref setiap render — cegah stale closure di sendMsg
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { handleSlashCommandRef.current = handleSlashCommand; });
 
   // ── INIT EFFECT ──
@@ -169,7 +168,7 @@ export default function App() {
         });
       }
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { bottomRef.current?.scrollIntoView({behavior:'smooth'}); }, [chat.messages, chat.streaming]);
 
@@ -177,7 +176,7 @@ export default function App() {
     const on=()=>project.setNetOnline(true), off=()=>project.setNetOnline(false);
     window.addEventListener('online',on); window.addEventListener('offline',off);
     return () => { window.removeEventListener('online',on); window.removeEventListener('offline',off); };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const iv = setInterval(async () => {
@@ -186,10 +185,10 @@ export default function App() {
       project.setReconnectTimer(t => r.ok ? 0 : t + 5);
     }, 5000);
     return () => clearInterval(iv);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { chat.persistMessages(chat.messages); }, [chat.messages]);
-  useEffect(() => { if(project.folder) project.loadFolderPrefs(project.folder); }, [project.folder]);
+  useEffect(() => { chat.persistMessages(chat.messages); }, [chat.messages]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if(project.folder) project.loadFolderPrefs(project.folder); }, [project.folder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── WebSocket file watcher ──
   useEffect(() => {
@@ -238,7 +237,7 @@ export default function App() {
     }
     connect();
     return () => { dead=true; if(wsRef.current){wsRef.current.onclose=null;wsRef.current.close();wsRef.current=null;} };
-  }, [project.fileWatcherActive, project.folder]);
+  }, [project.fileWatcherActive, project.folder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── HELPERS ──
   function saveFolder(f) { project.saveFolder(f); ui.setShowFolder(false); }
@@ -804,7 +803,7 @@ export default function App() {
         <BgAgentPanel
           agents={getBgAgents()}
           onMerge={async id=>{
-            setLoading(true);
+            chat.setLoading(true);
             const result = await mergeBackgroundAgent(id, project.folder);
             if (result.hasConflicts) {
               ui.setMergeConflictData(result); ui.setShowMergeConflict(true);
@@ -812,7 +811,7 @@ export default function App() {
               chat.setMessages(m=>[...m,{role:'assistant',content:result.ok?'✅ '+result.msg:'❌ '+result.msg,actions:[]}]);
             }
             ui.setShowBgAgents(false);
-            setLoading(false);
+            chat.setLoading(false);
           }}
           onAbort={id=>abortBgAgent(id)}
           onClose={()=>ui.setShowBgAgents(false)}

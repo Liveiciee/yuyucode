@@ -4,7 +4,7 @@ import {
   Package, GitBranch, Database, Film, Music, Archive, Shield, Terminal,
   Layers, Cpu, Hash,
 } from 'lucide-react';
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { callServer } from '../api.js';
 
 function getFileIconData(name) {
@@ -82,17 +82,16 @@ export function FileTree({ folder, onSelectFile, selectedFile, T }) {
   const errorBg    = T?.errorBg    || 'rgba(248,113,113,.06)';
 
   const fxSelected  = T?.fx?.glowBorder?.(accent, .8) || {};
-  const fxUserBubble= T?.fx?.userBubble?.() || {};
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!folder) return;
     setLoading(true);
     const r = await callServer({type:'list',path:folder});
     if (r.ok && Array.isArray(r.data)) setTree(r.data);
     setLoading(false);
-  }
+  }, [folder]);
 
-  useEffect(() => { load(); }, [folder]);
+  useEffect(() => { load(); }, [load]); // eslint-disable-line react-hooks/set-state-in-effect
 
   async function toggleDir(fullPath) {
     if (expanded[fullPath]) { setExpanded(e=>({...e,[fullPath]:null})); return; }

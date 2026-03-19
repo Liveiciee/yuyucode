@@ -59,7 +59,7 @@ export function useDevTools({
         { role: 'user',   content: diff.data.slice(0, 3000) },
       ], setStreaming, ctrl.signal);
       setStreaming('');
-      const msg = reply.trim().replace(/^[\"'`]|[\"'`]$/g, '');
+      const msg = reply.trim().replace(/^["'`]|["'`]$/g, '');
       setMessages(m => [...m, {
         role: 'assistant',
         content: '💬 Commit message:\n```\n' + msg + '\n```\n```action\n{"type":"exec","command":"git add -A && git commit -m \\"' + msg.replace(/"/g, '\\"') + '\\" && git push"}\n```',

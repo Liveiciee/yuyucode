@@ -77,7 +77,7 @@ export function MsgContent({ text, T }) {
                 ?<code style={{background:bg3,padding:'2px 7px',borderRadius:'5px',fontFamily:'monospace',fontSize:'12.5px',color:codeColor,...(T?.fx?.glowText?.(codeColor.replace(/[\d.]+\)$/,'.4)'))||{})}} {...props}/>
                 :<pre style={{background:codeBg,padding:'14px 16px',borderRadius:'10px',overflow:'auto',fontSize:'12.5px',margin:'10px 0',lineHeight:'1.65',border:codeBorder}} {...props}/>,
               blockquote:({node:_,...props})=><blockquote style={{borderLeft:'3px solid '+accentBorder,margin:'10px 0',padding:'4px 14px',color:textSec,fontStyle:'italic'}} {...props}/>,
-              hr:({node:_,...props})=><hr style={{border:'none',borderTop:'1px solid '+border,margin:'14px 0'}}/>,
+              hr:({node:_})=><hr style={{border:'none',borderTop:'1px solid '+border,margin:'14px 0'}}/>,
               strong:({node:_,...props})=><strong style={{color:T?.text||'#f2ede4',fontWeight:'600'}} {...props}/>,
               em:({node:_,...props})=><em style={{color:textSec}} {...props}/>,
               li:({node:_,...props})=><li style={{margin:'5px 0',lineHeight:'1.75',color:text_}} {...props}/>,

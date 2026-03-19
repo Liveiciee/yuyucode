@@ -17,7 +17,6 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI, T }) {
   // ── Theme tokens ──
   const bg       = T?.bg    || '#0a0a0d';
   const bg2      = T?.bg2   || '#111116';
-  const bg3      = T?.bg3   || 'rgba(255,255,255,.03)';
   const border   = T?.border|| 'rgba(255,255,255,.07)';
   const text     = T?.text  || 'rgba(255,255,255,.85)';
   const textSec  = T?.textSec || 'rgba(255,255,255,.6)';
@@ -91,7 +90,7 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI, T }) {
   }
 
   const fxGlow   = T?.fx?.glowBorder?.(accent, .7) || {};
-  const fxInput  = T?.fx?.inputFocus?.() || {};
+  const _fxInput  = T?.fx?.inputFocus?.() || {};
   const isRunning = !!streaming;
   const cwd = folder?.split('/').pop() || '~';
 

@@ -175,7 +175,7 @@ export function execStream(command, cwd, onLine, signal) {
   return new Promise((resolve, reject) => {
     let ws;
     try { ws = new WebSocket(WS_SERVER); }
-    catch(e) { reject(new Error('WebSocket tidak tersedia')); return; }
+    catch(_e) { reject(new Error('WebSocket tidak tersedia')); return; }
 
     const id = 'exec_' + Date.now();
     let output = '', settled = false;

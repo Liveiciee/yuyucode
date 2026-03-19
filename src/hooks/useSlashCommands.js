@@ -3,30 +3,30 @@ import { Preferences } from '@capacitor/preferences';
 import { callServer, askCerebrasStream } from '../api.js';
 import { MODELS } from '../constants.js';
 import { countTokens, parseActions } from '../utils.js';
-import { generatePlan, runBackgroundAgent, getBgAgents, mergeBackgroundAgent, loadSkills, tokenTracker, saveSession, loadSessions, rewindMessages } from '../features.js';
+import { generatePlan, runBackgroundAgent, mergeBackgroundAgent, tokenTracker, saveSession, loadSessions, rewindMessages } from '../features.js';
 
 export function useSlashCommands({
   // state
   model, folder, branch, messages, selectedFile, fileContent, notes,
-  memories, checkpoints, skills, thinkingEnabled, effort, loopActive,
+  memories, checkpoints: _checkpoints, skills, thinkingEnabled, effort, loopActive,
   loopIntervalRef, agentMemory, splitView, pushToTalk, sessionName,
   sessionColor, fileWatcherActive, fileWatcherInterval,
   // setters
-  setModel, setMessages, setFolder, setFolderInput, setLoading, setStreaming,
+  setModel, setMessages, setFolder: _setFolder, setFolderInput: _setFolderInput, setLoading, setStreaming: _setStreaming,
   setThinkingEnabled, setEffort, setLoopActive, setLoopIntervalRef,
   setSplitView, setPushToTalk, setSessionName, setSessionColor,
-  setSkills, setFileWatcherActive, setFileWatcherInterval, setFileSnapshots,
+  setSkills: _setSkills, setFileWatcherActive, setFileWatcherInterval, setFileSnapshots,
   setPlanSteps, setPlanTask, setAgentMemory, setSessionList,
-  setShowCheckpoints, setShowMemory, setShowMCP, setShowGitHub, setShowDeploy,
+  setShowCheckpoints, setShowMemory: _setShowMemory, setShowMCP, setShowGitHub, setShowDeploy,
   setShowSessions, setShowPermissions, setShowPlugins, setShowConfig,
   setShowCustomActions, setShowFileHistory, setShowThemeBuilder,
-  setShowDiff, setShowSearch, setShowSnippets, setShowDepGraph,
+  setShowDepGraph,
   setDepGraph, setFontSize,
   setShowMergeConflict, setMergeConflictData,
   setShowSkills, setShowBgAgents,
   // functions
-  sendMsg, compactContext, saveCheckpoint, exportChat, generateCommitMsg,
-  runTests, browseTo, runAgentSwarm, callAI, addHistory, runHooks,
+  sendMsg, compactContext, saveCheckpoint, exportChat,
+  browseTo, runAgentSwarm, callAI,
   sendNotification, haptic,
   // refs
   abortRef,
@@ -263,7 +263,7 @@ export function useSlashCommands({
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {
-        const { reply, steps } = await generatePlan(task, folder, callAI, ctrl.signal);
+        const { steps } = await generatePlan(task, folder, callAI, ctrl.signal);
         setPlanSteps(steps.map(s=>({...s,done:false})));
         setPlanTask(task);
         setMessages(m=>[...m,{role:'assistant',content:'📋 **Plan ('+steps.length+' langkah):**\n\n'+steps.map(s=>s.num+'. '+s.text).join('\n'),actions:[]}]);
@@ -605,6 +605,7 @@ Tulis ke SKILL.md menggunakan write_file. Format singkat, padat, max 50 baris.`)
       setLoading(false);
 
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, folder, branch, messages, selectedFile, fileContent, notes, memories, skills,
       thinkingEnabled, effort, loopActive, loopIntervalRef, agentMemory, splitView,
       pushToTalk, sessionName, sessionColor, fileWatcherActive, fileWatcherInterval]);

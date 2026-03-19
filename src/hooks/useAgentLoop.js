@@ -66,7 +66,7 @@ export function useAgentLoop({
 
   // ── gatherProjectContext — "read before act" ─────────────────────────────────
   // Sebelum iter 1, Yuyu baca struktur + file-file kunci project secara paralel
-  async function gatherProjectContext(txt, signal) {
+  async function gatherProjectContext(txt, _signal) {
     if (!project.folder) return {};
     const ctx = {};
 

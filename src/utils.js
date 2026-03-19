@@ -17,55 +17,72 @@ export function getFileIcon(name) {
   return icons[ext] || ext || '?';
 }
 // ── SYNTAX HIGHLIGHT ──
+// Baru untuk dimasukkan ke utils.js
+// Ganti function hl() yang lama
 export function hl(code, lang = '') {
   let s = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const L = lang.toLowerCase();
+
+  // Protect already-generated spans from subsequent regex passes
+  function protect(str, fn) {
+    const saved = [];
+    const hidden = str.replace(/<span[^>]*>[\s\S]*?<\/span>/g, m => {
+      saved.push(m);
+      return `_${saved.length - 1}_`;
+    });
+    const result = fn(hidden);
+    return result.replace(/_(\d+)_/g, (_, i) => saved[+i]);
+  }
+
   if (L === 'json') {
-    return s
-      .replace(/(\"(?:[^\"\\]|\\.)*\")(\s*:)/g, '<span style="color:#79b8ff">$1</span>$2')
-      .replace(/:\s*(\"(?:[^\"\\]|\\.)*\")/g, ': <span style="color:#98c379">$1</span>')
-      .replace(/\b(true|false|null)\b/g, '<span style="color:#f97583">$1</span>')
-      .replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>');
+    s = protect(s, t => t.replace(/(\"(?:[^\"\\]|\\.)*\")(\s*:)/g, '<span style="color:#79b8ff">$1</span>$2')); // eslint-disable-line no-useless-escape
+    s = protect(s, t => t.replace(/:\s*(\"(?:[^\"\\]|\\.)*\")/g, ': <span style="color:#98c379">$1</span>')); // eslint-disable-line no-useless-escape
+    s = protect(s, t => t.replace(/\b(true|false|null)\b/g, '<span style="color:#f97583">$1</span>'));
+    s = protect(s, t => t.replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>'));
+    return s;
   }
   if (L === 'bash' || L === 'sh') {
-    return s
-      .replace(/(#.*$)/gm, '<span style="color:#6a737d">$1</span>')
-      .replace(/\b(echo|cd|ls|git|npm|node|export|source|if|then|fi|for|do|done|while|function|return|mkdir|cp|mv|rm|chmod|curl|wget)\b/g, '<span style="color:#c678dd">$1</span>')
-      .replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>')
-      .replace(/(\$\w+|\$\{[^}]+\})/g, '<span style="color:#79b8ff">$1</span>');
+    s = protect(s, t => t.replace(/(#.*$)/gm, '<span style="color:#6a737d">$1</span>'));
+    s = protect(s, t => t.replace(/\b(echo|cd|ls|git|npm|node|export|source|if|then|fi|for|do|done|while|function|return|mkdir|cp|mv|rm|chmod|curl|wget)\b/g, '<span style="color:#c678dd">$1</span>'));
+    s = protect(s, t => t.replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>')); // eslint-disable-line no-useless-escape
+    s = protect(s, t => t.replace(/(\$\w+|\$\{[^}]+\})/g, '<span style="color:#79b8ff">$1</span>'));
+    return s;
   }
   if (L === 'python' || L === 'py') {
-    return s
-      .replace(/(#.*$)/gm, '<span style="color:#6a737d">$1</span>')
-      .replace(/(\"\"\"[\s\S]*?\"\"\"|'''[\s\S]*?''')/g, '<span style="color:#98c379">$1</span>')
-      .replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>')
-      .replace(/\b(def|class|import|from|return|if|elif|else|for|while|try|except|with|as|in|not|and|or|True|False|None|lambda|yield|async|await|pass|raise|del|global|nonlocal)\b/g, '<span style="color:#c678dd">$1</span>')
-      .replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>');
+    s = protect(s, t => t.replace(/(#.*$)/gm, '<span style="color:#6a737d">$1</span>'));
+    s = protect(s, t => t.replace(/("""[\s\S]*?"""|'''[\s\S]*?''')/g, '<span style="color:#98c379">$1</span>'));
+    s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
+    s = protect(s, t => t.replace(/\b(def|class|import|from|return|if|elif|else|for|while|try|except|with|as|in|not|and|or|True|False|None|lambda|yield|async|await|pass|raise|del|global|nonlocal)\b/g, '<span style="color:#c678dd">$1</span>'));
+    s = protect(s, t => t.replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>'));
+    return s;
   }
   if (L === 'css') {
-    return s
-      .replace(/(\/\*[\s\S]*?\*\/)/g, '<span style="color:#6a737d">$1</span>')
-      .replace(/([.#]?[\w-]+)\s*\{/g, '<span style="color:#79b8ff">$1</span>{')
-      .replace(/([\w-]+)\s*:/g, '<span style="color:#b392f0">$1</span>:')
-      .replace(/:\s*([^;{]+)/g, ': <span style="color:#98c379">$1</span>');
+    s = protect(s, t => t.replace(/(\/\*[\s\S]*?\*\/)/g, '<span style="color:#6a737d">$1</span>'));
+    s = protect(s, t => t.replace(/([.#]?[\w-]+)\s*\{/g, '<span style="color:#79b8ff">$1</span>{'));
+    s = protect(s, t => t.replace(/([\w-]+)\s*:/g, '<span style="color:#b392f0">$1</span>:'));
+    s = protect(s, t => t.replace(/:\s*([^;{]+)/g, ': <span style="color:#98c379">$1</span>'));
+    return s;
   }
   // default JS/JSX/TS/TSX
-  return s
-    .replace(/(\/\/.*$|\/\*[\s\S]*?\*\/)/gm, '<span style="color:#6a737d">$1</span>')
-    .replace(/(`(?:[^`\\]|\\.)*`)/g, '<span style="color:#98c379">$1</span>')
-    .replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>')
-    .replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|finally|class|new|this|from|of|in|typeof|instanceof|null|undefined|true|false|throw|switch|case|break|continue|extends|super|static|get|set|type|interface|enum|as|keyof|readonly)\b/g, '<span style="color:#c678dd">$1</span>')
-    .replace(/\b([A-Z][a-zA-Z0-9]*)\b/g, '<span style="color:#79b8ff">$1</span>')
-    .replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>');
+  s = protect(s, t => t.replace(/(\/\/.*$|\/\*[\s\S]*?\*\/)/gm, '<span style="color:#6a737d">$1</span>'));
+  s = protect(s, t => t.replace(/(`(?:[^`\\]|\\.)*`)/g, '<span style="color:#98c379">$1</span>'));
+  s = protect(s, t => t.replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>')); // eslint-disable-line no-useless-escape
+  s = protect(s, t => t.replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|finally|class|new|this|from|of|in|typeof|instanceof|null|undefined|true|false|throw|switch|case|break|continue|extends|super|static|get|set|type|interface|enum|as|keyof|readonly)\b/g, '<span style="color:#c678dd">$1</span>'));
+  s = protect(s, t => t.replace(/\b([A-Z][a-zA-Z0-9]*)\b/g, '<span style="color:#79b8ff">$1</span>'));
+  s = protect(s, t => t.replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>'));
+  return s;
 }
+
 
 // ── PATH RESOLVER ──
 export function resolvePath(base, p) {
   if (!p) return base;
   if (!base) return p;
-  if (p === base || p.startsWith(base + '/')) return p;
-  const stripped = p.startsWith(base) ? p.slice(base.length).replace(/^\//, '') : p;
-  return base + '/' + stripped;
+  const b = base.replace(/\/$/, '');      // strip trailing slash
+  const q = p.replace(/^\//, '');          // strip leading slash
+  if (q === b || q.startsWith(b + '/')) return q;
+  const stripped = q.startsWith(b) ? q.slice(b.length).replace(/^\//, '') : q;
+  return b + '/' + stripped;
 }
 
 // ── ACTION PARSER ──

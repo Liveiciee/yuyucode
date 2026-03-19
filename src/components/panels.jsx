@@ -70,7 +70,7 @@ export function GitComparePanel({ folder, onClose }) {
     setLoading(false);
   }
 
-  useEffect(() => { load(false); }, []);
+  useEffect(() => { load(false); }, []); // eslint-disable-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
 
   function lineStyle(line) {
     if (line.startsWith('diff --git'))  return { color:'#60a5fa', bg:'rgba(96,165,250,.06)',   bold:true };
@@ -82,9 +82,9 @@ export function GitComparePanel({ folder, onClose }) {
   }
 
   function renderUnified() {
-    let fileHeader = '';
+    let _fileHeader = '';
     return diff.split('\n').map((line, i) => {
-      if (line.startsWith('diff --git')) fileHeader = line.replace('diff --git a/', '').split(' b/')[0];
+      if (line.startsWith('diff --git')) _fileHeader = line.replace('diff --git a/', '').split(' b/')[0];
       const { color, bg, bold } = lineStyle(line);
       const lineNum = line.startsWith('@@') ? null :
         line.startsWith('+') ? <span style={{color:'rgba(74,222,128,.4)',userSelect:'none',marginRight:'8px',fontSize:'9px'}}>+</span> :
@@ -201,7 +201,7 @@ export function FileHistoryPanel({ folder, filePath, onClose }) {
       }
       setLoading(false);
     });
-  }, [filePath]);
+  }, [filePath, folder]);
 
   async function preview(hash) {
     const rel = filePath.replace(folder+'/', '');
@@ -368,7 +368,7 @@ export function GitBlamePanel({ folder, filePath, onClose }) {
       setBlame(lines);
       setLoading(false);
     });
-  }, [filePath]);
+  }, [filePath, folder]);
 
   return (
     <BottomSheet onClose={onClose}>
@@ -864,7 +864,7 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
 
       {/* Conflict files */}
       <div style={{flex:1,overflowY:'auto',marginBottom:'12px'}}>
-        {conflictList.map((cf, i) => {
+        {conflictList.map((cf, _i) => {
           const preview = previews[cf] || previewData.find(p => p.file === cf)?.snippet;
           return (
             <div key={cf} style={{padding:'9px 12px',marginBottom:'6px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(248,113,113,.12)',borderRadius:'8px'}}>
@@ -1057,7 +1057,7 @@ export function DeployPanel({ deployLog, loading, onDeploy, onClose }) {
 }
 
 // ── McpPanel ──────────────────────────────────────────────────────────────────
-export function McpPanel({ mcpTools, folder, onResult, onClose }) {
+export function McpPanel({ mcpTools, folder: _folder, onResult, onClose }) {
   const defaultTools = [['git',['status','log','diff']],['fetch',['browse']],['sqlite',['tables']],['github',['issues','pulls']],['system',['disk','memory']],['filesystem',['list']]];
   const entries = Object.keys(mcpTools).length > 0 ? Object.entries(mcpTools) : defaultTools;
   return (
@@ -1248,6 +1248,17 @@ export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, m
 }
 
 // ── BgAgentPanel — live progress tracking ────────────────────────────────────
+// ── ElapsedTime — isolated so Date.now() stays out of parent render ──────────
+function ElapsedTime({ startedAt }) {
+  const [now, setNow] = React.useState(() => Date.now());
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+  const elapsed = Math.round((now - startedAt) / 1000);
+  return <span>{elapsed > 60 ? Math.floor(elapsed/60) + 'm' : elapsed + 's'}</span>;
+}
+
 export function BgAgentPanel({ agents, onMerge, onAbort, onClose }) {
   const statusColor = { preparing:'#fbbf24', running:'#60a5fa', done:'#4ade80', error:'#f87171', aborted:'rgba(255,255,255,.3)', merged:'rgba(255,255,255,.2)', conflict:'#f97316' };
   const statusIcon  = { preparing:'…', running:'↻', done:'✓', error:'✗', aborted:'⏹', merged:'⇄', conflict:'!' };
@@ -1268,8 +1279,6 @@ export function BgAgentPanel({ agents, onMerge, onAbort, onClose }) {
           {agents.map(agent => {
             const color = statusColor[agent.status] || '#f0f0f0';
             const icon  = statusIcon[agent.status]  || '?';
-            const elapsed = Math.round((Date.now() - agent.startedAt) / 1000);
-            const elapsedStr = elapsed > 60 ? Math.floor(elapsed/60) + 'm' : elapsed + 's';
             return (
               <div key={agent.id} style={{padding:'12px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'10px'}}>
                 {/* Header row */}
@@ -1278,7 +1287,7 @@ export function BgAgentPanel({ agents, onMerge, onAbort, onClose }) {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:'12px',color:'#f0f0f0',fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{agent.task}</div>
                     <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)',fontFamily:'monospace',marginTop:'1px'}}>
-                      {agent.id.slice(-8)} · {elapsedStr} · branch: {agent.branch?.slice(-12)}
+                      {agent.id.slice(-8)} · <ElapsedTime startedAt={agent.startedAt}/> · branch: {agent.branch?.slice(-12)}
                     </div>
                   </div>
                   <span style={{fontSize:'11px',color,fontWeight:'600',textTransform:'uppercase',letterSpacing:'.04em'}}>{agent.status}</span>

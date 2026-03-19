@@ -265,7 +265,7 @@ export function selectSkills(skills, taskText) {
     if (sn === 'skill') return true;
     if (kw.includes(sn)) return true;
     if (s.content) {
-      const contentWords = s.content.toLowerCase().replace(/[#*`>_\-\[\]()]/g, ' ').split(/\s+/).filter(w => w.length > 3).slice(0, 20);
+      const contentWords = s.content.toLowerCase().replace(/[#*`>_\-[]()]/g, ' ').split(/\s+/).filter(w => w.length > 3).slice(0, 20);
       if (contentWords.some(w => kw.includes(w))) return true;
     }
     if (s.content && s.content.length < 2048) return true;

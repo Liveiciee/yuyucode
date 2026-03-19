@@ -122,8 +122,8 @@ export function useProjectStore() {
 
   // ── Load from Preferences ──
   function loadProjectPrefs({
-    folder: f, cmdHistory: ch, model: mo, pinned, recent,
-    memories, checkpoints, hooks: hk, githubToken: ght, githubRepo: ghr,
+    folder: f, cmdHistory: ch, model: mo, pinned: _pinned, recent: _recent,
+    memories: _memories, checkpoints: _checkpoints, hooks: hk, githubToken: ght, githubRepo: ghr,
     sessionColor: sc, plugins, effort: ef, thinkingEnabled: th, permissions: perm,
   }) {
     if (f)  { setFolderRaw(f); setFolderInput(f); }

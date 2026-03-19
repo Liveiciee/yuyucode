@@ -16,7 +16,7 @@ export default defineConfig([
       sourceType: 'commonjs',
     },
     rules: {
-      'no-unused-vars': ['warn', { varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['warn', { varsIgnorePattern: '^_', argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       'no-empty': 'off',
       'no-undef': 'off',
     },

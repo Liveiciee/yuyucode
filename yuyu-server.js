@@ -118,7 +118,7 @@ function buildTree(dirPath, depth, maxDepth, prefix) {
 function handle(payload) {
   const {
     type, path: filePath, content, command, from, to, url,
-    query, dbPath, token, owner, repo, tool, action, params,
+    query, dbPath, token, tool, action, params,
     paths, depth,
   } = payload;
   const full = resolvePath(filePath);
@@ -157,7 +157,7 @@ function handle(payload) {
         } else {
           results[p] = null;
         }
-      } catch(e) { results[p] = null; }
+      } catch(_e) { results[p] = null; }
     }
     return { ok: true, data: results };
   }
@@ -403,7 +403,7 @@ try {
 if (WebSocketServer) {
   const wss = new WebSocketServer({ port: WS_PORT });
   // Map: watcherId → fs.watch instance
-  const watchers  = new Map();
+  const _watchers  = new Map(); // reserved for future use
   // Map: execId → child process
   const execProcs = new Map();
 

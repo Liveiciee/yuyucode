@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 
 // ── ThemeEffects ───────────────────────────────────────────────────────────────
 // Render semua visual overlay berdasarkan tema aktif:
@@ -25,7 +25,7 @@ export function ThemeEffects({ T }) {
     if (!el) { el = document.createElement('style'); el.id = id; document.head.appendChild(el); }
     el.textContent = T?.css || '';
     return () => { if (el) el.textContent = ''; };
-  }, [T?.name]);
+  }, [T?.name, T?.css]);
 
   const base = { position:'fixed', inset:0, pointerEvents:'none', zIndex:1, overflow:'hidden' };
 

@@ -12,7 +12,7 @@ describe('readSSEStream', () => {
   function makeReader(...chunks) {
     const calls = chunks.map(chunk => ({
       done: false,
-      value: new OriginalTextDecoder() ? new TextEncoder().encode(chunk) : chunk,
+      value: OriginalTextDecoder ? new TextEncoder().encode(chunk) : chunk,
     }));
     calls.push({ done: true });
     let i = 0;
