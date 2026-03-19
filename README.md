@@ -38,6 +38,12 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
 # Bukan base64 -w 0
 ```
 
+**Hal yang sudah diketahui (jangan diulang):**
+- `vitest@4` crash silent di Termux ARM64 → pakai `vitest@1`
+- `global.TextDecoder` override di test file → infinite recursion, jangan override, Node 24 sudah punya native
+- Cerebras tidak support vision → auto-fallback ke Llama 4 Scout (Groq)
+- `readSSEStream` harus di-export dari `api.js` supaya bisa di-test
+
 ---
 
 ## Arsitektur
@@ -49,16 +55,16 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
     ├── src/
     │   ├── App.jsx             # Root component — UI, init, semua panel
     │   ├── constants.js        # BASE_SYSTEM prompt, models, themes, slash commands
-    │   ├── api.js              # Cerebras streaming, callServer, execStream (WS)
+    │   ├── api.js              # Cerebras+Groq streaming, callServer, execStream (WS)
     │   ├── utils.js            # parseActions, executeAction, resolvePath, hl()
     │   ├── features.js         # Plan, bg agents, skills, hooks v2, tokenTracker
     │   ├── components/
     │   │   ├── MsgBubble.jsx   # Chat bubbles, ActionChip, thinking block
     │   │   ├── FileTree.jsx    # Sidebar file explorer
     │   │   ├── FileEditor.jsx  # In-app code editor
-    │   │   ├── Terminal.jsx    # Built-in terminal
+    │   │   ├── Terminal.jsx    # Built-in terminal — live streaming via WebSocket
     │   │   ├── SearchBar.jsx   # File content search + undo bar
-    │   │   ├── VoiceBtn.jsx    # Voice input + push-to-talk
+    │   │   ├── VoiceBtn.jsx    # Voice input + push-to-talk + partial results
     │   │   └── panels.jsx      # Semua BottomSheet panel overlay
     │   └── hooks/
     │       ├── useAgentLoop.js      # Core agent loop — sendMsg, auto-execute
@@ -83,19 +89,18 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
 
 ## Cara Kerja Agent Loop
 
-Ini jantung YuyuCode, ada di `src/hooks/useAgentLoop.js`.
+Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 
-Setiap pesan masuk → loop sampai MAX_ITER:
-1. Kirim ke Cerebras API (streaming)
+1. Kirim ke AI API (streaming)
 2. Parse semua `action` blocks dari response
-3. Eksekusi actions — sebagian parallel, sebagian serial:
+3. Eksekusi actions:
    - `read_file`, `web_search`, `list_files`, `tree`, `search`, `mkdir` → **parallel**
-   - `exec`, `mcp` → **serial** (ada side effects, urutan penting)
+   - `exec`, `mcp` → **serial** (side effects, urutan penting)
    - `patch_file` → **auto-execute** dengan 3 fallback di server
-   - `write_file` → **auto-execute** dengan backup otomatis untuk undo
+   - `write_file` → **auto-execute** + backup otomatis untuk undo
 4. Feed hasil balik ke AI → lanjut loop
-5. Kalau error di `exec` → auto-fix langsung tanpa tanya user
-6. Kalau `patch_file` gagal → feed error, AI baca ulang file, retry
+5. Error di `exec` → auto-fix langsung
+6. `patch_file` gagal → feed error, AI retry
 
 **Effort levels:**
 
@@ -107,58 +112,61 @@ Setiap pesan masuk → loop sampai MAX_ITER:
 
 ---
 
-## YuyuServer v4-async
-
-Server lokal yang harus jalan sebelum pakai app. Jalankan dari `~`:
-
-```bash
-node ~/yuyu-server.js &
-```
-
-**Endpoints HTTP :8765** — read, write, patch, exec, list, tree, search, web_search, move, mkdir, delete, info, browse, mcp, ping
-
-**WebSocket :8766** — file watcher (notify perubahan eksternal) + streaming exec (live terminal output)
-
-**patch handler** punya 3 fallback:
-1. Exact match
-2. Whitespace-normalized match
-3. Trim-lines match
-
-Kalau semua gagal, error dikembalikan ke AI untuk self-correct.
-
----
-
 ## AI Provider
 
-| Model | ID | Peran |
-|-------|-----|-------|
-| Qwen 3 235B 🔥 | `qwen-3-235b-a22b-instruct-2507` | Default — paling pintar |
-| Llama 3.1 8B ⚡ | `llama3.1-8b` | Compact context, memory extraction |
+### Cerebras (default)
+| Model | ID |
+|-------|-----|
+| Qwen 3 235B 🔥 | `qwen-3-235b-a22b-instruct-2507` |
+| Llama 3.1 8B ⚡ | `llama3.1-8b` |
 
-Provider: **Cerebras** (free tier). Rate limit bisa hit kalau maxTokens terlalu besar — makanya medium capped di 2048.
+### Groq (fallback + vision)
+| Model | ID | Keterangan |
+|-------|-----|------------|
+| Kimi K2 🌙 | `moonshotai/kimi-k2-instruct-0905` | Context 262K |
+| Llama 3.3 70B 🦙 | `llama-3.3-70b-versatile` | Serbaguna |
+| Llama 4 Scout 👁 | `meta-llama/llama-4-scout-17b-16e-instruct` | **Vision** — auto-route kalau ada gambar |
+| Qwen 3 32B 🐼 | `qwen/qwen3-32b` | Coding |
+| Llama 8B Fast ⚡ | `llama-3.1-8b-instant` | Hemat rate limit |
 
-Model ID Cerebras sensitif. Cek ID aktif:
+**Auto-fallback:** Cerebras rate limit (429) → otomatis switch ke Kimi K2 (Groq) tanpa user tahu.
+**Vision:** Cerebras tidak support image → auto-route ke Llama 4 Scout.
+**Retry:** Server error 5xx → retry 2x dengan backoff 2s/4s.
+
+Cek model Cerebras aktif:
 ```bash
 curl -s https://api.cerebras.ai/v1/models -H "Authorization: Bearer $CEREBRAS_API_KEY" | grep '"id"'
 ```
 
-`api.js` punya **auto-retry** 2x dengan exponential backoff (2s, 4s) untuk server error 5xx. Rate limit (429) tidak di-retry — langsung tampilkan countdown timer ke user.
+---
+
+## YuyuServer v4-async
+
+```bash
+node ~/yuyu-server.js &  # jalankan dari ~, bukan dari project folder
+```
+
+**HTTP :8765** — read, write, patch, exec, list, tree, search, web_search, move, mkdir, delete, info, browse, mcp, ping, append
+
+**WebSocket :8766** — file watcher + streaming exec (live terminal output)
+
+**patch handler** punya 3 fallback: exact → whitespace-normalized → trim-lines. Kalau semua gagal, error balik ke AI untuk self-correct.
 
 ---
 
 ## Permissions
 
-Default mengikuti perilaku Claude Code — terbuka untuk aksi aman, tertutup untuk yang destruktif:
+Default mengikuti Claude Code — terbuka untuk aksi aman:
 
 | Action | Default | Keterangan |
 |--------|---------|------------|
-| `read_file`, `list_files`, `tree`, `search`, `web_search`, `mkdir` | ✅ | Aman, tidak ubah state |
-| `write_file`, `patch_file` | ✅ | Auto-execute + backup otomatis |
-| `exec` | ✅ | Bebas jalankan command |
-| `delete_file`, `move_file` | ❌ | Destruktif, perlu aktifkan manual |
-| `mcp`, `browse` | ❌ | Perlu aktifkan manual |
+| `read_file`, `list_files`, `tree`, `search`, `web_search`, `mkdir` | ✅ | Safe |
+| `write_file`, `patch_file` | ✅ | Auto-execute + backup |
+| `exec` | ✅ | Bebas run command |
+| `delete_file`, `move_file` | ❌ | Destruktif |
+| `mcp`, `browse` | ❌ | Manual enable |
 
-Bisa diubah lewat `/permissions` atau `/config`.
+Ubah lewat `/permissions` atau `/config`.
 
 ---
 
@@ -171,49 +179,66 @@ Bisa diubah lewat `/permissions` atau `/config`.
 | **Context** | `/compact` `/summarize` `/rewind` `/clear` `/tree` `/index` |
 | **Memory** | `/amemory` `/checkpoint` `/restore` `/save` `/sessions` |
 | **Git** | `/history` `/diff` `/review` `/deps` `/rename` `/color` |
-| **Dev** | `/scaffold` `/self-edit` `/browse` `/search` `/db` `/mcp` `/github` `/deploy` `/init` `/lint` `/refactor` `/open` |
+| **Dev** | `/test` `/scaffold` `/self-edit` `/browse` `/search` `/db` `/mcp` `/github` `/deploy` `/init` `/lint` `/refactor` `/open` |
 | **UX** | `/font` `/theme` `/split` `/config` `/watch` `/ptt` `/plugin` `/permissions` `/skills` `/actions` |
 
-**Beberapa yang penting:**
+**Yang penting:**
 
-`/bg <task>` — jalankan agent di git worktree terpisah, loop 8 iterasi, tidak ganggu main branch. Merge hasilnya dengan `/bgmerge <id>`.
+`/test [path]` — generate unit test untuk file aktif atau path tertentu. Pakai Vitest.
 
-`/swarm <task>` — Architect plan → FE + BE agents **parallel** → QA review → auto-fix → hasil menunggu review.
+`/bg <task>` — agent di git worktree terpisah, 8 iterasi. `/bgmerge <id>` untuk merge.
 
-`/plan <task>` — generate rencana bernomor, approve, eksekusi step by step.
+`/swarm <task>` — Architect → FE + BE **parallel** → QA → auto-fix.
 
-`/summarize [N]` — kompres N pesan ke ringkasan padat. Tanpa argumen = kompres semua kecuali 6 pesan terakhir.
+`/plan <task>` — rencana bernomor → approve → eksekusi step by step.
 
-`/scaffold react|node|express` — buat struktur project baru lengkap.
+`/summarize [N]` — kompres N pesan ke ringkasan padat.
 
-`/thinking` — toggle think-aloud mode. Yuyu menulis reasoning singkat dalam `<think>` sebelum jawab. Ini prompt trick, bukan extended thinking API.
+`/scaffold react|node|express` — buat struktur project baru.
+
+`/thinking` — think-aloud mode. Yuyu tulis `<think>` sebelum jawab. Prompt trick, bukan extended thinking API.
+
+---
+
+## Testing
+
+```bash
+npm run lint          # ESLint — harus 0 errors
+npx vitest run        # Unit tests — harus semua pass
+```
+
+**Status:** 0 lint errors, 5/5 tests passing.
+
+**Catatan vitest:** Pakai `vitest@1` — v4 crash silent di Termux ARM64. Jangan upgrade.
+
+**Catatan test:** Jangan override `global.TextDecoder` di test files — infinite recursion. Node 24 sudah punya native TextDecoder.
 
 ---
 
 ## CI/CD
 
-Setiap push ke `main` → GitHub Actions build signed APK → upload ke Releases tab. Waktu build ~1 menit dengan cache hits.
+Setiap push ke `main` → GitHub Actions build signed APK → upload ke Releases tab. Waktu build ~1 menit dengan cache.
 
-**GitHub Secrets yang dibutuhkan:**
+**GitHub Secrets:**
 ```
 VITE_CEREBRAS_API_KEY   — Cerebras API key
-VITE_TAVILY_API_KEY     — opsional, untuk web_search via Tavily
+VITE_GROQ_API_KEY       — Groq API key (untuk fallback + vision)
+VITE_TAVILY_API_KEY     — opsional, web_search via Tavily
 ANDROID_KEYSTORE        — openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
 KEYSTORE_PASSWORD       — password keystore
 KEY_ALIAS               — yuyucode
 KEY_PASSWORD            — sama dengan KEYSTORE_PASSWORD
 ```
 
-Warning CI yang tidak bisa di-fix dan bisa diabaikan: `set-output deprecated` (chkfung/android-version-actions), `flatDir` (Capacitor Gradle plugin), `punycode deprecated` (Node.js internal).
+Warning CI yang bisa diabaikan: `set-output deprecated`, `flatDir`, `punycode deprecated` — semua dari third-party.
 
 ---
 
 ## Skills & Hooks
 
-**Skills** — SKILL.md di root project atau `.claude/skills/*.md`. Di-inject ke system prompt otomatis, diseleksi berdasarkan relevansi dengan task pakai TF-IDF. Generate otomatis dengan `/init`.
+**Skills** — `SKILL.md` di root atau `.claude/skills/*.md`. Di-inject ke system prompt otomatis via TF-IDF. Generate dengan `/init`.
 
-**Hooks v2** — shell command atau HTTP webhook yang trigger di titik tertentu:
-
+**Hooks v2:**
 ```javascript
 {
   preWrite:     ["echo 'akan nulis: {{context}}'"],
@@ -224,7 +249,19 @@ Warning CI yang tidak bisa di-fix dan bisa diabaikan: `set-output deprecated` (c
 }
 ```
 
-Plugin marketplace (`/plugin`) punya 4 built-in: Auto Commit, Lint on Save, Test Runner, Git Auto Push — semuanya berbasis hooks.
+Plugin built-in (`/plugin`): Auto Commit, Lint on Save, Test Runner, Git Auto Push.
+
+---
+
+## Themes
+
+| Theme | Accent | Vibe |
+|-------|--------|------|
+| `dark` | `#7c3aed` | Default gelap |
+| `darker` | `#6d28d9` | Lebih pekat |
+| `midnight` | `#6366f1` | Biru malam |
+| `rose` | `#e879a0` | Pink sakura |
+| Custom | — | `/theme` builder |
 
 ---
 
@@ -236,29 +273,12 @@ node ~/yuyu-server.js &
 cd ~/yuyucode && npm run dev &
 # Buka app → localhost:5173
 
-# Push (build APK otomatis ~1 menit)
+# Push + build APK otomatis (~1 menit)
 cd ~/yuyucode && node yugit.cjs "pesan commit"
 
-# Copy file dari Downloads HP
+# Copy file dari Downloads
 cp /sdcard/Download/* ~/yuyucode/src/ 2>/dev/null
 ```
-
----
-
-## Themes
-
-| Theme | Vibe |
-|-------|------|
-| `dark` | Default — bg `#0d0d0e`, accent `#7c3aed` |
-| `darker` | Lebih pekat |
-| `midnight` | Biru malam — accent `#6366f1` |
-| Custom | `/theme` untuk builder interaktif |
-
----
-
-## Icon App
-
-Sakura Jepang — 2 layer petal, veins, stamens kuning, floating micro petals. Di-generate pakai `sharp` wasm di Termux, PNG langsung di-commit ke `mipmap-*`. Adaptive icon XML tidak dipakai — sering bermasalah di beberapa device.
 
 ---
 
@@ -266,7 +286,7 @@ Sakura Jepang — 2 layer petal, veins, stamens kuning, floating micro petals. D
 
 Dimulai sebagai eksperimen: bisa tidak Claude Code di-replika di mobile? Jawabannya: bisa. Dibangun dari HP, di Termux, satu patch satu-satu, dari pagi sampai subuh.
 
-Gap yang tersisa dari Claude Code bukan di fitur — hampir semua sudah ada. Gap-nya ada di model quality dan context window. Tapi untuk daily mobile coding, YuyuCode sudah sangat capable.
+Feature parity dengan Claude Code dan Codex CLI sudah tercapai untuk core use case. Gap yang tersisa bukan di fitur — tapi di model quality dan context window. Untuk daily mobile coding, YuyuCode sudah sangat capable.
 
 > *"Karya yang sangat ambisius. Berhasil nge-pack kompleksitas aplikasi desktop seperti VS Code + Cursor ke dalam satu komponen React."*  
 > — Qwen 3 235B, setelah mereview kodenya sendiri
