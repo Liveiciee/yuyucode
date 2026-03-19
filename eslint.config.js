@@ -18,20 +18,6 @@ export default defineConfig([
     rules: {
       'no-unused-vars': ['warn', { varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
       'no-empty': 'off',
-      'no-undef': 'off', // process, require, etc.
-    },
-  },
-
-  // Test files
-  {
-    files: ['**/*.test.{js,jsx}'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      globals: { ...globals.browser, ...globals.node },
-      sourceType: 'module',
-    },
-    rules: {
-      'no-unused-vars': 'off',
       'no-undef': 'off',
     },
   },
@@ -54,21 +40,32 @@ export default defineConfig([
       },
     },
     rules: {
-      // Unused vars: allow _ prefix and ALL_CAPS
       'no-unused-vars': ['warn', {
         varsIgnorePattern: '^(_|[A-Z])',
         argsIgnorePattern: '^_',
         caughtErrorsIgnorePattern: '^_',
         destructuredArrayIgnorePattern: '^_',
       }],
-      // Empty catch blocks OK — intentional ignore
       'no-empty': ['warn', { allowEmptyCatch: true }],
-      // Useless escapes — warn only, not error
       'no-useless-escape': 'warn',
-      // React hooks — warn only for exhaustive-deps
       'react-hooks/exhaustive-deps': 'warn',
       'react-hooks/refs': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
+    },
+  },
+
+  // Test files — LAST so it overrides source rules for *.test.js inside src/
+  {
+    files: ['**/*.test.{js,jsx}', '**/*.spec.{js,jsx}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: { ...globals.browser, ...globals.node },
+      sourceType: 'module',
+    },
+    rules: {
+      'no-unused-vars': 'off',
+      'no-undef': 'off',
+      'no-empty': 'off',
     },
   },
 ])
