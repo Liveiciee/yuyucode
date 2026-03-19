@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Activity } from "react";
 import { Preferences } from "@capacitor/preferences";
+import { Menu, Command, Camera, Paperclip, Trash2, Radio, RotateCcw, AlertTriangle, Pin, Eye, ScrollText, Brain, MapPin, Zap, Plus, Volume2, VolumeX, GitBranch, ChevronRight, FilePlus2, Check, X } from 'lucide-react';
 import { MAX_HISTORY, MODELS, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { callServer } from './api.js';
 import { countTokens, hl } from './utils.js';
@@ -287,7 +288,7 @@ export default function App() {
         <div style={{height:'48px',padding:'0 10px',display:'flex',alignItems:'center',gap:'6px'}}>
           {/* sidebar toggle */}
           <button onClick={()=>ui.setShowSidebar(!ui.showSidebar)}
-            style={{background:ui.showSidebar?T.accentBg:'none',border:'none',color:ui.showSidebar?T.accent:T.textMute,fontSize:'16px',cursor:'pointer',borderRadius:'10px',minWidth:'40px',minHeight:'40px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>☰</button>
+            style={{background:ui.showSidebar?T.accentBg:'none',border:'none',color:ui.showSidebar?T.accent:T.textMute,fontSize:'16px',cursor:'pointer',borderRadius:'10px',minWidth:'40px',minHeight:'40px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Menu size={16}/></button>
 
           {/* title + folder — tap to change */}
           <div style={{flex:1,cursor:'pointer',minWidth:0,overflow:'hidden',padding:'4px 6px',borderRadius:'10px'}}
@@ -314,11 +315,11 @@ export default function App() {
 
           {/* command palette */}
           <button onClick={()=>ui.setShowPalette(true)}
-            style={{background:T.bg3,border:'1px solid '+T.border,borderRadius:'10px',padding:'0',color:T.textSec,fontSize:'15px',cursor:'pointer',minWidth:'40px',minHeight:'40px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>⌘</button>
+            style={{background:T.bg3,border:'1px solid '+T.border,borderRadius:'10px',padding:'0',color:T.textSec,fontSize:'15px',cursor:'pointer',minWidth:'40px',minHeight:'40px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Command size={15}/></button>
 
           {/* new chat */}
           <button onClick={()=>{chat.clearChat();haptic('light');}}
-            style={{background:'none',border:'1px solid '+T.border,borderRadius:'10px',padding:'0 12px',color:T.textMute,fontSize:'12px',cursor:'pointer',minHeight:'40px',flexShrink:0}}>new</button>
+            style={{background:'none',border:'1px solid '+T.border,borderRadius:'10px',padding:'0 12px',color:T.textMute,fontSize:'12px',cursor:'pointer',minHeight:'40px',flexShrink:0}}><FilePlus2 size={14}/></button>
         </div>
       </div>
 
@@ -326,7 +327,7 @@ export default function App() {
         <div style={{padding:'8px 12px',borderBottom:'1px solid '+T.border,display:'flex',gap:'6px',background:T.bg2,flexShrink:0}}>
           <input value={project.folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(project.folderInput)}
             style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'6px 10px',color:T.text,fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
-          <button onClick={()=>saveFolder(project.folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}>set</button>
+          <button onClick={()=>saveFolder(project.folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}><Check size={14}/></button>
         </div>
       )}
 
@@ -334,11 +335,11 @@ export default function App() {
 
       {/* UNIFIED STATUS BAR — single strip, priority-based */}
       {(()=>{
-        if (!project.netOnline) return <div style={{padding:'6px 14px',background:T.errorBg,borderBottom:'1px solid '+T.error+'22',fontSize:'12px',color:T.error,flexShrink:0,display:'flex',alignItems:'center',gap:'6px'}}><span>📡</span><span>Offline</span></div>;
+        if (!project.netOnline) return <div style={{padding:'6px 14px',background:T.errorBg,borderBottom:'1px solid '+T.error+'22',fontSize:'12px',color:T.error,flexShrink:0,display:'flex',alignItems:'center',gap:'6px'}}><span><Radio size={13}/>/span><span>Offline</span></div>;
         if (chat.rateLimitTimer>0) return <div style={{padding:'6px 14px',background:T.warningBg,borderBottom:'1px solid '+T.warning+'22',fontSize:'12px',color:T.warning,flexShrink:0,display:'flex',alignItems:'center',gap:'6px'}}><span>⏳</span><span>Rate limit — tunggu {chat.rateLimitTimer}s</span></div>;
         if (project.reconnectTimer>0&&!project.serverOk) return <div style={{padding:'6px 14px',background:T.errorBg,borderBottom:'1px solid '+T.error+'22',fontSize:'12px',color:T.error,flexShrink:0,display:'flex',alignItems:'center',gap:'6px'}}><span className="status-pulse">↺</span><span>Reconnecting···</span></div>;
         if (chat.agentRunning) return <div style={{padding:'6px 14px',background:T.accentBg,borderBottom:'1px solid '+T.accentBorder,fontSize:'12px',color:T.accent,flexShrink:0,display:'flex',alignItems:'center',gap:'6px'}}><span className="status-pulse">●</span><span>Yuyu lagi jalan···</span></div>;
-        if (countTokens(chat.messages)>15000) return <div style={{padding:'6px 14px',background:T.warningBg,borderBottom:'1px solid '+T.warning+'22',fontSize:'12px',color:T.warning,flexShrink:0,display:'flex',alignItems:'center',gap:'6px'}}><span>⚠</span><span>Context besar ~{countTokens(chat.messages)}tk — /compact untuk kompres</span></div>;
+        if (countTokens(chat.messages)>15000) return <div style={{padding:'6px 14px',background:T.warningBg,borderBottom:'1px solid '+T.warning+'22',fontSize:'12px',color:T.warning,flexShrink:0,display:'flex',alignItems:'center',gap:'6px'}}><span><AlertTriangle size={13}/>/span><span>Context besar ~{countTokens(chat.messages)}tk — /compact untuk kompres</span></div>;
         return null;
       })()}
 
@@ -416,14 +417,14 @@ export default function App() {
                 />
               ))}
               {chat.streaming&&(
-                <div style={{padding:'4px 16px'}}>
-                  <div style={{fontSize:'14px',lineHeight:'1.7',color:'#e0e0e0'}}>
+                <div style={{padding:'2px 16px'}}>
+                  <div style={{maxWidth:'92%',fontSize:'14px',lineHeight:'1.7',color:'#e0e0e0'}}>
                     <MsgContent text={chat.streaming}/>
                     <span style={{display:'inline-block',width:'2px',height:'14px',background:'rgba(255,255,255,.6)',marginLeft:'2px',verticalAlign:'middle',animation:'blink 1s infinite'}}/>
                   </div>
                 </div>
               )}
-              {chat.loading&&!chat.streaming&&<div style={{padding:'4px 16px'}}><div style={{color:'rgba(255,255,255,.3)',fontSize:'13px'}}>Yuyu lagi mikir···</div></div>}
+              {chat.loading&&!chat.streaming&&<div style={{padding:'2px 16px'}}><div style={{color:'rgba(255,255,255,.3)',fontSize:'13px'}}>Yuyu lagi mikir···</div></div>}
               <div ref={bottomRef}/>
               </div>
             </div>
@@ -435,9 +436,9 @@ export default function App() {
               <div style={{height:'44px',padding:'0 12px',borderBottom:'1px solid '+T.border,display:'flex',alignItems:'center',gap:'6px',background:T.bg2,position:'sticky',top:0}}>
                 <span style={{fontSize:'11px',color:T.textMute,fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{file.selectedFile}</span>
                 {[
-                  {label:'📌',active:file.pinnedFiles.includes(file.selectedFile),color:T.accent,bg:T.accentBg,border:T.accentBorder,onClick:()=>file.togglePin(file.selectedFile)},
-                  {label:'👁',active:false,color:T.textSec,bg:T.bg3,border:T.border,onClick:()=>ui.setShowBlame(true)},
-                  {label:'📜',active:false,color:T.textSec,bg:T.bg3,border:T.border,onClick:()=>ui.setShowFileHistory(true)},
+                  {label:<Pin size={12}/>,active:file.pinnedFiles.includes(file.selectedFile),color:T.accent,bg:T.accentBg,border:T.accentBorder,onClick:()=>file.togglePin(file.selectedFile)},
+                  {label:<Eye size={12}/>,active:false,color:T.textSec,bg:T.bg3,border:T.border,onClick:()=>ui.setShowBlame(true)},
+                  {label:<ScrollText size={12}/>,active:false,color:T.textSec,bg:T.bg3,border:T.border,onClick:()=>ui.setShowFileHistory(true)},
                   {label:'+ctx',active:false,color:T.success,bg:T.successBg,border:T.success+'33',onClick:()=>{chat.setMessages(m=>[...m,{role:'user',content:'Yu, ini konteks file '+file.selectedFile+':\n```\n'+(file.fileContent||'').slice(0,2000)+'\n```'}]);file.setActiveTab('chat');}},
                   {label:'Tanya',active:false,color:T.accent,bg:T.accentBg,border:T.accentBorder,onClick:()=>sendMsg('Yu, jelaskan file '+file.selectedFile)},
                 ].map((b,i)=>(
@@ -555,11 +556,11 @@ export default function App() {
               <div style={{display:'flex',gap:'8px',alignItems:'flex-end'}}>
                 <button onClick={handleCameraCapture}
                       title="Foto kamera"
-                      style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'18px',cursor:'pointer',padding:'6px',minWidth:'36px',minHeight:'36px',display:'flex',alignItems:'center',justifyContent:'center'}}>📷</button>
+                      style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'18px',cursor:'pointer',padding:'6px',minWidth:'36px',minHeight:'36px',display:'flex',alignItems:'center',justifyContent:'center'}}><Camera size={17}/></button>
                     <button onClick={()=>fileInputRef.current?.click()}
                   style={{background:'none',border:'none',color:T.textMute,fontSize:'18px',cursor:'pointer',flexShrink:0,borderRadius:'10px',minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center'}}
                   onMouseEnter={e=>e.currentTarget.style.color=T.textSec}
-                  onMouseLeave={e=>e.currentTarget.style.color=T.textMute}>📎</button>
+                  onMouseLeave={e=>e.currentTarget.style.color=T.textMute}><Paperclip size={17}/></button>
                 <textarea ref={inputRef} value={chat.input}
                   onChange={e=>{
                     chat.setInput(e.target.value);
@@ -626,7 +627,7 @@ export default function App() {
         <BottomSheet onClose={()=>ui.setShowMemory(false)}>
           <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
             <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🧠 Auto Memories ({chat.memories.length})</span>
+              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}><Brain size={14}/> Auto Memories ({chat.memories.length})</span>
               <button onClick={()=>{chat.setMemories([]);}} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>clear all</button>
               <button onClick={()=>ui.setShowMemory(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
             </div>
@@ -651,7 +652,7 @@ export default function App() {
         <BottomSheet onClose={()=>ui.setShowCheckpoints(false)}>
           <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
             <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>📍 Checkpoints</span>
+              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}><MapPin size={14}/> Checkpoints</span>
               <button onClick={saveCheckpoint} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>+ Save now</button>
               <button onClick={()=>ui.setShowCheckpoints(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
             </div>
@@ -709,7 +710,7 @@ export default function App() {
             <div style={{background:'rgba(0,0,0,.5)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'8px 12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(74,222,128,.8)'}}>node ~/yuyu-server.js &</div>
             <button onClick={()=>{saveFolder(project.folderInput);Preferences.set({key:'yc_onboarded',value:'1'});ui.setShowOnboarding(false);haptic('medium');}}
               style={{background:'#7c3aed',border:'none',borderRadius:'10px',padding:'12px',color:'white',fontSize:'14px',cursor:'pointer',fontWeight:'600',marginTop:'8px'}}>
-              Mulai Coding! 🚀
+              Mulai Coding!
             </button>
           </div>
         </div>
@@ -892,7 +893,7 @@ export default function App() {
               placeholder="commit message..."
               style={{width:'100%',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:'8px',padding:'10px 12px',color:'#f0f0f0',fontSize:'13px',outline:'none',fontFamily:'monospace',marginBottom:'12px',boxSizing:'border-box'}}/>
             <div style={{display:'flex',gap:'8px'}}>
-              <button onClick={()=>ui.setCommitModal(false)} style={{flex:1,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px',padding:'9px',color:'rgba(255,255,255,.4)',fontSize:'12px',cursor:'pointer'}}>Batal</button>
+              <button onClick={()=>ui.setCommitModal(false)} style={{flex:1,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px',padding:'9px',color:'rgba(255,255,255,.4)',fontSize:'12px',cursor:'pointer'}}><X size={13}/> Batal</button>
               <button disabled={!ui.commitMsg.trim()} onClick={()=>{ui.setCommitModal(false);runShortcut('node yugit.cjs "'+ui.commitMsg.trim().replace(/"/g,'\\"')+'"');}}
                 style={{flex:2,background:ui.commitMsg.trim()?T.accent:'rgba(255,255,255,.05)',border:'none',borderRadius:'8px',padding:'9px',color:'white',fontSize:'12px',cursor:ui.commitMsg.trim()?'pointer':'default',fontWeight:'600',opacity:ui.commitMsg.trim()?1:.4}}>
                 ↑ Push

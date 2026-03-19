@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { hl } from '../utils.js';
+import { FileText, Pencil, FileDiff, Folder, FolderOpen, Zap, Search, Globe, Network, ArrowRight, Trash2, Plug, Wrench, Check, X, Scissors, RotateCcw, ClipboardList, ChevronDown, ChevronUp, AlignLeft, Play, Copy } from 'lucide-react';
 
 // ── Design tokens (match THEMES keys) ──────────────────────────────────────────
 // All sizing uses 4px base unit. Touch targets min 44px.
@@ -82,12 +83,20 @@ export function MsgContent({ text }) {
 export function ActionChip({ action }) {
   const [expanded, setExpanded] = useState(false);
   const icons = {
-    read_file:'📄', write_file:'✏️', patch_file:'🩹',
-    list_files:'📁', exec:'⚡', search:'🔍',
-    web_search:'🌐', tree:'🌳', mkdir:'📂',
-    move_file:'→', delete_file:'🗑', mcp:'🔌',
+    read_file:   <FileText size={13}/>,
+    write_file:  <Pencil size={13}/>,
+    patch_file:  <FileDiff size={13}/>,
+    list_files:  <Folder size={13}/>,
+    exec:        <Zap size={13}/>,
+    search:      <Search size={13}/>,
+    web_search:  <Globe size={13}/>,
+    tree:        <Network size={13}/>,
+    mkdir:       <FolderOpen size={13}/>,
+    move_file:   <ArrowRight size={13}/>,
+    delete_file: <Trash2 size={13}/>,
+    mcp:         <Plug size={13}/>,
   };
-  const icon = icons[action.type] || '🔧';
+  const icon = icons[action.type] || <Wrench size={13}/>;
   const label = action.type==='exec' ? (action.command||'').slice(0,44) : (action.path||action.type);
   const ok = action.result ? action.result.ok : null;
 
@@ -104,9 +113,9 @@ export function ActionChip({ action }) {
         <span style={{flexShrink:0}}>{icon}</span>
         <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{label}</span>
         {ok===null&&<span style={{opacity:.4,fontSize:'10px'}}>···</span>}
-        {ok===true&&<span style={{fontSize:'10px'}}>✓</span>}
-        {ok===false&&<span style={{fontSize:'10px'}}>✗</span>}
-        {action.result&&<span style={{opacity:.35,fontSize:'10px',flexShrink:0}}>{expanded?'▲':'▼'}</span>}
+        {ok===true&&<span style={{fontSize:'10px',display:'flex'}}><Check size={10}/></span>}
+        {ok===false&&<span style={{fontSize:'10px',display:'flex'}}><X size={10}/></span>}
+        {action.result&&<span style={{opacity:.35,fontSize:'10px',flexShrink:0}}>{expanded?<ChevronUp size={10}/>:<ChevronDown size={10}/>}</span>}
       </div>
       {expanded&&action.result&&(
         <div style={{background:'#0a0a0b',border:'1px solid rgba(255,255,255,.06)',borderRadius:'8px',padding:'10px 14px',marginTop:'4px',fontFamily:'monospace',fontSize:'12px',color:'rgba(255,255,255,.6)',whiteSpace:'pre-wrap',wordBreak:'break-word',maxHeight:'280px',overflowY:'auto',lineHeight:'1.6'}}>
@@ -144,14 +153,14 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   const rejectBtn  = {background:'rgba(248,113,113,.07)',border:'1px solid rgba(248,113,113,.16)',borderRadius:'10px',padding:'10px 16px',color:'#f87171',fontSize:'13px',cursor:'pointer',minHeight:'44px'};
 
   if (isUser) return (
-    <div style={{display:'flex',justifyContent:'flex-end',padding:'4px 16px 4px 52px',marginBottom:'4px'}}>
+    <div style={{display:'flex',justifyContent:'flex-end',padding:'3px 14px 3px 48px',marginBottom:'2px'}}>
       <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'4px',maxWidth:'84%'}}>
         {editing ? (
           <div style={{display:'flex',flexDirection:'column',gap:'6px',width:'100%'}}>
             {/* Mode toggle */}
             <div style={{display:'flex',gap:'4px',marginBottom:'2px'}}>
-              <button onClick={()=>setSurgical(false)} style={{background:!surgical?'rgba(124,58,237,.2)':'rgba(255,255,255,.04)',border:'1px solid '+(surgical?'rgba(255,255,255,.08)':'rgba(124,58,237,.3)'),borderRadius:'6px',padding:'3px 10px',color:!surgical?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>Teks penuh</button>
-              <button onClick={()=>setSurgical(true)}  style={{background:surgical?'rgba(124,58,237,.2)':'rgba(255,255,255,.04)',border:'1px solid '+(surgical?'rgba(124,58,237,.3)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'3px 10px',color:surgical?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>Surgical trim</button>
+              <button onClick={()=>setSurgical(false)} style={{background:!surgical?'rgba(124,58,237,.2)':'rgba(255,255,255,.04)',border:'1px solid '+(surgical?'rgba(255,255,255,.08)':'rgba(124,58,237,.3)'),borderRadius:'6px',padding:'3px 10px',color:!surgical?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}><AlignLeft size={12}/> Teks penuh</button>
+              <button onClick={()=>setSurgical(true)}  style={{background:surgical?'rgba(124,58,237,.2)':'rgba(255,255,255,.04)',border:'1px solid '+(surgical?'rgba(124,58,237,.3)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'3px 10px',color:surgical?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}><Scissors size={12}/> Surgical</button>
             </div>
             {surgical ? (
               /* Surgical: show each "section" as toggleable chip */
@@ -191,7 +200,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
                 style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'12px',padding:'10px 14px',fontSize:'14px',lineHeight:'1.65',color:'#f0f0f0',resize:'vertical',minHeight:'60px',outline:'none',fontFamily:'inherit'}}/>
             )}
             <div style={{display:'flex',gap:'6px',justifyContent:'flex-end'}}>
-              <button onClick={()=>{setEditing(false);setSurgical(false);}} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'8px',padding:'5px 12px',color:'rgba(255,255,255,.5)',fontSize:'12px',cursor:'pointer'}}>Batal</button>
+              <button onClick={()=>{setEditing(false);setSurgical(false);}} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'8px',padding:'5px 12px',color:'rgba(255,255,255,.5)',fontSize:'12px',cursor:'pointer'}}><X size={12}/> Batal</button>
               <button onClick={()=>{
                 const cleaned = surgical
                   ? editText.split(/\n(?=```|\*\*|##|===|---|\n)/).filter(s=>!s.startsWith('~~REMOVE~~')).join('\n').trim()
@@ -199,21 +208,21 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
                 onEdit(cleaned);
                 setEditing(false);
                 setSurgical(false);
-              }} style={{background:'rgba(124,58,237,.2)',border:'1px solid rgba(124,58,237,.3)',borderRadius:'8px',padding:'5px 14px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',fontWeight:'500'}}>Simpan</button>
+              }} style={{background:'rgba(124,58,237,.2)',border:'1px solid rgba(124,58,237,.3)',borderRadius:'8px',padding:'5px 14px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',fontWeight:'500'}}><Check size={12}/> Simpan</button>
             </div>
           </div>
         ) : (
-          <div style={{background:'rgba(255,255,255,.08)',borderRadius:'18px 18px 4px 18px',padding:'13px 18px',fontSize:'15px',lineHeight:'1.7',color:'#f0f0f0',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>
+          <div style={{background:'rgba(255,255,255,.08)',borderRadius:'18px 18px 4px 18px',padding:'11px 16px',fontSize:'14px',lineHeight:'1.65',color:'#f0f0f0',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>
             {cleanText}
           </div>
         )}
         <div style={{display:'flex',gap:'4px',opacity:actionsVisible?1:0,transition:'opacity .15s'}}
           onMouseEnter={()=>setActionsVisible(true)} onMouseLeave={()=>setActionsVisible(false)}>
           <button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}}
-            onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}>copy</button>
-          {onEdit&&<button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={()=>{setEditText(cleanText);setEditing(true);}}>✏</button>}
-          {onRetry&&<button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={onRetry}>↺</button>}
-          {onDelete&&<button style={{background:'rgba(248,113,113,.07)',border:'1px solid rgba(248,113,113,.14)',padding:'5px 12px',color:'#f87171',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={onDelete}>🗑</button>}
+            onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}<Copy size={13}/></button>
+          {onEdit&&<button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={()=>{setEditText(cleanText);setEditing(true);}}><Pencil size={12}/></button>}
+          {onRetry&&<button style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.07)',padding:'5px 12px',color:'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={onRetry}><RotateCcw size={12}/></button>}
+          {onDelete&&<button style={{background:'rgba(248,113,113,.07)',border:'1px solid rgba(248,113,113,.14)',padding:'5px 12px',color:'#f87171',fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'32px'}} onClick={onDelete}><Trash2 size={12}/></button>}
         </div>
         {/* make hover zone larger */}
         <div style={{position:'absolute',width:'100%',height:'100%',top:0,left:0,pointerEvents:'none'}}
@@ -223,12 +232,12 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   );
 
   return (
-    <div style={{display:'flex',padding:'4px 16px',marginBottom:'8px',gap:'0'}}>
+    <div style={{display:'flex',padding:'3px 14px',marginBottom:'2px',gap:'0'}}>
       <div style={{display:'flex',flexDirection:'column',gap:'2px',width:'100%',maxWidth:'96%'}}>
         {thinkText&&<ThinkingBlock text={thinkText}/>}
 
         {/* AI message — subtle left accent */}
-        <div style={{fontSize:'15px',lineHeight:'1.8',color:'#ddd',wordBreak:'break-word',paddingLeft:'2px'}}>
+        <div style={{fontSize:'14px',lineHeight:'1.75',color:'#ddd',wordBreak:'break-word',paddingLeft:'2px'}}>
           <MsgContent text={cleanText}/>
         </div>
 
@@ -240,7 +249,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
         {/* write_file executed — compact status */}
         {actions.filter(a=>a.type==='write_file'&&a.executed).map((a,i)=>(
           <div key={'w'+i} style={{display:'inline-flex',alignItems:'center',gap:'6px',background:a.result?.ok?'rgba(74,222,128,.06)':'rgba(248,113,113,.06)',border:'1px solid '+(a.result?.ok?'rgba(74,222,128,.14)':'rgba(248,113,113,.14)'),borderRadius:'8px',padding:'7px 12px',fontSize:'12px',fontFamily:'monospace',color:a.result?.ok?'#4ade80':'#f87171',margin:'3px 0'}}>
-            {a.result?.ok?'✓':'✗'} {a.path?.split('/').pop()}
+            {a.result?.ok?<Check size={11}/>:<X size={11}/>} {a.path?.split('/').pop()}
           </div>
         ))}
 
@@ -257,8 +266,8 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
               </div>
             ))}
             <div style={{display:'flex',gap:'8px',marginTop:'2px'}}>
-              <button onClick={()=>onApprove(true,'__all__')} style={approveBtn}>✓ Apply All ({pendingWrites.length})</button>
-              <button onClick={()=>onApprove(false,'__all__')} style={rejectBtn}>✗</button>
+              <button onClick={()=>onApprove(true,'__all__')} style={approveBtn}><Check size={13}/> Apply All ({pendingWrites.length})</button>
+              <button onClick={()=>onApprove(false,'__all__')} style={rejectBtn}><X size={13}/></button>
             </div>
           </div>
         )}
@@ -272,8 +281,8 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
                   <span style={{fontSize:'12px',color:'rgba(255,255,255,.5)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🩹 {a.path}</span>
                 </div>
                 <div style={{display:'flex',gap:'8px',padding:'8px 14px',borderTop:'1px solid rgba(255,255,255,.04)'}}>
-                  <button onClick={()=>onApprove(true,a.path)} style={approveBtn}>✓ Apply</button>
-                  <button onClick={()=>onApprove(false,a.path)} style={rejectBtn}>✗</button>
+                  <button onClick={()=>onApprove(true,a.path)} style={approveBtn}><Check size={13}/> Apply</button>
+                  <button onClick={()=>onApprove(false,a.path)} style={rejectBtn}><X size={13}/></button>
                 </div>
               </div>
             ))}
@@ -283,19 +292,19 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
         {/* Plan approval */}
         {hasPlan&&onPlanApprove&&(
           <div style={{display:'flex',gap:'8px',margin:'10px 0 4px'}}>
-            <button onClick={()=>onPlanApprove(true)} style={approveBtn}>✓ Jalankan Plan</button>
-            <button onClick={()=>onPlanApprove(false)} style={rejectBtn}>✗ Ubah</button>
+            <button onClick={()=>onPlanApprove(true)} style={approveBtn}><Play size={13}/> Jalankan Plan</button>
+            <button onClick={()=>onPlanApprove(false)} style={rejectBtn}><X size={13}/> Ubah</button>
           </div>
         )}
 
         {/* Auto-fix */}
         {isLast&&onAutoFix&&hasError&&(
-          <button onClick={onAutoFix} style={{...rejectBtn,alignSelf:'flex-start',marginTop:'6px',fontSize:'12px',padding:'8px 14px'}}>🔧 Auto-fix</button>
+          <button onClick={onAutoFix} style={{...rejectBtn,alignSelf:'flex-start',marginTop:'6px',fontSize:'12px',padding:'8px 14px'}}><Wrench size={13}/> Auto-fix</button>
         )}
 
         {/* Continue */}
         {isContinued&&onContinue&&(
-          <button onClick={onContinue} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'10px',padding:'10px 18px',color:'#a78bfa',fontSize:'13px',cursor:'pointer',alignSelf:'flex-start',marginTop:'4px',minHeight:'44px'}}>↓ Lanjutkan</button>
+          <button onClick={onContinue} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'10px',padding:'10px 18px',color:'#a78bfa',fontSize:'13px',cursor:'pointer',alignSelf:'flex-start',marginTop:'4px',minHeight:'44px'}}><ChevronDown size={14}/> Lanjutkan</button>
         )}
 
         {/* Message actions */}
@@ -303,19 +312,19 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
           <button style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.2)',fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'32px'}}
             onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,.5)'}
             onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.2)'}
-            onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}>copy</button>
+            onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}<Copy size={13}/></button>
           {onEdit&&<button style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.15)',fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'32px'}}
             onMouseEnter={e=>e.currentTarget.style.color='rgba(167,139,250,.8)'}
             onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.15)'}
-            onClick={()=>{setEditText(cleanText);setSurgical(true);setEditing(true);}}>✂</button>}
+            onClick={()=>{setEditText(cleanText);setSurgical(true);setEditing(true);}}><Scissors size={12}/></button>}
           {onDelete&&<button style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.15)',fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'32px'}}
             onMouseEnter={e=>e.currentTarget.style.color='#f87171'}
             onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.15)'}
-            onClick={onDelete}>🗑</button>}
+            onClick={onDelete}><Trash2 size={12}/></button>}
           {isLast&&onRetry&&<button style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.2)',fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'32px'}}
             onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,.5)'}
             onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.2)'}
-            onClick={onRetry}>↺ retry</button>}
+            onClick={onRetry}><RotateCcw size={12}/> retry</button>}
         </div>
       </div>
     </div>
