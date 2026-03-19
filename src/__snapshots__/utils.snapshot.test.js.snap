@@ -1,0 +1,34 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`hl snapshots > bash snapshot 1`] = `
+"<span style="color:#6a737d">#!/bin/bash</span>
+<span style="color:#c678dd">echo</span> <span style="color:#98c379">"Hello $USER"</span>
+<span style="color:#c678dd">git</span> commit -m <span style="color:#98c379">"fix"</span>"
+`;
+
+exports[`hl snapshots > css snapshot 1`] = `
+"<span style="color:#79b8ff">.container</span>{ <span style="color:#b392f0">color</span>: <span style="color:#98c379">red</span>; <span style="color:#b392f0">margin</span>: <span style="color:#98c379">10px</span>; }
+<span style="color:#6a737d">/* comment */</span>
+<span style="color:#79b8ff">#id</span>{ <span style="color:#b392f0">display</span>: <span style="color:#98c379">flex</span>; }"
+`;
+
+exports[`hl snapshots > html special chars are escaped before highlight 1`] = `"&lt;script&gt;alert(<span style="color:#98c379">"xss"</span>)&lt;/script&gt;"`;
+
+exports[`hl snapshots > js snapshot 1`] = `
+"<span style="color:#c678dd">const</span> <span style="color:#79b8ff">App</span> = () =&gt; {
+  <span style="color:#c678dd">const</span> [x, setX] = useState(<span style="color:#d19a66">42</span>);
+  <span style="color:#c678dd">return</span> <span style="color:#c678dd">null</span>;
+};"
+`;
+
+exports[`hl snapshots > json snapshot 1`] = `"{<span style="color:#79b8ff">"name"</span>: <span style="color:#98c379">"Yuyu"</span>, <span style="color:#79b8ff">"age"</span>: <span style="color:#d19a66">1</span>, <span style="color:#79b8ff">"active"</span>: <span style="color:#f97583">true</span>}"`;
+
+exports[`hl snapshots > python snapshot 1`] = `
+"<span style="color:#c678dd">def</span> greet(name):
+    <span style="color:#c678dd">return</span> f<span style="color:#98c379">"Hello {name}"</span>
+
+<span style="color:#c678dd">if</span> <span style="color:#c678dd">True</span>:
+    print(<span style="color:#c678dd">None</span>)"
+`;
+
+exports[`hl snapshots > unknown lang falls back to js highlighter 1`] = `"<span style="color:#c678dd">const</span> x = <span style="color:#d19a66">1</span>;"`;
