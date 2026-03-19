@@ -916,3 +916,220 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
     </BottomSheet>
   );
 }
+
+// ── DeployPanel ───────────────────────────────────────────────────────────────
+export function DeployPanel({ deployLog, loading, onDeploy, onClose }) {
+  return (
+    <BottomSheet onClose={onClose}>
+      <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🚀 Deploy</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+        </div>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}}>
+          {['github','vercel','netlify','railway'].map(p=>(
+            <button key={p} onClick={()=>onDeploy(p)} disabled={loading}
+              style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'8px',padding:'8px 16px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',fontWeight:'500'}}>
+              {p==='github'?'📤 Git Push':p==='vercel'?'▲ Vercel':p==='netlify'?'◈ Netlify':'🚂 Railway'}
+            </button>
+          ))}
+        </div>
+        {deployLog
+          ? <div style={{flex:1,background:'#0a0a0b',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px',padding:'12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(255,255,255,.7)',overflowY:'auto',whiteSpace:'pre-wrap'}}>{deployLog}</div>
+          : <div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Pilih platform untuk deploy~</div>
+        }
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ── McpPanel ──────────────────────────────────────────────────────────────────
+export function McpPanel({ mcpTools, folder, onResult, onClose }) {
+  const defaultTools = [['git',['status','log','diff']],['fetch',['browse']],['sqlite',['tables']],['github',['issues','pulls']],['system',['disk','memory']],['filesystem',['list']]];
+  const entries = Object.keys(mcpTools).length > 0 ? Object.entries(mcpTools) : defaultTools;
+  return (
+    <BottomSheet onClose={onClose}>
+      <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔌 MCP Tools</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+        </div>
+        {Object.keys(mcpTools).length === 0 && (
+          <div style={{color:'rgba(255,255,255,.3)',fontSize:'12px',padding:'8px 0'}}>Tidak ada MCP tools terdeteksi dari server.<br/>Pastikan yuyu-server.js sudah jalan.</div>
+        )}
+        {entries.map(([tool, actions])=>(
+          <div key={tool} style={{padding:'10px 12px',marginBottom:'6px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(74,222,128,.1)',borderRadius:'8px'}}>
+            <span style={{fontSize:'13px',color:'#4ade80',fontFamily:'monospace',fontWeight:'600'}}>{tool}</span>
+            <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginTop:'6px'}}>
+              {(Array.isArray(actions)?actions:Object.keys(actions)).map(act=>(
+                <button key={act} onClick={()=>onResult(tool,act)}
+                  style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'4px',padding:'2px 8px',color:'rgba(74,222,128,.8)',fontSize:'10px',cursor:'pointer',fontFamily:'monospace'}}>{act}</button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ── GitHubPanel ───────────────────────────────────────────────────────────────
+export function GitHubPanel({ githubRepo, githubToken, githubData, onRepoChange, onTokenChange, onFetch, onAskYuyu, onClose }) {
+  return (
+    <BottomSheet onClose={onClose}>
+      <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⑂ GitHub</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'12px'}}>
+          <input value={githubRepo} onChange={e=>onRepoChange(e.target.value)} placeholder="owner/repo" style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
+          <input value={githubToken} onChange={e=>onTokenChange(e.target.value)} placeholder="GitHub token" type="password" style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
+          <div style={{display:'flex',gap:'6px'}}>
+            <button onClick={()=>onFetch('issues')} style={{background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.2)',borderRadius:'6px',padding:'5px 12px',color:'#818cf8',fontSize:'11px',cursor:'pointer',flex:1}}>📋 Issues</button>
+            <button onClick={()=>onFetch('pulls')} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'6px',padding:'5px 12px',color:'#4ade80',fontSize:'11px',cursor:'pointer',flex:1}}>🔀 PRs</button>
+          </div>
+        </div>
+        <div style={{flex:1,overflowY:'auto'}}>
+          {githubData&&Array.isArray(githubData.data)&&githubData.data.map((item,i)=>(
+            <div key={i} style={{padding:'8px 10px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:'7px'}}>
+              <div style={{fontSize:'12px',color:'rgba(255,255,255,.8)',marginBottom:'2px'}}>#{item.number} {item.title}</div>
+              <div style={{fontSize:'10px',color:'rgba(255,255,255,.35)'}}>{item.state} · {item.user?.login}</div>
+              <button onClick={()=>onAskYuyu(item)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'4px',padding:'2px 7px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',marginTop:'4px'}}>Ask Yuyu</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ── SessionsPanel ─────────────────────────────────────────────────────────────
+export function SessionsPanel({ sessions, onRestore, onClose }) {
+  return (
+    <BottomSheet onClose={onClose}>
+      <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>💾 Saved Sessions</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+        </div>
+        {sessions.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada sesi tersimpan. Ketik /save~</div>}
+        <div style={{flex:1,overflowY:'auto'}}>
+          {sessions.map(s=>(
+            <div key={s.id} style={{padding:'10px 12px',marginBottom:'6px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px',display:'flex',alignItems:'center',gap:'8px'}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:'13px',color:'#f0f0f0',fontWeight:'500'}}>{s.name}</div>
+                <div style={{fontSize:'10px',color:'rgba(255,255,255,.35)'}}>{s.folder} · {new Date(s.savedAt).toLocaleString('id')} · {s.messages?.length||0} pesan</div>
+              </div>
+              <button onClick={()=>onRestore(s)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'6px',padding:'4px 10px',color:'#a78bfa',fontSize:'11px',cursor:'pointer'}}>Restore</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ── PermissionsPanel ──────────────────────────────────────────────────────────
+export function PermissionsPanel({ permissions, accentColor, onToggle, onReset, onClose }) {
+  const T = accentColor || '#7c3aed';
+  return (
+    <BottomSheet onClose={onClose}>
+      <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔐 Tool Permissions</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+        </div>
+        <div style={{flex:1,overflowY:'auto'}}>
+          {Object.entries(permissions).map(([tool,allowed])=>(
+            <div key={tool} style={{display:'flex',alignItems:'center',padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:'13px',color:'#f0f0f0',fontFamily:'monospace'}}>{tool}</div>
+                <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)'}}>{allowed?'Auto-run':'Butuh konfirmasi'}</div>
+              </div>
+              <div onClick={()=>onToggle(tool)} style={{width:'42px',height:'24px',borderRadius:'12px',background:allowed?T:'rgba(255,255,255,.1)',cursor:'pointer',position:'relative',transition:'all .2s',flexShrink:0}}>
+                <div style={{position:'absolute',top:'3px',left:allowed?'21px':'3px',width:'18px',height:'18px',borderRadius:'50%',background:'white',transition:'all .2s'}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={onReset} style={{marginTop:'12px',background:'rgba(248,113,113,.1)',border:'1px solid rgba(248,113,113,.2)',borderRadius:'10px',padding:'10px',color:'#f87171',fontSize:'12px',cursor:'pointer',minHeight:'44px'}}>Reset ke Default</button>
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ── PluginsPanel ──────────────────────────────────────────────────────────────
+const BUILTIN_PLUGINS = [
+  {id:'auto_commit',  name:'Auto Commit',   desc:'Commit otomatis setelah write_file', hookType:'postWrite', cmd:'cd {{context}} && git add -A && git commit -m "auto: yuyu save $(date +%H:%M)"'},
+  {id:'lint_on_save', name:'Lint on Save',  desc:'ESLint check sebelum save',          hookType:'preWrite',  cmd:'cd {{context}} && npx eslint src --max-warnings 0 2>&1 | tail -5'},
+  {id:'test_runner',  name:'Test Runner',   desc:'Jalankan tests setelah write',       hookType:'postWrite', cmd:'cd {{context}} && npm test -- --watchAll=false --passWithNoTests 2>&1 | tail -10'},
+  {id:'auto_push',   name:'Git Auto Push', desc:'Push ke remote setelah commit',       hookType:'postWrite', cmd:'node yugit.cjs "auto push"'},
+];
+export function PluginsPanel({ activePlugins, folder, onToggle, onClose }) {
+  return (
+    <BottomSheet onClose={onClose}>
+      <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔌 Plugin Marketplace</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+        </div>
+        {BUILTIN_PLUGINS.map(p=>{
+          const isActive=!!activePlugins[p.id];
+          return (
+            <div key={p.id} style={{padding:'10px 12px',marginBottom:'8px',background:isActive?'rgba(74,222,128,.04)':'rgba(255,255,255,.03)',border:'1px solid '+(isActive?'rgba(74,222,128,.18)':'rgba(255,255,255,.07)'),borderRadius:'8px',display:'flex',alignItems:'center',gap:'10px'}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:'13px',color:isActive?'#4ade80':'#f0f0f0',fontWeight:'500',marginBottom:'2px'}}>{p.name}</div>
+                <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'3px'}}>{p.desc}</div>
+                <div style={{fontSize:'9px',color:'rgba(255,255,255,.2)',fontFamily:'monospace'}}>{p.hookType}</div>
+              </div>
+              <div onClick={()=>onToggle(p,isActive,folder)} style={{width:'42px',height:'24px',borderRadius:'12px',background:isActive?'#4ade80':'rgba(255,255,255,.1)',cursor:'pointer',position:'relative',transition:'all .2s',flexShrink:0}}>
+                <div style={{position:'absolute',top:'3px',left:isActive?'21px':'3px',width:'18px',height:'18px',borderRadius:'50%',background:'white',transition:'all .2s'}}/>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ── ConfigPanel ───────────────────────────────────────────────────────────────
+export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, models, onEffort, onFontSize, onTheme, onModel, onThinking, onClose }) {
+  const configs = [
+    {label:'Effort Level', value:effort,         options:['low','medium','high'],      onChange:onEffort},
+    {label:'Font Size',    value:String(fontSize), options:['12','13','14','15','16'], onChange:v=>onFontSize(parseInt(v))},
+    {label:'Theme',        value:theme,            options:['dark','darker','midnight','rose'], onChange:onTheme},
+    {label:'Model',        value:model,            options:models.map(m=>m.id),        onChange:onModel},
+  ];
+  return (
+    <BottomSheet onClose={onClose}>
+      <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:'16px'}}>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⚙️ Config</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+        </div>
+        <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'12px'}}>
+          {configs.map(cfg=>(
+            <div key={cfg.label} style={{padding:'10px 12px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px'}}>
+              <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'6px'}}>{cfg.label}</div>
+              <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+                {cfg.options.map(opt=>(
+                  <button key={opt} onClick={()=>cfg.onChange(opt)} style={{background:cfg.value===opt?'rgba(124,58,237,.3)':'rgba(255,255,255,.05)',border:'1px solid '+(cfg.value===opt?'rgba(124,58,237,.5)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:cfg.value===opt?'#a78bfa':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>
+                    {opt.length>20?opt.slice(0,20)+'…':opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div style={{padding:'10px 12px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px'}}>
+            <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'6px'}}>Extended Thinking</div>
+            <button onClick={onThinking} style={{background:thinkingEnabled?'rgba(124,58,237,.3)':'rgba(255,255,255,.05)',border:'1px solid '+(thinkingEnabled?'rgba(124,58,237,.5)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:thinkingEnabled?'#a78bfa':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer'}}>
+              {thinkingEnabled?'✅ ON':'○ OFF'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}

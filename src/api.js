@@ -1,4 +1,4 @@
-import { CEREBRAS_KEY, GROQ_KEY, YUYU_SERVER, WS_SERVER, MODELS } from './constants.js';
+import { CEREBRAS_KEY, GROQ_KEY, YUYU_SERVER, WS_SERVER, MODELS, FALLBACK_MODEL } from './constants.js';
 
 // ── SHARED SSE STREAM READER ───────────────────────────────────────────────────
 export async function readSSEStream(resp, onChunk, signal) {
@@ -132,7 +132,7 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
 
     // Rate limit → auto-switch ke Groq
     if (e.message.startsWith('RATE_LIMIT:') && GROQ_KEY) {
-      const fallbackModel = 'moonshotai/kimi-k2-instruct-0905';
+      const fallbackModel = FALLBACK_MODEL;
       try {
         return await _groqOnce(messages, fallbackModel, onChunk, signal, options);
       } catch (ge) {

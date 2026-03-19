@@ -5,6 +5,17 @@ export const YUYU_SERVER  = 'http://localhost:8765';
 export const WS_SERVER    = 'ws://127.0.0.1:8766';
 export const MAX_HISTORY  = 60;
 
+// ── Agent loop limits ─────────────────────────────────────────────────────────
+export const AUTO_COMPACT_CHARS   = 80_000;  // trigger auto-compact
+export const AUTO_COMPACT_MIN_MSG = 12;      // min messages before auto-compact
+export const MAX_FILE_PREVIEW     = 2_000;   // chars of open file injected to context
+export const MAX_SKILL_PREVIEW    = 6_000;   // max chars per skill in context
+export const CONTEXT_RECENT_KEEP  = 6;       // messages kept after compact
+
+// ── Vision ───────────────────────────────────────────────────────────────────
+export const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+export const FALLBACK_MODEL = 'moonshotai/kimi-k2-instruct-0905';
+
 export const MODELS = [
   // Cerebras — ultra-fast inference
   { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥',  provider: 'cerebras' },

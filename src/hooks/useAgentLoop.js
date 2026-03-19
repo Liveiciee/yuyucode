@@ -1,8 +1,8 @@
-import { useRef } from 'react';
+import { useRef, useCallback } from 'react';
 import { askCerebrasStream, callServer } from '../api.js';
 import { parseActions, executeAction, resolvePath } from '../utils.js';
 import { runHooksV2, checkPermission, tokenTracker, parseElicitation, tfidfRank, selectSkills } from '../features.js';
-import { BASE_SYSTEM } from '../constants.js';
+import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL } from '../constants.js';
 
 export function useAgentLoop({
   project, chat, file, ui,
@@ -15,7 +15,7 @@ export function useAgentLoop({
   function callAI(msgs, onChunk, signal, imageBase64) {
     const cfg = project.effortCfg;
     // Llama 4 Scout support vision, llama-3.3-70b tidak
-    const model = imageBase64 ? 'meta-llama/llama-4-scout-17b-16e-instruct' : project.model;
+    const model = imageBase64 ? VISION_MODEL : project.model;
     return askCerebrasStream(msgs, model, onChunk, signal, {
       maxTokens: cfg.maxTokens,
       imageBase64,
@@ -63,7 +63,37 @@ export function useAgentLoop({
     return result;
   }
 
-  // ── sendMsg — agent loop ──
+  // ── buildSystemPrompt ───────────────────────────────────────────────────────
+  function buildSystemPrompt(txt, cfg) {
+    const stripFrontmatter = s => s.replace(/^---[\s\S]*?---\n?/, '').trim();
+    const notesCtx    = project.notes ? '\n\nProject notes:\n' + project.notes : '';
+    const selectedSkills = selectSkills((project.skills || []).filter(s => s.active !== false), txt);
+    const skillCtx    = selectedSkills.length
+      ? '\n\nSkill context:\n' + selectedSkills.map(s => '## ' + s.name + '\n' + stripFrontmatter(s.content || '')).join('\n\n---\n\n')
+      : '';
+    const pinnedCtx   = file.pinnedFiles.length ? '\n\nPinned files: ' + file.pinnedFiles.join(', ') : '';
+    const fileCtx     = file.selectedFile && file.fileContent
+      ? '\n\nFile terbuka: ' + file.selectedFile + '\n```\n' + file.fileContent.slice(0, MAX_FILE_PREVIEW) + '\n```'
+      : '';
+    const memPool     = chat.getRelevantMemories(txt);
+    const memCtx      = memPool.length ? '\n\nMemories:\n' + memPool.map(m => '• ' + m.text).join('\n') : '';
+    const visionCtx   = chat.visionImage ? '\n\n[Gambar dilampirkan]' : '';
+    const agentMemCtx = ['user', 'project', 'local'].map(s => {
+      const pool   = project.agentMemory[s] || [];
+      if (!pool.length) return '';
+      const ranked = tfidfRank(pool, txt, 5);
+      return '\n\n[' + s + ' memory]:\n' + ranked.map(mx => '• ' + mx.text).join('\n');
+    }).join('');
+    const thinkNote   = project.thinkingEnabled
+      ? '\n\nSebelum respons, tulis reasoning dalam <think>...</think>. Singkat, max 2 kalimat.'
+      : '';
+    return BASE_SYSTEM + cfg.systemSuffix + thinkNote +
+      '\n\nFolder aktif: ' + project.folder +
+      '\nBranch: ' + project.branch +
+      notesCtx + skillCtx + pinnedCtx + fileCtx + memCtx + agentMemCtx + visionCtx;
+  }
+
+    // ── sendMsg — agent loop ──
   async function sendMsg(override) {
     const txt = (override || chat.input).trim();
     if (!txt || chat.loading) return;
@@ -94,7 +124,7 @@ export function useAgentLoop({
 
     // Auto-compact jika context > 80K chars
     const totalChars = history.reduce((a, m) => a + (m.content?.length || 0), 0);
-    if (totalChars > 80000 && history.length > 12) {
+    if (totalChars > AUTO_COMPACT_CHARS && history.length > AUTO_COMPACT_MIN_MSG) {
       chat.setMessages(m => [...m, {
         role: 'assistant',
         content: '📦 Auto-compact — context ~' + Math.round(totalChars / 1000) + 'K chars...',
@@ -107,36 +137,7 @@ export function useAgentLoop({
 
     try {
       const cfg = project.effortCfg;
-
-      // ── Build system context ──
-      const notesCtx   = project.notes ? '\n\nProject notes:\n' + project.notes : '';
-      // Inject active + relevant skills dari .claude/skills/
-      const _stripFrontmatter = s => s.replace(/^---[\s\S]*?---\n?/, '').trim();
-      const _selectedSkills = selectSkills((project.skills || []).filter(s => s.active !== false), txt);
-      const skillCtx = _selectedSkills.length
-        ? '\n\nSkill context:\n' + _selectedSkills.map(s => '## ' + s.name + '\n' + _stripFrontmatter(s.content || '')).join('\n\n---\n\n')
-        : '';
-      const pinnedCtx  = file.pinnedFiles.length ? '\n\nPinned files: ' + file.pinnedFiles.join(', ') : '';
-      const fileCtx    = file.selectedFile && file.fileContent
-        ? '\n\nFile terbuka: ' + file.selectedFile + '\n```\n' + file.fileContent.slice(0, 2000) + '\n```'
-        : '';
-      const memPool   = chat.getRelevantMemories(txt);
-      const memCtx    = memPool.length ? '\n\nMemories:\n' + memPool.map(m => '• ' + m.text).join('\n') : '';
-      const visionCtx = chat.visionImage ? '\n\n[Gambar dilampirkan]' : '';
-      const agentMemCtx = ['user', 'project', 'local'].map(s => {
-        const pool = project.agentMemory[s] || [];
-        if (!pool.length) return '';
-        const ranked = tfidfRank(pool, txt, 5);
-        return '\n\n[' + s + ' memory]:\n' + ranked.map(mx => '• ' + mx.text).join('\n');
-      }).join('');
-      const thinkNote = project.thinkingEnabled
-        ? '\n\nSebelum respons, tulis reasoning dalam <think>...</think>. Singkat, max 2 kalimat.'
-        : '';
-
-      const systemPrompt = BASE_SYSTEM + cfg.systemSuffix + thinkNote +
-        '\n\nFolder aktif: ' + project.folder +
-        '\nBranch: ' + project.branch +
-        notesCtx + skillCtx + pinnedCtx + fileCtx + memCtx + agentMemCtx + visionCtx;
+      const systemPrompt = buildSystemPrompt(txt, cfg);
 
       // ── Pre-load pinned files ──
       autoContextRef.current = {};

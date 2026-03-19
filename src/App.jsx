@@ -10,7 +10,7 @@ import { FileEditor } from './components/FileEditor.jsx';
 import { Terminal } from './components/Terminal.jsx';
 import { SearchBar, UndoBar } from './components/SearchBar.jsx';
 import { VoiceBtn, PushToTalkBtn } from './components/VoiceBtn.jsx';
-import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel, BottomSheet, SkillsPanel } from './components/panels.jsx';
+import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel, BottomSheet, SkillsPanel, DeployPanel, McpPanel, GitHubPanel, SessionsPanel, PermissionsPanel, PluginsPanel, ConfigPanel } from './components/panels.jsx';
 import { useSlashCommands } from './hooks/useSlashCommands.js';
 import { useUIStore }        from './hooks/useUIStore.js';
 import { useProjectStore }   from './hooks/useProjectStore.js';
@@ -707,154 +707,67 @@ export default function App() {
 
       {/* MCP */}
       {ui.showMCP&&(
-        <BottomSheet onClose={()=>ui.setShowMCP(false)}>
-          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-            <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔌 MCP Tools</span>
-              <button onClick={()=>ui.setShowMCP(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
-            </div>
-            {Object.keys(project.mcpTools).length === 0 && (
-              <div style={{color:'rgba(255,255,255,.3)',fontSize:'12px',padding:'8px 0'}}>Tidak ada MCP tools terdeteksi dari server.<br/>Pastikan yuyu-server.js sudah jalan.</div>
-            )}
-            {(Object.keys(project.mcpTools).length > 0
-              ? Object.entries(project.mcpTools)
-              : [['git',['status','log','diff']],['fetch',['browse']],['sqlite',['tables']],['github',['issues','pulls']],['system',['disk','memory']],['filesystem',['list']]]
-            ).map(([tool, actions])=>(
-              <div key={tool} style={{padding:'10px 12px',marginBottom:'6px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(74,222,128,.1)',borderRadius:'8px'}}>
-                <span style={{fontSize:'13px',color:'#4ade80',fontFamily:'monospace',fontWeight:'600'}}>{tool}</span>
-                <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginTop:'6px'}}>
-                  {(Array.isArray(actions) ? actions : Object.keys(actions)).map(act=>(
-                    <button key={act} onClick={async()=>{const r=await callServer({type:'mcp',tool,action:act,params:{path:project.folder}});chat.setMessages(m=>[...m,{role:'assistant',content:`🔌 ${tool}/${act}:\n\`\`\`\n${(r.data||'').slice(0,1000)}\n\`\`\``,actions:[]}]);ui.setShowMCP(false);}}
-                      style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'4px',padding:'2px 8px',color:'rgba(74,222,128,.8)',fontSize:'10px',cursor:'pointer',fontFamily:'monospace'}}>{act}</button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </BottomSheet>
+        <McpPanel
+          mcpTools={project.mcpTools}
+          folder={project.folder}
+          onResult={async(tool,act)=>{const r=await callServer({type:'mcp',tool,action:act,params:{path:project.folder}});chat.setMessages(m=>[...m,{role:'assistant',content:`🔌 ${tool}/${act}:\n\`\`\`\n${(r.data||'').slice(0,1000)}\n\`\`\``,actions:[]}]);ui.setShowMCP(false);}}
+          onClose={()=>ui.setShowMCP(false)}
+        />
       )}
 
       {/* GITHUB */}
       {ui.showGitHub&&(
-        <BottomSheet onClose={()=>ui.setShowGitHub(false)}>
-          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-            <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⑂ GitHub</span>
-              <button onClick={()=>ui.setShowGitHub(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'12px'}}>
-              <input value={project.githubRepo} onChange={e=>project.setGithubRepo(e.target.value)} placeholder="owner/repo" style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
-              <input value={project.githubToken} onChange={e=>project.setGithubToken(e.target.value)} placeholder="GitHub token" type="password" style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'6px',padding:'7px 10px',color:'#f0f0f0',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
-              <div style={{display:'flex',gap:'6px'}}>
-                <button onClick={()=>fetchGitHub('issues')} style={{background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.2)',borderRadius:'6px',padding:'5px 12px',color:'#818cf8',fontSize:'11px',cursor:'pointer',flex:1}}>📋 Issues</button>
-                <button onClick={()=>fetchGitHub('pulls')} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.15)',borderRadius:'6px',padding:'5px 12px',color:'#4ade80',fontSize:'11px',cursor:'pointer',flex:1}}>🔀 PRs</button>
-              </div>
-            </div>
-            <div style={{flex:1,overflowY:'auto'}}>
-              {project.githubData&&Array.isArray(project.githubData.data)&&project.githubData.data.map((item,i)=>(
-                <div key={i} style={{padding:'8px 10px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:'7px'}}>
-                  <div style={{fontSize:'12px',color:'rgba(255,255,255,.8)',marginBottom:'2px'}}>#{item.number} {item.title}</div>
-                  <div style={{fontSize:'10px',color:'rgba(255,255,255,.35)'}}>{item.state} · {item.user?.login}</div>
-                  <button onClick={()=>{chat.setMessages(m=>[...m,{role:'user',content:'Bantu fix issue: #'+item.number+' '+item.title+'\n\n'+item.body?.slice(0,300)}]);ui.setShowGitHub(false);}} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'4px',padding:'2px 7px',color:'#a78bfa',fontSize:'10px',cursor:'pointer',marginTop:'4px'}}>Ask Yuyu</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </BottomSheet>
+        <GitHubPanel
+          githubRepo={project.githubRepo}
+          githubToken={project.githubToken}
+          githubData={project.githubData}
+          onRepoChange={v=>project.setGithubRepo(v)}
+          onTokenChange={v=>project.setGithubToken(v)}
+          onFetch={fetchGitHub}
+          onAskYuyu={item=>{chat.setMessages(m=>[...m,{role:'user',content:'Bantu fix issue: #'+item.number+' '+item.title+'\n\n'+item.body?.slice(0,300)}]);ui.setShowGitHub(false);}}
+          onClose={()=>ui.setShowGitHub(false)}
+        />
       )}
 
       {/* SESSIONS */}
       {ui.showSessions&&(
-        <BottomSheet onClose={()=>ui.setShowSessions(false)}>
-          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-            <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>💾 Saved Sessions</span>
-              <button onClick={()=>ui.setShowSessions(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
-            </div>
-            {ui.sessionList.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada sesi tersimpan. Ketik /save~</div>}
-            <div style={{flex:1,overflowY:'auto'}}>
-              {ui.sessionList.map(s=>(
-                <div key={s.id} style={{padding:'10px 12px',marginBottom:'6px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px',display:'flex',alignItems:'center',gap:'8px'}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:'13px',color:'#f0f0f0',fontWeight:'500'}}>{s.name}</div>
-                    <div style={{fontSize:'10px',color:'rgba(255,255,255,.35)'}}>{s.folder} · {new Date(s.savedAt).toLocaleString('id')} · {s.messages?.length||0} pesan</div>
-                  </div>
-                  <button onClick={()=>{chat.setMessages(s.messages||[]);project.setFolder(s.folder||'');project.setFolderInput(s.folder||'');ui.setShowSessions(false);chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Sesi **'+s.name+'** dipulihkan.',actions:[]}]);}} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'6px',padding:'4px 10px',color:'#a78bfa',fontSize:'11px',cursor:'pointer'}}>Restore</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </BottomSheet>
+        <SessionsPanel
+          sessions={ui.sessionList}
+          onRestore={s=>{chat.setMessages(s.messages||[]);project.setFolder(s.folder||'');project.setFolderInput(s.folder||'');ui.setShowSessions(false);chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Sesi **'+s.name+'** dipulihkan.',actions:[]}]);}}
+          onClose={()=>ui.setShowSessions(false)}
+        />
       )}
 
       {/* PERMISSIONS */}
       {ui.showPermissions&&(
-        <BottomSheet onClose={()=>ui.setShowPermissions(false)}>
-          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-            <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔐 Tool Permissions</span>
-              <button onClick={()=>ui.setShowPermissions(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
-            </div>
-            <div style={{flex:1,overflowY:'auto'}}>
-              {Object.entries(project.permissions).map(([tool,allowed])=>(
-                <div key={tool} style={{display:'flex',alignItems:'center',padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:'13px',color:'#f0f0f0',fontFamily:'monospace'}}>{tool}</div>
-                    <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)'}}>{allowed?'Auto-run':'Butuh konfirmasi'}</div>
-                  </div>
-                  <div onClick={()=>{const next={...project.permissions,[tool]:!allowed};project.setPermissions(next);}} style={{width:'42px',height:'24px',borderRadius:'12px',background:allowed?'#7c3aed':'rgba(255,255,255,.1)',cursor:'pointer',position:'relative',transition:'all .2s',flexShrink:0}}>
-                    <div style={{position:'absolute',top:'3px',left:allowed?'21px':'3px',width:'18px',height:'18px',borderRadius:'50%',background:'white',transition:'all .2s'}}/>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button onClick={()=>project.setPermissions({read_file:true,write_file:true,exec:true,list_files:true,search:true,mcp:false,delete_file:false,browse:false})} style={{marginTop:'12px',background:T.errorBg,border:'1px solid '+T.error+'33',borderRadius:'10px',padding:'10px',color:T.error,fontSize:'12px',cursor:'pointer',minHeight:'44px'}}>Reset ke Default</button>
-          </div>
-        </BottomSheet>
+        <PermissionsPanel
+          permissions={project.permissions}
+          accentColor={T.accent}
+          onToggle={tool=>project.setPermissions({...project.permissions,[tool]:!project.permissions[tool]})}
+          onReset={()=>project.setPermissions({read_file:true,write_file:true,exec:true,list_files:true,search:true,mcp:false,delete_file:false,browse:false})}
+          onClose={()=>ui.setShowPermissions(false)}
+        />
       )}
 
       {/* PLUGINS */}
       {ui.showPlugins&&(
-        <BottomSheet onClose={()=>ui.setShowPlugins(false)}>
-          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-            <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🔌 Plugin Marketplace</span>
-              <button onClick={()=>ui.setShowPlugins(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
-            </div>
-            {[
-              {id:'auto_commit',  name:'Auto Commit',   desc:'Commit otomatis setelah write_file', hookType:'postWrite', cmd:'cd {{context}} && git add -A && git commit -m "auto: yuyu save $(date +%H:%M)"'},
-              {id:'lint_on_save', name:'Lint on Save',  desc:'ESLint check sebelum save',          hookType:'preWrite',  cmd:'cd {{context}} && npx eslint src --max-warnings 0 2>&1 | tail -5'},
-              {id:'test_runner',  name:'Test Runner',   desc:'Jalankan tests setelah write',       hookType:'postWrite', cmd:'cd {{context}} && npm test -- --watchAll=false --passWithNoTests 2>&1 | tail -10'},
-              {id:'auto_push',   name:'Git Auto Push', desc:'Push ke remote setelah commit',       hookType:'postWrite', cmd:'node yugit.cjs "auto push"'},
-            ].map(p=>{
-              const isActive=!!project.activePlugins[p.id];
-              function togglePlugin(){
-                const newActive={...project.activePlugins,[p.id]:!isActive};
-                project.setActivePlugins(newActive);
-                project.setHooks(prev=>{
-                  const hooksForType=[...(prev[p.hookType]||[])];
-                  const idx=hooksForType.findIndex(h=>typeof h==='object'&&h._pluginId===p.id);
-                  if(!isActive){if(idx===-1) hooksForType.push({type:'shell',command:p.cmd.replace('{{context}}',project.folder)+'',_pluginId:p.id});}
-                  else{if(idx!==-1) hooksForType.splice(idx,1);}
-                  return {...prev,[p.hookType]:hooksForType};
-                });
-                chat.setMessages(m=>[...m,{role:'assistant',content:(isActive?'🔌 Plugin **'+p.name+'** dinonaktifkan.':'✅ Plugin **'+p.name+'** aktif!'),actions:[]}]);
-              }
-              return(
-                <div key={p.id} style={{padding:'10px 12px',marginBottom:'8px',background:isActive?'rgba(74,222,128,.04)':'rgba(255,255,255,.03)',border:'1px solid '+(isActive?'rgba(74,222,128,.18)':'rgba(255,255,255,.07)'),borderRadius:'8px',display:'flex',alignItems:'center',gap:'10px'}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:'13px',color:isActive?'#4ade80':'#f0f0f0',fontWeight:'500',marginBottom:'2px'}}>{p.name}</div>
-                    <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'3px'}}>{p.desc}</div>
-                    <div style={{fontSize:'9px',color:'rgba(255,255,255,.2)',fontFamily:'monospace'}}>{p.hookType}</div>
-                  </div>
-                  <div onClick={togglePlugin} style={{width:'42px',height:'24px',borderRadius:'12px',background:isActive?'#4ade80':'rgba(255,255,255,.1)',cursor:'pointer',position:'relative',transition:'all .2s',flexShrink:0}}>
-                    <div style={{position:'absolute',top:'3px',left:isActive?'21px':'3px',width:'18px',height:'18px',borderRadius:'50%',background:'white',transition:'all .2s'}}/>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </BottomSheet>
+        <PluginsPanel
+          activePlugins={project.activePlugins}
+          folder={project.folder}
+          onToggle={(p,isActive,folder)=>{
+            const newActive={...project.activePlugins,[p.id]:!isActive};
+            project.setActivePlugins(newActive);
+            project.setHooks(prev=>{
+              const hooksForType=[...(prev[p.hookType]||[])];
+              const idx=hooksForType.findIndex(h=>typeof h==='object'&&h._pluginId===p.id);
+              if(!isActive){if(idx===-1) hooksForType.push({type:'shell',command:p.cmd.replace('{{context}}',folder),_pluginId:p.id});}
+              else{if(idx!==-1) hooksForType.splice(idx,1);}
+              return {...prev,[p.hookType]:hooksForType};
+            });
+            chat.setMessages(m=>[...m,{role:'assistant',content:(isActive?'🔌 Plugin **'+p.name+'** dinonaktifkan.':'✅ Plugin **'+p.name+'** aktif!'),actions:[]}]);
+          }}
+          onClose={()=>ui.setShowPlugins(false)}
+        />
       )}
 
       {/* SKILLS */}
@@ -881,59 +794,30 @@ export default function App() {
 
       {/* CONFIG */}
       {ui.showConfig&&(
-        <BottomSheet onClose={()=>ui.setShowConfig(false)}>
-          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-            <div style={{display:'flex',alignItems:'center',marginBottom:'16px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>⚙️ Config</span>
-              <button onClick={()=>ui.setShowConfig(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
-            </div>
-            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'12px'}}>
-              {[
-                {label:'Effort Level',value:project.effort,options:['low','medium','high'],onChange:v=>project.setEffort(v)},
-                {label:'Font Size',value:String(ui.fontSize),options:['12','13','14','15','16'],onChange:v=>ui.setFontSize(parseInt(v))},
-                {label:'Theme',value:ui.theme,options:['dark','darker','midnight','rose'],onChange:v=>ui.setTheme(v)},
-                {label:'Model',value:project.model,options:MODELS.map(m=>m.id),onChange:v=>project.setModel(v)},
-              ].map(cfg=>(
-                <div key={cfg.label} style={{padding:'10px 12px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px'}}>
-                  <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'6px'}}>{cfg.label}</div>
-                  <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
-                    {cfg.options.map(opt=>(
-                      <button key={opt} onClick={()=>cfg.onChange(opt)} style={{background:cfg.value===opt?'rgba(124,58,237,.3)':'rgba(255,255,255,.05)',border:'1px solid '+(cfg.value===opt?'rgba(124,58,237,.5)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:cfg.value===opt?'#a78bfa':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>
-                        {opt.length>20?opt.slice(0,20)+'…':opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              <div style={{padding:'10px 12px',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px'}}>
-                <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'6px'}}>Extended Thinking</div>
-                <button onClick={()=>project.setThinkingEnabled(!project.thinkingEnabled)} style={{background:project.thinkingEnabled?'rgba(124,58,237,.3)':'rgba(255,255,255,.05)',border:'1px solid '+(project.thinkingEnabled?'rgba(124,58,237,.5)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:project.thinkingEnabled?'#a78bfa':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer'}}>
-                  {project.thinkingEnabled?'✅ ON':'○ OFF'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </BottomSheet>
+        <ConfigPanel
+          effort={project.effort}
+          fontSize={ui.fontSize}
+          theme={ui.theme}
+          model={project.model}
+          thinkingEnabled={project.thinkingEnabled}
+          models={MODELS}
+          onEffort={v=>project.setEffort(v)}
+          onFontSize={v=>ui.setFontSize(v)}
+          onTheme={v=>ui.setTheme(v)}
+          onModel={v=>project.setModel(v)}
+          onThinking={()=>project.setThinkingEnabled(!project.thinkingEnabled)}
+          onClose={()=>ui.setShowConfig(false)}
+        />
       )}
 
       {/* DEPLOY */}
       {ui.showDeploy&&(
-        <BottomSheet onClose={()=>ui.setShowDeploy(false)}>
-          <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-            <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🚀 Deploy</span>
-              <button onClick={()=>ui.setShowDeploy(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
-            </div>
-            <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}}>
-              {['github','vercel','netlify','railway'].map(p=>(
-                <button key={p} onClick={()=>runDeploy(p)} disabled={chat.loading} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'8px',padding:'8px 16px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',fontWeight:'500'}}>
-                  {p==='github'?'📤 Git Push':p==='vercel'?'▲ Vercel':p==='netlify'?'◈ Netlify':'🚂 Railway'}
-                </button>
-              ))}
-            </div>
-            {ui.deployLog?<div style={{flex:1,background:'#0a0a0b',border:'1px solid rgba(255,255,255,.07)',borderRadius:'8px',padding:'12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(255,255,255,.7)',overflowY:'auto',whiteSpace:'pre-wrap'}}>{ui.deployLog}</div>:<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Pilih platform untuk deploy~</div>}
-          </div>
-        </BottomSheet>
+        <DeployPanel
+          deployLog={ui.deployLog}
+          loading={chat.loading}
+          onDeploy={runDeploy}
+          onClose={()=>ui.setShowDeploy(false)}
+        />
       )}
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleImageAttach}/>
