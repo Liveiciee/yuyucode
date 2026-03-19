@@ -132,7 +132,7 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
 
     // Rate limit → auto-switch ke Groq
     if (e.message.startsWith('RATE_LIMIT:') && GROQ_KEY) {
-      const fallbackModel = 'kimi-k2-instruct-0905';
+      const fallbackModel = 'moonshotai/kimi-k2-instruct-0905';
       try {
         return await _groqOnce(messages, fallbackModel, onChunk, signal, options);
       } catch (ge) {
