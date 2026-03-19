@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { askCerebrasStream, callServer } from '../api.js';
 import { parseActions, executeAction, resolvePath } from '../utils.js';
-import { runHooksV2, checkPermission, tokenTracker, parseElicitation, tfidfRank } from '../features.js';
+import { runHooksV2, checkPermission, tokenTracker, parseElicitation, tfidfRank, selectSkills } from '../features.js';
 import { BASE_SYSTEM } from '../constants.js';
 
 export function useAgentLoop({
@@ -110,7 +110,15 @@ export function useAgentLoop({
 
       // ── Build system context ──
       const notesCtx   = project.notes ? '\n\nProject notes:\n' + project.notes : '';
-      const skillCtx   = project.skill ? '\n\nSKILL.md:\n' + project.skill : '';
+      // Merge SKILL.md root + relevant .claude/skills/ files
+      const _stripFrontmatter = s => s.replace(/^---[\s\S]*?---\n?/, '').trim();
+      const _selectedSkills = selectSkills(project.skills || [], txt);
+      const _skillParts = [];
+      if (project.skill) _skillParts.push('## SKILL.md\n' + _stripFrontmatter(project.skill));
+      _selectedSkills.filter(s => s.name !== 'SKILL.md').forEach(s => {
+        _skillParts.push('## ' + s.name + '\n' + _stripFrontmatter(s.content || ''));
+      });
+      const skillCtx = _skillParts.length ? '\n\nSkill context:\n' + _skillParts.join('\n\n---\n\n') : '';
       const pinnedCtx  = file.pinnedFiles.length ? '\n\nPinned files: ' + file.pinnedFiles.join(', ') : '';
       const fileCtx    = file.selectedFile && file.fileContent
         ? '\n\nFile terbuka: ' + file.selectedFile + '\n```\n' + file.fileContent.slice(0, 2000) + '\n```'

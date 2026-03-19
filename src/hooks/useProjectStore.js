@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { MODELS } from '../constants.js';
 import { callServer } from '../api.js';
-import { runHooksV2, EFFORT_CONFIG } from '../features.js';
+import { runHooksV2, EFFORT_CONFIG, loadSkills } from '../features.js';
 
 export function useProjectStore() {
   // ── Project / Folder ──
@@ -149,6 +149,8 @@ export function useProjectStore() {
     setNotesRaw(notesR.value || '');
     setSkill(skillR.ok ? skillR.data : '');
     if (branchR.ok) setBranch(branchR.data.trim());
+    // Auto-load .claude/skills/ array
+    loadSkills(f).then(loaded => { if (loaded.length) setSkills(loaded); });
   }
 
   return {
