@@ -743,7 +743,7 @@ export function ElicitationPanel({ data, onSubmit, onDismiss }) {
       <div style={{background:'#111113',border:'1px solid rgba(124,58,237,.25)',borderRadius:'14px',padding:'20px',width:'100%',maxWidth:'380px',boxShadow:'0 24px 60px rgba(0,0,0,.8)'}}>
         {/* Header */}
         <div style={{display:'flex',alignItems:'flex-start',gap:'10px',marginBottom:'14px'}}>
-          <span style={{fontSize:'18px'}}><Plus size={13}/>/span>
+          <span style={{fontSize:'18px'}}><Plus size={13}/></span>
           <div style={{flex:1}}>
             <div style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0'}}>{data.title || 'Input diperlukan'}</div>
             {data.description && <div style={{fontSize:'11px',color:'rgba(255,255,255,.4)',marginTop:'3px'}}>{data.description}</div>}
@@ -858,7 +858,7 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
           return (
             <div key={cf} style={{padding:'9px 12px',marginBottom:'6px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(248,113,113,.12)',borderRadius:'8px'}}>
               <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:preview?'6px':'0'}}>
-                <span style={{fontSize:'10px',color:'#f87171'}}><AlertTriangle size={13}/>/span>
+                <span style={{fontSize:'10px',color:'#f87171'}}><AlertTriangle size={13}/></span>
                 <span style={{fontSize:'12px',color:'rgba(255,255,255,.8)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cf}</span>
                 <button onClick={() => loadPreview(cf)}
                   style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'4px',padding:'2px 7px',color:'rgba(255,255,255,.4)',fontSize:'9px',cursor:'pointer',flexShrink:0}}>
