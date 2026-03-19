@@ -1225,3 +1225,83 @@ export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, m
     </BottomSheet>
   );
 }
+
+// ── BgAgentPanel — live progress tracking ────────────────────────────────────
+export function BgAgentPanel({ agents, onMerge, onAbort, onClose }) {
+  const statusColor = { preparing:'#fbbf24', running:'#60a5fa', done:'#4ade80', error:'#f87171', aborted:'rgba(255,255,255,.3)', merged:'rgba(255,255,255,.2)', conflict:'#f97316' };
+  const statusIcon  = { preparing:'⏳', running:'⚙️', done:'✅', error:'❌', aborted:'⏹', merged:'🔀', conflict:'⚠️' };
+
+  return (
+    <BottomSheet onClose={onClose}>
+      <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
+          <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>🤖 Background Agents</span>
+          <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+        </div>
+        {agents.length === 0 && (
+          <div style={{color:'rgba(255,255,255,.3)',fontSize:'12px',padding:'8px 0'}}>
+            Tidak ada agent aktif. Jalankan dengan <code style={{color:'#a78bfa'}}>/bg &lt;task&gt;</code>
+          </div>
+        )}
+        <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'8px'}}>
+          {agents.map(agent => {
+            const color = statusColor[agent.status] || '#f0f0f0';
+            const icon  = statusIcon[agent.status]  || '?';
+            const elapsed = Math.round((Date.now() - agent.startedAt) / 1000);
+            const elapsedStr = elapsed > 60 ? Math.floor(elapsed/60) + 'm' : elapsed + 's';
+            return (
+              <div key={agent.id} style={{padding:'12px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'10px'}}>
+                {/* Header row */}
+                <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
+                  <span style={{fontSize:'13px'}}>{icon}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:'12px',color:'#f0f0f0',fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{agent.task}</div>
+                    <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)',fontFamily:'monospace',marginTop:'1px'}}>
+                      {agent.id.slice(-8)} · {elapsedStr} · branch: {agent.branch?.slice(-12)}
+                    </div>
+                  </div>
+                  <span style={{fontSize:'11px',color,fontWeight:'600',textTransform:'uppercase',letterSpacing:'.04em'}}>{agent.status}</span>
+                </div>
+
+                {/* Progress bar for running */}
+                {agent.status === 'running' && (
+                  <div style={{height:'2px',background:'rgba(255,255,255,.08)',borderRadius:'2px',marginBottom:'8px',overflow:'hidden'}}>
+                    <div style={{height:'100%',background:'#60a5fa',borderRadius:'2px',animation:'pulse 1.5s ease-in-out infinite',width:'60%'}}/>
+                  </div>
+                )}
+
+                {/* Log — last 4 entries */}
+                {agent.log?.length > 0 && (
+                  <div style={{background:'rgba(0,0,0,.2)',borderRadius:'6px',padding:'6px 8px',marginBottom:'8px',maxHeight:'80px',overflowY:'auto'}}>
+                    {agent.log.slice(-4).map((l,i) => (
+                      <div key={i} style={{fontSize:'10px',color:'rgba(255,255,255,.45)',fontFamily:'monospace',lineHeight:'1.6'}}>{l}</div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div style={{display:'flex',gap:'6px'}}>
+                  {agent.status === 'done' && (
+                    <button onClick={()=>onMerge(agent.id)} style={{flex:1,background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'7px',padding:'6px',color:'#4ade80',fontSize:'11px',cursor:'pointer',fontWeight:'500'}}>
+                      🔀 Merge ({agent.result?.allWrites?.length || 0} file)
+                    </button>
+                  )}
+                  {agent.status === 'conflict' && (
+                    <button onClick={()=>onMerge(agent.id)} style={{flex:1,background:'rgba(249,115,22,.1)',border:'1px solid rgba(249,115,22,.2)',borderRadius:'7px',padding:'6px',color:'#f97316',fontSize:'11px',cursor:'pointer',fontWeight:'500'}}>
+                      ⚠️ Resolve Conflict
+                    </button>
+                  )}
+                  {['preparing','running'].includes(agent.status) && (
+                    <button onClick={()=>onAbort(agent.id)} style={{background:'rgba(248,113,113,.07)',border:'1px solid rgba(248,113,113,.14)',borderRadius:'7px',padding:'6px 10px',color:'#f87171',fontSize:'11px',cursor:'pointer'}}>
+                      ⏹ Abort
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}

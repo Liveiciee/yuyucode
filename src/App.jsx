@@ -4,14 +4,14 @@ import { Preferences } from "@capacitor/preferences";
 import { MAX_HISTORY, MODELS, THEMES, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { callServer } from './api.js';
 import { countTokens, hl } from './utils.js';
-import { loadSessions } from './features.js';
+import { loadSessions, getBgAgents, mergeBackgroundAgent, abortBgAgent } from './features.js';
 import { MsgBubble, MsgContent } from './components/MsgBubble.jsx';
 import { FileTree } from './components/FileTree.jsx';
 import { FileEditor } from './components/FileEditor.jsx';
 import { Terminal } from './components/Terminal.jsx';
 import { SearchBar, UndoBar } from './components/SearchBar.jsx';
 import { VoiceBtn, PushToTalkBtn } from './components/VoiceBtn.jsx';
-import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel, BottomSheet, SkillsPanel, DeployPanel, McpPanel, GitHubPanel, SessionsPanel, PermissionsPanel, PluginsPanel, ConfigPanel } from './components/panels.jsx';
+import { GitDiffPanel, FileHistoryPanel, CustomActionsPanel, ShortcutsPanel, GitBlamePanel, SnippetLibrary, ThemeBuilder, CommandPalette, DepGraphPanel, ElicitationPanel, MergeConflictPanel, BottomSheet, SkillsPanel, DeployPanel, McpPanel, GitHubPanel, SessionsPanel, PermissionsPanel, PluginsPanel, ConfigPanel, BgAgentPanel } from './components/panels.jsx';
 import { useSlashCommands } from './hooks/useSlashCommands.js';
 import { useUIStore }        from './hooks/useUIStore.js';
 import { useProjectStore }   from './hooks/useProjectStore.js';
@@ -43,7 +43,7 @@ export default function App() {
 
   // ── NOTIFICATIONS & MEDIA ──
   const { sendNotification, haptic, speakText, stopTts } = useNotifications();
-  const { fileInputRef, handleImageAttach, handleDrop }  = useMediaHandlers({
+  const { fileInputRef, handleImageAttach, handleDrop, handleCameraCapture, handleGalleryPick }  = useMediaHandlers({
     setVisionImage: chat.setVisionImage,
     setInput:       chat.setInput,
     haptic,
@@ -128,7 +128,7 @@ export default function App() {
     setShowSearch: ui.setShowSearch, setShowSnippets: ui.setShowSnippets,
     setShowDepGraph: ui.setShowDepGraph, setDepGraph: ui.setDepGraph, setFontSize: ui.setFontSize,
     setShowMergeConflict: ui.setShowMergeConflict, setMergeConflictData: ui.setMergeConflictData,
-    setShowSkills: ui.setShowSkills,
+    setShowSkills: ui.setShowSkills, setShowBgAgents: ui.setShowBgAgents,
     sendMsg, compactContext,
     saveCheckpoint: () => chat.saveCheckpoint(project.folder, project.branch, project.notes),
     exportChat: chat.exportChat, generateCommitMsg, runTests, browseTo, runAgentSwarm,
@@ -408,7 +408,7 @@ export default function App() {
                   onContinue={i===chat.messages.length-1&&m.role==='assistant'&&m.content.trim().endsWith('CONTINUE')?continueMsg:null}
                   onAutoFix={i===chat.messages.length-1?()=>sendMsg('Ada error di output. Analisis dan fix otomatis.'):null}
                   onDelete={()=>chat.deleteMessage(i)}
-                  onEdit={m.role==='user'?(newContent)=>chat.editMessage(i,newContent):null}
+                  onEdit={(newContent)=>chat.editMessage(i,newContent)}
                 />
               ))}
               {chat.streaming&&(
@@ -548,7 +548,10 @@ export default function App() {
                 </div>
               )}
               <div style={{display:'flex',gap:'8px',alignItems:'flex-end'}}>
-                <button onClick={()=>fileInputRef.current?.click()}
+                <button onClick={handleCameraCapture}
+                      title="Foto kamera"
+                      style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'18px',cursor:'pointer',padding:'6px',minWidth:'36px',minHeight:'36px',display:'flex',alignItems:'center',justifyContent:'center'}}>📷</button>
+                    <button onClick={()=>fileInputRef.current?.click()}
                   style={{background:'none',border:'none',color:T.textMute,fontSize:'18px',cursor:'pointer',flexShrink:0,borderRadius:'10px',minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center'}}
                   onMouseEnter={e=>e.currentTarget.style.color=T.textSec}
                   onMouseLeave={e=>e.currentTarget.style.color=T.textMute}>📎</button>
@@ -786,6 +789,28 @@ export default function App() {
         />
       )}
 
+      </Activity>
+
+      {/* BG AGENTS */}
+      <Activity mode={ui.showBgAgents?'visible':'hidden'}>
+      {ui.showBgAgents&&(
+        <BgAgentPanel
+          agents={getBgAgents()}
+          onMerge={async id=>{
+            setLoading(true);
+            const result = await mergeBackgroundAgent(id, project.folder);
+            if (result.hasConflicts) {
+              ui.setMergeConflictData(result); ui.setShowMergeConflict(true);
+            } else {
+              chat.setMessages(m=>[...m,{role:'assistant',content:result.ok?'✅ '+result.msg:'❌ '+result.msg,actions:[]}]);
+            }
+            ui.setShowBgAgents(false);
+            setLoading(false);
+          }}
+          onAbort={id=>abortBgAgent(id)}
+          onClose={()=>ui.setShowBgAgents(false)}
+        />
+      )}
       </Activity>
 
       <Activity mode={ui.showSkills?'visible':'hidden'}>

@@ -23,7 +23,7 @@ export function useSlashCommands({
   setShowDiff, setShowSearch, setShowSnippets, setShowDepGraph,
   setDepGraph, setFontSize,
   setShowMergeConflict, setMergeConflictData,
-  setShowSkills,
+  setShowSkills, setShowBgAgents,
   // functions
   sendMsg, compactContext, saveCheckpoint, exportChat, generateCommitMsg,
   runTests, browseTo, runAgentSwarm, callAI, addHistory, runHooks,
@@ -300,15 +300,14 @@ export function useSlashCommands({
     } else if (base==='/bg') {
       const task = parts.slice(1).join(' ').trim();
       const id = await runBackgroundAgent(task, folder, callAI, (id, agent) => {
-        sendNotification('YuyuCode 🤖', 'Background agent selesai! '+(agent.result?.allWrites?.length||0)+' file. /bgmerge '+id);
+        sendNotification('YuyuCode 🤖', 'Agent selesai! '+(agent.result?.allWrites?.length||0)+' file siap. Buka /bgstatus untuk merge.');
+        setShowBgAgents(true);
         haptic('heavy');
       });
       setMessages(m=>[...m,{role:'assistant',content:'🤖 Background agent: '+task+'\nID: '+id,actions:[]}]);
 
     } else if (base==='/bgstatus') {
-      const agents = getBgAgents();
-      const statusLines = agents.map(a=>'['+a.status+'] '+a.id+'\n'+a.task+(a.log?'\n'+a.log.slice(-1).join(''):'')).join('\n\n');
-      setMessages(m=>[...m,{role:'assistant',content:'🤖 **Background Agents:**\n\n'+statusLines,actions:[]}]);
+      setShowBgAgents(true);
 
     } else if (base==='/bgmerge') {
       const id = parts[1]?.trim();

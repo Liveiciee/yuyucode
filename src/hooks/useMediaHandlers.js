@@ -11,6 +11,44 @@ export function useMediaHandlers({ setVisionImage, setInput, haptic, setDragOver
     reader.readAsDataURL(f);
   }
 
+  // ── Camera capture (Capacitor native) ────────────────────────────────────────
+  async function handleCameraCapture() {
+    try {
+      const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
+      const photo = await Camera.getPhoto({
+        quality:      85,
+        resultType:   CameraResultType.Base64,
+        source:       CameraSource.Camera,
+        correctOrientation: true,
+      });
+      if (photo.base64String) {
+        setVisionImage(photo.base64String);
+        haptic('light');
+      }
+    } catch (e) {
+      // User cancelled or permission denied — silent fail
+      if (!e.message?.includes('cancelled') && !e.message?.includes('cancel')) {
+        console.warn('Camera error:', e.message);
+      }
+    }
+  }
+
+  // ── Gallery pick ──────────────────────────────────────────────────────────────
+  async function handleGalleryPick() {
+    try {
+      const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
+      const photo = await Camera.getPhoto({
+        quality:    85,
+        resultType: CameraResultType.Base64,
+        source:     CameraSource.Photos,
+      });
+      if (photo.base64String) {
+        setVisionImage(photo.base64String);
+        haptic('light');
+      }
+    } catch (_e) { /* cancelled */ }
+  }
+
   function handleDrop(e) {
     e.preventDefault();
     setDragOver(false);
@@ -27,5 +65,5 @@ export function useMediaHandlers({ setVisionImage, setInput, haptic, setDragOver
     }
   }
 
-  return { fileInputRef, handleImageAttach, handleDrop };
+  return { fileInputRef, handleImageAttach, handleDrop, handleCameraCapture, handleGalleryPick };
 }

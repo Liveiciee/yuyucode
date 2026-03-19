@@ -24,6 +24,7 @@ export function useUIStore() {
   const [showPermissions, setShowPermissions] = useState(false);
   const [showPlugins, setShowPlugins]         = useState(false);
   const [showSkills, setShowSkills]           = useState(false);
+  const [showBgAgents, setShowBgAgents]       = useState(false);
   const [showConfig, setShowConfig]           = useState(false);
   const [showPalette, setShowPalette]         = useState(false);
   const [showThemeBuilder, setShowThemeBuilder] = useState(false);
@@ -99,6 +100,7 @@ export function useUIStore() {
     showPermissions, setShowPermissions,
     showPlugins, setShowPlugins,
     showSkills, setShowSkills,
+    showBgAgents, setShowBgAgents,
     showConfig, setShowConfig,
     showPalette, setShowPalette,
     showThemeBuilder, setShowThemeBuilder,

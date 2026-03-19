@@ -107,20 +107,44 @@ export function useChatStore() {
     return hasScore ? ranked : memories.slice(0, 5);
   }
 
-  // ── saveCheckpoint ──
-  function saveCheckpoint(folder, branch, notes) {
-    const cp = { id: Date.now(), label: new Date().toLocaleString('id'), messages: messages.slice(-20), folder, branch, notes };
+  // ── saveCheckpoint — chat + file snapshot via git stash snapshot ──
+  async function saveCheckpoint(folder, branch, notes, callServerFn) {
+    // Snapshot file state: capture git diff as patch
+    let filePatch = '';
+    if (folder && callServerFn) {
+      const diffR = await callServerFn({ type: 'exec', path: folder, command: 'git diff HEAD 2>/dev/null | head -200' });
+      if (diffR.ok) filePatch = diffR.data || '';
+    }
+    const cp = {
+      id: Date.now(),
+      label: new Date().toLocaleString('id'),
+      messages: messages.slice(-30),
+      folder, branch, notes,
+      filePatch,                       // git diff snapshot
+      timestamp: Date.now(),
+    };
     setCheckpoints([cp, ...checkpoints].slice(0, 10));
-    setMessages(m => [...m, { role: 'assistant', content: '📍 Checkpoint disimpan: ' + cp.label, actions: [] }]);
+    setMessages(m => [...m, { role: 'assistant', content: '📍 **Checkpoint disimpan:** ' + cp.label + (filePatch ? '\n_Git diff snapshot: ' + filePatch.split('\n').length + ' baris_' : ''), actions: [] }]);
   }
 
-  // ── restoreCheckpoint ──
-  function restoreCheckpoint(cp, setFolder, setFolderInput, setNotesRaw) {
-    setMessages(cp.messages);
-    setFolder(cp.folder);
-    setFolderInput(cp.folder);
-    setNotesRaw(cp.notes || '');
-    setMessages(m => [...m, { role: 'assistant', content: '✅ Restored checkpoint: ' + cp.label, actions: [] }]);
+  // ── restoreCheckpoint — chat + optional file restore ──
+  async function restoreCheckpoint(cp, setFolder, setFolderInput, setNotesRaw, callServerFn) {
+    setMessages(cp.messages || []);
+    if (cp.folder) { setFolder(cp.folder); setFolderInput(cp.folder); }
+    if (cp.notes) setNotesRaw(cp.notes);
+    // Offer to restore file state via reverse patch
+    if (cp.filePatch && cp.filePatch.trim() && callServerFn) {
+      const revert = await callServerFn({ type: 'exec', path: cp.folder, command: 'git stash 2>/dev/null && echo STASHED || echo SKIP' });
+      const stashed = revert.ok && (revert.data||'').includes('STASHED');
+      setMessages(m => [...m, {
+        role: 'assistant',
+        content: '✅ **Restored checkpoint:** ' + cp.label +
+          (stashed ? '\n🗂 File unstaged di-stash. Gunakan `git stash pop` untuk recover.' : ''),
+        actions: []
+      }]);
+    } else {
+      setMessages(m => [...m, { role: 'assistant', content: '✅ **Restored checkpoint:** ' + cp.label, actions: [] }]);
+    }
   }
 
   // ── exportChat ──

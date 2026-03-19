@@ -119,8 +119,9 @@ export function ActionChip({ action }) {
 
 export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix, onDelete, onEdit }) {
   const [actionsVisible, setActionsVisible] = useState(false);
-  const [editing, setEditing]   = useState(false);
-  const [editText, setEditText] = useState('');
+  const [editing, setEditing]       = useState(false);
+  const [editText, setEditText]     = useState('');
+  const [surgical, setSurgical]     = useState(false);  // surgical trim mode
   const isUser = msg.role === 'user';
   const thinkMatch = msg.content.match(/<think>([\s\S]*?)<\/think>/i)
     || msg.content.match(/<think>([\s\S]*?)$/i);  // unclosed (streaming)
@@ -147,11 +148,72 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
       <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'4px',maxWidth:'84%'}}>
         {editing ? (
           <div style={{display:'flex',flexDirection:'column',gap:'6px',width:'100%'}}>
-            <textarea value={editText} onChange={e=>setEditText(e.target.value)} autoFocus
-              style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'12px',padding:'10px 14px',fontSize:'14px',lineHeight:'1.65',color:'#f0f0f0',resize:'vertical',minHeight:'60px',outline:'none',fontFamily:'inherit'}}/>
+            {/* Mode toggle */}
+            <div style={{display:'flex',gap:'4px',marginBottom:'2px'}}>
+              <button onClick={()=>setSurgical(false)} style={{background:!surgical?'rgba(124,58,237,.2)':'rgba(255,255,255,.04)',border:'1px solid '+(surgical?'rgba(255,255,255,.08)':'rgba(124,58,237,.3)'),borderRadius:'6px',padding:'3px 10px',color:!surgical?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>Teks penuh</button>
+              <button onClick={()=>setSurgical(true)}  style={{background:surgical?'rgba(124,58,237,.2)':'rgba(255,255,255,.04)',border:'1px solid '+(surgical?'rgba(124,58,237,.3)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'3px 10px',color:surgical?'#a78bfa':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>Surgical trim</button>
+            </div>
+            {surgical ? (
+              /* Surgical: show each "section" as toggleable chip */
+              <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
+                <div style={{fontSize:'11px',color:'rgba(255,255,255,.35)',marginBottom:'2px'}}>Tap bagian yang mau dihapus dari context:</div>
+                {editText.split(/
+(?=```|\*\*|##|===|---|
+)/).map((chunk, ci) => {
+                  const key = 'chunk_' + ci;
+                  const [removed, setRemoved] = [false, ()=>{}]; // local state per chunk not needed — we rebuild on save
+                  const isCode = chunk.trim().startsWith('```');
+                  const isResult = chunk.includes('=== ') || chunk.startsWith('$ ');
+                  return (
+                    <div key={ci} onClick={()=>{
+                      // Toggle: mark for removal by wrapping in ~~REMOVE~~
+                      setEditText(prev => {
+                        const parts = prev.split(/
+(?=```|\*\*|##|===|---|
+)/);
+                        parts[ci] = parts[ci].startsWith('~~REMOVE~~') ? parts[ci].slice(10) : '~~REMOVE~~' + parts[ci];
+                        return parts.join('
+');
+                      });
+                    }} style={{
+                      padding:'6px 10px',borderRadius:'7px',cursor:'pointer',
+                      background: editText.split(/
+(?=```|\*\*|##|===|---|
+)/)[ci]?.startsWith('~~REMOVE~~')
+                        ? 'rgba(248,113,113,.12)' : isCode ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.02)',
+                      border: '1px solid ' + (editText.split(/
+(?=```|\*\*|##|===|---|
+)/)[ci]?.startsWith('~~REMOVE~~')
+                        ? 'rgba(248,113,113,.25)' : 'rgba(255,255,255,.06)'),
+                      opacity: editText.split(/
+(?=```|\*\*|##|===|---|
+)/)[ci]?.startsWith('~~REMOVE~~') ? 0.5 : 1,
+                      transition:'all .15s',
+                    }}>
+                      <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)',fontFamily:'monospace',marginBottom:'2px'}}>{isCode?'code block':isResult?'exec result':'text'}</div>
+                      <div style={{fontSize:'11px',color:'rgba(255,255,255,.55)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{chunk.replace('~~REMOVE~~','').trim().slice(0,80)}</div>
+                    </div>
+                  );
+                })}
+                <div style={{fontSize:'10px',color:'rgba(255,255,255,.25)',marginTop:'4px'}}>Merah = akan dihapus dari context AI</div>
+              </div>
+            ) : (
+              <textarea value={editText.replace(/~~REMOVE~~/g,'')} onChange={e=>setEditText(e.target.value)} autoFocus
+                style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'12px',padding:'10px 14px',fontSize:'14px',lineHeight:'1.65',color:'#f0f0f0',resize:'vertical',minHeight:'60px',outline:'none',fontFamily:'inherit'}}/>
+            )}
             <div style={{display:'flex',gap:'6px',justifyContent:'flex-end'}}>
-              <button onClick={()=>setEditing(false)} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'8px',padding:'5px 12px',color:'rgba(255,255,255,.5)',fontSize:'12px',cursor:'pointer'}}>Batal</button>
-              <button onClick={()=>{onEdit(editText);setEditing(false);}} style={{background:'rgba(124,58,237,.2)',border:'1px solid rgba(124,58,237,.3)',borderRadius:'8px',padding:'5px 14px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',fontWeight:'500'}}>Simpan</button>
+              <button onClick={()=>{setEditing(false);setSurgical(false);}} style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:'8px',padding:'5px 12px',color:'rgba(255,255,255,.5)',fontSize:'12px',cursor:'pointer'}}>Batal</button>
+              <button onClick={()=>{
+                const cleaned = surgical
+                  ? editText.split(/
+(?=```|\*\*|##|===|---|
+)/).filter(s=>!s.startsWith('~~REMOVE~~')).join('
+').trim()
+                  : editText.trim();
+                onEdit(cleaned);
+                setEditing(false);
+                setSurgical(false);
+              }} style={{background:'rgba(124,58,237,.2)',border:'1px solid rgba(124,58,237,.3)',borderRadius:'8px',padding:'5px 14px',color:'#a78bfa',fontSize:'12px',cursor:'pointer',fontWeight:'500'}}>Simpan</button>
             </div>
           </div>
         ) : (
@@ -256,6 +318,10 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
             onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,.5)'}
             onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.2)'}
             onClick={()=>navigator.clipboard?.writeText(cleanText).catch(()=>{})}>copy</button>
+          {onEdit&&<button style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.15)',fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'32px'}}
+            onMouseEnter={e=>e.currentTarget.style.color='rgba(167,139,250,.8)'}
+            onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.15)'}
+            onClick={()=>{setEditText(cleanText);setSurgical(true);setEditing(true);}}>✂</button>}
           {onDelete&&<button style={{background:'none',border:'none',padding:'4px 8px',color:'rgba(255,255,255,.15)',fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'32px'}}
             onMouseEnter={e=>e.currentTarget.style.color='#f87171'}
             onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.15)'}
