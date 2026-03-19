@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Activity } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { Menu, Command, Camera, Paperclip, Trash2, Radio, RotateCcw, AlertTriangle, Pin, Eye, ScrollText, Brain, MapPin, Zap, Plus, Volume2, VolumeX, GitBranch, ChevronRight, FilePlus2, Check, X } from 'lucide-react';
-import { MAX_HISTORY, MODELS, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
+import { MAX_HISTORY, MODELS, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS, THEMES } from './constants.js';
 import { callServer } from './api.js';
 import { countTokens, hl } from './utils.js';
 import { loadSessions, getBgAgents, mergeBackgroundAgent, abortBgAgent } from './features.js';
