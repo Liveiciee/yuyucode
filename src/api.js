@@ -1,7 +1,7 @@
 import { CEREBRAS_KEY, GROQ_KEY, YUYU_SERVER, WS_SERVER, MODELS } from './constants.js';
 
 // ── SHARED SSE STREAM READER ───────────────────────────────────────────────────
-async function readSSEStream(resp, onChunk, signal) {
+export async function readSSEStream(resp, onChunk, signal) {
   const reader  = resp.body.getReader();
   const decoder = new TextDecoder();
   let full = '', buffer = '';

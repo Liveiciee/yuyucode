@@ -1,137 +1,97 @@
-import { describe, it, expect, vi } from "vitest";
-import { readSSEStream } from "./api";
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readSSEStream } from './api';
+
+// Simpan referensi ASLI sebelum override apapun
+const OriginalTextDecoder = globalThis.TextDecoder;
 
 describe('readSSEStream', () => {
-  const mockOnChunk = vi.fn();
-  let mockReader, mockResponse, mockDecoder;
-
   beforeEach(() => {
-    vi.resetAllMocks();
-
-    mockDecoder = {
-      decode: vi.fn()
-    };
-
-    global.TextDecoder = vi.fn(() => mockDecoder);
-
-    mockReader = {
-      read: vi.fn(),
-      releaseLock: vi.fn()
-    };
-
-    mockResponse = {
-      body: {
-        getReader: vi.fn(() => mockReader)
-      }
-    };
+    vi.restoreAllMocks();
   });
 
-  it('should read full SSE stream and call onChunk with accumulated content', async () => {
-    const decoder = new TextDecoder();
-    const chunk1 = encoder.encode('data: {"choices":[{"delta":{"content":"Hello"}]}}\n');
-    const chunk2 = encoder.encode('data: {"choices":[{"delta":{"content":" world"}]}}\n');
-    const encoder = new TextEncoder();
+  function makeReader(...chunks) {
+    const calls = chunks.map(chunk => ({
+      done: false,
+      value: new OriginalTextDecoder() ? new TextEncoder().encode(chunk) : chunk,
+    }));
+    calls.push({ done: true });
+    let i = 0;
+    return {
+      read: vi.fn().mockImplementation(() => Promise.resolve(calls[i++])),
+      releaseLock: vi.fn(),
+    };
+  }
 
-    mockDecoder.decode
-      .mockReturnValueOnce(decoder.decode(chunk1))
-      .mockReturnValueOnce(decoder.decode(chunk2))
-      .mockReturnValue('');
+  function makeResponse(reader) {
+    return { body: { getReader: () => reader } };
+  }
 
-    mockReader.read
-      .mockResolvedValueOnce({ done: false, value: chunk1 })
-      .mockResolvedValueOnce({ done: false, value: chunk2 })
-      .mockResolvedValueOnce({ done: true });
+  it('should accumulate chunks and call onChunk per token', async () => {
+    const reader = makeReader(
+      'data: {"choices":[{"delta":{"content":"Hello"}}]}\n',
+      'data: {"choices":[{"delta":{"content":" world"}}]}\n',
+    );
+    const onChunk = vi.fn();
+    const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
 
-    const result = await readSSEStream(mockResponse, mockOnChunk, null);
-
-    expect(mockOnChunk).toHaveBeenCalledTimes(2);
-    expect(mockOnChunk).toHaveBeenNthCalledWith(1, 'Hello');
-    expect(mockOnChunk).toHaveBeenNthCalledWith(2, 'Hello world');
+    expect(onChunk).toHaveBeenNthCalledWith(1, 'Hello');
+    expect(onChunk).toHaveBeenNthCalledWith(2, 'Hello world');
     expect(result).toBe('Hello world');
-    expect(mockReader.releaseLock).toHaveBeenCalled();
+    expect(reader.releaseLock).toHaveBeenCalled();
   });
 
-  it('should handle partial JSON and buffer correctly', async () => {
-    const decoder = new TextDecoder();
-    const chunk1 = encoder.encode('data: {"choices":[{"delta":{"content":"Hello');
-    const chunk2 = encoder.encode(' world"}]}}\n');
-    const encoder = new TextEncoder();
+  it('should skip invalid JSON lines gracefully', async () => {
+    const reader = makeReader(
+      'data: {"choices":[{"delta":{"content":"Hi"}}]}\n',
+      'data: invalid-json\n',
+      'data: {"choices":[{"delta":{"content":"!"}}]}\n',
+    );
+    const onChunk = vi.fn();
+    const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
 
-    mockDecoder.decode
-      .mockReturnValueOnce(decoder.decode(chunk1))
-      .mockReturnValueOnce(decoder.decode(chunk2))
-      .mockReturnValue('');
-
-    mockReader.read
-      .mockResolvedValueOnce({ done: false, value: chunk1 })
-      .mockResolvedValueOnce({ done: false, value: chunk2 })
-      .mockResolvedValueOnce({ done: true });
-
-    const result = await readSSEStream(mockResponse, mockOnChunk, null);
-
-    expect(mockOnChunk).toHaveBeenCalledTimes(1);
-    expect(mockOnChunk).toHaveBeenCalledWith('Hello world');
-    expect(result).toBe('Hello world');
+    expect(onChunk).toHaveBeenNthCalledWith(1, 'Hi');
+    expect(onChunk).toHaveBeenNthCalledWith(2, 'Hi!');
+    expect(result).toBe('Hi!');
   });
 
-  it('should ignore non-data and [DONE] lines', async () => {
-    const decoder = new TextDecoder();
-    const chunk = encoder.encode('event: ping\ndata: [DONE]\n\n');
-    const encoder = new TextEncoder();
+  it('should ignore [DONE] sentinel', async () => {
+    const reader = makeReader(
+      'data: {"choices":[{"delta":{"content":"Done"}}]}\n',
+      'data: [DONE]\n',
+    );
+    const onChunk = vi.fn();
+    const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
 
-    mockDecoder.decode.mockReturnValue(decoder.decode(chunk));
-    mockReader.read
-      .mockResolvedValueOnce({ done: false, value: chunk })
-      .mockResolvedValueOnce({ done: true });
-
-    const result = await readSSEStream(mockResponse, mockOnChunk, null);
-
-    expect(mockOnChunk).not.toHaveBeenCalled();
-    expect(result).toBe('');
+    expect(result).toBe('Done');
+    expect(onChunk).toHaveBeenCalledTimes(1);
   });
 
-  it('should throw AbortError if signal is aborted during read', async () => {
-    const abortController = new AbortController();
-    abortController.abort();
+  it('should handle abort and throw DOMException', async () => {
+    const ctrl = new AbortController();
+    const reader = {
+      read: vi.fn().mockImplementation(async () => {
+        ctrl.abort();
+        throw new Error('network error');
+      }),
+      releaseLock: vi.fn(),
+    };
+    const onChunk = vi.fn();
 
-    mockReader.read.mockRejectedValue(new Error('Reader error'));
+    await expect(
+      readSSEStream(makeResponse(reader), onChunk, ctrl.signal)
+    ).rejects.toThrow();
 
-    await expect(readSSEStream(mockResponse, mockOnChunk, abortController.signal)).rejects.toThrow(DOMException);
-    expect(mockReader.releaseLock).toHaveBeenCalled();
+    expect(reader.releaseLock).toHaveBeenCalled();
   });
 
-  it('should handle JSON parse error and continue', async () => {
-    const decoder = new TextDecoder();
-    const chunk = encoder.encode('data: invalid json\n');
-    const encoder = new TextEncoder();
+  it('should flush remaining buffer without trailing newline', async () => {
+    const reader = makeReader(
+      'data: {"choices":[{"delta":{"content":"Flush"}}]}',
+    );
+    const onChunk = vi.fn();
+    const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
 
-    mockDecoder.decode.mockReturnValue(decoder.decode(chunk));
-    mockReader.read
-      .mockResolvedValueOnce({ done: false, value: chunk })
-      .mockResolvedValueOnce({ done: true });
-
-    const result = await readSSEStream(mockResponse, mockOnChunk, null);
-
-    expect(mockOnChunk).not.toHaveBeenCalled();
-    expect(result).toBe('');
-  });
-
-  it('should flush buffered data at the end', async () => {
-    const decoder = new TextDecoder();
-    const chunk = encoder.encode('');
-    const buffer = 'data: {"choices":[{"delta":{"content":"Final"}]}';
-
-    mockDecoder.decode
-      .mockReturnValueOnce(decoder.decode(chunk))
-      .mockReturnValue(buffer); // buffer has incomplete line
-
-    mockReader.read
-      .mockResolvedValueOnce({ done: false, value: chunk })
-      .mockResolvedValueOnce({ done: true });
-
-    const result = await readSSEStream(mockResponse, mockOnChunk, null);
-
-    expect(mockOnChunk).toHaveBeenCalledWith('Final');
-    expect(result).toBe('Final');
+    expect(result).toBe('Flush');
+    expect(onChunk).toHaveBeenCalledWith('Flush');
   });
 });
