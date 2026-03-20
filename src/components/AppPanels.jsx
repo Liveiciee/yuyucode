@@ -226,6 +226,11 @@ export function AppPanels({
           showMinimap={ui.showMinimap} onMinimap={v=>ui.setShowMinimap(v)}
           ghostTextEnabled={ui.ghostTextEnabled} onGhostText={v=>ui.setGhostTextEnabled(v)}
           lintEnabled={ui.lintEnabled} onLint={v=>ui.setLintEnabled(v)}
+          tsLspEnabled={ui.tsLspEnabled} onTsLsp={v=>ui.setTsLspEnabled(v)}
+          blameEnabled={ui.blameEnabled} onBlame={v=>ui.setBlameEnabled(v)}
+          multiCursor={ui.multiCursor} onMultiCursor={v=>ui.setMultiCursor(v)}
+          stickyScroll={ui.stickyScroll} onStickyScroll={v=>ui.setStickyScroll(v)}
+          collabEnabled={ui.collabEnabled} onCollab={v=>ui.setCollabEnabled(v)}
           onClose={()=>ui.setShowConfig(false)}/>)}
       </Activity>
 

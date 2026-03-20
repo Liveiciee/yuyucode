@@ -9,6 +9,7 @@ import { FileEditor } from './FileEditor.jsx';
 import { Terminal } from './Terminal.jsx';
 import { LivePreview } from './LivePreview.jsx';
 import { KeyboardRow } from './KeyboardRow.jsx';
+import { GlobalFindReplace } from './GlobalFindReplace.jsx';
 import { VoiceBtn, PushToTalkBtn } from './VoiceBtn.jsx';
 import { FOLLOW_UPS, SLASH_COMMANDS, GIT_SHORTCUTS } from '../constants.js';
 
@@ -27,11 +28,18 @@ export function AppChat({
 
   // editorConfig derived from ui prefs
   const editorConfig = {
-    vimMode:    ui.vimMode,
-    emmet:      true,
-    ghostText:  ui.ghostTextEnabled,
-    minimap:    ui.showMinimap,
-    lint:       ui.lintEnabled,
+    vimMode:     ui.vimMode,
+    emmet:       true,
+    ghostText:   ui.ghostTextEnabled,
+    minimap:     ui.showMinimap,
+    lint:        ui.lintEnabled,
+    // Fase 3
+    tsLsp:       ui.tsLspEnabled,
+    blame:       ui.blameEnabled,
+    multiCursor: ui.multiCursor,
+    stickyScroll: ui.stickyScroll,
+    collab:      ui.collabEnabled,
+    collabRoom:  ui.collabRoom,
   };
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chat.messages, chat.streaming]);
@@ -290,6 +298,18 @@ export function AppChat({
             tabs={file.openTabs}
             T={T}
             onClose={() => ui.setShowLivePreview(false)}
+          />
+        </div>
+      )}
+
+      {/* ── GLOBAL FIND & REPLACE ── */}
+      {ui.showGlobalFind && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 50 }}>
+          <GlobalFindReplace
+            folder={project.folder}
+            onOpenFile={p => { file.openFile(p); ui.setShowGlobalFind(false); }}
+            onClose={() => ui.setShowGlobalFind(false)}
+            T={T}
           />
         </div>
       )}

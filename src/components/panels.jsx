@@ -15,3 +15,4 @@ export { ElicitationPanel, SkillsPanel, BgAgentPanel } from './panels.agent.jsx'
 export { CustomActionsPanel, ShortcutsPanel, SnippetLibrary, ThemeBuilder,
   DeployPanel, McpPanel, GitHubPanel, SessionsPanel, PermissionsPanel,
   PluginsPanel, ConfigPanel } from './panels.tools.jsx';
+export { GlobalFindReplace } from './GlobalFindReplace.jsx';

@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
-[![Tests](https://img.shields.io/badge/tests-310%20passing-brightgreen)](src)
+[![Tests](https://img.shields.io/badge/tests-404%20passing-brightgreen)](src)
 ![Platform](https://img.shields.io/badge/platform-Android-green)
 ![Stack](https://img.shields.io/badge/stack-React%2019%20%2B%20Capacitor%208-blue)
 
@@ -31,11 +31,6 @@ It connects to a local Node.js server (`yuyu-server.js`) running in Termux, givi
 ### Gamma-Corrected Adaptive Brightness
 A custom Capacitor Java plugin registers a `ContentObserver` on `Settings.System.SCREEN_BRIGHTNESS`. The moment you slide your brightness down, the entire UI auto-compensates using sRGB gamma correction (γ=2.2). Two-layer compensation: CSS `filter: brightness()` capped at 2.0 (no 8-bit quantization artifacts on Android WebView), plus a `mix-blend-mode: screen` overlay for extreme low-brightness boost. No other coding tool has this. Because no other coding tool runs on a phone.
 
-```
-layer_1 = min(comp, 2.0)   // CSS filter — no banding
-layer_2 = screen_blend(T.accent, opacity)  // additive light fill
-```
-
 ### Camera-to-Code
 Capture a photo of a whiteboard, a printed error, a diagram — directly from the native Android camera. Routes automatically to a vision-capable model for analysis. Zero friction, zero file management.
 
@@ -45,20 +40,46 @@ Capture a photo of a whiteboard, a printed error, a diagram — directly from th
 ### Agent Swarm Pipeline
 `/swarm <task>` runs: **Architect** (plan) → **FE Agent + BE Agent** (parallel execution) → **QA Engineer** (review + bug list) → **auto-fix pass**. Multi-agent coordination, single command.
 
+### Multi-Tab Editor
+Open multiple files simultaneously with a persistent tab bar. Each tab maintains its own independent CodeMirror `EditorState` — cursor position, scroll, undo history all preserved when switching. Dirty indicator (●) per tab, close button, instant switch. Like VS Code tabs, on a phone.
+
+### Full Mobile Code Editor
+CodeMirror 6 with the complete feature set:
+- **Vim mode** — normal/insert/visual, full hjkl navigation, `:wq` saves
+- **Emmet** — `div.container>ul>li*3` → full HTML via Ctrl+E
+- **AI Ghost Text** — inline Copilot-style suggestion after 900ms, Tab to accept, Esc to dismiss (powered by Cerebras Llama 8B)
+- **Minimap** — 64px canvas scroll overview with viewport indicator, click to jump
+- **Inline Lint** — syntax error markers in gutter (JSON parse errors, JS node --check)
+- **Code Folding** — fold all / unfold all buttons in toolbar
+- **Multi-cursor** — Ctrl+D to select next occurrence, Ctrl+Shift+L to select all
+- **Sticky Scroll** — scope header stays visible while scrolling into a function body
+- **Breadcrumb Navigation** — live scope path (e.g. `App > useEffect > callback`) above editor, derived from syntax tree
+- **Git Inline Blame** — per-line gutter showing commit hash + author + date, fetched via `git blame`
+- **TypeScript LSP** — lazy-loaded `@valtown/codemirror-ts` for autocomplete and type info on JS/TS files
+
+### Extra Keyboard Row
+A row of coding symbols (`{ } [ ] ( ) ; => // : . ! ?` + indent) appears above the soft keyboard when a file is open. Inserts at cursor position in both CodeMirror and the chat textarea. The one feature Spck has that we now also have.
+
+### Live HTML/CSS/JS Preview
+Split view with a live `<iframe srcdoc>` that rebuilds 300ms after any edit. Combines open HTML/CSS/JS tabs into a single document automatically. Console output intercepted via `postMessage` and displayed in a panel below. Auto/manual refresh toggle.
+
+### Global Find & Replace
+Search across all project files with full grep-powered results — grouped by file, expandable, match highlighted inline. Regex mode, case-sensitive toggle. Replace all with a single tap: reads, patches, and re-searches automatically.
+
+### Realtime Collaboration
+`/collab <room>` connects two devices to the same editing session via WebSocket. Changes sync in real time using `@codemirror/collab` (OT-based). The server handles version tracking and broadcasting — no third-party service needed.
+
 ### Surgical Context Editor
 Remove specific sections from any AI message without deleting the whole thing. Code blocks, exec results, text sections — tap to mark, save. The AI won't see those parts next turn.
 
 ### Live Chain of Thought
 `<think>` blocks stream live as Yuyu generates — collapsible "N langkah berpikir" like Claude.ai. Brain icon pulses while thinking, collapses with step count when done.
 
-### CodeMirror 6 Editor
-Full syntax highlighting for JS/JSX/TS/TSX/CSS/HTML/JSON/Python/Markdown, bracket matching, auto-indent, Ctrl+S save, find/replace panel (Ctrl+F), line numbers, cursor position. Replaces the old plain textarea.
-
 ### xterm.js Terminal
-Proper terminal emulator with 2000-line scrollback, full ANSI escape support, native font rendering. Traffic lights are functional: red = stop process, yellow = clear, green = send output to AI. Hint labels fade when typing.
+Proper terminal emulator with 2000-line scrollback, full ANSI escape support, native font rendering. Traffic lights are functional: red = stop process, yellow = clear, green = send output to AI.
 
 ### Fuse.js Fuzzy File Search
-Search bar in the file tree does fuzzy matching on filename + path — `cmpt` finds `components/`, `astst` finds `useAgentStore`. Linear filter replaced with Fuse.js.
+Search bar in the file tree does fuzzy matching on filename + path. `cmpt` finds `components/`, `astst` finds `useAgentStore`. Linear filter replaced with Fuse.js.
 
 ### Myers Diff Algorithm
 `generateDiff()` uses the `diff` library (Myers algorithm) for accurate line tracking. Detects moved blocks, not just line-by-line comparison. Output includes line numbers: `- L1: old`, `+ L1: new`.
@@ -70,16 +91,21 @@ Long-press select on any rendered table → clipboard gets proper markdown pipe 
 
 ## Technically interesting things
 
-- **Custom Capacitor plugin in Java** — `BrightnessPlugin.java` uses `ContentObserver` to emit real-time brightness events to the WebView. No npm dependency, no polling, zero lag.
-- **Two-layer brightness compensation** — Layer 1: CSS filter capped at 2.0 to avoid 8-bit GPU quantization artifacts on Android WebView. Layer 2: `mix-blend-mode: screen` overlay with T.accent color for extreme boost without banding.
-- **Per-theme T token system** — every component reads colour tokens from the active theme object (`T.bg`, `T.accent`, `T.border`, etc.) with safe fallbacks. Zero hardcoded colours in component JSX.
-- **Parallel action execution** — `read_file`, `web_search`, `list_files`, `tree`, `search`, `mkdir` run in parallel; `exec` and `mcp` run serial. The agent loop handles scheduling automatically.
-- **TF-IDF + age decay memory ranking** — memories injected into the system prompt are scored by relevance to the current task *and* recency, not just insertion order.
-- **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-highlighted `<span>` tags. Solves an entire class of highlighter corruption bugs with one elegant wrapper.
-- **3-fallback patch handler** — `patch_file` tries exact match → whitespace-normalized → trim-lines before giving up and feeding the diff error back to the AI to retry.
-- **TrafficDot component boundary** — ESLint `react-hooks/refs` cannot trace `termRef.current` across component boundaries. Traffic light buttons extracted to `<TrafficDot>` to safely reference terminal ref in onClick without lint warnings.
-- **onCopy intercept for tables** — `e.clipboardData.setData('text/plain', markdown)` + `e.preventDefault()` intercepts long-press copy on rendered `<table>` elements and replaces clipboard content with pipe-formatted markdown.
-- **310 tests, 0 lint warnings** — unit, integration, fuzz, snapshot, and full theme schema validation. All run on Termux ARM64 with `vitest@1`.
+- **Custom Capacitor plugin in Java** — `BrightnessPlugin.java` uses `ContentObserver` to emit real-time brightness events to the WebView.
+- **Two-layer brightness compensation** — Layer 1: CSS filter capped at 2.0 to avoid 8-bit GPU quantization artifacts. Layer 2: `mix-blend-mode: screen` overlay.
+- **Per-theme T token system** — every component reads colour tokens from the active theme object. Zero hardcoded colours in component JSX.
+- **EditorState swap per tab** — each tab stores its own `EditorState`. Switching tabs calls `view.setState()` — no remount, cursor and undo history preserved.
+- **Ghost text as StateField + WidgetType** — CM6 ghost text implemented from scratch: `StateEffect` → `StateField` → `Decoration.widget` → custom `WidgetType`. Tab keymap intercepts before default indent.
+- **Inline blame gutter** — custom `GutterMarker` + `gutter()` extension. Data fetched via `git blame --abbrev=7` on yuyu-server.
+- **Breadcrumb from syntax tree** — `syntaxTree(state).resolveInner(pos)` walks AST upward, collecting `FunctionDeclaration`, `ClassDeclaration`, etc. Injected as a live `updateListener` via `StateEffect.appendConfig`.
+- **Collab via `@codemirror/collab`** — OT-based update sync over the existing yuyu-server WebSocket. `collabRooms` Map tracks version + update log per room.
+- **Minimap as canvas** — 64px `<canvas>` with `requestAnimationFrame` loop. Colors code semantically (imports=purple, comments=green, strings=yellow). Click to scroll editor.
+- **Parallel action execution** — `read_file`, `web_search`, `list_files`, `tree`, `search`, `mkdir` run in parallel; `exec` and `mcp` run serial.
+- **TF-IDF + age decay memory ranking** — memories injected into the system prompt are scored by relevance to the current task *and* recency.
+- **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-highlighted `<span>` tags.
+- **3-fallback patch handler** — `patch_file` tries exact match → whitespace-normalized → trim-lines before giving up.
+- **Auto version bump** — `yugit.cjs` detects `release:` prefix commits and auto-bumps `package.json` patch/minor/major before pushing.
+- **404 tests, 0 lint warnings** — unit, integration, fuzz, snapshot, theme schema, multi-tab logic, UI store, global find/replace parser, and benchmarks. All run on Termux ARM64 with `vitest@1`.
 
 ---
 
@@ -90,7 +116,7 @@ Long-press select on any rendered table → clipboard gets proper markdown pipe 
 | Frontend | React 19 + Vite 5 |
 | Mobile | Capacitor 8 |
 | Backend | Node.js (yuyu-server.js, local) |
-| Code Editor | CodeMirror 6 + lang extensions |
+| Code Editor | CodeMirror 6 + full extension suite |
 | Terminal | xterm.js (@xterm/xterm) |
 | File Search | Fuse.js |
 | Diff | diff library (Myers algorithm) |
@@ -156,155 +182,93 @@ The answer is yes. Built patch by patch, from morning to past midnight, using on
 
 ---
 
-## Untuk AI yang Membaca Ini
-
-> Bagian ini ditulis khusus agar AI assistant sesi berikutnya tidak perlu diajarkan dari nol.
-
-**Konteks owner:** Solo dev, Android-only, semua coding dari Termux. Tidak ada akses laptop/desktop. Setiap keputusan teknis di project ini dibuat dengan constraint itu dalam pikiran.
-
-**Cara kerja app:** YuyuCode adalah React SPA yang di-serve lewat Capacitor ke Android. Di development, cukup `npm run dev` — tidak perlu build. Build APK hanya terjadi di GitHub Actions (CI). `npm run build` di Termux lokal **tidak akan pernah dijalankan** — selain lambat, akan crash "Illegal instruction" karena rollup native tidak support ARM64.
-
----
-
 ## Yang Tidak Boleh Diubah Tanpa Konfirmasi
 
 - `"overrides": { "rollup": "npm:@rollup/wasm-node" }` di `package.json` — ini yang bikin Vite jalan di Termux ARM64. Hapus = build mati.
 - Folder `android/` — di-generate Capacitor, edit manual bisa rusak sync.
-- `vite.config.js` — sudah dioptimasi untuk Termux. Manual chunks: `codemirror`, `xterm`, `d3`, `vendor` dipisah supaya initial bundle tetap kecil.
+- `vitest@1` — v4 crash silent di Termux ARM64. Jangan upgrade.
+- Jangan override `global.TextDecoder` di test files — infinite recursion di Node 24.
+- Keystore encoding: `openssl base64` + `tr -d '\n'`, bukan `base64 -w 0`.
 
----
+## Workflow Harian
 
-## Workflow Dasar
-
-**Push ke GitHub:**
 ```bash
-cd ~/yuyucode && node yugit.cjs "pesan commit"
+node ~/yuyu-server.js &
+cd ~/yuyucode && npm run dev &
+
+# Push biasa
+node yugit.cjs "feat: ..."
+
+# Release — auto bump version + trigger CI APK build
+node yugit.cjs "release: v2.x — deskripsi"
+
+npm run lint        # harus 0 errors, 0 warnings
+npx vitest run      # harus 404/404 pass
+npx vitest bench --run  # benchmark hot paths
 ```
-Bukan `~/yugit.cjs`. File `yugit.cjs` ada di dalam folder project.
-
-**CI/CD — Release strategy:**
-- Setiap push ke `main` → CI tetap build + lint + test
-- GitHub Release + APK **hanya dibuat** kalau commit message diawali `release:`
-- Push yang hanya ubah file `.md` → CI **skip otomatis** (paths-ignore di workflow)
-- Contoh: `node yugit.cjs "release: v2.x — fitur X dan fix Y"`
-
-**Encode keystore** (kalau perlu update GitHub Secrets):
-```bash
-openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
-# Bukan base64 -w 0
-```
-
----
-
-## Gotchas — Dikelompokkan
-
-### Termux / ARM64
-- `vitest@4` crash silent di Termux ARM64 → pakai `vitest@1`
-- `npm run build` crash "Illegal instruction" → CI only, jangan lokal
-- `global.TextDecoder` override di test file → infinite recursion. Node 24 sudah punya native, jangan override
-- `/tmp` di Termux restricted → pakai `$TMPDIR` atau `~/` untuk temp files
-
-### ESLint
-- Regex literal di JSX tidak boleh mengandung newline fisik → pakai `\n` escape
-- `\|` di dalam single-quoted string JS adalah useless escape → pakai `[|]` atau `\\|` dalam template literal
-- `react-hooks/refs` — `termRef.current` di dalam array literal yang di-render dianggap "in render". Solusi: extract ke komponen terpisah (component boundary memutus trace ESLint)
-- `react-hooks/set-state-in-effect` — `setSaved()` langsung di dalam useEffect → bungkus dengan `setTimeout(() => setSaved(true), 0)`
-- Unused eslint-disable directive → warning. Hapus komentar disable kalau masalah yang didisable sudah tidak ada
-
-### T Token System
-- Deklarasikan **hanya token yang benar-benar dipakai** di JSX — `no-unused-vars` akan flag yang tidak dipakai
-- Duplikat `const text` di function scope = parse error
-- Token yang dipakai di `buildTheme()` (CodeMirror) dan di JSX component adalah scope yang berbeda — deklarasikan di masing-masing scope
-
-### CodeMirror 6
-- Import dari `'codemirror'` bukan `'@codemirror/basic-setup'` (deprecated)
-- `Compartment` untuk dynamic lang/theme reconfigure tanpa remount
-- `useEffect(()=>{}, [])` untuk mount — dependency array kosong intentional, eslint-disable-line
-- xterm.js: import dari `'@xterm/xterm'` dan `'@xterm/addon-fit'` — package `xterm` dan `xterm-addon-fit` deprecated
-- xterm CSS: jangan `import '@xterm/xterm/css/xterm.css'` global — inject manual via `<style>` tag supaya tidak corrupt layout flex
-
-### Capacitor / API
-- Cerebras tidak support vision → auto-fallback ke Llama 4 Scout (Groq)
-- `readSSEStream` harus di-export dari `api.js` supaya bisa di-test
-
-### Skills
-- Skills disimpan di `.yuyu/skills/` (bukan `.claude/skills/`)
-- `/init` akan generate `SKILL.md` di root project folder
-
-### Misc
-- `hl()` di `utils.js` pakai pattern `protect()` — jangan hilangkan
-- `generateDiff()` sekarang pakai `diffLines` dari library `diff` (Myers) — output format: `- L1: teks` bukan `- teks`
-
----
 
 ## Arsitektur
 
 ```
-~/
-├── yuyu-server.js          # Server lokal v4-async — HTTP :8765 + WS :8766
-└── yuyucode/
-    ├── src/
-    │   ├── App.jsx                 # Root — state init, effects, layout shell
-    │   ├── constants.js            # BASE_SYSTEM prompt, models, themes, limits
-    │   ├── api.js                  # Cerebras+Groq streaming, callServer, execStream
-    │   ├── utils.js                # parseActions, executeAction, hl(), generateDiff (Myers)
-    │   ├── features.js             # Plan, bg agents, skills, hooks v2, tokenTracker, tfidfRank
-    │   ├── components/
-    │   │   ├── AppHeader.jsx       # Header bar, folder input, status bar
-    │   │   ├── AppSidebar.jsx      # Overlay sidebar + file tree
-    │   │   ├── AppChat.jsx         # Tabs, chat, file viewer, editor, input composer
-    │   │   ├── AppPanels.jsx       # Semua panel overlay, modals, commit dialog
-    │   │   ├── MsgBubble.jsx       # Chat bubbles, ThinkingBlock (live), StreamingBubble,
-    │   │   │                       # ActionChip, surgical editor, onCopy table intercept
-    │   │   ├── FileTree.jsx        # Sidebar file explorer + Fuse.js fuzzy search
-    │   │   ├── FileEditor.jsx      # CodeMirror 6 — syntax, bracket, find/replace, Ctrl+S
-    │   │   ├── Terminal.jsx        # xterm.js — ANSI, scrollback, traffic lights fungsional
-    │   │   ├── SearchBar.jsx       # File content search + undo bar
-    │   │   ├── ThemeEffects.jsx    # Visual overlays (orbs, scanlines, aurora, grain)
-    │   │   ├── VoiceBtn.jsx        # Voice input + push-to-talk
-    │   │   └── panels/
-    │   │       ├── panels.jsx      # Barrel re-export
-    │   │       ├── panels.base.jsx # BottomSheet, CommandPalette
-    │   │       ├── panels.git.jsx  # GitCompare, FileHistory, GitBlame, DepGraph, MergeConflict
-    │   │       ├── panels.agent.jsx# Elicitation, Skills, BgAgent
-    │   │       └── panels.tools.jsx# Deploy, Mcp, GitHub, Sessions, Permissions,
-    │   │                           # Plugins, Config, CustomActions, Shortcuts, Snippets, ThemeBuilder
-    │   ├── hooks/
-    │   │   ├── useAgentLoop.js     # Core agent loop — sendMsg, gatherContext, auto-execute, agentStatus
-    │   │   ├── useSlashCommands.js # 58 slash command handlers
-    │   │   ├── useAgentSwarm.js    # Architect → FE+BE parallel → QA → auto-fix
-    │   │   ├── useApprovalFlow.js  # Plan approval + syntax verify
-    │   │   ├── useChatStore.js     # Messages, memories, checkpoints, agentStatus, plan, swarm
-    │   │   ├── useProjectStore.js  # Folder, model, effort, permissions, hooks, skills
-    │   │   ├── useFileStore.js     # File open, pin, edit history, split view
-    │   │   ├── useUIStore.js       # Panels, theme, sidebar, brightness level
-    │   │   ├── useMediaHandlers.js # Camera, gallery, drag & drop
-    │   │   ├── useDevTools.js      # GitHub, deploy, commit msg, tests, browse, shortcuts
-    │   │   ├── useNotifications.js # Push notification, haptic, TTS
-    │   │   ├── useBrightness.js    # Real-time brightness via Capacitor plugin
-    │   │   └── useGrowth.js        # XP, streak, badge, learnedStyle
-    │   ├── plugins/
-    │   │   └── brightness.js       # JS bridge untuk BrightnessPlugin.java
-    │   └── themes/
-    │       ├── index.js        # Theme registry
-    │       ├── obsidian.js     # Obsidian Warm (default)
-    │       ├── aurora.js       # Aurora Glass
-    │       ├── ink.js          # Ink & Paper
-    │       ├── neon.js         # Neon Terminal
-    │       └── mybrand.js      # Template custom theme
-    ├── android/
-    │   └── app/src/main/java/com/liveiciee/yuyucode/
-    │       ├── MainActivity.java      # Register BrightnessPlugin
-    │       └── BrightnessPlugin.java  # ContentObserver → emit ke WebView
-    ├── .github/
-    │   └── workflows/build-apk.yml  # CI/CD — signed APK → Releases (skip pada .md only push)
-    ├── yugit.cjs                    # Git push helper
-    ├── eslint.config.js
-    ├── package.json                 # Vite 5 + rollup wasm override
-    └── vite.config.js               # Manual chunks: vendor/codemirror/xterm/d3
+src/
+├── App.jsx                 # Root — mounts semua stores + hooks
+├── components/
+│   ├── AppHeader.jsx       # Header bar (status, model, tools)
+│   ├── AppSidebar.jsx      # File tree sidebar
+│   ├── AppChat.jsx         # Main area: tabs, chat, editor, terminal, preview
+│   ├── AppPanels.jsx       # Semua overlay panels
+│   ├── FileEditor.jsx      # CodeMirror 6 — multi-tab, vim, ghost text, blame, collab
+│   ├── KeyboardRow.jsx     # Extra symbol row above keyboard
+│   ├── LivePreview.jsx     # iframe HTML/CSS/JS preview
+│   ├── GlobalFindReplace.jsx # Search+replace across all files
+│   ├── Terminal.jsx        # xterm.js terminal
+│   ├── FileTree.jsx        # Fuse.js fuzzy file tree
+│   ├── MsgBubble.jsx       # Chat message renderer
+│   ├── SearchBar.jsx       # Global file search
+│   ├── ThemeEffects.jsx    # Per-theme keyframe animations
+│   ├── VoiceBtn.jsx        # STT voice input
+│   ├── panels.jsx          # Barrel re-export
+│   ├── panels.base.jsx     # BottomSheet, CommandPalette
+│   ├── panels.git.jsx      # GitCompare, FileHistory, GitBlame, DepGraph, MergeConflict
+│   ├── panels.agent.jsx    # Elicitation, Skills, BgAgent
+│   └── panels.tools.jsx    # Config, Deploy, MCP, GitHub, Sessions, Permissions, Plugins
+├── hooks/
+│   ├── useAgentLoop.js     # Core AI loop — stream, parse, execute, retry
+│   ├── useAgentSwarm.js    # Multi-agent swarm pipeline
+│   ├── useApprovalFlow.js  # Write approval + atomic rollback
+│   ├── useBrightness.js    # Real-time brightness via Capacitor plugin
+│   ├── useChatStore.js     # Messages, streaming, memories, checkpoints
+│   ├── useDevTools.js      # GitHub, deploy, commit msg, tests, browse, shortcuts
+│   ├── useFileStore.js     # Multi-tab: openTabs[], activeTabIdx, openFile, closeTab
+│   ├── useGrowth.js        # XP, streak, badge, learnedStyle
+│   ├── useMediaHandlers.js # Camera, image attach, drag & drop
+│   ├── useNotifications.js # Push notification, haptic, TTS
+│   ├── useProjectStore.js  # Folder, model, effort, permissions, hooks, plugins
+│   ├── useSlashCommands.js # /command handler (~60 commands)
+│   └── useUIStore.js       # All UI state + Fase 1/2/3 editor toggles
+├── themes/
+│   ├── index.js        # Theme registry
+│   ├── obsidian.js     # Obsidian Warm (default)
+│   ├── aurora.js       # Aurora Glass
+│   ├── ink.js          # Ink & Paper
+│   └── neon.js         # Neon Terminal
+└── plugins/
+    └── brightness.js   # JS bridge untuk BrightnessPlugin.java
 ```
 
----
+## Editor Feature Toggles (Config Panel)
+
+| Toggle | Key | Default | Keterangan |
+|--------|-----|---------|------------|
+| Vim Mode | `yc_vim` | off | hjkl, normal/insert/visual |
+| AI Ghost Text | `yc_ghosttext` | off | Copilot-style, Tab accept |
+| Minimap | `yc_minimap` | off | Canvas scroll overview |
+| Inline Lint | `yc_lint` | off | JSON + JS syntax check |
+| TypeScript LSP | `yc_tslsp` | off | Autocomplete + types |
+| Inline Blame | `yc_blame` | off | git blame per line |
+| Multi-cursor | `yc_multicursor` | **on** | Ctrl+D, Ctrl+Shift+L |
+| Sticky Scroll | `yc_stickyscroll` | off | Scope header sticky |
+| Realtime Collab | `yc_collab` | off | OT sync via WebSocket |
 
 ## Cara Kerja Agent Loop
 
@@ -319,16 +283,6 @@ Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 7. `patch_file` → auto-execute dengan 3 fallback di server
 8. `write_file` → auto-execute + backup otomatis untuk undo
 9. Feed hasil balik ke AI → lanjut loop
-
-**Effort levels:**
-
-| Level | MaxIter | MaxTokens | Pakai kapan |
-|-------|---------|-----------|-------------|
-| `low` | 3 | 1500 | Pertanyaan singkat |
-| `medium` | 10 | 2048 | Default harian |
-| `high` | 20 | 4000 | Task kompleks |
-
----
 
 ## AI Provider
 
@@ -347,11 +301,9 @@ Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 | Qwen 3 32B | `qwen/qwen3-32b` | Coding |
 | Llama 8B Fast | `llama-3.1-8b-instant` | Hemat rate limit |
 
-**Auto-fallback:** Cerebras rate limit (429) → otomatis switch ke Kimi K2 tanpa user tahu.
-**Vision:** Cerebras tidak support image → auto-route ke Llama 4 Scout.
+**Auto-fallback:** Cerebras rate limit (429) → otomatis switch ke Kimi K2.  
+**Vision:** Cerebras tidak support image → auto-route ke Llama 4 Scout.  
 **Retry:** Server error 5xx → retry 2x dengan backoff 2s/4s.
-
----
 
 ## YuyuServer v4-async
 
@@ -361,41 +313,14 @@ node ~/yuyu-server.js &  # jalankan dari ~, bukan dari project folder
 
 **HTTP :8765** — `ping`, `read`, `read_many`, `write`, `append`, `patch`, `delete`, `move`, `mkdir`, `list`, `tree`, `info`, `search`, `web_search`, `exec`, `browse`, `fetch_json`, `sqlite`, `mcp`, `mcp_list`
 
-**WebSocket :8766** — `watch` (file watcher), `exec_stream` (live terminal output), `kill` (abort process)
+**WebSocket :8766** — `watch` (file watcher), `exec_stream` (live terminal), `kill` (abort), `collab_join`, `collab_push`, `collab_updates` (realtime collab)
 
----
-
-## Permissions
-
-| Action | Default | Keterangan |
-|--------|---------|------------|
-| `read_file`, `list_files`, `tree`, `search`, `web_search`, `mkdir` | ✅ | Safe |
-| `write_file`, `patch_file` | ✅ | Auto-execute + backup |
-| `exec` | ✅ | Bebas run command |
-| `delete_file`, `move_file` | ❌ | Destruktif |
-| `mcp`, `browse` | ❌ | Manual enable |
-
----
-
-## Slash Commands
-
-| Kategori | Commands |
-|----------|----------|
-| **AI** | `/model` `/effort` `/thinking` `/usage` `/cost` `/tokens` `/debug` `/ab` `/xp` |
-| **Agent** | `/plan` `/bg` `/bgstatus` `/bgmerge` `/swarm` `/batch` `/simplify` `/loop` |
-| **Context** | `/compact` `/summarize` `/rewind` `/clear` `/tree` `/index` |
-| **Memory** | `/amemory` `/checkpoint` `/restore` `/save` `/sessions` |
-| **Git** | `/history` `/diff` `/review` `/deps` `/rename` `/color` |
-| **Dev** | `/test` `/scaffold` `/browse` `/search` `/db` `/mcp` `/github` `/deploy` `/init` `/lint` `/refactor` `/open` `/status` |
-| **UX** | `/font` `/theme` `/split` `/config` `/watch` `/ptt` `/plugin` `/permissions` `/skills` `/actions` `/export` |
-
----
-
-## Testing
+## Testing & Benchmarks
 
 ```bash
 npm run lint          # ESLint — harus 0 errors, 0 warnings
-npx vitest run        # Semua tests — harus 310/310 pass
+npx vitest run        # Semua tests — harus 404/404 pass
+npx vitest bench --run  # Benchmark hot paths
 ```
 
 | File | Tipe | Tests |
@@ -410,38 +335,26 @@ npx vitest run        # Semua tests — harus 310/310 pass
 | `src/features.extended.test.js` | Unit + Edge cases | 48 |
 | `src/features.extra.test.js` | Unit — sessions, skills, plan | 21 |
 | `src/themes.test.js` | Schema validation — semua 4 tema | 103 |
-
-Pakai `vitest@1` — v4 crash silent di Termux ARM64.
-
----
+| `src/editor.test.js` | Unit — getLang, isEmmet, isTsLang | 21 |
+| `src/livepreview.test.js` | Unit — buildSrcdoc | 12 |
+| `src/multitab.test.js` | Unit — useFileStore multi-tab | 18 |
+| `src/uistore.test.js` | Unit — useUIStore Fase 1/2/3 | 25 |
+| `src/globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
+| `src/editor.bench.js` | Benchmark — 14 hot paths | — |
 
 ## CI/CD
 
-**Steps:**
 1. Install deps (cached)
 2. `npm run build` (Vite → dist/)
 3. Setup Java 21 + Android SDK 34
 4. `cap sync android` + restore custom icons
-5. Auto-bump versionCode = GitHub run number
+5. Auto-bump `versionCode` = GitHub run number
 6. `./gradlew assembleRelease`
 7. Sign APK dengan keystore dari Secrets
 8. GitHub Release hanya kalau commit diawali `release:`
 9. Push yang hanya ubah `.md` → skip CI otomatis
 
 **GitHub Secrets:** `VITE_CEREBRAS_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_TAVILY_API_KEY`, `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
-
----
-
-## Workflow Harian
-
-```bash
-node ~/yuyu-server.js &
-cd ~/yuyucode && npm run dev &
-
-node yugit.cjs "feat: ..."
-node yugit.cjs "release: v2.x — ..."
-npm run lint && npx vitest run
-```
 
 </details>
 

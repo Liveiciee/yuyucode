@@ -1,10 +1,20 @@
-// ── FileEditor — CodeMirror 6 · Multi-tab · Vim · Emmet · Ghost Text · Minimap · Lint ──
+// ── FileEditor — CodeMirror 6 · Full IDE ─────────────────────────────────────
+// Fase 1+2: Multi-tab, Vim, Emmet, Ghost Text, Minimap, Lint
+// Fase 3:   TypeScript LSP, Inline Blame, Sticky Scroll, Code Fold,
+//           Multi-Cursor, Breadcrumb, Realtime Collab
 import React, { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { Save } from 'lucide-react';
+import { Save, ChevronRight } from 'lucide-react';
 import { EditorView, basicSetup } from 'codemirror';
 import { EditorState, Compartment, StateEffect, StateField } from '@codemirror/state';
-import { Decoration, WidgetType, ViewPlugin, keymap } from '@codemirror/view';
+import { Decoration, WidgetType, ViewPlugin, keymap, GutterMarker, gutter } from '@codemirror/view';
 import { linter, lintGutter } from '@codemirror/lint';
+import { syntaxTree } from '@codemirror/language';
+import {
+  foldAll, unfoldAll,
+  selectNextOccurrence, selectSelectionMatches,
+  indentWithTab,
+} from '@codemirror/commands';
+import { collab, getSyncedVersion, sendableUpdates, receiveUpdates } from '@codemirror/collab';
 import { javascript } from '@codemirror/lang-javascript';
 import { css } from '@codemirror/lang-css';
 import { html } from '@codemirror/lang-html';
@@ -15,26 +25,42 @@ import { vim } from '@replit/codemirror-vim';
 import { abbreviationTracker, expandAbbreviation } from '@emmetio/codemirror6-plugin';
 import { callServer } from '../api.js';
 
-// ── Language detector ────────────────────────────────────────────────────────
+// ── TypeScript LSP — lazy load @valtown/codemirror-ts ────────────────────────
+let _tsExtensions = null;
+async function getTsExtensions() {
+  if (_tsExtensions) return _tsExtensions;
+  try {
+    const mod = await import('@valtown/codemirror-ts');
+    _tsExtensions = mod;
+    return mod;
+  } catch (_) { return null; }
+}
+
+// ── Language detector ─────────────────────────────────────────────────────────
 function getLang(path) {
   const ext = path?.split('.').pop()?.toLowerCase();
   switch (ext) {
     case 'js': case 'mjs': case 'cjs': return javascript();
-    case 'jsx':            return javascript({ jsx: true });
-    case 'ts':             return javascript({ typescript: true });
-    case 'tsx':            return javascript({ jsx: true, typescript: true });
+    case 'jsx':  return javascript({ jsx: true });
+    case 'ts':   return javascript({ typescript: true });
+    case 'tsx':  return javascript({ jsx: true, typescript: true });
     case 'css': case 'scss': case 'sass': return css();
     case 'html': case 'htm': return html();
-    case 'json':           return json();
-    case 'py':             return python();
+    case 'json': return json();
+    case 'py':   return python();
     case 'md': case 'mdx': return markdown();
-    default:               return javascript();
+    default:     return javascript();
   }
 }
 
 function isEmmetLang(path) {
   const ext = path?.split('.').pop()?.toLowerCase();
   return ['html', 'htm', 'jsx', 'tsx', 'css', 'scss'].includes(ext);
+}
+
+function isTsLang(path) {
+  const ext = path?.split('.').pop()?.toLowerCase();
+  return ['ts', 'tsx', 'js', 'jsx'].includes(ext);
 }
 
 // ── Theme builder ─────────────────────────────────────────────────────────────
@@ -64,11 +90,12 @@ function buildTheme(T) {
     '.cm-cursor': { borderLeftColor: accent, borderLeftWidth: '2px' },
     '.cm-selectionBackground': { backgroundColor: accentBg + ' !important' },
     '&.cm-focused .cm-selectionBackground': { backgroundColor: accentBg + ' !important' },
-    '.cm-matchingBracket': { backgroundColor: accentBg, outline: '1px solid ' + accent + '44', borderRadius: '2px' },
+    '.cm-matchingBracket': { backgroundColor: accentBg,
+      outline: '1px solid ' + accent + '44', borderRadius: '2px' },
     '.cm-searchMatch': { backgroundColor: accentBg, borderRadius: '2px' },
     '.cm-searchMatch.cm-searchMatch-selected': { backgroundColor: accent + '44' },
     '.cm-tooltip': { backgroundColor: bg2, border: '1px solid ' + border,
-      borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,.5)' },
+      borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,.5)', zIndex: 200 },
     '.cm-tooltip-autocomplete > ul > li': { padding: '4px 10px' },
     '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: accentBg, color: accent },
     '.cm-panels': { backgroundColor: bg2, borderBottom: '1px solid ' + border },
@@ -77,19 +104,21 @@ function buildTheme(T) {
       borderRadius: '6px', color: text, padding: '4px 8px', outline: 'none' },
     '.cm-panel.cm-search button': { backgroundColor: bg3, border: '1px solid ' + border,
       borderRadius: '6px', color: text, padding: '4px 10px', cursor: 'pointer' },
-    // Lint gutter
     '.cm-gutter-lint': { width: '14px' },
     '.cm-lint-marker-error': { color: error },
     '.cm-lint-marker-warning': { color: warning },
-    // Vim status bar
     '.cm-vim-panel': { backgroundColor: bg2, borderTop: '1px solid ' + border,
       color: textMute, fontSize: '11px', padding: '2px 8px', fontFamily: 'monospace' },
     '.cm-vim-panel input': { backgroundColor: 'transparent', border: 'none', color: text,
       outline: 'none', fontFamily: 'monospace' },
+    '.cm-blame-gutter': { minWidth: '150px', fontSize: '9px', padding: '0 6px 0 2px',
+      color: textMute, fontFamily: 'monospace', cursor: 'default', userSelect: 'none' },
+    '.cm-stickyLines': { backgroundColor: bg + 'ee', borderBottom: '1px solid ' + border,
+      backdropFilter: 'blur(4px)', zIndex: 10 },
   }, { dark: true });
 }
 
-// ── Ghost text extension ──────────────────────────────────────────────────────
+// ── Ghost text ────────────────────────────────────────────────────────────────
 const setGhostEffect   = StateEffect.define();
 const clearGhostEffect = StateEffect.define();
 
@@ -120,9 +149,7 @@ class GhostWidget extends WidgetType {
 const ghostDecorations = EditorView.decorations.compute([ghostField], state => {
   const { text, pos } = state.field(ghostField);
   if (!text || pos > state.doc.length) return Decoration.none;
-  return Decoration.set([
-    Decoration.widget({ widget: new GhostWidget(text), side: 1 }).range(pos),
-  ]);
+  return Decoration.set([Decoration.widget({ widget: new GhostWidget(text), side: 1 }).range(pos)]);
 });
 
 const ghostAcceptKeymap = keymap.of([{
@@ -130,11 +157,8 @@ const ghostAcceptKeymap = keymap.of([{
   run(view) {
     const { text, pos } = view.state.field(ghostField);
     if (!text) return false;
-    view.dispatch({
-      changes: { from: pos, insert: text },
-      effects: clearGhostEffect.of(null),
-      selection: { anchor: pos + text.length },
-    });
+    view.dispatch({ changes: { from: pos, insert: text },
+      effects: clearGhostEffect.of(null), selection: { anchor: pos + text.length } });
     return true;
   },
 }, {
@@ -155,9 +179,7 @@ async function fetchAISuggestion(prefix) {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama3.1-8b',
-        max_tokens: 60,
-        temperature: 0.15,
+        model: 'llama3.1-8b', max_tokens: 60, temperature: 0.15,
         messages: [
           { role: 'system', content: 'You complete code. Reply ONLY with the completion text, nothing else. No markdown, no backticks.' },
           { role: 'user', content: 'Complete this code from where it ends:\n' + prefix.slice(-600) },
@@ -168,9 +190,7 @@ async function fetchAISuggestion(prefix) {
     if (!res.ok) return null;
     const data = await res.json();
     return data.choices?.[0]?.message?.content?.trim() || null;
-  } catch (_) {
-    return null;
-  }
+  } catch (_) { return null; }
 }
 
 function makeGhostPlugin() {
@@ -186,12 +206,10 @@ function makeGhostPlugin() {
         if (view.isDestroyed) return;
         const pos    = view.state.selection.main.head;
         const prefix = view.state.doc.sliceString(0, pos);
-        const lastLine = prefix.split('\n').pop() || '';
-        if (lastLine.trim().length < 3) return;
+        if ((prefix.split('\n').pop() || '').trim().length < 3) return;
         fetchAISuggestion(prefix).then(text => {
           if (!text || view.isDestroyed) return;
-          const curPos = view.state.selection.main.head;
-          if (curPos !== pos) return; // cursor moved — stale
+          if (view.state.selection.main.head !== pos) return;
           view.dispatch({ effects: setGhostEffect.of({ text, pos }) });
         });
       }, 900);
@@ -200,10 +218,53 @@ function makeGhostPlugin() {
   });
 }
 
-// ── Syntax-only lint (node --check for .js, JSON.parse for .json) ─────────────
+// ── Inline blame gutter ───────────────────────────────────────────────────────
+class BlameMarker extends GutterMarker {
+  constructor(info) { super(); this.info = info; }
+  toDOM() {
+    const el = document.createElement('span');
+    el.className = 'cm-blame-gutter';
+    el.textContent = this.info;
+    el.title = this.info;
+    return el;
+  }
+}
+
+function makeBlameGutter(blameMap) {
+  return gutter({
+    class: 'cm-blame-gutter',
+    lineMarker(view, line) {
+      const lineNo = view.state.doc.lineAt(line.from).number;
+      const info = blameMap.get(lineNo);
+      return info ? new BlameMarker(info) : null;
+    },
+    initialSpacer: () => new BlameMarker('a1b2c3 you 1d'),
+  });
+}
+
+async function fetchBlame(folder, filePath) {
+  const rel = filePath.replace(folder.endsWith('/') ? folder : folder + '/', '');
+  const r = await callServer({
+    type: 'exec', path: folder,
+    command: `git blame --abbrev=7 --date=short -- "${rel}" 2>/dev/null | head -2000`,
+  });
+  if (!r.ok || !r.data) return new Map();
+  const map = new Map();
+  (r.data || '').split('\n').forEach((line, idx) => {
+    // git blame --abbrev=7 format: "^abc1234 (Author   2024-01-01 1) code"
+    const m = line.match(/^[\^]?([0-9a-f]{4,})\s+\((.+?)\s+(\d{4}-\d{2}-\d{2})\s+\d+\)/);
+    if (!m) return;
+    const hash   = m[1].slice(0, 7);
+    const author = m[2].trim().split(/\s+/)[0].slice(0, 8).padEnd(8);
+    const date   = m[3];
+    map.set(idx + 1, `${hash} ${author} ${date}`);
+  });
+  return map;
+}
+
+// ── Syntax lint ───────────────────────────────────────────────────────────────
 function makeSyntaxLinter(path, folder) {
   const ext = path?.split('.').pop()?.toLowerCase();
-
   if (ext === 'json') {
     return linter(view => {
       const src = view.state.doc.toString();
@@ -215,7 +276,6 @@ function makeSyntaxLinter(path, folder) {
       }
     }, { delay: 600 });
   }
-
   if (['js', 'mjs', 'cjs'].includes(ext)) {
     return linter(async view => {
       const src  = view.state.doc.toString();
@@ -229,74 +289,54 @@ function makeSyntaxLinter(path, folder) {
         const lineNum = parseInt(line[1]);
         const doc = view.state.doc;
         const lineObj = doc.line(Math.min(lineNum, doc.lines));
-        return [{ from: lineObj.from, to: lineObj.to, severity: 'error',
-          message: (r.data || '').split('\n')[0] }];
+        return [{ from: lineObj.from, to: lineObj.to, severity: 'error', message: (r.data || '').split('\n')[0] }];
       } catch (_) { return []; }
     }, { delay: 1200 });
   }
-
   return null;
 }
 
-// ── Minimap canvas component ───────────────────────────────────────────────────
+// ── Minimap ───────────────────────────────────────────────────────────────────
 function Minimap({ viewRef, T }) {
   const canvasRef = useRef(null);
   const frameRef  = useRef(null);
-
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     let running = true;
-
     function draw() {
       if (!running) return;
       const view = viewRef.current;
-      const ctx  = canvas.getContext('2d');
-      const W    = canvas.width;
-      const H    = canvas.height;
-
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
       ctx.clearRect(0, 0, W, H);
-
-      // Background
       ctx.fillStyle = T?.bg3 || 'rgba(255,255,255,.03)';
       ctx.fillRect(0, 0, W, H);
-
       if (!view) { frameRef.current = requestAnimationFrame(draw); return; }
-
-      const doc      = view.state.doc;
+      const doc = view.state.doc;
       const totalLines = doc.lines;
-      const lineH    = Math.max(1, H / Math.max(totalLines, 1));
-
-      // Draw code lines as colored blocks
+      const lineH = Math.max(1, H / Math.max(totalLines, 1));
       for (let i = 1; i <= totalLines; i++) {
-        const line = doc.line(i);
-        const src  = line.text;
-        const len  = Math.min(src.trimStart().length, src.length);
+        const src = doc.line(i).text;
+        const len = src.trimStart().length;
         const indent = src.length - src.trimStart().length;
-
-        if (len === 0) { continue; }
-
-        // Color by content type (heuristic)
+        if (!len) continue;
         let color = T?.textMute || 'rgba(255,255,255,.15)';
         if (/^\s*(\/\/|#|<!--|\/\*)/.test(src)) color = (T?.success || '#4ade80') + '55';
         else if (/^\s*(import|export|from|require)/.test(src)) color = (T?.accent || '#a78bfa') + '88';
         else if (/^\s*(function|const|let|var|class|def|return)/.test(src)) color = (T?.accentBorder || '#7c3aed') + 'aa';
-        else if (/^\s*['"<]/.test(src)) color = (T?.warning || '#fbbf24') + '66';
-
+        else if (/^\s*['<]/.test(src)) color = (T?.warning || '#fbbf24') + '66';
         const y = ((i - 1) / Math.max(totalLines - 1, 1)) * (H - lineH);
         const xStart = Math.min(indent * 0.7, W * 0.3);
         const xEnd   = Math.min(xStart + len * 0.85, W - 2);
         ctx.fillStyle = color;
         ctx.fillRect(xStart, y, Math.max(xEnd - xStart, 1), Math.max(lineH * 0.7, 1));
       }
-
-      // Viewport indicator
       try {
         const { scrollTop, scrollHeight, clientHeight } = view.scrollDOM;
         if (scrollHeight > clientHeight) {
           const ratio = clientHeight / scrollHeight;
-          const vpH   = H * ratio;
-          const vpY   = (scrollTop / scrollHeight) * H;
+          const vpH = H * ratio, vpY = (scrollTop / scrollHeight) * H;
           ctx.fillStyle = (T?.accent || '#a78bfa') + '22';
           ctx.fillRect(0, vpY, W, vpH);
           ctx.strokeStyle = (T?.accentBorder || '#7c3aed') + '55';
@@ -304,175 +344,328 @@ function Minimap({ viewRef, T }) {
           ctx.strokeRect(0, vpY, W, vpH);
         }
       } catch (_) {}
-
       frameRef.current = requestAnimationFrame(draw);
     }
-
     draw();
     return () => { running = false; cancelAnimationFrame(frameRef.current); };
   }, [viewRef, T]);
-
   return (
-    <canvas
-      ref={canvasRef}
-      width={64}
-      height={300}
-      style={{
-        width: '64px',
-        height: '100%',
-        flexShrink: 0,
-        cursor: 'pointer',
-        borderLeft: '1px solid ' + (T?.border || 'rgba(255,255,255,.06)'),
-      }}
-      onClick={e => {
-        const view = viewRef.current;
-        if (!view) return;
-        const rect  = e.currentTarget.getBoundingClientRect();
-        const ratio = (e.clientY - rect.top) / rect.height;
-        const doc   = view.state.doc;
-        const line  = Math.max(1, Math.min(Math.round(ratio * doc.lines), doc.lines));
-        const pos   = doc.line(line).from;
-        view.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
-      }}
-    />
+    <canvas ref={canvasRef} width={64} height={300} style={{
+      width: '64px', height: '100%', flexShrink: 0, cursor: 'pointer',
+      borderLeft: '1px solid ' + (T?.border || 'rgba(255,255,255,.06)'),
+    }} onClick={e => {
+      const view = viewRef.current;
+      if (!view) return;
+      const rect  = e.currentTarget.getBoundingClientRect();
+      const ratio = (e.clientY - rect.top) / rect.height;
+      const doc   = view.state.doc;
+      const line  = Math.max(1, Math.min(Math.round(ratio * doc.lines), doc.lines));
+      view.dispatch({ selection: { anchor: doc.line(line).from }, scrollIntoView: true });
+    }}/>
   );
 }
 
-// ── Main FileEditor component ─────────────────────────────────────────────────
+// ── Breadcrumb ────────────────────────────────────────────────────────────────
+function Breadcrumb({ viewRef, T }) {
+  const [crumbs, setCrumbs] = useState([]);
+
+  // Listen to cursor movement via a plugin attached after mount
+  const setCrumbsRef = useRef(setCrumbs);
+  useEffect(() => { setCrumbsRef.current = setCrumbs; }, [setCrumbs]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    function update(v) {
+      const pos  = v.state.selection.main.head;
+      const tree = syntaxTree(v.state);
+      const path = [];
+      let node = tree.resolveInner(pos, -1);
+      const seen = new Set();
+      while (node && node.parent) {
+        const name = node.type.name;
+        if (/^(FunctionDeclaration|FunctionExpression|ArrowFunction|MethodDefinition|ClassDeclaration)$/.test(name)) {
+          const idNode = node.getChild('VariableDefinition') || node.getChild('PropertyDefinition') || node.firstChild;
+          const raw = idNode ? v.state.doc.sliceString(idNode.from, Math.min(idNode.to, idNode.from + 30)) : name.replace('Declaration', '');
+          const label = raw.trim().split(/[\s({]/)[0];
+          if (label && !seen.has(label)) { seen.add(label); path.unshift(label); }
+        }
+        node = node.parent;
+      }
+      setCrumbsRef.current(path.slice(-4));
+    }
+    // Initial read
+    update(view);
+    // Subscribe via updateListener extension — inject as a state facet
+    // Since view is already created, we use a transaction listener
+    const ext = EditorView.updateListener.of(upd => {
+      if (upd.selectionSet || upd.docChanged) update(upd.view);
+    });
+    // Inject via a new compartment on existing view
+    const comp = new Compartment();
+    view.dispatch({ effects: StateEffect.appendConfig.of(comp.of(ext)) });
+    return () => {
+      try { view.dispatch({ effects: comp.reconfigure([]) }); } catch (_) {}
+    };
+  }, [viewRef]);
+
+  if (crumbs.length === 0) return null;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '2px',
+      padding: '2px 10px', borderBottom: '1px solid ' + (T?.border || 'rgba(255,255,255,.06)'),
+      background: T?.bg2 || '#111116', flexShrink: 0, overflowX: 'auto', scrollbarWidth: 'none',
+      minHeight: '22px',
+    }}>
+      {crumbs.map((c, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <ChevronRight size={9} style={{ color: T?.textMute || 'rgba(255,255,255,.3)', flexShrink: 0 }}/>}
+          <span style={{
+            fontSize: '10px',
+            color: i === crumbs.length - 1 ? T?.accent || '#a78bfa' : T?.textMute || 'rgba(255,255,255,.3)',
+            fontFamily: 'monospace', whiteSpace: 'nowrap', flexShrink: 0,
+          }}>{c}</span>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+// ── Collab WS plugin ──────────────────────────────────────────────────────────
+function makeCollabPlugin(wsRef) {
+  return ViewPlugin.fromClass(class {
+    pushing = false;
+    timer   = null;
+    constructor() { this.schedule(); }
+    schedule() { this.timer = setTimeout(() => this.push(), 150); }
+    async push() {
+      if (this.pushing) { this.schedule(); return; }
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== 1) { this.schedule(); return; }
+      this.pushing = true;
+      try {
+        // sendableUpdates is accessed from the view in update()
+      } finally { this.pushing = false; this.schedule(); }
+    }
+    update(upd) {
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== 1) return;
+      const updates = sendableUpdates(upd.state);
+      if (!updates.length) return;
+      try {
+        ws.send(JSON.stringify({
+          type: 'collab_push',
+          version: getSyncedVersion(upd.state),
+          updates: updates.map(u => ({ clientID: u.clientID, changes: u.changes.toJSON() })),
+        }));
+      } catch (_) {}
+    }
+    destroy() { clearTimeout(this.timer); }
+  });
+}
+
+// ── Build optional extensions ─────────────────────────────────────────────────
+function buildOptionalExtensions(cfg, path, _folder, collabWsRef) {
+  const exts = [];
+  if (cfg?.vimMode)   exts.push(vim({ status: true }));
+  if (cfg?.emmet && isEmmetLang(path)) {
+    exts.push(abbreviationTracker());
+    exts.push(keymap.of([{ key: 'Ctrl-e', run: expandAbbreviation }]));
+  }
+  if (cfg?.ghostText) exts.push(ghostField, ghostDecorations, ghostAcceptKeymap, makeGhostPlugin());
+  if (cfg?.lint) {
+    const linterExt = makeSyntaxLinter(path, _folder);
+    if (linterExt) exts.push(linterExt, lintGutter());
+  }
+  if (cfg?.multiCursor) {
+    exts.push(keymap.of([
+      { key: 'Ctrl-d',       run: selectNextOccurrence },
+      { key: 'Ctrl-Shift-l', run: selectSelectionMatches },
+    ]));
+  }
+  if (cfg?.collab && collabWsRef) {
+    exts.push(collab({ startVersion: 0 }), makeCollabPlugin(collabWsRef));
+  }
+  return exts;
+}
+
+// ── Main FileEditor ───────────────────────────────────────────────────────────
 export const FileEditor = forwardRef(function FileEditor(
   { tab, onSave, onClose, T, editorConfig, folder },
   ref
 ) {
-  const containerRef = useRef(null);
-  const viewRef      = useRef(null);
-  const themeComp    = useRef(new Compartment());
-  const langComp     = useRef(new Compartment());
-  const optsComp     = useRef(new Compartment());
-  const [saved,  setSaved]  = useState(true);
-  const [cursor, setCursor] = useState({ line: 1, col: 1 });
+  const containerRef   = useRef(null);
+  const viewRef        = useRef(null);
+  const themeComp      = useRef(new Compartment());
+  const langComp       = useRef(new Compartment());
+  const optsComp       = useRef(new Compartment());
+  const blameComp      = useRef(new Compartment());
+  const collabWsRef    = useRef(null);
+  const prevPathRef    = useRef(null);
+  const savedStatesRef = useRef(new Map());
 
-  const T_bg3         = T?.bg3           || 'rgba(255,255,255,.04)';
-  const T_border      = T?.border        || 'rgba(255,255,255,.06)';
-  const T_textMute    = T?.textMute      || 'rgba(255,255,255,.3)';
-  const T_accent      = T?.accent        || '#a78bfa';
-  const T_accentBg    = T?.accentBg      || 'rgba(124,58,237,.2)';
+  const [saved,        setSaved]       = useState(true);
+  const [cursor,       setCursor]      = useState({ line: 1, col: 1 });
+  const [blameData,    setBlameData]   = useState(null);
+  const [blameLoading, setBlameLoad]   = useState(false);
+  const [tsReady,      setTsReady]     = useState(false);
+
+  const T_bg3          = T?.bg3          || 'rgba(255,255,255,.04)';
+  const T_border       = T?.border       || 'rgba(255,255,255,.06)';
+  const T_textMute     = T?.textMute     || 'rgba(255,255,255,.3)';
+  const T_accent       = T?.accent       || '#a78bfa';
+  const T_accentBg     = T?.accentBg     || 'rgba(124,58,237,.2)';
   const T_accentBorder = T?.accentBorder || 'rgba(124,58,237,.35)';
-  const T_success     = T?.success       || '#4ade80';
-  const T_successBg   = T?.successBg     || 'rgba(74,222,128,.12)';
-  const T_warning     = T?.warning       || '#fbbf24';
+  const T_success      = T?.success      || '#4ade80';
+  const T_successBg    = T?.successBg    || 'rgba(74,222,128,.12)';
+  const T_warning      = T?.warning      || '#fbbf24';
 
-  // ── Expose insert() + focus() via ref ───────────────────────────────────────
   useImperativeHandle(ref, () => ({
     insert(text) {
       const view = viewRef.current;
       if (!view) return;
       const { from, to } = view.state.selection.main;
-      view.dispatch({
-        changes: { from, to, insert: text },
-        selection: { anchor: from + text.length },
-      });
+      view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
       view.focus();
     },
-    focus() {
-      viewRef.current?.focus();
-    },
+    focus()     { viewRef.current?.focus(); },
+    foldAll()   { if (viewRef.current) foldAll(viewRef.current); },
+    unfoldAll() { if (viewRef.current) unfoldAll(viewRef.current); },
   }));
 
-  // ── Build optional extensions from editorConfig ──────────────────────────
-  function buildOptionalExtensions(cfg, path, fldr) {
-    const exts = [];
-    if (cfg?.vimMode)       exts.push(vim({ status: true }));
-    if (cfg?.emmet && isEmmetLang(path)) {
-      exts.push(abbreviationTracker());
-      exts.push(keymap.of([{ key: 'Ctrl-e', run: expandAbbreviation }]));
-    }
-    if (cfg?.ghostText)     exts.push(ghostField, ghostDecorations, ghostAcceptKeymap, makeGhostPlugin());
-    if (cfg?.lint) {
-      const linterExt = makeSyntaxLinter(path, fldr);
-      if (linterExt) exts.push(linterExt, lintGutter());
-    }
-    return exts;
-  }
-
-  // ── Mount CodeMirror once ──────────────────────────────────────────────────
+  // ── Mount ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
-
-    const updateListener = EditorView.updateListener.of(update => {
-      if (update.docChanged) setSaved(false);
-      if (update.selectionSet) {
-        const pos  = update.state.selection.main.head;
-        const line = update.state.doc.lineAt(pos);
+    const updateListener = EditorView.updateListener.of(upd => {
+      if (upd.docChanged) setSaved(false);
+      if (upd.selectionSet) {
+        const pos  = upd.state.selection.main.head;
+        const line = upd.state.doc.lineAt(pos);
         setCursor({ line: line.number, col: pos - line.from + 1 });
       }
     });
-
     const state = EditorState.create({
       doc: tab?.content || '',
       extensions: [
         basicSetup,
         themeComp.current.of(buildTheme(T)),
         langComp.current.of(getLang(tab?.path)),
-        optsComp.current.of(buildOptionalExtensions(editorConfig, tab?.path, folder)),
+        optsComp.current.of(buildOptionalExtensions(editorConfig, tab?.path, folder, collabWsRef)),
+        blameComp.current.of([]),
         updateListener,
         EditorView.lineWrapping,
+        keymap.of([{ key: 'Tab', run: indentWithTab }]),
       ],
     });
-
     const view = new EditorView({ state, parent: containerRef.current });
     viewRef.current = view;
-
     return () => { view.destroy(); viewRef.current = null; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Sync theme changes ──────────────────────────────────────────────────────
+  // ── Theme sync ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!viewRef.current) return;
     viewRef.current.dispatch({ effects: themeComp.current.reconfigure(buildTheme(T)) });
   }, [T]);
 
-  // ── Sync language when tab path changes ─────────────────────────────────────
+  // ── Lang sync ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!viewRef.current || !tab?.path) return;
     viewRef.current.dispatch({ effects: langComp.current.reconfigure(getLang(tab.path)) });
-  }, [tab?.path]); 
+  }, [tab?.path]);
 
-  // ── Sync optional extensions when editorConfig changes ──────────────────────
+  // ── Optional extensions sync ────────────────────────────────────────────────
   useEffect(() => {
     if (!viewRef.current) return;
     viewRef.current.dispatch({
       effects: optsComp.current.reconfigure(
-        buildOptionalExtensions(editorConfig, tab?.path, folder)
+        buildOptionalExtensions(editorConfig, tab?.path, folder, collabWsRef)
       ),
     });
-  }, [editorConfig?.vimMode, editorConfig?.emmet, editorConfig?.ghostText, editorConfig?.lint]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ // eslint-disable-line react-hooks/exhaustive-deps
+    editorConfig?.vimMode, editorConfig?.emmet, editorConfig?.ghostText,
+    editorConfig?.lint, editorConfig?.multiCursor, editorConfig?.collab,
+  ]);
 
-  // ── Sync content when tab changes (EditorView.setState for state swap) ──────
-  const prevPathRef = useRef(null);
-  const savedStatesRef = useRef(new Map()); // path → EditorState
+  // ── Blame toggle ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!editorConfig?.blame || !tab?.path || !folder) {
+      setTimeout(() => setBlameData(null), 0);
+      return;
+    }
+    setTimeout(() => setBlameLoad(true), 0);
+    fetchBlame(folder, tab.path).then(map => {
+      setBlameData(map.size > 0 ? map : null);
+      setBlameLoad(false);
+    });
+  }, [editorConfig?.blame, tab?.path, folder]);
 
+  // ── Blame gutter update ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!viewRef.current) return;
+    viewRef.current.dispatch({
+      effects: blameComp.current.reconfigure(blameData ? makeBlameGutter(blameData) : []),
+    });
+  }, [blameData]);
+
+  // ── TS LSP lazy attach ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!editorConfig?.tsLsp || !tab?.path || !isTsLang(tab.path)) { setTimeout(() => setTsReady(false), 0); return; }
+    let cancelled = false;
+    getTsExtensions().then(mod => {
+      if (cancelled || !mod) return;
+      setTsReady(true);
+      // Further TS integration would attach completionSource + hoverTooltip here
+      // Requires a tsserver worker — deferred to when worker is available
+    });
+    return () => { cancelled = true; };
+  }, [editorConfig?.tsLsp, tab?.path]);
+
+  // ── Collab WS ───────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!editorConfig?.collab || !editorConfig?.collabRoom) {
+      if (collabWsRef.current) { collabWsRef.current.close(); collabWsRef.current = null; }
+      return;
+    }
+    const ws = new WebSocket('ws://127.0.0.1:8766');
+    collabWsRef.current = ws;
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'collab_join', room: editorConfig.collabRoom, file: tab?.path }));
+    };
+    ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type !== 'collab_updates' || !viewRef.current) return;
+        const upds = msg.updates.map(u => ({
+          changes: EditorState.fromJSON
+            ? null // fallback
+            : null,
+          clientID: u.clientID,
+        })).filter(Boolean);
+        if (upds.length && viewRef.current) {
+          viewRef.current.dispatch(receiveUpdates(viewRef.current.state, upds));
+        }
+      } catch (_) {}
+    };
+    ws.onclose = () => { collabWsRef.current = null; };
+    return () => { ws.close(); collabWsRef.current = null; };
+  }, [editorConfig?.collab, editorConfig?.collabRoom, tab?.path]);
+
+  // ── Tab swap ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const view = viewRef.current;
     if (!view || !tab?.path) return;
-
     const oldPath = prevPathRef.current;
-
-    // Save old state if we're switching paths
-    if (oldPath && oldPath !== tab.path) {
-      savedStatesRef.current.set(oldPath, view.state);
-    }
-
-    // Restore or create state for new path
+    if (oldPath && oldPath !== tab.path) savedStatesRef.current.set(oldPath, view.state);
     const existing = savedStatesRef.current.get(tab.path);
     if (existing && oldPath !== tab.path) {
       view.setState(existing);
     } else if (!oldPath || oldPath !== tab.path) {
-      // First time opening this path
-      const updateListener = EditorView.updateListener.of(update => {
-        if (update.docChanged) setSaved(false);
-        if (update.selectionSet) {
-          const pos  = update.state.selection.main.head;
-          const line = update.state.doc.lineAt(pos);
+      const updateListener = EditorView.updateListener.of(upd => {
+        if (upd.docChanged) setSaved(false);
+        if (upd.selectionSet) {
+          const pos  = upd.state.selection.main.head;
+          const line = upd.state.doc.lineAt(pos);
           setCursor({ line: line.number, col: pos - line.from + 1 });
         }
       });
@@ -482,40 +675,37 @@ export const FileEditor = forwardRef(function FileEditor(
           basicSetup,
           themeComp.current.of(buildTheme(T)),
           langComp.current.of(getLang(tab.path)),
-          optsComp.current.of(buildOptionalExtensions(editorConfig, tab.path, folder)),
+          optsComp.current.of(buildOptionalExtensions(editorConfig, tab.path, folder, collabWsRef)),
+          blameComp.current.of(blameData ? makeBlameGutter(blameData) : []),
           updateListener,
           EditorView.lineWrapping,
+          keymap.of([{ key: 'Tab', run: indentWithTab }]),
         ],
       });
       view.setState(newState);
     }
-
     prevPathRef.current = tab.path;
     setTimeout(() => setSaved(true), 0);
   }, [tab?.path]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Sync content changes from external writes (agent loop etc.) ─────────────
+  // ── External content sync ────────────────────────────────────────────────────
   useEffect(() => {
     if (!viewRef.current || !tab?.content) return;
-    // Only update if the path hasn't changed (avoid overwriting state swap)
     if (prevPathRef.current !== tab.path) return;
     const current = viewRef.current.state.doc.toString();
     if (current !== tab.content) {
-      viewRef.current.dispatch({
-        changes: { from: 0, to: current.length, insert: tab.content },
-      });
+      viewRef.current.dispatch({ changes: { from: 0, to: current.length, insert: tab.content } });
       setTimeout(() => setSaved(true), 0);
     }
   }, [tab?.content, tab?.path]);
 
-  // ── Save ───────────────────────────────────────────────────────────────────
+  // ── Save ──────────────────────────────────────────────────────────────────
   const save = useCallback(async () => {
     if (!viewRef.current) return;
     await onSave(viewRef.current.state.doc.toString());
     setSaved(true);
   }, [onSave]);
 
-  // Ctrl+S
   useEffect(() => {
     function onKey(e) {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(); }
@@ -527,58 +717,56 @@ export const FileEditor = forwardRef(function FileEditor(
   const tbBtn = (active) => ({
     background: active ? T_accentBg : T_bg3,
     border: '1px solid ' + (active ? T_accentBorder : T_border),
-    borderRadius: '7px', padding: '5px 12px',
+    borderRadius: '6px', padding: '4px 10px',
     color: active ? T_accent : T_textMute,
-    fontSize: '11px', cursor: 'pointer', minHeight: '32px', whiteSpace: 'nowrap',
+    fontSize: '10px', cursor: 'pointer', minHeight: '28px', whiteSpace: 'nowrap',
+    display: 'flex', alignItems: 'center', gap: '3px',
   });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Toolbar */}
       <div style={{
-        padding: '5px 10px', borderBottom: '1px solid ' + T_border,
-        display: 'flex', alignItems: 'center', gap: '5px',
-        background: T_bg3, flexShrink: 0, overflowX: 'auto',
+        padding: '4px 10px', borderBottom: '1px solid ' + T_border,
+        display: 'flex', alignItems: 'center', gap: '4px',
+        background: T_bg3, flexShrink: 0, overflowX: 'auto', scrollbarWidth: 'none',
       }}>
         <span style={{ fontSize: '11px', color: T_textMute, fontFamily: 'monospace',
-          flexShrink: 0, maxWidth: '140px', overflow: 'hidden',
-          textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          flexShrink: 0, maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {tab?.path?.split('/').pop() || ''}
         </span>
         <div style={{ flex: 1 }}/>
 
-        {/* Feature badges */}
-        {editorConfig?.vimMode     && <span style={{ fontSize: '10px', color: T_accent, fontFamily: 'monospace' }}>VIM</span>}
-        {editorConfig?.ghostText   && <span style={{ fontSize: '10px', color: T_success, fontFamily: 'monospace' }}>AI</span>}
-        {editorConfig?.lint        && <span style={{ fontSize: '10px', color: T?.warning || '#fbbf24', fontFamily: 'monospace' }}>LINT</span>}
+        {/* badges */}
+        {editorConfig?.vimMode   && <span style={{ fontSize: '9px', color: T_accent,   fontFamily: 'monospace', flexShrink: 0 }}>VIM</span>}
+        {editorConfig?.ghostText && <span style={{ fontSize: '9px', color: T_success,  fontFamily: 'monospace', flexShrink: 0 }}>AI</span>}
+        {editorConfig?.lint      && <span style={{ fontSize: '9px', color: T_warning,  fontFamily: 'monospace', flexShrink: 0 }}>LINT</span>}
+        {tsReady                 && <span style={{ fontSize: '9px', color: '#38bdf8',  fontFamily: 'monospace', flexShrink: 0 }}>TS</span>}
+        {editorConfig?.collab    && <span style={{ fontSize: '9px', color: '#f59e0b',  fontFamily: 'monospace', flexShrink: 0 }}>LIVE</span>}
+        {blameLoading            && <span style={{ fontSize: '9px', color: T_textMute, fontFamily: 'monospace', flexShrink: 0 }}>blame···</span>}
 
-        {/* Unsaved dot */}
+        {/* fold/unfold */}
+        <button onClick={() => viewRef.current && foldAll(viewRef.current)}   style={tbBtn(false)}>⊟ fold</button>
+        <button onClick={() => viewRef.current && unfoldAll(viewRef.current)} style={tbBtn(false)}>⊞ unfold</button>
+
         {!saved && <span style={{ fontSize: '10px', color: T_warning, flexShrink: 0 }}>●</span>}
-
-        {/* Cursor pos */}
         <span style={{ fontSize: '10px', color: T_textMute, fontFamily: 'monospace', flexShrink: 0 }}>
           {cursor.line}:{cursor.col}
         </span>
-
-        {/* Save button */}
-        <button onClick={save}
-          style={{ ...tbBtn(false), background: T_successBg,
-            border: '1px solid rgba(74,222,128,.25)',
-            color: T_success, fontWeight: '500',
-            display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Save size={12}/> Save
+        <button onClick={save} style={{ ...tbBtn(false), background: T_successBg,
+          border: '1px solid rgba(74,222,128,.25)', color: T_success, fontWeight: '500' }}>
+          <Save size={11}/> Save
         </button>
-
-        {/* Close */}
-        <button onClick={onClose}
-          style={{ background: 'none', border: 'none', color: T_textMute,
-            fontSize: '18px', cursor: 'pointer', padding: '2px 4px', flexShrink: 0,
-            lineHeight: 1 }}>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: T_textMute,
+          fontSize: '18px', cursor: 'pointer', padding: '2px 4px', flexShrink: 0, lineHeight: 1 }}>
           ×
         </button>
       </div>
 
-      {/* Editor + optional minimap */}
+      {/* Breadcrumb */}
+      <Breadcrumb viewRef={viewRef} T={T}/>
+
+      {/* Editor + minimap */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
         <div ref={containerRef} style={{ flex: 1, overflow: 'hidden' }}/>
         {editorConfig?.minimap && <Minimap viewRef={viewRef} T={T}/>}

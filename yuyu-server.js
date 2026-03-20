@@ -406,6 +406,8 @@ if (WebSocketServer) {
   const _watchers  = new Map(); // reserved for future use
   // Map: execId → child process
   const execProcs = new Map();
+  // Map: roomId → { version, updates, clients }
+  const collabRooms = new Map();
 
   wss.on('connection', ws => {
     let clientWatcher = null;
@@ -467,10 +469,46 @@ if (WebSocketServer) {
         if (proc) { proc.kill('SIGTERM'); execProcs.delete(msg.id); }
         return;
       }
+
+      // ── Realtime Collab ──
+      if (msg.type === 'collab_join') {
+        const room = msg.room || 'default';
+        if (!collabRooms.has(room)) collabRooms.set(room, { version: 0, updates: [], clients: new Set() });
+        const r = collabRooms.get(room);
+        r.clients.add(ws);
+        ws._collabRoom = room;
+        // Send current version to new client
+        try { ws.send(JSON.stringify({ type: 'collab_init', version: r.version })); } catch {}
+        return;
+      }
+
+      if (msg.type === 'collab_push') {
+        const room = ws._collabRoom;
+        if (!room || !collabRooms.has(room)) return;
+        const r = collabRooms.get(room);
+        if (msg.version !== r.version) {
+          // Send current updates so client can rebase
+          try { ws.send(JSON.stringify({ type: 'collab_updates', updates: r.updates.slice(msg.version), version: r.version })); } catch {}
+          return;
+        }
+        const newUpdates = msg.updates || [];
+        r.updates.push(...newUpdates);
+        r.version += newUpdates.length;
+        // Broadcast to all other clients in room
+        r.clients.forEach(client => {
+          if (client === ws || client.readyState !== 1) return;
+          try { client.send(JSON.stringify({ type: 'collab_updates', updates: newUpdates, version: r.version })); } catch {}
+        });
+        return;
+      }
     });
 
     ws.on('close', () => {
       if (clientWatcher) { try { clientWatcher.close(); } catch {} }
+      // Leave collab room
+      if (ws._collabRoom && collabRooms.has(ws._collabRoom)) {
+        collabRooms.get(ws._collabRoom).clients.delete(ws);
+      }
       // Kill all exec procs for this client
       for (const [id, proc] of execProcs) {
         try { proc.kill('SIGTERM'); } catch {}

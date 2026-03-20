@@ -40,6 +40,15 @@ export function useUIStore() {
   const [lintEnabled, setLintEnabledRaw]       = useState(false);
   const [showLivePreview, setShowLivePreview]  = useState(false);
 
+  // ── Editor feature toggles (Fase 3) ──
+  const [tsLspEnabled,    setTsLspRaw]        = useState(false);
+  const [blameEnabled,    setBlameRaw]        = useState(false);
+  const [multiCursor,     setMultiCursorRaw]  = useState(true);
+  const [stickyScroll,    setStickyScrollRaw] = useState(false);
+  const [collabEnabled,   setCollabRaw]       = useState(false);
+  const [collabRoom,      setCollabRoom]      = useState('');
+  const [showGlobalFind,  setShowGlobalFind]  = useState(false);
+
   // ── Theme / Display ──
   const [themeKey, setThemeKeyRaw]   = useState(DEFAULT_THEME);
   const [fontSize, setFontSizeRaw]   = useState(14);
@@ -94,9 +103,29 @@ export function useUIStore() {
     setLintEnabledRaw(v);
     Preferences.set({ key: 'yc_lint', value: String(v) });
   }
+  function setTsLspEnabled(v) {
+    setTsLspRaw(v);
+    Preferences.set({ key: 'yc_tslsp', value: String(v) });
+  }
+  function setBlameEnabled(v) {
+    setBlameRaw(v);
+    Preferences.set({ key: 'yc_blame', value: String(v) });
+  }
+  function setMultiCursor(v) {
+    setMultiCursorRaw(v);
+    Preferences.set({ key: 'yc_multicursor', value: String(v) });
+  }
+  function setStickyScroll(v) {
+    setStickyScrollRaw(v);
+    Preferences.set({ key: 'yc_stickyscroll', value: String(v) });
+  }
+  function setCollabEnabled(v) {
+    setCollabRaw(v);
+    Preferences.set({ key: 'yc_collab', value: String(v) });
+  }
 
   // ── Load from Preferences ──
-  function loadUIPrefs({ theme: t, fontSize: fs, sidebarWidth: sw, onboarded, vim: vm, minimap: mm, ghostText: gt, lint: lt }) {
+  function loadUIPrefs({ theme: t, fontSize: fs, sidebarWidth: sw, onboarded, vim: vm, minimap: mm, ghostText: gt, lint: lt, tslsp, blame, multiCursor: multiCursor_, stickyScroll: stickyScroll_, collab }) {
     if (t && THEME_KEYS.includes(t)) setThemeKeyRaw(t);
     else if (t) setThemeKeyRaw(DEFAULT_THEME);
     if (fs) setFontSizeRaw(parseInt(fs) || 14);
@@ -105,6 +134,11 @@ export function useUIStore() {
     if (mm === 'true') setShowMinimapRaw(true);
     if (gt === 'true') setGhostTextRaw(true);
     if (lt === 'true') setLintEnabledRaw(true);
+    if (tslsp === 'true') setTsLspRaw(true);
+    if (blame === 'true') setBlameRaw(true);
+    if (multiCursor_ === 'false') setMultiCursorRaw(false);
+    if (stickyScroll_ === 'true') setStickyScrollRaw(true);
+    if (collab === 'true') setCollabRaw(true);
     if (!onboarded) setShowOnboarding(true);
   }
 
@@ -137,12 +171,20 @@ export function useUIStore() {
     showThemePicker, setShowThemePicker,
     showThemeBuilder: showThemePicker, setShowThemeBuilder: setShowThemePicker,
     showOnboarding, setShowOnboarding,
-    // editor feature toggles
+    // editor feature toggles fase 1+2
     vimMode, setVimMode,
     showMinimap, setShowMinimap,
     ghostTextEnabled, setGhostTextEnabled,
     lintEnabled, setLintEnabled,
     showLivePreview, setShowLivePreview,
+    // editor feature toggles fase 3
+    tsLspEnabled, setTsLspEnabled,
+    blameEnabled, setBlameEnabled,
+    multiCursor, setMultiCursor,
+    stickyScroll, setStickyScroll,
+    collabEnabled, setCollabEnabled,
+    collabRoom, setCollabRoom,
+    showGlobalFind, setShowGlobalFind,
     // theme/display
     theme: themeKey, setTheme,
     themeKey, THEMES_MAP, THEME_KEYS,

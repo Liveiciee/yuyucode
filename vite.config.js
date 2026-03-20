@@ -13,7 +13,8 @@ export default defineConfig({
             id.includes('@codemirror') ||
             id.includes('codemirror-vim') ||
             id.includes('codemirror6-plugin') ||
-            id.includes('emmetio')
+            id.includes('emmetio') ||
+            id.includes('@valtown')
           )
             return 'codemirror';
           if (id.includes('xterm'))
