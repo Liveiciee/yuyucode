@@ -64,7 +64,7 @@ A custom Capacitor Java plugin registers a `ContentObserver` on `Settings.System
 Capture a photo of a whiteboard, a printed error, a diagram — directly from the native Android camera. Routes automatically to a vision-capable model. Zero friction, zero file management.
 
 ### 🤖 Background Agents with Git Worktree Isolation
-`/bg <task>` spins up an agent in a separate git worktree. Your main branch stays clean while the agent works up to 8 agentic iterations. Live progress tracking, abort anytime, merge when ready.
+`/bg <task>` spins up an agent in a separate git worktree. Your main branch stays clean while the agent works. Iterations scale with effort: 3 (low), 10 (medium), 20 (high). Live progress tracking, abort anytime, merge when ready.
 
 ### 🐝 Agent Swarm Pipeline
 `/swarm <task>` runs: **Architect** → **FE Agent + BE Agent** (parallel) → **QA Engineer** → **auto-fix pass**. Multi-agent coordination, single command.
@@ -536,7 +536,7 @@ src/
 │   ├── useMediaHandlers.js # Camera, image attach, drag & drop
 │   ├── useNotifications.js # Push notification, haptic, TTS
 │   ├── useProjectStore.js  # Folder, model, effort, permissions, hooks, plugins
-│   ├── useSlashCommands.js # /command handler (~60 commands)
+│   ├── useSlashCommands.js # /command handler (~58 commands)
 │   └── useUIStore.js       # All UI state + Fase 1/2/3 editor toggles
 ├── themes/
 │   ├── index.js        # Theme registry
@@ -590,6 +590,8 @@ Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 | Kimi K2 | `moonshotai/kimi-k2-instruct-0905` | Context 262K — fallback utama |
 | Llama 3.3 70B | `llama-3.3-70b-versatile` | Serbaguna |
 | Llama 4 Scout | `meta-llama/llama-4-scout-17b-16e-instruct` | Vision — auto-route kalau ada gambar |
+| Qwen 3 32B | `qwen/qwen3-32b` | Coding |
+| Llama 8B Fast | `llama-3.1-8b-instant` | Hemat rate limit |
 | Qwen 3 32B | `qwen/qwen3-32b` | Coding |
 | Llama 8B Fast | `llama-3.1-8b-instant` | Hemat rate limit |
 
