@@ -1,9 +1,13 @@
 // yuyu-server.js — v4-async
 // Run dari ~: node ~/yuyu-server.js &
+// Flags: --verbose (log every request)
 const http   = require('http');
 const fs     = require('fs');
 const path   = require('path');
 const { execSync, spawn } = require('child_process');
+
+const VERBOSE    = process.argv.includes('--verbose');
+const START_TIME = Date.now();
 
 const HOME    = process.env.HOME;
 const PORT    = 8765;
@@ -434,6 +438,17 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
+
+  if (VERBOSE) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  }
+
+  if (req.method === 'GET' && req.url === '/health') {
+    const uptime = Math.round((Date.now() - START_TIME) / 1000);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', uptime, version: VERSION, port: PORT }));
+    return;
+  }
 
   if (req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });

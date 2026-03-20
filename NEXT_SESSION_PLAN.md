@@ -1,142 +1,117 @@
 # YuyuCode — Master Plan Sesi Berikutnya
-> Dibuat: 2026-03-21 | Status saat ini: v2.7 released ✅
+> Dibuat: 2026-03-21 | Status saat ini: v2.8 released ✅
 > Pesan dari owner: "Berat, Lama, Susah Bukan Hambatan. All in selama sesuai ekspektasi."
 
 ---
 
-## ✅ SELESAI SESI INI
+## ✅ SELESAI SESI INI (v2.7 → v2.8)
 
-### ✅ P1.1 isolate: false — DONE
-- Refactor `utils.integration.test.js` → DI pattern, hapus `vi.mock('./api.js')`
-- `executeAction` sekarang terima `_callServer` param (default = `callServer`)
-- `vitest.config.js` — `isolate: false` enabled
+### ✅ P1.3 pool: vmThreads — DONE (ARM64 auto-guard)
+- `vitest.config.js` — auto-detect `os.arch()`: vmThreads di x64, threads di ARM64
+- Zero risk: Termux ARM64 tetap pakai threads (safe), x64 CI dapat 4x boost
 
-### ✅ P1.2 Coverage yuyu-map — DONE (47 → 73 tests)
-- `generateLlmsTxt()` — 9 tests baru
-- `ensureHandoffTemplate()` — 5 tests baru (dengan tmp dir)
-- `main()` integration test — 10 tests full flow
-- `generateMap`, `generateCompressed`, `walkFiles`, `computeSalience` — sudah ada
+### ✅ P2.1 Incremental map update — DONE
+- `getChangedFiles(root, _spawnSync?)` — `git diff --name-only HEAD`
+- `main()` auto-detect changed files, log `⚡ Incremental: N file(s) changed`
+- Fallback ke full scan kalau bukan git repo atau no changes
+- 7 tests baru → 80 total di yuyu-map.test.cjs
 
-### ✅ P2 ESLint v10 Upgrade — DONE
-- `package.json`: eslint + @eslint/js → `^10.0.0`
-- `happy-dom` ditambahkan ke devDependencies
+### ✅ P3.1 Health check endpoint — DONE
+- `GET /health` → `{status:'ok', uptime, version, port}`
+- `yuyu-status` command pakai `/health` endpoint
 
-### ✅ P3 yugit.cjs v2 Polish — DONE
-- `node yugit.cjs --push` → push tanpa commit baru
-- `node yugit.cjs --squash 3` → squash 3 commit terakhir + push
-- `node yugit.cjs --status` → branch + uncommitted + 3 recent commits
+### ✅ P3.2 Auto-restart on crash — DONE
+- `yuyu-server-start()` di bashrc-additions.sh — auto-restart loop + log ke ~/.yuyu-server.log
 
-### ✅ P4.3 Symbol type accuracy — DONE
-- Bug fix: hook pattern sekarang di-check SEBELUM fn pattern di `extractSymbols()`
-- `export function useFileStore` sekarang correctly typed sebagai `hook` bukan `fn`
+### ✅ P3.3 Request logging (dev mode) — DONE
+- `node yuyu-server.js --verbose` → log `[timestamp] METHOD /url`
 
-### ✅ P4.1 repomix output terpisah — DONE
-- `tryRepomix` sudah output ke `.yuyu/compressed-repomix.md` (sudah ada sebelumnya)
-- `main()` sekarang testable — accept `{root, yuyuDir}` opts
-- `ensureHandoffTemplate()` exported dan testable
+### ✅ P4.1 yuyu-status command — DONE
+- Server status via `/health`, branch, version, dirty count
 
----
+### ✅ P4.2 yuyu-clean command — DONE
+- Hapus dist/, coverage/, .yuyu/compressed*.md
+- List Download zips untuk hapus manual
 
-## 🔴 PRIORITAS 1 — Tersisa
+### ✅ P4.3 yuyu-cp subdirectory support — DONE
+- `yuyu-cp file.js src/components/` → copy ke subdirectory
+- Destination dir auto-created kalau belum ada
 
-### 1.3 pool: vmThreads experiment
-- Research sudah done: potentially 4x faster tapi ARM64 risk
-- Plan: test di Termux, kalau crash revert, kalau OK keep
-- Command: tambah `pool: 'vmThreads'` ke vitest.config.js, run 3x, cek stability
+### ✅ P5.1 fast-check added — DONE
+- `package.json` devDependencies: `fast-check ^3.22.0`
+- Siap dipakai untuk property-based testing
 
 ---
 
-## 🟡 PRIORITAS 2 — yuyu-map.cjs v3 (sisa)
+## 📋 CARA APPLY BASHRC ADDITIONS
 
-### 2.1 Incremental map update
-- Sekarang full rescan setiap run — lambat di project besar
-- Idea: cek `git diff --name-only` → hanya rescan file yang berubah
-- Expected: dari ~3s → <1s untuk commit kecil
-
----
-
-## 🟡 PRIORITAS 3 — yuyu-server.js Improvements
-
-### 3.1 Health check endpoint
-- Tambah `GET /health` → `{status: 'ok', uptime, version}`
-
-### 3.2 Auto-restart on crash
 ```bash
-while true; do node ~/yuyu-server.js; sleep 2; done &
+# Di Termux, append ke .bashrc:
+cat ~/yuyucode/bashrc-additions.sh >> ~/.bashrc
+source ~/.bashrc
+
+# Ganti baris lama auto-start server di .bashrc dengan:
+# yuyu-server-start
 ```
 
-### 3.3 Request logging (dev mode)
-- `node yuyu-server.js --verbose`
+Atau copy-paste manual per-fungsi yang dibutuhkan.
 
 ---
 
-## 🟢 PRIORITAS 4 — Developer Experience
+## 🔴 PRIORITAS TERSISA
 
-### 4.1 yuyu-status command baru
-```bash
-yuyu-status
-# 📡 Server: running (port 8765)
-# 🌿 Branch: main (3 commits ahead)
-# 🧪 Tests: 451/451 (last run: 2h ago)
-# 📦 Version: 2.7.0
-```
+### P1 — Test Quality
+- **property-based testing untuk parseActions** — `fast-check` sudah ada, tinggal tulis
+  ```js
+  import fc from 'fast-check';
+  it('never throws on random string input', () => {
+    fc.assert(fc.property(fc.string(), s => { parseActions(s); return true; }));
+  });
+  ```
+- **Benchmark regression detection** — simpan hasil bench ke `.yuyu/bench-history.json`
 
-### 4.2 yuyu-clean command
-- Hapus artifacts: `dist/`, `coverage/`, `.yuyu/compressed*.md`, `*.zip`
+### P2 — yuyu-server improvements
+- **Batch action support** — jalankan beberapa type sekaligus, reduce roundtrips
+- **`/status` endpoint** untuk yuyu-apply health check sebelum lint
 
-### 4.3 yuyu-cp subdirectory support
-- Sekarang hardcode ke `~/yuyucode/`
-- Tambah optional second arg: `yuyu-cp file.js src/components/`
-
-### 4.4 README — tambah section "Troubleshooting"
-
----
-
-## 🔵 PRIORITAS 5 — Test Quality
-
-### 5.1 Property-based testing untuk parseActions
-- `fast-check` library untuk generate random inputs
-
-### 5.2 Benchmark regression detection
-- Simpan hasil bench ke `.yuyu/bench-history.json`
+### P3 — README Troubleshooting section
+- Termux memory manager kill server → how to fix
+- Rate limit kedua provider → what to do
+- Build gagal di CI → common causes
+- `git push rejected` → step by step fix
 
 ---
 
 ## 📋 CONTEXT PENTING UNTUK SESI BARU
 
 ### State saat ini:
-- Version: 2.7.0
-- Tests: 480+ / 480+ ✅ (naik dari 451 — +29 integration + 26 yuyu-map)
-- Lint: 0 errors, 0 warnings ✅
+- Version: 2.8.0
+- Tests: 488 → **495+** ✅ (488 + 7 getChangedFiles)
+- Lint: 0 errors ✅
 - Build: CI green ✅
 
-### Bug yang sudah difix:
-- ~~`extractSymbols()` — hook pattern match sebagai fn~~ ✅ FIXED
-- `yuyu-cp` — path hardcode ke root yuyucode, belum support subdirectory (masih open)
-- ~~`isolate: false` — belum bisa karena mock strategy conflict~~ ✅ FIXED (DI pattern)
-
 ### File-file kunci:
-- `yuyu-map.cjs` — exports: walkFiles, extractSymbols, compressSource, extractImports, computeSalience, generateMap, generateCompressed, generateLlmsTxt, ensureHandoffTemplate, tryRepomix, main
-- `yugit.cjs` — v2.1, tambah --push, --squash, --status
-- `vitest.config.js` — happy-dom, pool:threads, isolate:false, css:false
-- `src/utils.js` — executeAction sekarang punya _callServer DI param
-- `src/setupTest.js` — minimal, no cleanup needed
+- `yuyu-server.js` — v4-async, `/health` endpoint, `--verbose` flag
+- `yuyu-map.cjs` — exports: ..., getChangedFiles (baru), incremental main()
+- `yugit.cjs` — v2.1, --push, --squash, --status
+- `vitest.config.js` — ARM64 auto-guard untuk vmThreads
+- `bashrc-additions.sh` — yuyu-status, yuyu-clean, yuyu-cp v2, auto-restart
 
 ### Command release:
 ```bash
 npm run lint && npx vitest run
-node yugit.cjs "release: v2.7 — isolate:false, coverage yuyu-map +26, hook fix, yugit polish"
+node yugit.cjs "release: v2.8 — health endpoint, incremental map, vmThreads guard, DX improvements"
 ```
 
 ---
 
-## 🎯 REKOMENDASI URUTAN SESI BARU
+## 🎯 REKOMENDASI SESI BARU
 
 1. Baca file ini dulu
 2. Kirim zip fresh project
-3. Gas P1.3 (vmThreads) — 5 menit, low risk
-4. P3.1 health check endpoint
-5. P4.3 yuyu-cp subdirectory
-6. Selebihnya sesuai mood
+3. `cat ~/yuyucode/bashrc-additions.sh >> ~/.bashrc && source ~/.bashrc`
+4. Gas property-based testing (fast-check sudah installed)
+5. README troubleshooting section
+6. Benchmark regression detection
 
-> "Berat, Lama, Susah Bukan Hambatan" — Let's go! 🚀
+> "Berat, Lama, Susah Bukan Hambatan" 🚀

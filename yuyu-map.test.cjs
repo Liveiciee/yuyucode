@@ -22,6 +22,7 @@ const {
   generateCompressed,
   generateLlmsTxt,
   ensureHandoffTemplate,
+  getChangedFiles,
   tryRepomix,
   main,
 } = require('./yuyu-map.cjs');
@@ -706,5 +707,60 @@ describe('main()', () => {
     main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
     const mapContent = fs.readFileSync(path.join(yuyuDir, 'map.md'), 'utf8');
     expect(mapContent).toContain('useCounter');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getChangedFiles — incremental map update
+// ─────────────────────────────────────────────────────────────────────────────
+describe('getChangedFiles', () => {
+  it('returns a Set of absolute paths when git diff succeeds', () => {
+    const mockSpawn = vi.fn(() => ({
+      error: null, status: 0, stderr: '',
+      stdout: 'src/utils.js\nsrc/App.jsx\n',
+    }));
+    const result = getChangedFiles('/home/user/project', mockSpawn);
+    expect(result).toBeInstanceOf(Set);
+    expect(result.size).toBe(2);
+    expect([...result].some(p => p.includes('utils.js'))).toBe(true);
+    expect([...result].some(p => p.includes('App.jsx'))).toBe(true);
+  });
+
+  it('returns null when git exits non-zero (not a git repo)', () => {
+    const mockSpawn = vi.fn(() => ({ error: null, status: 128, stderr: 'not a git repo', stdout: '' }));
+    expect(getChangedFiles('/tmp/notgit', mockSpawn)).toBeNull();
+  });
+
+  it('returns null when spawnSync throws', () => {
+    const mockSpawn = vi.fn(() => { throw new Error('spawn failed'); });
+    expect(getChangedFiles('/tmp', mockSpawn)).toBeNull();
+  });
+
+  it('returns null when diff has error object (git not installed)', () => {
+    const mockSpawn = vi.fn(() => ({ error: new Error('ENOENT'), status: null, stdout: '' }));
+    expect(getChangedFiles('/tmp', mockSpawn)).toBeNull();
+  });
+
+  it('returns null when no files changed (empty diff)', () => {
+    const mockSpawn = vi.fn(() => ({ error: null, status: 0, stdout: '\n', stderr: '' }));
+    expect(getChangedFiles('/tmp', mockSpawn)).toBeNull();
+  });
+
+  it('paths in result are absolute (joined with root)', () => {
+    const mockSpawn = vi.fn(() => ({
+      error: null, status: 0, stdout: 'src/hooks/useStore.js\n', stderr: '',
+    }));
+    const result = getChangedFiles('/proj', mockSpawn);
+    expect([...result][0]).toBe('/proj/src/hooks/useStore.js');
+  });
+
+  it('calls git with correct args and cwd', () => {
+    const mockSpawn = vi.fn(() => ({ error: null, status: 0, stdout: 'a.js\n', stderr: '' }));
+    getChangedFiles('/my/project', mockSpawn);
+    expect(mockSpawn).toHaveBeenCalledWith(
+      'git',
+      ['diff', '--name-only', 'HEAD'],
+      expect.objectContaining({ cwd: '/my/project' })
+    );
   });
 });

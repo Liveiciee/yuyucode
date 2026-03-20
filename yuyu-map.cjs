@@ -460,6 +460,24 @@ function tryRepomix(_spawnSync = spawnSync, _outFile) {
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
+
+// ── INCREMENTAL UPDATE — git diff helper ──────────────────────────────────────
+// Returns set of absolute paths changed since last commit.
+// Falls back to null (= full scan) if git unavailable or no prior commits.
+function getChangedFiles(root, _spawnSync = spawnSync) {
+  try {
+    const result = _spawnSync('git', ['diff', '--name-only', 'HEAD'], {
+      cwd: root, encoding: 'utf8', timeout: 5000, stdio: 'pipe',
+    });
+    if (result.error || result.status !== 0) return null;
+    const lines = (result.stdout || '').trim().split('\n').filter(Boolean);
+    if (lines.length === 0) return null;
+    return new Set(lines.map(f => path.join(root, f)));
+  } catch {
+    return null;
+  }
+}
+
 function main(_opts = {}) {
   const root       = _opts.root      || ROOT;
   const yuyuDir    = _opts.yuyuDir   || path.join(root, '.yuyu');
@@ -479,6 +497,14 @@ function main(_opts = {}) {
 
   const allFiles = [...walkFiles(srcDir, ALL_EXTS), ...rootFiles];
   log(`  Found ${allFiles.length} files`);
+
+  // Incremental: if only a few files changed, skip unchanged files for salience
+  const changedSet = _opts.incremental !== false ? getChangedFiles(root, _spawnSync) : null;
+  if (changedSet) {
+    const changedCount = allFiles.filter(f => changedSet.has(f)).length;
+    log(`  ⚡ Incremental mode: ${changedCount}/${allFiles.length} files changed`);
+    console.log(`  ⚡ Incremental: ${changedCount} file(s) changed`);
+  }
 
   const fileData = computeSalience(allFiles);
   const count    = Object.keys(fileData).length;
@@ -535,6 +561,7 @@ if (require.main === module) {
 
 module.exports = {
   walkFiles,
+  getChangedFiles,
   extractSymbols,
   compressSource,
   extractImports,
