@@ -45,7 +45,66 @@ export function useSlashCommands({
       setMessages(m=>[...m,{role:'assistant',content:'🔄 Model: **'+next.label+'** ('+((idx+1)%MODELS.length+1)+'/'+MODELS.length+')',actions:[]}]);
 
     } else if (base==='/compact') {
-      await compactContext();
+      if (parts[1] === 'force') {
+        await compactContext();
+      } else {
+        // ⚠️ Recursive summary anti-pattern — bisa degradasi accuracy seiring waktu
+        setMessages(m=>[...m,{role:'assistant',content:'⚠️ **/compact** pakai recursive summary — accuracy bisa turun di sesi panjang.\n\n💡 Coba **/handoff** — generate session brief yang structured dan disimpan ke `.yuyu/handoff.md`, lalu di-load otomatis di sesi berikutnya.\n\nMau tetap compact? Ketik `/compact force`',actions:[]}]);
+      }
+
+    } else if (base==='/handoff') {
+      // Generate session handoff — structured context for next session
+      // Better than /compact: creates a forward-looking brief, not recursive summary
+      setLoading(true);
+      setMessages(m=>[...m,{role:'assistant',content:'📋 Generating session handoff...',actions:[]}]);
+      const recentMsgs = messages.slice(-20);
+      const ctrl2 = new AbortController();
+      let handoffMd = '';
+      try {
+        await askCerebrasStream([
+          { role: 'system', content: 'You are a technical writer. Output ONLY markdown, no preamble.' },
+          { role: 'user', content: `Based on this conversation, write a session handoff for the next Claude session.
+Format EXACTLY as:
+# YuyuCode — Session Handoff
+> Last updated: ${new Date().toISOString().split('T')[0]}
+
+## Completed this session
+- (bullet list of what was done)
+
+## In progress / pending
+- (what was started but not finished)
+
+## Architectural decisions made
+- (any important decisions or patterns established)
+
+## Known issues
+- (bugs or problems discovered)
+
+## Next session priorities
+1. (ordered list)
+
+## Hot files touched recently
+- (file paths that were changed)
+
+Conversation:
+${recentMsgs.map(m=>m.role+': '+(m.content||'').slice(0,400)).join('\n\n')}` }
+        ], 'llama3.1-8b', chunk => { handoffMd = chunk; }, ctrl2.signal);
+
+        // Save to .yuyu/handoff.md
+        if (folder && handoffMd) {
+          const handoffPath = folder + '/.yuyu/handoff.md';
+          // Ensure .yuyu dir exists
+          await callServer({ type: 'mkdir', path: folder + '/.yuyu' });
+          await callServer({ type: 'write', path: handoffPath, content: handoffMd });
+          setMessages(m=>[...m,{role:'assistant',content:'✅ **Handoff saved** to `.yuyu/handoff.md`\n\nPaste this at the start of your next Claude session, or it will be auto-loaded by `gatherProjectContext`.\n\n---\n\n'+handoffMd,actions:[]}]);
+        } else {
+          setMessages(m=>[...m,{role:'assistant',content:'📋 **Session Handoff:**\n\n'+handoffMd+'\n\n> Tip: set a project folder to auto-save.',actions:[]}]);
+        }
+      } catch(e) {
+        setMessages(m=>[...m,{role:'assistant',content:'❌ Handoff gagal: '+e.message,actions:[]}]);
+      } finally {
+        setLoading(false);
+      }
 
     } else if (base==='/checkpoint') {
       saveCheckpoint();
@@ -205,15 +264,16 @@ export function useSlashCommands({
         '📓 **Token breakdown (10 pesan terakhir)**\n```\n'+breakdown+'\n```\n**Total:** ~'+countTokens(messages)+'tk | Cerebras gratis 🎉',actions:[]}]);
 
     } else if (base==='/index') {
+      // Real-time symbol index via yuyu-server — all function signatures, no bodies
       setLoading(true);
-      setMessages(m=>[...m,{role:'assistant',content:'🔍 Indexing src/...',actions:[]}]);
-      const idxR = await callServer({type:'list', path:folder+'/src'});
-      if (idxR.ok && Array.isArray(idxR.data)) {
-        const files = idxR.data.filter(f=>!f.isDir);
-        const list = files.map(f=>f.name+(f.size?` (${Math.round(f.size/1024)}KB)`:'')).join('\n');
-        setMessages(m=>[...m,{role:'assistant',content:`✅ **Index: ${files.length} file di src/**\n\`\`\`\n${list}\n\`\`\``,actions:[]}]);
+      setMessages(m=>[...m,{role:'assistant',content:'🔍 Building symbol index...',actions:[]}]);
+      const srcPath = parts[1] ? folder+'/'+parts[1] : folder+'/src';
+      const idxR = await callServer({ type: 'index', path: srcPath });
+      if (idxR.ok) {
+        const meta = idxR.meta || {};
+        setMessages(m=>[...m,{role:'assistant',content:`✅ **Symbol Index** (${meta.files||'?'} files, ${meta.symbols||'?'} symbols)\n\n${idxR.data}`,actions:[]}]);
       } else {
-        setMessages(m=>[...m,{role:'assistant',content:'❌ Tidak bisa index src/',actions:[]}]);
+        setMessages(m=>[...m,{role:'assistant',content:'❌ Index gagal: '+(idxR.data||'unknown error'),actions:[]}]);
       }
       setLoading(false);
 

@@ -121,29 +121,46 @@ ${outB.slice(0, 1500)}
 
 
   // ── gatherProjectContext — "read before act" ─────────────────────────────────
-  // Sebelum iter 1, Yuyu baca struktur + file-file kunci project secara paralel
+  // Priority: handoff.md → map.md → llms.txt → tree → keyword heuristic files
   async function gatherProjectContext(txt, _signal) {
     if (!project.folder) return {};
     const ctx = {};
 
-    // 1. Tree struktur (selalu)
+    // 1. Session handoff — highest priority (previous session context)
+    const handoffR = await callServer({ type: 'read', path: project.folder + '/.yuyu/handoff.md' });
+    if (handoffR.ok && handoffR.data) ctx['__handoff__'] = handoffR.data;
+
+    // 2. Codebase map — symbol index (signatures only, low token cost)
+    const mapR = await callServer({ type: 'read', path: project.folder + '/.yuyu/map.md', from: 1, to: 120 });
+    if (mapR.ok && mapR.data) ctx['__map__'] = mapR.data;
+
+    // 2b. Compressed source — repomix-style, bodies stripped (~70% reduction)
+    // Only load if task is complex (mentions multiple files or refactor keywords)
+    const needsCompressed = /refactor|overhaul|all files|semuanya|codebase|arsitektur/i.test(txt);
+    if (needsCompressed) {
+      const compR = await callServer({ type: 'read', path: project.folder + '/.yuyu/compressed.md', from: 1, to: 200 });
+      if (compR.ok && compR.data) ctx['__compressed__'] = compR.data;
+    }
+
+    // 3. llms.txt — project brief (architecture, constraints, patterns)
+    const llmsR = await callServer({ type: 'read', path: project.folder + '/llms.txt', from: 1, to: 80 });
+    if (llmsR.ok && llmsR.data) ctx['__llms__'] = llmsR.data;
+
+    // 4. Tree struktur (always — untuk spatial awareness)
     const treeR = await callServer({ type: 'tree', path: project.folder, depth: 2 });
     if (treeR.ok) ctx['__tree__'] = treeR.data;
 
-    // 2. File kunci yang relevan dengan task — heuristik keyword
+    // 5. Keyword heuristic — file yang spesifik relevan dengan task
     const keywords = txt.toLowerCase();
     const keyFiles = [];
 
-    // Selalu baca package.json kalau ada
-    keyFiles.push(project.folder + '/package.json');
-
-    // Task mention file name langsung
+    // Task mentions file name directly
     const fileMatch = txt.match(/\b([\w/-]+\.(?:js|jsx|ts|tsx|json|md|css|py|sh))\b/g);
     if (fileMatch) fileMatch.forEach(f => keyFiles.push(
       f.startsWith('/') ? f : project.folder + '/src/' + f
     ));
 
-    // Keyword → file yang relevan
+    // Keyword → relevant file
     if (keywords.includes('api') || keywords.includes('fetch') || keywords.includes('cerebras') || keywords.includes('groq'))
       keyFiles.push(project.folder + '/src/api.js');
     if (keywords.includes('agent') || keywords.includes('loop') || keywords.includes('sendmsg'))
@@ -153,13 +170,19 @@ ${outB.slice(0, 1500)}
     if (keywords.includes('constant') || keywords.includes('model') || keywords.includes('theme'))
       keyFiles.push(project.folder + '/src/constants.js');
     if (keywords.includes('server') || keywords.includes('yuyu-server') || keywords.includes('exec'))
-      keyFiles.push('/home/claude/yuyu-server.js', project.folder + '/yuyu-server.js');
-    if (keywords.includes('feature') || keywords.includes('skill') || keywords.includes('plan') || keywords.includes('agent'))
+      keyFiles.push(project.folder + '/yuyu-server.js');
+    if (keywords.includes('feature') || keywords.includes('skill') || keywords.includes('plan'))
       keyFiles.push(project.folder + '/src/features.js');
+    if (keywords.includes('brightness') || keywords.includes('gamma') || keywords.includes('color'))
+      keyFiles.push(project.folder + '/src/hooks/useBrightness.js');
+    if (keywords.includes('slash') || keywords.includes('command'))
+      keyFiles.push(project.folder + '/src/hooks/useSlashCommands.js');
+    if (keywords.includes('editor') || keywords.includes('codemirror') || keywords.includes('tab'))
+      keyFiles.push(project.folder + '/src/components/FileEditor.jsx');
 
-    // 3. Baca paralel, skip yang tidak ada
-    const unique = [...new Set(keyFiles)].slice(0, 6);
-    const reads  = await Promise.all(unique.map(p => callServer({ type: 'read', path: p, from: 1, to: 60 })));
+    // 6. Baca paralel — max 5 additional files
+    const unique = [...new Set(keyFiles)].slice(0, 5);
+    const reads  = await Promise.all(unique.map(p => callServer({ type: 'read', path: p, from: 1, to: 50 })));
     unique.forEach((p, i) => {
       if (reads[i].ok && reads[i].data) ctx[p.split('/').pop()] = reads[i].data;
     });
