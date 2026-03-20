@@ -25,6 +25,12 @@
 
 ---
 
+## Status
+
+> **Personal tool. Works on one phone — mine.** Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). No contributions expected, though issues are welcome. Use at your own risk.
+
+---
+
 ## What is this?
 
 YuyuCode is a **Claude Code / Cursor-style agentic coding assistant** that runs natively on Android. Not a web app forced into a mobile shell — designed from the ground up for the phone.
@@ -229,11 +235,27 @@ VITE_GROQ_API_KEY=your_key
 
 ---
 
+## Known limitations
+
+This is a personal tool built by one person, on one phone, in sprint-style sessions. It works well for its creator. Before you adopt it, know what it is:
+
+- **Requires `yuyu-server.js` running in Termux at all times.** If Termux gets killed by Android's memory manager mid-session, the app stops working. No graceful fallback, no offline mode.
+- **Depends entirely on free-tier AI APIs.** Cerebras and Groq are generous, but rate limits are real. If both are exhausted mid-task, the agent loop stops. There is no paid fallback.
+- **Single-developer bus factor.** The dev environment lives on one device. Core logic is concentrated in a small number of large files — built for speed, not for onboarding strangers.
+- **Not tested on other devices.** All development and benchmarking was done on one Oppo A77s. Behavior on other Android versions or Termux configurations is unknown.
+- **`npm run build` crashes on ARM64.** Building the APK requires GitHub Actions. You cannot build locally on the phone.
+
+If you're okay with all of the above — welcome. It's a genuinely capable tool.
+
+---
+
 ## Project origin
 
 Started as a question: *can Claude Code be replicated on a phone?*
 
-The answer is yes. Built patch by patch, from morning to past midnight, using only a phone and an AI chat interface. Feature parity with Claude Code and Codex CLI for core use cases was reached. The remaining gap is model quality and context window — not features.
+Turned out: yes, mostly. Built patch by patch, from morning to past midnight, using only a phone and an AI chat interface. Core features — streaming, file patching, background agents, multi-tab editor — all work. The remaining gap is model quality and context window size, not features.
+
+It's not a polished product. It's proof that the constraints were never the hardware.
 
 ---
 
