@@ -11,9 +11,12 @@ import { linter, lintGutter } from '@codemirror/lint';
 import { syntaxTree } from '@codemirror/language';
 import {
   foldAll, unfoldAll,
-  selectNextOccurrence, selectSelectionMatches,
   indentWithTab,
 } from '@codemirror/commands';
+import { 
+  selectNextOccurrence, 
+  selectSelectionMatches 
+} from '@codemirror/search';
 import { collab, getSyncedVersion, sendableUpdates, receiveUpdates } from '@codemirror/collab';
 import { javascript } from '@codemirror/lang-javascript';
 import { css } from '@codemirror/lang-css';
