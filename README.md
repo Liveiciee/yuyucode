@@ -1,15 +1,133 @@
+<div align="center">
+
 # 🌸 YuyuCode
 
-> Agentic coding assistant yang lahir dari HP, untuk HP.  
-> Bukan web app yang dipaksakan ke mobile — ini memang dirancang untuk hidup di Android.
+**A full agentic coding assistant. Built entirely on an Android phone. No laptop. No desktop.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+[![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
+![Platform](https://img.shields.io/badge/platform-Android-green)
+![Stack](https://img.shields.io/badge/stack-React%2019%20%2B%20Capacitor%208-blue)
+
+*Every line of code in this repo was written from a phone, in Termux, using Claude AI.*
+
+</div>
 
 ---
 
-## Tentang Project Ini
+## What is this?
 
-YuyuCode adalah Claude Code versi mobile-native. Dibangun sepenuhnya dari **Android via Termux**, oleh satu orang, tanpa laptop, tanpa desktop — hanya HP dan kemauan keras.
+YuyuCode is a **Claude Code / Cursor-style agentic coding assistant** that runs natively on Android. Not a web app forced into a mobile shell — designed from the ground up for the phone.
 
-Stack-nya: **React 19 + Capacitor 8** yang di-bundle Vite dan jalan sebagai APK Android. Di belakangnya ada `yuyu-server.js` — Node.js server lokal yang menangani semua file ops, exec, dan WebSocket streaming. CI/CD via GitHub Actions: setiap push ke `main` otomatis build dan upload signed APK ke Releases tab.
+It connects to a local Node.js server (`yuyu-server.js`) running in Termux, giving it full file system access, shell execution, WebSocket streaming, and MCP support — all from your pocket.
+
+**The constraint that shaped every decision:** one developer, one Android phone, Termux only. No laptop ever touched this project.
+
+---
+
+## Features that don't exist anywhere else
+
+### 🔆 Gamma-Corrected Adaptive Brightness
+A custom Capacitor Java plugin registers a `ContentObserver` on `Settings.System.SCREEN_BRIGHTNESS`. The moment you slide your brightness down, the entire UI auto-compensates using sRGB gamma correction (γ=2.2) — not a toggle, not a timer, not polling. Pure event-driven from the OS.
+
+```
+filter_brightness = (1 / screen_brightness^2.2)^(1/2.2)
+```
+
+No other coding tool has this. Because no other coding tool runs on a phone.
+
+### 📸 Camera-to-Code
+Capture a photo of a whiteboard, a printed error, a diagram — directly from the native Android camera. Routes automatically to a vision-capable model for analysis. Zero friction, zero file management.
+
+### 🤖 Background Agents with Git Worktree Isolation
+`/bg <task>` spins up an agent in a separate git worktree. Your main branch stays clean while the agent works. Live progress tracking, abort anytime, merge when ready. Conflict resolution handled via a dedicated panel.
+
+### 🐝 Agent Swarm Pipeline
+`/swarm <task>` runs: **Architect** (plan) → **FE Agent + BE Agent** (parallel execution) → **QA Engineer** (review + bug list) → **auto-fix pass**. Multi-agent coordination, single command.
+
+### ✂️ Surgical Context Editor
+Remove specific sections from any AI message without deleting the whole thing. Code blocks, exec results, text sections — tap to mark, save. The AI won't see those parts next turn.
+
+---
+
+## Technically interesting things
+
+- **Custom Capacitor plugin in Java** — `BrightnessPlugin.java` uses `ContentObserver` to emit real-time events to the WebView. No npm dependency, no polling.
+- **sRGB gamma-corrected CSS filter** — mathematically accurate compensation, not a linear multiplier hack.
+- **Parallel action execution** — `read_file`, `web_search`, `list_files` run in parallel; `exec` and `mcp` run serial. The agent loop handles scheduling.
+- **TF-IDF + age decay memory ranking** — memories injected into the system prompt are ranked by relevance to the current task, not just recency.
+- **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-generated `<span>` tags. Solves a class of highlighter bugs elegantly.
+- **3-fallback patch handler** — `patch_file` tries exact match → whitespace-normalized → trim-lines before giving up and feeding the error back to the AI.
+- **81 tests, 0 lint warnings** — unit, integration, fuzz, and snapshot tests. Runs on Termux ARM64 with `vitest@1` (v4 crashes silently on ARM).
+
+---
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19 + Vite 5 |
+| Mobile | Capacitor 8 |
+| Backend | Node.js (yuyu-server.js, local) |
+| Build | GitHub Actions → signed APK |
+| ARM64 compatibility | `@rollup/wasm-node` override |
+| AI Providers | Cerebras (default) + Groq (fallback + vision) |
+
+---
+
+## Why Cerebras + Groq instead of Claude?
+
+Both are **free tier** with fast inference. Cerebras runs Qwen 3 235B at remarkable speed. Groq runs Kimi K2 (262K context) as fallback. Rate limit on Cerebras → auto-switch to Groq, silently.
+
+The irony: this entire project was built *with* Claude AI (via claude.ai chat), but the app itself runs on open models due to API cost constraints. A tool built by Claude, that doesn't use Claude. 
+
+---
+
+## Getting started
+
+You need an Android phone with Termux.
+
+```bash
+# Clone
+git clone https://github.com/liveiciee/yuyucode
+cd yuyucode
+npm install
+
+# Start local server (from home dir)
+node ~/yuyu-server.js &
+
+# Start dev server
+npm run dev
+# Open localhost:5173 in your browser
+```
+
+Get free API keys:
+- [Cerebras](https://cloud.cerebras.ai) — for the main AI
+- [Groq](https://console.groq.com) — for fallback + vision
+
+Create `.env.local`:
+```
+VITE_CEREBRAS_API_KEY=your_key
+VITE_GROQ_API_KEY=your_key
+```
+
+> **Note:** `npm run build` will crash on ARM64 (Termux). Build only runs in CI via GitHub Actions. For local development, `npm run dev` is all you need.
+
+---
+
+## Project origin
+
+Started as a question: *can Claude Code be replicated on a phone?*
+
+The answer is yes. Built patch by patch, from morning to past midnight, using only a phone and an AI chat interface. Feature parity with Claude Code and Codex CLI for core use cases was reached. The remaining gap is model quality and context window — not features.
+
+> *"An extremely ambitious project. Successfully packed the complexity of a desktop app like VS Code + Cursor into a single React component."*  
+> — Qwen 3 235B, after reviewing its own codebase
+
+---
+
+<details>
+<summary>📖 Developer Documentation (internal / AI context)</summary>
 
 ---
 
@@ -52,9 +170,9 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
 - `readSSEStream` harus di-export dari `api.js` supaya bisa di-test
 - Skills disimpan di `.claude/skills/` — kelola via `/skills` panel, tidak ada SKILL.md root
 - Hapus releases lama via GitHub web atau `gh release delete` — jaga maks 5 terbaru
-- **Regex literal di JSX tidak boleh mengandung newline fisik** — pakai `\n` escape. Contoh: `/\n(?=```|\*\*|##)/` bukan regex multiline literal. Vite/esbuild akan error "Unterminated regular expression".
-- `hl()` di `utils.js` pakai pattern `protect()` untuk melindungi `<span>` yang sudah digenerate dari regex pass berikutnya — jangan hilangkan pattern ini
-- `Date.now()` di dalam render JSX → error `react-hooks/purity`. Solusi: pindah ke komponen terpisah dengan `useState(() => Date.now())` + `setInterval`
+- **Regex literal di JSX tidak boleh mengandung newline fisik** — pakai `\n` escape. Vite/esbuild akan error "Unterminated regular expression".
+- `hl()` di `utils.js` pakai pattern `protect()` — jangan hilangkan
+- `Date.now()` di dalam render JSX → error `react-hooks/purity`. Solusi: komponen terpisah dengan `useState(() => Date.now())` + `setInterval`
 - `\"` di dalam single-quoted string JS adalah useless escape → pakai `"` biasa
 - `\x00` dilarang di regex ESLint → pakai Unicode Private Use Area (`\uE000`) sebagai placeholder
 
@@ -73,7 +191,6 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
     │   ├── utils.js            # parseActions, executeAction, resolvePath, hl(), generateDiff
     │   ├── features.js         # Plan, bg agents, skills, hooks v2, tokenTracker, sessions,
     │   │                       # permissions, elicitation, tfidfRank
-    │   ├── theme.js            # (legacy) theme resolver
     │   ├── components/
     │   │   ├── MsgBubble.jsx   # Chat bubbles, ActionChip, ThinkingBlock, surgical editor
     │   │   ├── FileTree.jsx    # Sidebar file explorer dengan context menu
@@ -91,27 +208,27 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
     │   │   ├── useChatStore.js      # Messages, memories, checkpoints, plan, swarm state
     │   │   ├── useProjectStore.js   # Folder, model, effort, permissions, hooks, skills
     │   │   ├── useFileStore.js      # File open, pin, edit history, split view
-    │   │   ├── useUIStore.js        # Panels, theme, sidebar, modals
+    │   │   ├── useUIStore.js        # Panels, theme, sidebar, brightness level
     │   │   ├── useMediaHandlers.js  # Camera capture, gallery pick, drag & drop image/file
     │   │   ├── useDevTools.js       # GitHub, deploy, commit msg gen, tests, browse, shortcuts
-    │   │   └── useNotifications.js  # Push notification, haptic feedback, TTS (id-ID)
-    │   ├── themes/
-    │   │   ├── index.js        # Theme registry — import & export THEMES_MAP
-    │   │   ├── obsidian.js     # Obsidian Warm (default)
-    │   │   ├── aurora.js       # Aurora Glass
-    │   │   ├── ink.js          # Ink & Paper
-    │   │   ├── neon.js         # Neon Terminal
-    │   │   └── mybrand.js      # Template untuk custom theme baru
-    │   └── tests/
-    │       ├── api.test.js                # Unit — readSSEStream
-    │       ├── utils.test.js              # Unit — countTokens, getFileIcon, hl, resolvePath, parseActions
-    │       ├── utils.integration.test.js  # Integration + Fuzz — parseActions→executeAction, generateDiff
-    │       ├── utils.snapshot.test.js     # Snapshot — hl() output per bahasa
-    │       └── features.test.js           # Unit — parsePlanSteps, selectSkills, checkPermission, dll
+    │   │   ├── useNotifications.js  # Push notification, haptic feedback, TTS (id-ID)
+    │   │   ├── useBrightness.js     # Real-time brightness listener via Capacitor plugin
+    │   │   └── useGrowth.js         # XP, streak, badge, learnedStyle
+    │   ├── plugins/
+    │   │   └── brightness.js        # JS bridge untuk BrightnessPlugin.java
+    │   └── themes/
+    │       ├── index.js        # Theme registry
+    │       ├── obsidian.js     # Obsidian Warm (default)
+    │       ├── aurora.js       # Aurora Glass
+    │       ├── ink.js          # Ink & Paper
+    │       ├── neon.js         # Neon Terminal
+    │       └── mybrand.js      # Template untuk custom theme baru
+    ├── android/
+    │   └── app/src/main/java/com/liveiciee/yuyucode/
+    │       ├── MainActivity.java      # Register BrightnessPlugin
+    │       └── BrightnessPlugin.java  # ContentObserver → emit ke WebView
     ├── .github/
-    │   ├── workflows/build-apk.yml  # CI/CD — signed APK → Releases
-    │   └── icons/                   # Icon backup (di-restore setelah cap sync)
-    ├── android/                     # Capacitor Android (jangan edit manual)
+    │   └── workflows/build-apk.yml  # CI/CD — signed APK → Releases
     ├── yuyu-server.js               # Server v4-async
     ├── yugit.cjs                    # Git push helper
     ├── eslint.config.js             # ESLint flat config
@@ -146,47 +263,6 @@ Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 | `medium` | 10 | 2048 | Default harian |
 | `high` | 20 | 4000 | Task kompleks |
 
-**Context limits (constants.js):**
-
-| Konstanta | Nilai | Keterangan |
-|-----------|-------|------------|
-| `AUTO_COMPACT_CHARS` | 80.000 | Trigger auto-compact |
-| `AUTO_COMPACT_MIN_MSG` | 12 | Min pesan sebelum compact |
-| `MAX_FILE_PREVIEW` | 2.000 | Chars file aktif di context |
-| `MAX_SKILL_PREVIEW` | 6.000 | Max chars per skill |
-| `CONTEXT_RECENT_KEEP` | 6 | Pesan tersimpan setelah compact |
-
----
-
-## Fitur Utama
-
-### 📸 Camera-to-Code
-Capture foto langsung dari kamera native Android via Capacitor Camera API, atau pick dari galeri. Hasil langsung jadi visionImage yang di-route ke Llama 4 Scout (Groq) untuk analisis. Handle via `useMediaHandlers.js`.
-
-### 📍 Checkpoint + FS Snapshot
-`/checkpoint` menyimpan state chat + git diff snapshot (patch) dari file yang berubah. `/restore` bisa reapply patch untuk rollback file state. Disimpan di Capacitor Preferences, maks 10 checkpoint.
-
-### ✂️ Surgical Context Editor
-Di setiap message bubble, ada mode "surgical" untuk menghapus bagian tertentu dari context AI tanpa hapus seluruh pesan. Tiap section (code block, exec result, teks) bisa di-tap untuk di-mark remove, lalu simpan — AI tidak akan "lihat" bagian itu di next turn.
-
-### 🤖 Bg Agent Live Panel
-Background agents berjalan di git worktree terpisah dengan live progress tracking via `BgAgentPanel`. Bisa abort kapan saja, merge hasilnya ke main branch setelah selesai. Konflik merge ditangani via `MergeConflictPanel`.
-
-### 🐝 Agent Swarm
-`/swarm <task>` menjalankan pipeline multi-agent: **Architect** buat rencana → **FE Agent + BE Agent** jalan paralel → **QA Engineer** review dan list bugs → **auto-fix pass** kalau ada bug. Semua log live di `BgAgentPanel`.
-
-### 🧠 TF-IDF Memory Ranking
-Memories di-rank pakai TF-IDF + age decay sebelum di-inject ke system prompt. Makin relevan dengan task sekarang dan makin baru → makin diprioritaskan. Logic ada di `tfidfRank()` di `features.js`.
-
-### 📊 Token Tracker
-`tokenTracker` (singleton di `features.js`) merekam input/output tokens per request, track model yang dipakai, dan bisa summary via `/usage` atau `/cost`. History 100 request terakhir.
-
-### 🔊 TTS & Haptic
-`useNotifications.js` menyediakan TTS bahasa Indonesia (`id-ID`, prefer female voice), haptic feedback (light/medium/heavy), dan push notification native.
-
-### 🎨 Theme System
-4 built-in themes + custom builder. Setiap theme punya token lengkap: warna, efek visual (orbs, scanlines, aurora, grain), dan CSS animations. Tambah theme baru dengan copy `src/themes/mybrand.js`, isi token, import di `src/themes/index.js`.
-
 ---
 
 ## AI Provider
@@ -210,11 +286,6 @@ Memories di-rank pakai TF-IDF + age decay sebelum di-inject ke system prompt. Ma
 **Vision:** Cerebras tidak support image → auto-route ke Llama 4 Scout.  
 **Retry:** Server error 5xx → retry 2x dengan backoff 2s/4s.
 
-Cek model Cerebras aktif:
-```bash
-curl -s https://api.cerebras.ai/v1/models -H "Authorization: Bearer $CEREBRAS_API_KEY" | grep '"id"'
-```
-
 ---
 
 ## YuyuServer v4-async
@@ -227,13 +298,9 @@ node ~/yuyu-server.js &  # jalankan dari ~, bukan dari project folder
 
 **WebSocket :8766** — `watch` (file watcher), `exec_stream` (live terminal output), `kill` (abort process)
 
-**patch handler** punya 3 fallback: exact → whitespace-normalized → trim-lines. Kalau semua gagal, error balik ke AI untuk self-correct.
-
 ---
 
 ## Permissions
-
-Default mengikuti Claude Code — terbuka untuk aksi aman:
 
 | Action | Default | Keterangan |
 |--------|---------|------------|
@@ -243,41 +310,19 @@ Default mengikuti Claude Code — terbuka untuk aksi aman:
 | `delete_file`, `move_file` | ❌ | Destruktif |
 | `mcp`, `browse` | ❌ | Manual enable |
 
-Ubah lewat `/permissions` atau `/config`.
-
 ---
 
 ## Slash Commands
 
 | Kategori | Commands |
 |----------|----------|
-| **AI** | `/model` `/effort` `/thinking` `/usage` `/cost` `/tokens` `/debug` |
+| **AI** | `/model` `/effort` `/thinking` `/usage` `/cost` `/tokens` `/debug` `/ab` `/xp` |
 | **Agent** | `/plan` `/bg` `/bgstatus` `/bgmerge` `/swarm` `/batch` `/simplify` `/loop` |
 | **Context** | `/compact` `/summarize` `/rewind` `/clear` `/tree` `/index` |
 | **Memory** | `/amemory` `/checkpoint` `/restore` `/save` `/sessions` |
 | **Git** | `/history` `/diff` `/review` `/deps` `/rename` `/color` |
 | **Dev** | `/test` `/scaffold` `/self-edit` `/browse` `/search` `/db` `/mcp` `/github` `/deploy` `/init` `/lint` `/refactor` `/open` `/status` |
 | **UX** | `/font` `/theme` `/split` `/config` `/watch` `/ptt` `/plugin` `/permissions` `/skills` `/actions` `/export` |
-
-**Yang penting:**
-
-`/test [path]` — generate unit test untuk file aktif atau path tertentu. Pakai Vitest.
-
-`/bg <task>` — agent di git worktree terpisah. `/bgstatus` untuk lihat progress live. `/bgmerge <id>` untuk merge.
-
-`/swarm <task>` — Architect → FE + BE **parallel** → QA → auto-fix.
-
-`/plan <task>` — rencana bernomor → approve → eksekusi step by step.
-
-`/summarize [N]` — kompres N pesan ke ringkasan padat.
-
-`/scaffold react|node|express` — buat struktur project baru.
-
-`/thinking` — think-aloud mode. Yuyu tulis `<think>` sebelum jawab. Prompt trick, bukan extended thinking API.
-
-`/export` — export seluruh chat ke file `.md`.
-
-`/status` — health check semua sistem (server, WS, model, permissions).
 
 ---
 
@@ -290,132 +335,51 @@ npx vitest run        # Semua tests — harus 81/81 pass
 
 **Status:** 0 lint errors, 0 warnings, 81/81 tests passing.
 
-### Test Files
+| File | Tipe | Tests |
+|------|------|-------|
+| `src/api.test.js` | Unit | 5 |
+| `src/utils.test.js` | Unit | 22 |
+| `src/features.test.js` | Unit | 29 |
+| `src/utils.integration.test.js` | Integration + Fuzz | 18 |
+| `src/utils.snapshot.test.js` | Snapshot | 7 |
 
-| File | Tipe | Tests | Coverage |
-|------|------|-------|----------|
-| `src/api.test.js` | Unit | 5 | `readSSEStream` — streaming, abort, flush |
-| `src/utils.test.js` | Unit | 22 | `countTokens`, `getFileIcon`, `hl`, `resolvePath`, `parseActions` |
-| `src/features.test.js` | Unit | 29 | `parsePlanSteps`, `selectSkills`, `rewindMessages`, `checkPermission`, `parseElicitation`, `tfidfRank`, `EFFORT_CONFIG` |
-| `src/utils.integration.test.js` | Integration + Fuzz | 18 | `parseActions → executeAction` end-to-end, `generateDiff`, fuzz robustness |
-| `src/utils.snapshot.test.js` | Snapshot | 7 | Output `hl()` untuk json/bash/py/css/js/unknown/xss |
+Update snapshots: `npx vitest run --update-snapshots`
 
-### Update Snapshot
-
-Kalau `hl()` diubah secara intentional dan output baru sudah benar:
-```bash
-npx vitest run --update-snapshots
-```
-
-**Catatan vitest:** Pakai `vitest@1` — v4 crash silent di Termux ARM64. Jangan upgrade.
-
-**Catatan test:** Jangan override `global.TextDecoder` di test files — infinite recursion. Node 24 sudah punya native TextDecoder.
+**Catatan:** Pakai `vitest@1` — v4 crash silent di Termux ARM64.
 
 ---
 
 ## CI/CD
 
-Setiap push ke `main` → GitHub Actions build signed APK → upload ke Releases tab. Waktu build ~1 menit dengan cache.
-
-**Steps CI:**
-1. Install deps (cached by `package-lock.json`)
+**Steps:**
+1. Install deps (cached)
 2. `npm run build` (Vite → dist/)
 3. Setup Java 21 + Android SDK 34
 4. `cap sync android` + restore custom icons
-5. Auto-bump `versionCode` = GitHub run number, `versionName` = `1.0.N`
-6. `./gradlew assembleRelease` (cached Gradle)
+5. Auto-bump versionCode = GitHub run number
+6. `./gradlew assembleRelease`
 7. Sign APK dengan keystore dari Secrets
-8. Upload artifact + buat GitHub Release (hanya kalau commit diawali `release:`)
+8. GitHub Release hanya kalau commit diawali `release:`
 
-**GitHub Secrets:**
-```
-VITE_CEREBRAS_API_KEY   — Cerebras API key
-VITE_GROQ_API_KEY       — Groq API key (untuk fallback + vision)
-VITE_TAVILY_API_KEY     — opsional, web_search via Tavily
-ANDROID_KEYSTORE        — openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
-KEYSTORE_PASSWORD       — password keystore
-KEY_ALIAS               — yuyucode
-KEY_PASSWORD            — sama dengan KEYSTORE_PASSWORD
-```
-
-Warning CI yang bisa diabaikan: `set-output deprecated`, `flatDir`, `punycode deprecated` — semua dari third-party.
-
----
-
-## Skills & Hooks
-
-**Skills** — `.claude/skills/*.md`. Di-inject ke system prompt otomatis via TF-IDF ranking. Generate dengan `/init`.
-
-**Hooks v2:**
-```javascript
-{
-  preWrite:        ["echo 'akan nulis: {{context}}'"],
-  postWrite:       [{ type: "http", url: "https://..." }],
-  preToolCall:     [],
-  postToolCall:    [],
-  onError:         [],
-  onNotification:  [],
-}
-```
-
-Plugin built-in (`/plugin`): Auto Commit, Lint on Save, Test Runner, Git Auto Push.
-
----
-
-## Themes
-
-| Theme | Nama | Vibe |
-|-------|------|------|
-| `obsidian` | Obsidian Warm | Default gelap, CRT scanlines |
-| `aurora` | Aurora Glass | Biru/hijau, animasi aurora |
-| `ink` | Ink & Paper | Terang, paper grain texture |
-| `neon` | Neon Terminal | Hijau neon, neon grid |
-| Custom | — | Copy `mybrand.js`, `/theme` builder |
-
-**Tambah theme baru:**
-1. Copy `src/themes/mybrand.js`, rename sesuai nama theme
-2. Isi semua token warna dan efek visual
-3. Import dan daftarkan di `src/themes/index.js`
+**GitHub Secrets:** `VITE_CEREBRAS_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_TAVILY_API_KEY`, `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
 
 ---
 
 ## Workflow Harian
 
 ```bash
-# Start session
 node ~/yuyu-server.js &
 cd ~/yuyucode && npm run dev &
-# Buka app → localhost:5173
 
-# Push biasa (build CI, tidak bikin release)
-cd ~/yuyucode && node yugit.cjs "feat: deskripsi perubahan"
-
-# Push + buat release APK baru
-cd ~/yuyucode && node yugit.cjs "release: v1.x — fitur A, fix B"
-
-# Atau trigger release tanpa perubahan file
-git commit --allow-empty -m "release: v1.x — ..." && git push
-
-# Copy file dari Downloads
-cp /sdcard/Download/NamaFile.jsx ~/yuyucode/src/components/
-
-# Lint + test sebelum push
+node yugit.cjs "feat: ..."
+node yugit.cjs "release: v2.x — ..."
 npm run lint && npx vitest run
 ```
 
----
-
-## Sejarah
-
-Dimulai sebagai eksperimen: bisa tidak Claude Code di-replika di mobile? Jawabannya: bisa. Dibangun dari HP, di Termux, satu patch satu-satu, dari pagi sampai subuh.
-
-Feature parity dengan Claude Code dan Codex CLI sudah tercapai untuk core use case. Gap yang tersisa bukan di fitur — tapi di model quality dan context window. Untuk daily mobile coding, YuyuCode sudah sangat capable.
-
-> *"Karya yang sangat ambisius. Berhasil nge-pack kompleksitas aplikasi desktop seperti VS Code + Cursor ke dalam satu komponen React."*  
-> — Qwen 3 235B, setelah mereview kodenya sendiri
+</details>
 
 ---
 
 <div align="center">
-  <sub>🌸 dibangun dari HP. untuk HP. dengan cinta.</sub>
+  <sub>🌸 built on a phone. for a phone. with love.</sub>
 </div>
