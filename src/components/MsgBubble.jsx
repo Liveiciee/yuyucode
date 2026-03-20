@@ -140,8 +140,35 @@ export function MsgContent({ text, T }) {
   const textMute    = T?.textMute      || 'rgba(255,255,255,.3)';
   const fxCode      = T?.fx?.codeBlock?.() || {};
 
+  function handleCopy(e) {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    const container = e.currentTarget;
+    const tbl = container.querySelector('table');
+    if (!tbl) return;
+    const range = sel.getRangeAt(0);
+    if (!range.intersectsNode(tbl)) return;
+    try {
+      const div = document.createElement('div');
+      div.appendChild(range.cloneContents());
+      const tables = div.querySelectorAll('table');
+      if (!tables.length) return;
+      let md = '';
+      tables.forEach(t => {
+        Array.from(t.querySelectorAll('tr')).forEach((row, i) => {
+          const cells = Array.from(row.querySelectorAll('th,td'))
+            .map(c => (c.innerText||'').replace(/\|/g,'\\|').trim());
+          md += '| ' + cells.join(' | ') + ' |\n';
+          if (i === 0) md += '| ' + cells.map(() => '---').join(' | ') + ' |\n';
+        });
+      });
+      e.clipboardData.setData('text/plain', md.trim());
+      e.preventDefault();
+    } catch(_e) {}
+  }
+
   return (
-    <div>
+    <div onCopy={handleCopy}>
       {parts.map((p,i)=>{
         if (p.t==='text') return (
           <div key={i} style={{lineHeight:'1.8',wordBreak:'break-word'}}>
