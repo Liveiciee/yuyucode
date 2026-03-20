@@ -15,8 +15,9 @@
 //    node yuyu-map.cjs --compress-only  # only update compressed.md
 // ============================================================
 
-const fs   = require('fs');
-const path = require('path');
+const fs            = require('fs');
+const path          = require('path');
+const { spawnSync } = require('child_process');
 
 const VERBOSE       = process.argv.includes('--verbose');
 const COMPRESS_ONLY = process.argv.includes('--compress-only');
@@ -403,6 +404,59 @@ function ensureHandoffTemplate() {
   console.log('  ✅ Created .yuyu/handoff.md (template)');
 }
 
+// ── REPOMIX RUNNER ────────────────────────────────────────────────────────────
+// Tries to run `npx repomix --compress` and write to compressed-repomix.md.
+// Returns the output string on success, null on any failure (offline, not
+// installed, non-zero exit, timeout, etc.).
+function tryRepomix() {
+  const outFile = path.join(YUYU_DIR, 'compressed-repomix.md');
+  const ignore  = [
+    'android', 'dist', '.yuyu', 'coverage',
+    '.gradle', 'build', 'public', '__snapshots__', 'node_modules',
+  ].join(',');
+
+  log('  🔄 Trying repomix --compress...');
+
+  try {
+    const result = spawnSync(
+      'npx',
+      [
+        '--yes', 'repomix',
+        '--compress',
+        '--output', outFile,
+        '--ignore', ignore,
+      ],
+      {
+        cwd:      ROOT,
+        timeout:  90_000,          // 90 s — generous for slow Termux NPX
+        stdio:    'pipe',
+        encoding: 'utf8',
+      }
+    );
+
+    if (result.error) {
+      log(`  ⚠  repomix spawn error: ${result.error.message}`);
+      return null;
+    }
+    if (result.status !== 0) {
+      log(`  ⚠  repomix exited ${result.status}: ${(result.stderr || '').slice(0, 200)}`);
+      return null;
+    }
+    if (!fs.existsSync(outFile)) {
+      log('  ⚠  repomix succeeded but output file missing');
+      return null;
+    }
+
+    const content = fs.readFileSync(outFile, 'utf8');
+    log(`  ✅ repomix OK — ${Math.round(content.length / 1024)}KB`);
+    return content;
+
+  } catch (err) {
+    log(`  ⚠  repomix threw: ${err.message}`);
+    return null;
+  }
+}
+
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 function main() {
   console.log('🗺  YuyuMap v2 starting...\n');
@@ -424,13 +478,25 @@ function main() {
   const count    = Object.keys(fileData).length;
   console.log(`  📊 Analyzed ${count} files`);
 
-  // Always generate compressed.md
-  const compressed = generateCompressed(fileData);
-  const compPath   = path.join(YUYU_DIR, 'compressed.md');
+  // Generate compressed.md — repomix first, regex fallback if offline/unavailable
+  const compPath = path.join(YUYU_DIR, 'compressed.md');
+  let compressed;
+  let compressedBy;
+
+  const repomixOut = tryRepomix();
+  if (repomixOut) {
+    compressed   = repomixOut;
+    compressedBy = 'repomix';
+  } else {
+    console.log('  ⚡ repomix unavailable — using regex fallback');
+    compressed   = generateCompressed(fileData);
+    compressedBy = 'regex';
+  }
+
   fs.writeFileSync(compPath, compressed);
-  // Extract reduction stat from header
   const reductionMatch = compressed.match(/Total reduction: ~(\d+)%/);
-  console.log(`  🗜  .yuyu/compressed.md — ${reductionMatch ? reductionMatch[1] + '% token reduction' : 'generated'}`);
+  const reductionInfo  = reductionMatch ? ` — ${reductionMatch[1]}% token reduction` : '';
+  console.log(`  🗜  .yuyu/compressed.md [${compressedBy}]${reductionInfo}`);
 
   if (!COMPRESS_ONLY) {
     // map.md
