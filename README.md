@@ -225,13 +225,24 @@ Get free API keys:
 - [Cerebras](https://cloud.cerebras.ai) — main AI
 - [Groq](https://console.groq.com) — fallback + vision
 
-Create `.env.local`:
+**Option A — Termux (recommended):** add to `~/.bashrc` so keys and server auto-load every session:
+```bash
+# ~/.bashrc
+export VITE_CEREBRAS_API_KEY=your_key
+export VITE_GROQ_API_KEY=your_key
+
+# auto-start yuyu-server on every Termux session
+node ~/yuyu-server.js > /dev/null 2>&1 &
+```
+Then `source ~/.bashrc` once. After that, just open Termux and everything is ready.
+
+**Option B — `.env.local`** (if you prefer not touching `.bashrc`):
 ```
 VITE_CEREBRAS_API_KEY=your_key
 VITE_GROQ_API_KEY=your_key
 ```
 
-> **Note:** `npm run build` will crash on ARM64 (Termux). Build only runs in CI via GitHub Actions. For local development, `npm run dev` is all you need.
+> **Note:** `npm run build` works on ARM64 (Termux) via the `@rollup/wasm-node` override in `package.json` — takes ~1-2 minutes. The signed APK is produced by CI (keystore lives in GitHub Secrets). Do NOT remove that override.
 
 ---
 
@@ -243,7 +254,7 @@ This is a personal tool built by one person, on one phone, in sprint-style sessi
 - **Depends entirely on free-tier AI APIs.** Cerebras and Groq are generous, but rate limits are real. If both are exhausted mid-task, the agent loop stops. There is no paid fallback.
 - **Single-developer bus factor.** The dev environment lives on one device. Core logic is concentrated in a small number of large files — built for speed, not for onboarding strangers.
 - **Not tested on other devices.** All development and benchmarking was done on one Oppo A77s. Behavior on other Android versions or Termux configurations is unknown.
-- **`npm run build` crashes on ARM64.** Building the APK requires GitHub Actions. You cannot build locally on the phone.
+- **`npm run build` works, but takes ~1-2 minutes on ARM64.** The signed APK still requires GitHub Actions (keystore lives in CI secrets).
 
 If you're okay with all of the above — welcome. It's a genuinely capable tool.
 
