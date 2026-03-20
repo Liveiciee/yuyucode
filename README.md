@@ -332,7 +332,7 @@ yuyu-apply --dry-run            # preview dulu sebelum apply
 yuyu-apply yuyu-map.zip         # zip dengan nama lain
 
 # Selalu setelah apply:
-npm run lint        # harus 0 errors, 0 warnings
+npm run lint        # 🔍 Scouring... → ✨ 0 problems found! Code is pure.
 npx vitest run      # harus 451/451 pass
 node yuyu-map.cjs   # update codebase map
 
@@ -354,6 +354,7 @@ npx vitest bench --run  # benchmark hot paths (opsional)
 - 📸 Snapshot git HEAD sebelum apply
 - ⚠️ Auto-stash uncommitted changes
 - 🔍 `--dry-run` untuk preview file yang akan di-overwrite
+- 🧐 Lint dengan feedback jelas — *"Memeriksa kesucian kode"* → *"Kode suci dari dosa"*
 - 🔄 Auto-rollback `git reset --hard` kalau lint/test gagal
 - ✅ Hapus zip dari project + Download kalau semua hijau
 
