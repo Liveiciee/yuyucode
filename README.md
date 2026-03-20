@@ -213,13 +213,13 @@ git clone https://github.com/liveiciee/yuyucode
 cd yuyucode
 npm install
 
-# Start local server (from home dir)
-node ~/yuyu-server.js &
-
 # Start dev server
 npm run dev
 # Open localhost:5173 in browser
 ```
+
+> **Note:** `yuyu-server.js` must be running before using the app.
+> See API keys setup below — Option A handles this automatically via `.bashrc`.
 
 Get free API keys:
 - [Cerebras](https://cloud.cerebras.ai) — main AI
