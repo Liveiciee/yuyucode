@@ -11,6 +11,7 @@ export function useChatStore() {
   const [loading, setLoading]     = useState(false);
   const [streaming, setStreaming] = useState('');
   const [agentRunning, setAgentRunning] = useState(false);
+  const [agentStatus, setAgentStatus]   = useState(''); // e.g. 'Iter 2/10 · exec'
   const [showFollowUp, setShowFollowUp] = useState(false);
 
   // ── Rate limit ──
@@ -184,6 +185,7 @@ export function useChatStore() {
     loading, setLoading,
     streaming, setStreaming,
     agentRunning, setAgentRunning,
+    agentStatus, setAgentStatus,
     showFollowUp, setShowFollowUp,
     rateLimitTimer, setRateLimitTimer,
     memories, setMemories,

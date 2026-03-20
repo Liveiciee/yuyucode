@@ -2,9 +2,9 @@
 // Center area: tabs, chat view, file viewer, file editor, terminal,
 // follow-up chips, quick bar, and composer input.
 import React, { useRef, useEffect } from 'react';
-import { Pin, Eye, ScrollText, Camera, Paperclip, Volume2, VolumeX } from 'lucide-react';
+import { Pin, Eye, ScrollText, Camera, Paperclip, Volume2, VolumeX, Loader } from 'lucide-react';
 import { hl } from '../utils.js';
-import { MsgBubble, MsgContent } from './MsgBubble.jsx';
+import { MsgBubble, MsgContent, StreamingBubble } from './MsgBubble.jsx';
 import { FileEditor } from './FileEditor.jsx';
 import { Terminal } from './Terminal.jsx';
 import { VoiceBtn, PushToTalkBtn } from './VoiceBtn.jsx';
@@ -67,15 +67,17 @@ export function AppChat({
                 onEdit={(newContent)=>chat.editMessage(i,newContent)}
               />
             ))}
-            {chat.streaming&&(
-              <div style={{padding:'2px 16px'}}>
-                <div style={{maxWidth:'92%',fontSize:'14px',lineHeight:'1.7',color:'#e0e0e0'}}>
-                  <MsgContent text={chat.streaming}/>
-                  <span style={{display:'inline-block',width:'2px',height:'14px',background:'rgba(255,255,255,.6)',marginLeft:'2px',verticalAlign:'middle',animation:'blink 1s infinite'}}/>
-                </div>
+            {chat.streaming && <StreamingBubble text={chat.streaming} T={T}/>}
+            {chat.loading&&!chat.streaming&&(
+              <div style={{padding:'4px 16px 2px',display:'flex',flexDirection:'column',gap:'4px'}}>
+                <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                    <Loader size={12} style={{color:T.accent,animation:'pulse 1.8s ease-in-out infinite',flexShrink:0}}/>
+                    <span style={{color:T.textMute,fontSize:'12px',fontFamily:'monospace'}}>
+                      {chat.agentStatus || 'mikir···'}
+                    </span>
+                  </div>
               </div>
             )}
-            {chat.loading&&!chat.streaming&&<div style={{padding:'2px 16px'}}><div style={{color:T.textMute,fontSize:'13px'}}>Yuyu lagi mikir···</div></div>}
             <div ref={bottomRef}/>
           </div>
         </div>

@@ -258,7 +258,8 @@ ${outB.slice(0, 1500)}
 
       // ── Read before act — gather project context sebelum iter 1 ──
       if (project.folder && txt.length > 10 && !txt.startsWith('/')) {
-        chat.setStreaming('🔍 Membaca project context...');
+        chat.setAgentStatus('Membaca context...');
+        chat.setStreaming('Membaca project context...');
         const gathered = await gatherProjectContext(txt, ctrl.signal);
         Object.assign(autoContextRef.current, gathered);
         chat.setStreaming('');
@@ -272,6 +273,7 @@ ${outB.slice(0, 1500)}
       while (iter < MAX_ITER) {
         iter++;
         if (iter > 1) chat.setAgentRunning(true);
+        chat.setAgentStatus(`Iter ${iter}/${MAX_ITER}`);
 
         const DECISION_HINT = iter === 1
           ? '\n[ATURAN: Jawab langsung jika bisa dari context. DILARANG tanya balik. Butuh file → baca sendiri.]'
@@ -298,6 +300,7 @@ ${outB.slice(0, 1500)}
 
         let reply = await callAI(groqMsgs, chat.setStreaming, ctrl.signal, iter === 1 ? chat.visionImage : null);
         chat.setStreaming('');
+        chat.setAgentStatus('');
 
         // Token tracking
         const inTk  = Math.round(groqMsgs.reduce((a, m) => a + (m.content?.length || 0), 0) / 4);

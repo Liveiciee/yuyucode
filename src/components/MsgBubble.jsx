@@ -9,23 +9,103 @@ import {
   Brain, Terminal,
 } from 'lucide-react';
 
-export function ThinkingBlock({ text, T }) {
+// ── ThinkingBlock — collapsible, pakai count kalau ada newlines ──────────────
+export function ThinkingBlock({ text, T, live = false }) {
   const [open, setOpen] = React.useState(false);
   if (!text?.trim()) return null;
-  const tc = T?.bubble?.thinking || {};
-  const c  = tc.color || 'rgba(167,139,250,.5)';
+  const tc   = T?.bubble?.thinking || {};
+  const c    = tc.color || 'rgba(167,139,250,.5)';
+  const cFaint = c.replace(/[\d.]+\)$/, '.15)') || 'rgba(167,139,250,.15)';
+  const cBg    = c.replace(/[\d.]+\)$/, '.04)') || 'rgba(167,139,250,.04)';
+  // Count "steps" = non-empty paragraphs separated by blank lines
+  const steps = text.trim().split(/\n\n+/).filter(s => s.trim()).length;
+  const label = live
+    ? 'Sedang berpikir…'
+    : steps > 1 ? `${steps} langkah berpikir` : 'Chain of thought';
+
   return (
-    <div style={{margin:'0 0 10px',borderRadius:'12px',overflow:'hidden',border:'1px solid '+(c.replace(/[\d.]+\)$/,'.2)')||'rgba(167,139,250,.15)'),background:c.replace(/[\d.]+\)$/,'.04)')||'rgba(167,139,250,.04)'}}>
-      <div onClick={()=>setOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:'8px',padding:'9px 14px',cursor:'pointer',userSelect:'none',minHeight:'40px'}}>
-        <Brain size={12} style={{color:c,flexShrink:0}}/>
-        <span style={{fontSize:'11px',color:c,fontFamily:'monospace',letterSpacing:'.08em',textTransform:'uppercase',flex:1}}>Berpikir…</span>
-        <span style={{fontSize:'10px',color:c,transition:'transform .2s',display:'inline-block',transform:open?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+    <div style={{margin:'0 0 10px',borderRadius:'12px',overflow:'hidden',
+      border:'1px solid '+cFaint, background:cBg}}>
+      <div onClick={()=>setOpen(o=>!o)}
+        style={{display:'flex',alignItems:'center',gap:'8px',padding:'9px 14px',
+          cursor:'pointer',userSelect:'none',minHeight:'40px'}}>
+        <Brain size={12} style={{color:c,flexShrink:0,
+          animation: live ? 'pulse 1.8s ease-in-out infinite' : 'none'}}/>
+        <span style={{fontSize:'11px',color:c,fontFamily:'monospace',
+          letterSpacing:'.08em',flex:1}}>
+          {label}
+        </span>
+        {!live && (
+          <span style={{fontSize:'10px',color:c,transition:'transform .2s',
+            display:'inline-block',transform:open?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+        )}
       </div>
-      {open&&<div style={{padding:'2px 14px 12px',fontSize:'12px',lineHeight:'1.75',color:T?.textMute||'rgba(255,255,255,.4)',fontFamily:'monospace',whiteSpace:'pre-wrap',wordBreak:'break-word',borderTop:'1px solid '+(T?.border||'rgba(255,255,255,.06)')}}>{text.trim()}</div>}
+      {(open || live) && (
+        <div style={{padding:'2px 14px 12px',fontSize:'12px',lineHeight:'1.75',
+          color:T?.textMute||'rgba(255,255,255,.4)',fontFamily:'monospace',
+          whiteSpace:'pre-wrap',wordBreak:'break-word',
+          borderTop:'1px solid '+(T?.border||'rgba(255,255,255,.06)')}}>
+          {text.trim()}
+          {live && <span style={{display:'inline-block',width:'2px',height:'12px',
+            background:'currentColor',marginLeft:'3px',verticalAlign:'middle',
+            animation:'blink 1s infinite'}}/>}
+        </div>
+      )}
     </div>
   );
 }
 
+// ── StreamingBubble — live render saat generate, parse think realtime ─────────
+export function StreamingBubble({ text, T }) {
+  const bubbleAi  = T?.bubble?.ai || {};
+  const fxAi      = T?.fx?.aiBubble?.() || {};
+  const textColor = T?.text || 'rgba(255,255,255,.9)';
+
+  // Parse <think> dari stream secara realtime
+  const thinkMatch  = text.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+  const thinkText   = thinkMatch ? thinkMatch[1] : null;
+  const thinkClosed = text.includes('</think>');
+  const cleanText   = text
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*$/gi, '')
+    .replace(/```action[\s\S]*?```/g, '')
+    .trim();
+
+  return (
+    <div style={{padding:'10px 16px 2px',display:'flex',flexDirection:'column',gap:'6px'}}>
+      {thinkText && (
+        <ThinkingBlock text={thinkText} T={T} live={!thinkClosed}/>
+      )}
+      <div style={{
+        fontSize:'14.5px', lineHeight:'1.8', color:bubbleAi.color||textColor,
+        wordBreak:'break-word',
+        ...(bubbleAi.bg && bubbleAi.bg!=='transparent' ? {
+          background:bubbleAi.bg,
+          border:'1px solid '+(bubbleAi.border||'transparent'),
+          borderRadius:bubbleAi.radius||'4px 16px 16px 16px',
+          padding:'10px 14px',
+        } : {}),
+        ...fxAi,
+      }}>
+        {cleanText ? (
+          <MsgContent text={cleanText} T={T}/>
+        ) : !thinkText ? (
+          // Nothing yet — show blink cursor only
+          <span style={{display:'inline-block',width:'2px',height:'14px',
+            background:T?.accent||'#a78bfa',verticalAlign:'middle',
+            animation:'blink 1s infinite'}}/>
+        ) : null}
+        {cleanText && (
+          <span style={{display:'inline-block',width:'2px',height:'14px',
+            background:'rgba(255,255,255,.5)',marginLeft:'2px',verticalAlign:'middle',
+            animation:'blink 1s infinite'}}/>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── MsgContent — markdown + code blocks ──────────────────────────────────────
 export function MsgContent({ text, T }) {
   const [copiedIdx, setCopiedIdx] = useState(null);
   const parts = [];
@@ -46,19 +126,19 @@ export function MsgContent({ text, T }) {
     setCopiedIdx(idx); setTimeout(()=>setCopiedIdx(null), 1800);
   }
 
-  const codeBg     = T?.code?.bg      || '#0d0d10';
-  const codeBorder = T?.code?.border  || '1px solid rgba(255,255,255,.07)';
-  const codeColor  = T?.code?.color   || 'rgba(200,180,255,.65)';
-  const text_      = T?.text          || 'rgba(255,255,255,.88)';
-  const accent     = T?.accent        || '#a78bfa';
-  const accentBorder = T?.accentBorder|| 'rgba(124,58,237,.2)';
-  const border     = T?.border        || 'rgba(255,255,255,.07)';
-  const bg3        = T?.bg3           || 'rgba(255,255,255,.03)';
-  const success    = T?.success       || '#4ade80';
-  const error      = T?.error         || '#f87171';
-  const textSec    = T?.textSec       || 'rgba(255,255,255,.6)';
-  const textMute   = T?.textMute      || 'rgba(255,255,255,.3)';
-  const fxCode     = T?.fx?.codeBlock?.() || {};
+  const codeBg      = T?.code?.bg      || '#0d0d10';
+  const codeBorder  = T?.code?.border  || '1px solid rgba(255,255,255,.07)';
+  const codeColor   = T?.code?.color   || 'rgba(200,180,255,.65)';
+  const text_       = T?.text          || 'rgba(255,255,255,.88)';
+  const accent      = T?.accent        || '#a78bfa';
+  const accentBorder= T?.accentBorder  || 'rgba(124,58,237,.2)';
+  const border      = T?.border        || 'rgba(255,255,255,.07)';
+  const bg3         = T?.bg3           || 'rgba(255,255,255,.03)';
+  const success     = T?.success       || '#4ade80';
+  const error       = T?.error         || '#f87171';
+  const textSec     = T?.textSec       || 'rgba(255,255,255,.6)';
+  const textMute    = T?.textMute      || 'rgba(255,255,255,.3)';
+  const fxCode      = T?.fx?.codeBlock?.() || {};
 
   return (
     <div>
@@ -90,8 +170,13 @@ export function MsgContent({ text, T }) {
 
         if (p.t==='diff') return (
           <div key={i} style={{background:codeBg,border:codeBorder,borderRadius:'12px',margin:'10px 0',overflow:'hidden',...fxCode}}>
-            <div style={{padding:'7px 14px',background:bg3,fontSize:'10px',color:textMute,fontFamily:'monospace',borderBottom:'1px solid '+border,letterSpacing:'.08em',textTransform:'uppercase',display:'flex',alignItems:'center',gap:'6px'}}>
-              <FileDiff size={11}/> diff
+            {/* Header: label kiri */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+              padding:'7px 12px 7px 14px',background:bg3,borderBottom:'1px solid '+border}}>
+              <span style={{fontSize:'11px',color:textMute,fontFamily:'monospace',
+                letterSpacing:'.06em',display:'flex',alignItems:'center',gap:'6px'}}>
+                <FileDiff size={11}/> diff
+              </span>
             </div>
             <div style={{padding:'10px 14px'}}>
               {p.c.split('\n').map((line,j)=>(
@@ -101,15 +186,35 @@ export function MsgContent({ text, T }) {
           </div>
         );
 
+        // Code block — lang label kiri, copy button kanan (Claude/Gemini style)
         return (
-          <div key={i} style={{background:codeBg,border:codeBorder,borderRadius:'12px',margin:'10px 0',overflow:'hidden',...fxCode}}>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 12px 7px 14px',background:bg3,borderBottom:'1px solid '+border}}>
-              <span style={{fontSize:'11px',color:textMute,fontFamily:'monospace',letterSpacing:'.06em',...(T?.fx?.glowText?.(codeColor)||{})}}>{p.lang||'code'}</span>
-              <button onClick={()=>copyCode(p.c,i)} style={{background:copiedIdx===i?T?.successBg||'rgba(74,222,128,.1)':bg3,border:'1px solid '+(copiedIdx===i?success+'55':border),borderRadius:'6px',padding:'3px 8px',color:copiedIdx===i?success:textMute,fontSize:'10px',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',transition:'all .15s'}}>
-                {copiedIdx===i?<Check size={10}/>:<Copy size={10}/>} {copiedIdx===i?'Copied!':'Copy'}
+          <div key={i} style={{background:codeBg,border:codeBorder,borderRadius:'12px',
+            margin:'10px 0',overflow:'hidden',...fxCode}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+              padding:'7px 12px 7px 14px',background:bg3,borderBottom:'1px solid '+border}}>
+              {/* Lang label — kiri */}
+              <span style={{fontSize:'11px',color:textSec,fontFamily:'monospace',
+                letterSpacing:'.03em',fontWeight:'500'}}>
+                {p.lang||'code'}
+              </span>
+              {/* Copy button — kanan, compact */}
+              <button onClick={()=>copyCode(p.c,i)}
+                style={{background:'none',border:'none',
+                  color:copiedIdx===i ? success : textMute,
+                  fontSize:'11px',cursor:'pointer',
+                  display:'flex',alignItems:'center',gap:'5px',
+                  padding:'3px 6px',borderRadius:'6px',
+                  transition:'color .15s',minHeight:'26px'}}
+                onMouseEnter={e=>e.currentTarget.style.color=textSec}
+                onMouseLeave={e=>e.currentTarget.style.color=copiedIdx===i?success:textMute}>
+                {copiedIdx===i ? <Check size={12}/> : <Copy size={12}/>}
+                <span>{copiedIdx===i?'Copied':'Copy'}</span>
               </button>
             </div>
-            <pre style={{padding:'12px 16px',margin:0,whiteSpace:'pre-wrap',wordBreak:'break-word',fontSize:'12.5px',lineHeight:'1.65',fontFamily:'monospace'}} dangerouslySetInnerHTML={{__html:hl(p.c,p.lang)}}/>
+            <pre style={{padding:'12px 16px',margin:0,whiteSpace:'pre-wrap',
+              wordBreak:'break-word',fontSize:'12.5px',lineHeight:'1.65',
+              fontFamily:'monospace'}}
+              dangerouslySetInnerHTML={{__html:hl(p.c,p.lang)}}/>
           </div>
         );
       })}
@@ -117,6 +222,7 @@ export function MsgContent({ text, T }) {
   );
 }
 
+// ── ActionChip ────────────────────────────────────────────────────────────────
 export function ActionChip({ action, T }) {
   const [expanded, setExpanded] = useState(false);
   const icons = {
@@ -125,14 +231,14 @@ export function ActionChip({ action, T }) {
     web_search:<Globe size={12}/>, tree:<Network size={12}/>, mkdir:<FolderOpen size={12}/>,
     move_file:<ArrowRight size={12}/>, delete_file:<Trash2 size={12}/>, mcp:<Plug size={12}/>,
   };
-  const icon   = icons[action.type]||<Wrench size={12}/>;
-  const label  = action.type==='exec'?(action.command||'').slice(0,48):(action.path||action.type);
-  const ok     = action.result?action.result.ok:null;
-  const border = T?.border  || 'rgba(255,255,255,.07)';
-  const bg3    = T?.bg3     || 'rgba(255,255,255,.03)';
-  const textMute=T?.textMute|| 'rgba(255,255,255,.4)';
-  const success= T?.success || '#4ade80';
-  const error  = T?.error   || '#f87171';
+  const icon    = icons[action.type]||<Wrench size={12}/>;
+  const label   = action.type==='exec'?(action.command||'').slice(0,48):(action.path||action.type);
+  const ok      = action.result?action.result.ok:null;
+  const border  = T?.border   || 'rgba(255,255,255,.07)';
+  const bg3     = T?.bg3      || 'rgba(255,255,255,.03)';
+  const textMute= T?.textMute || 'rgba(255,255,255,.4)';
+  const success = T?.success  || '#4ade80';
+  const error   = T?.error    || '#f87171';
   const cs = ok===null
     ?{bg:bg3,border:border,text:textMute,fx:{}}
     :ok
@@ -140,7 +246,11 @@ export function ActionChip({ action, T }) {
     :{bg:T?.errorBg||'rgba(248,113,113,.06)',border:error+'44',text:error,fx:{}};
   return (
     <div style={{margin:'3px 0'}}>
-      <div onClick={()=>action.result&&setExpanded(!expanded)} style={{display:'inline-flex',alignItems:'center',gap:'7px',background:cs.bg,border:'1px solid '+cs.border,borderRadius:'8px',padding:'6px 12px',fontSize:'12px',fontFamily:'monospace',color:cs.text,cursor:action.result?'pointer':'default',maxWidth:'100%',minHeight:'34px',...cs.fx}}>
+      <div onClick={()=>action.result&&setExpanded(!expanded)}
+        style={{display:'inline-flex',alignItems:'center',gap:'7px',background:cs.bg,
+          border:'1px solid '+cs.border,borderRadius:'8px',padding:'6px 12px',
+          fontSize:'12px',fontFamily:'monospace',color:cs.text,
+          cursor:action.result?'pointer':'default',maxWidth:'100%',minHeight:'34px',...cs.fx}}>
         <span style={{flexShrink:0,opacity:.8}}>{icon}</span>
         <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{label}</span>
         {ok===null&&<span style={{opacity:.5,fontSize:'10px'}}>···</span>}
@@ -149,7 +259,10 @@ export function ActionChip({ action, T }) {
         {action.result&&<span style={{opacity:.3,flexShrink:0}}>{expanded?<ChevronUp size={10}/>:<ChevronDown size={10}/>}</span>}
       </div>
       {expanded&&action.result&&(
-        <div style={{background:T?.bg||'#080810',border:'1px solid '+border,borderRadius:'10px',padding:'10px 14px',marginTop:'4px',fontFamily:'monospace',fontSize:'12px',color:T?.textSec||'rgba(255,255,255,.65)',whiteSpace:'pre-wrap',wordBreak:'break-word',maxHeight:'280px',overflowY:'auto',lineHeight:'1.65'}}>
+        <div style={{background:T?.bg||'#080810',border:'1px solid '+border,borderRadius:'10px',
+          padding:'10px 14px',marginTop:'4px',fontFamily:'monospace',fontSize:'12px',
+          color:T?.textSec||'rgba(255,255,255,.65)',whiteSpace:'pre-wrap',wordBreak:'break-word',
+          maxHeight:'280px',overflowY:'auto',lineHeight:'1.65'}}>
           {typeof action.result.data==='string'?action.result.data:JSON.stringify(action.result.data,null,2)}
         </div>
       )}
@@ -157,6 +270,7 @@ export function ActionChip({ action, T }) {
   );
 }
 
+// ── MsgBubble ─────────────────────────────────────────────────────────────────
 export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix, onDelete, onEdit, T }) {
   const [actionsVisible,setActionsVisible]=useState(false);
   const [editing,setEditing]=useState(false);
@@ -164,44 +278,41 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   const [surgical,setSurgical]=useState(false);
   const [copied,setCopied]=useState(false);
 
-  const isUser       = msg.role==='user';
-  const thinkMatch   = msg.content.match(/<think>([\s\S]*?)<\/think>/i)||msg.content.match(/<think>([\s\S]*?)$/i);
-  const thinkText    = thinkMatch?thinkMatch[1]:null;
-  const cleanText    = msg.content
+  const isUser        = msg.role==='user';
+  const thinkMatch    = msg.content.match(/<think>([\s\S]*?)<\/think>/i)||msg.content.match(/<think>([\s\S]*?)$/i);
+  const thinkText     = thinkMatch?thinkMatch[1]:null;
+  const cleanText     = msg.content
     .replace(/<think>[\s\S]*?<\/think>/gi,'').replace(/<think>[\s\S]*$/gi,'')
     .replace(/```action[\s\S]*?```/g,'').replace(/PROJECT_NOTE:.*?\n/g,'').trim();
-  const actions      = msg.actions||[];
-  const pendingWrites= actions.filter(a=>a.type==='write_file'&&!a.executed);
-  const isContinued  = msg.content.trim().endsWith('CONTINUE');
-  const hasPlan      = !msg.planApproved&&msg.content.includes('📋 **Plan (');
-  const hasError     = msg.role==='assistant'&&(msg.content.includes('❌')||msg.content.includes('Error:'));
+  const actions       = msg.actions||[];
+  const pendingWrites = actions.filter(a=>a.type==='write_file'&&!a.executed);
+  const isContinued   = msg.content.trim().endsWith('CONTINUE');
+  const hasPlan       = !msg.planApproved&&msg.content.includes('📋 **Plan (');
+  const hasError      = msg.role==='assistant'&&(msg.content.includes('❌')||msg.content.includes('Error:'));
 
-  const accent       = T?.accent        || '#a78bfa';
-  const accentBg     = T?.accentBg      || 'rgba(124,58,237,.12)';
-  const accentBorder = T?.accentBorder  || 'rgba(124,58,237,.25)';
-  const border       = T?.border        || 'rgba(255,255,255,.07)';
-  const bg3          = T?.bg3           || 'rgba(255,255,255,.03)';
-  const success      = T?.success       || '#4ade80';
-  const successBg    = T?.successBg     || 'rgba(74,222,128,.08)';
-  const error        = T?.error         || '#f87171';
-  const errorBg      = T?.errorBg       || 'rgba(248,113,113,.08)';
-  const textMute     = T?.textMute      || 'rgba(255,255,255,.3)';
-  const textSec      = T?.textSec       || 'rgba(255,255,255,.6)';
-  const text         = T?.text          || 'rgba(255,255,255,.9)';
-  const bubbleUser   = T?.bubble?.user  || {};
-  const bubbleAi     = T?.bubble?.ai    || {};
-
-  // Theme-specific fx
-  const fxAiBubble   = T?.fx?.aiBubble?.()  || {};
-  const fxUserBubble = T?.fx?.userBubble?.()|| {};
-  const _fxGlowBorder = T?.fx?.glowBorder?.(accent) || {};
+  const accent        = T?.accent        || '#a78bfa';
+  const accentBg      = T?.accentBg      || 'rgba(124,58,237,.12)';
+  const accentBorder  = T?.accentBorder  || 'rgba(124,58,237,.25)';
+  const border        = T?.border        || 'rgba(255,255,255,.07)';
+  const bg3           = T?.bg3           || 'rgba(255,255,255,.03)';
+  const success       = T?.success       || '#4ade80';
+  const successBg     = T?.successBg     || 'rgba(74,222,128,.08)';
+  const error         = T?.error         || '#f87171';
+  const errorBg       = T?.errorBg       || 'rgba(248,113,113,.08)';
+  const textMute      = T?.textMute      || 'rgba(255,255,255,.3)';
+  const textSec       = T?.textSec       || 'rgba(255,255,255,.6)';
+  const text          = T?.text          || 'rgba(255,255,255,.9)';
+  const bubbleUser    = T?.bubble?.user  || {};
+  const bubbleAi      = T?.bubble?.ai    || {};
+  const fxAiBubble    = T?.fx?.aiBubble?.()  || {};
+  const fxUserBubble  = T?.fx?.userBubble?.()|| {};
 
   function doCopy(){navigator.clipboard?.writeText(cleanText).catch(()=>{});setCopied(true);setTimeout(()=>setCopied(false),1800);}
 
   const approveBtn={background:successBg,border:'1px solid '+success+'44',borderRadius:'10px',padding:'10px 18px',color:success,fontSize:'13px',cursor:'pointer',minHeight:'44px',fontWeight:'500',flex:1,display:'flex',alignItems:'center',gap:'6px',justifyContent:'center'};
   const rejectBtn ={background:errorBg,border:'1px solid '+error+'44',borderRadius:'10px',padding:'10px 16px',color:error,fontSize:'13px',cursor:'pointer',minHeight:'44px',display:'flex',alignItems:'center',gap:'6px'};
 
-  // ── User bubble ──────────────────────────────────────────────────────────
+  // ── User bubble ─────────────────────────────────────────────────────────────
   if (isUser) return (
     <div style={{display:'flex',justifyContent:'flex-end',padding:'8px 16px 8px 56px',marginBottom:'4px'}}>
       <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'5px',maxWidth:'82%'}}
@@ -249,19 +360,16 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
     </div>
   );
 
-  // ── AI bubble ───────────────────────────────────────────────────────────
+  // ── AI bubble ───────────────────────────────────────────────────────────────
   return (
     <div style={{display:'flex',padding:'10px 16px',marginBottom:'2px',gap:'12px',alignItems:'flex-start'}}>
-
       <div style={{display:'flex',flexDirection:'column',gap:'3px',flex:1,minWidth:0}}>
-        {thinkText&&<ThinkingBlock text={thinkText} T={T}/>}
-        {/* AI message wrapper — ink pakai left-rule, lainnya pakai bubble */}
+        {thinkText&&<ThinkingBlock text={thinkText} T={T} live={false}/>}
         <div style={{
           fontSize:'14.5px',lineHeight:'1.8',color:bubbleAi.color||text,wordBreak:'break-word',
           ...(bubbleAi.bg&&bubbleAi.bg!=='transparent'?{
             background:bubbleAi.bg,border:'1px solid '+(bubbleAi.border||'transparent'),
-            borderRadius:bubbleAi.radius||'4px 16px 16px 16px',
-            padding:'10px 14px',
+            borderRadius:bubbleAi.radius||'4px 16px 16px 16px',padding:'10px 14px',
           }:{}),
           ...fxAiBubble,
         }}>
@@ -331,7 +439,8 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
             onDelete&&{icon:<Trash2 size={12}/>,onClick:onDelete,danger:true},
             isLast&&onRetry&&{icon:<RotateCcw size={12}/>,onClick:onRetry,label:'retry'},
           ].filter(Boolean).map((btn,i)=>(
-            <button key={i} onClick={btn.onClick} style={{background:'none',border:'none',padding:'4px 8px',color:btn.danger?error+'88':textMute,fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'30px',display:'flex',alignItems:'center',gap:'4px',transition:'color .12s'}}
+            <button key={i} onClick={btn.onClick}
+              style={{background:'none',border:'none',padding:'4px 8px',color:btn.danger?error+'88':textMute,fontSize:'11px',cursor:'pointer',borderRadius:'6px',minHeight:'30px',display:'flex',alignItems:'center',gap:'4px',transition:'color .12s'}}
               onMouseEnter={e=>e.currentTarget.style.color=btn.danger?error:textSec}
               onMouseLeave={e=>e.currentTarget.style.color=btn.danger?error+'88':textMute}>
               {btn.icon}{btn.label&&<span>{btn.label}</span>}
