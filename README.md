@@ -58,7 +58,8 @@ Remove specific sections from any AI message without deleting the whole thing. C
 - **TF-IDF + age decay memory ranking** — memories injected into the system prompt are ranked by relevance to the current task, not just recency.
 - **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-generated `<span>` tags. Solves a class of highlighter bugs elegantly.
 - **3-fallback patch handler** — `patch_file` tries exact match → whitespace-normalized → trim-lines before giving up and feeding the error back to the AI.
-- **81 tests, 0 lint warnings** — unit, integration, fuzz, and snapshot tests. Runs on Termux ARM64 with `vitest@1` (v4 crashes silently on ARM).
+- **Per-theme T token system** — every component reads colour tokens from the active theme object (`T.bg`, `T.accent`, `T.border`, etc.) with fallbacks. Switching themes re-renders the entire app with zero hardcoded colours in component JSX.
+- **310 tests, 0 lint warnings** — unit, integration, fuzz, snapshot, and theme schema tests. Runs on Termux ARM64 with `vitest@1` (v4 crashes silently on ARM).
 
 ---
 
@@ -175,6 +176,9 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
 - `Date.now()` di dalam render JSX → error `react-hooks/purity`. Solusi: komponen terpisah dengan `useState(() => Date.now())` + `setInterval`
 - `\"` di dalam single-quoted string JS adalah useless escape → pakai `"` biasa
 - `\x00` dilarang di regex ESLint → pakai Unicode Private Use Area (`\uE000`) sebagai placeholder
+- **T token system**: setiap komponen baca warna dari `T?.token || 'fallback'`. Jangan inject token block yang tidak dipakai — ESLint `no-unused-vars` akan flag. Deklarasi hanya token yang benar-benar dipakai di JSX komponen itu.
+- **Duplicate `const` token**: kalau inject token block ke beberapa tempat di satu fungsi, scan dulu — duplikat `const text` di function scope = parse error.
+- **Template literal di theme `fx`**: gunakan backtick asli (`` ` ``), bukan `\`` escaped. Python `repr()` bisa corrupt ini kalau file di-proses programmatically.
 
 ---
 
@@ -197,7 +201,7 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
     │   │   ├── FileEditor.jsx  # In-app code editor
     │   │   ├── Terminal.jsx    # Built-in terminal — live streaming via WebSocket
     │   │   ├── SearchBar.jsx   # File content search + undo bar
-    │   │   ├── ThemeEffects.jsx # Visual overlays (orbs, scanlines, aurora, grain)
+    │   │   ├── ThemeEffects.jsx # Visual overlays (orbs, scanlines, aurora, grain) + inject T.css keyframes
     │   │   ├── VoiceBtn.jsx    # Voice input + push-to-talk + partial results
     │   │   └── panels.jsx      # Semua BottomSheet panel (21 panel)
     │   ├── hooks/
@@ -222,7 +226,7 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
     │       ├── aurora.js       # Aurora Glass
     │       ├── ink.js          # Ink & Paper
     │       ├── neon.js         # Neon Terminal
-    │       └── mybrand.js      # Template untuk custom theme baru
+    │       └── mybrand.js      # Template untuk custom theme (tidak aktif — copy untuk tema baru)
     ├── android/
     │   └── app/src/main/java/com/liveiciee/yuyucode/
     │       ├── MainActivity.java      # Register BrightnessPlugin
@@ -330,18 +334,23 @@ node ~/yuyu-server.js &  # jalankan dari ~, bukan dari project folder
 
 ```bash
 npm run lint          # ESLint — harus 0 errors, 0 warnings
-npx vitest run        # Semua tests — harus 81/81 pass
+npx vitest run        # Semua tests — harus 310/310 pass
 ```
 
-**Status:** 0 lint errors, 0 warnings, 81/81 tests passing.
+**Status:** 0 lint errors, 0 warnings, 310/310 tests passing.
 
 | File | Tipe | Tests |
 |------|------|-------|
 | `src/api.test.js` | Unit | 5 |
+| `src/api.extended.test.js` | Unit + Retry/Fallback | 15 |
 | `src/utils.test.js` | Unit | 22 |
-| `src/features.test.js` | Unit | 29 |
+| `src/utils.extended.test.js` | Unit — semua action types | 42 |
 | `src/utils.integration.test.js` | Integration + Fuzz | 18 |
 | `src/utils.snapshot.test.js` | Snapshot | 7 |
+| `src/features.test.js` | Unit | 29 |
+| `src/features.extended.test.js` | Unit + Edge cases | 48 |
+| `src/features.extra.test.js` | Unit — sessions, skills, plan | 21 |
+| `src/themes.test.js` | Schema validation — semua 4 tema | 103 |
 
 Update snapshots: `npx vitest run --update-snapshots`
 
