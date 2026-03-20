@@ -29,17 +29,25 @@ function bumpVersion() {
   const parts = current.split('.').map(Number);
   if (parts.length !== 3 || parts.some(isNaN)) return null;
 
-  // patch bump: 2.5.0 → 2.5.1, unless msg contains "major" or "minor"
-  const lowerMsg = msg.toLowerCase();
-  if (lowerMsg.includes('major')) {
-    parts[0]++; parts[1] = 0; parts[2] = 0;
-  } else if (lowerMsg.includes('minor') || /v\d+\.\d+\b/.test(msg)) {
-    parts[1]++; parts[2] = 0;
+  // Jika pesan mengandung vX.Y atau vX.Y.Z → SET langsung ke versi itu
+  const vMatch = msg.match(/\bv(\d+\.\d+(?:\.\d+)?)\b/);
+  let next;
+  if (vMatch) {
+    const targetParts = vMatch[1].split('.').map(Number);
+    while (targetParts.length < 3) targetParts.push(0);
+    next = targetParts.join('.');
   } else {
-    parts[2]++;
+    // patch bump: 2.5.0 → 2.5.1, unless msg contains "major" or "minor"
+    const lowerMsg = msg.toLowerCase();
+    if (lowerMsg.includes('major')) {
+      parts[0]++; parts[1] = 0; parts[2] = 0;
+    } else if (lowerMsg.includes('minor')) {
+      parts[1]++; parts[2] = 0;
+    } else {
+      parts[2]++;
+    }
+    next = parts.join('.');
   }
-
-  const next = parts.join('.');
   pkg.version = next;
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
   return { from: current, to: next };

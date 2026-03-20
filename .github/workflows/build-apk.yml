@@ -108,9 +108,10 @@ jobs:
           name: YuyuCode-v1.0.${{ github.run_number }}
           path: android/app/build/outputs/apk/release/YuyuCode.apk
 
-      - name: Get commit info
+      - name: Get version & commit info
         id: info
         run: |
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
           echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
 
@@ -119,14 +120,14 @@ jobs:
         if: startsWith(github.event.head_commit.message, 'release:')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: "YuyuCode v1.0.${{ github.run_number }} (${{ steps.info.outputs.date }})"
+          tag_name: v${{ steps.info.outputs.version }}
+          name: "YuyuCode v${{ steps.info.outputs.version }} (${{ steps.info.outputs.date }})"
           body: |
             **${{ steps.info.outputs.msg }}**
 
             | | |
             |---|---|
-            | Version | 1.0.${{ github.run_number }} |
+            | Version | ${{ steps.info.outputs.version }} |
             | Build | #${{ github.run_number }} |
             | Commit | ${{ github.sha }} |
             | Date | ${{ steps.info.outputs.date }} |
