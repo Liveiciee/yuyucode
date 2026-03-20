@@ -10,7 +10,7 @@
 <br/>
 
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
-[![Tests](https://img.shields.io/badge/tests-504%20passing-brightgreen)](#testing--benchmarks)
+[![Tests](https://img.shields.io/badge/tests-516%20passing-brightgreen)](#testing--benchmarks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
 ![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?logo=react&logoColor=61DAFB)
@@ -143,8 +143,8 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 ## Testing & Benchmarks
 
 ```
-504 tests passing. 0 lint warnings. Runs on Termux ARM64.
-38 of which are property-based (inline fast-check-style, 100 random inputs each).
+516 tests passing. 0 lint warnings. Runs on Termux ARM64.
+50 of which are property-based (inline fast-check-style, 100 random inputs each).
 ```
 
 | File | Type | Tests |
@@ -169,15 +169,15 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 ### Benchmarks (Termux ARM64)
 
 ```
-getLangExt          4.89x  faster than 10 mixed extensions
-isEmmetLang         4.54x  faster than 10 mixed
-isTsLang            4.66x  faster than 10 mixed
-buildSrcdoc         4.95x  faster than html + css + js combined
-multi-tab open     36.55x  faster than open 50 tabs sequentially
-generateDiff     5829.58x  faster than large diff (500 lines)
-extractSymbols    181.28x  faster than large file (10 components, ~500 lines)
-compressSource    624.92x  faster than large file (500 lines)
-parseActions       82.54x  faster than mixed valid/invalid blocks (agent loop hot path)
+getLangExt          5.89x  faster than 10 mixed extensions
+isEmmetLang         4.46x  faster than 10 mixed
+isTsLang            4.77x  faster than 10 mixed
+buildSrcdoc         4.59x  faster than html + css + js combined
+multi-tab open     37.19x  faster than open 50 tabs sequentially
+generateDiff     5815.78x  faster than large diff (500 lines)
+extractSymbols    218.21x  faster than large file (10 components, ~500 lines)
+compressSource    636.52x  faster than large file (500 lines)
+parseActions       84.22x  faster than mixed valid/invalid blocks (agent loop hot path)
 ```
 
 > The Myers diff number isn't a typo. Small diffs exit the algorithm early — large diffs don't.
@@ -449,26 +449,6 @@ This project stands on the shoulders of some exceptional open source work:
 - Jangan override `global.TextDecoder` di test files — infinite recursion di Node 24.
 - Keystore encoding: `openssl base64` + `tr -d '\n'`, bukan `base64 -w 0`.
 
-## Snapshot Update Workflow
-
-Snapshot tests di `utils.snapshot.test.js` perlu di-update kalau output fungsi berubah secara intentional:
-
-```bash
-# Update semua snapshots:
-npx vitest run --update-snapshots
-
-# Update satu file saja:
-npx vitest run src/utils.snapshot.test.js --update-snapshots
-
-# Commit hasilnya:
-git add src/__snapshots__/
-node yugit.cjs "test: update snapshots after intentional output change"
-```
-
-⚠️ Jangan update snapshots kalau tidak yakin perubahan output disengaja — snapshot yang salah menyembunyikan bug.
-
----
-
 ## Workflow Harian
 
 ```bash
@@ -483,7 +463,7 @@ yuyu-apply yuyu-map.zip         # zip dengan nama lain
 
 # Selalu setelah apply:
 npm run lint        # 🔍 Scouring... → ✨ 0 problems found! Code is pure.
-npx vitest run      # harus 504/504 pass
+npx vitest run      # harus 516/516 pass
 node yuyu-map.cjs   # update codebase map
 
 # Push biasa
@@ -500,8 +480,9 @@ node yugit.cjs --status                           # lihat branch + dirty + recen
 # Release — auto set version + trigger CI APK build
 node yugit.cjs "release: v2.x — deskripsi"
 
-npm run bench           # run bench + auto-save (first time) atau compare (subsequent)
-npm run bench:save      # force update baseline setelah intentional refactor
+npx vitest bench --run  # benchmark hot paths (opsional)
+npm run bench           # benchmark + compare ke history (regresi detection)
+npm run bench:save      # set/update baseline
 ```
 
 ### yuyu-apply — smart zip applier
@@ -625,8 +606,6 @@ node ~/yuyu-server.js &  # jalankan dari ~, bukan dari project folder
 **HTTP :8765** — `ping`, `read`, `read_many`, `write`, `append`, `patch`, `delete`, `move`, `mkdir`, `list`, `tree`, `info`, `search`, `web_search`, `exec`, `browse`, `fetch_json`, `sqlite`, `mcp`, `mcp_list`, `batch`
 
 **REST** — `GET /health` → `{status, uptime, version}` | `GET /status` → `{status, uptime, memory_mb, tools}`
-
-**Rate limiting** — 120 POST req/min per IP (in-memory). Returns HTTP 429 kalau exceeded.
 
 **WebSocket :8766** — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`, `collab_updates`
 

@@ -35,14 +35,15 @@
 
 ### State saat ini:
 - Version: 2.9.2
-- Tests: **513+** ✅ (504 + 12 property-based yuyu-map)
-- yuyu-map.test.cjs: **92 tests**
-- utils.integration.test.js: 38 tests
+- Tests: **516** ✅
+- yuyu-map.test.cjs: **92 tests** (80 unit + 12 property-based)
+- utils.integration.test.js: 38 tests (29 unit + 9 property-based)
 - Lint: 0 errors ✅
 
 ### Bench workflow (simpel):
 ```bash
-npm run bench          # pertama kali: run + auto-save baseline
+# Baseline sudah tersimpan di .yuyu/bench-history.json ✅
+npm run bench          # run + compare ke baseline
 npm run bench          # berikutnya: run + compare
 npm run bench:save     # update baseline setelah intentional refactor
 npm run bench:reset    # clear semua history
