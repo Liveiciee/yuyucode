@@ -153,7 +153,7 @@ function handle(payload) {
       return out;
     }
 
-    function extractSigs(src, filePath) {
+    function extractSigs(src, _filePath) {
       const sigs = [];
       // export function / async function
       const re1 = /^export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]{0,120})\)/gm;
