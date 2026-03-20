@@ -17,7 +17,8 @@ const rawArgs   = process.argv.slice(2);
 const NO_PUSH   = rawArgs.includes('--no-push');
 const AMEND     = rawArgs.includes('--amend');
 const hashFlag  = rawArgs.find(a => a.startsWith('--hash='));
-const HASH      = hashFlag ? hashFlag.split('=')[1] : (rawArgs[rawArgs.indexOf('--hash') + 1]);
+const hashIdx   = rawArgs.indexOf('--hash');
+const HASH      = hashFlag ? hashFlag.split('=')[1] : (hashIdx !== -1 ? rawArgs[hashIdx + 1] : undefined);
 
 // Filter flags out — remaining args are: [msg, body?, footer?]
 const msgArgs = rawArgs.filter(a => !a.startsWith('--') && a !== HASH);
