@@ -6,7 +6,7 @@ import {
   FileText, Pencil, FileDiff, Folder, FolderOpen, Search, Globe,
   Network, ArrowRight, Trash2, Plug, Wrench, Check, X, Scissors,
   RotateCcw, ChevronDown, ChevronUp, AlignLeft, Play, Copy,
-  Sparkles, Brain, Terminal,
+  Brain, Terminal,
 } from 'lucide-react';
 
 export function ThinkingBlock({ text, T }) {
@@ -194,7 +194,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   // Theme-specific fx
   const fxAiBubble   = T?.fx?.aiBubble?.()  || {};
   const fxUserBubble = T?.fx?.userBubble?.()|| {};
-  const fxGlowBorder = T?.fx?.glowBorder?.(accent) || {};
+  const _fxGlowBorder = T?.fx?.glowBorder?.(accent) || {};
 
   function doCopy(){navigator.clipboard?.writeText(cleanText).catch(()=>{});setCopied(true);setTimeout(()=>setCopied(false),1800);}
 
@@ -252,10 +252,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   // ── AI bubble ───────────────────────────────────────────────────────────
   return (
     <div style={{display:'flex',padding:'10px 16px',marginBottom:'2px',gap:'12px',alignItems:'flex-start'}}>
-      {/* AI avatar dengan accent theme */}
-      <div style={{width:'28px',height:'28px',borderRadius:'8px',flexShrink:0,background:accentBg,border:'1px solid '+accentBorder,display:'flex',alignItems:'center',justifyContent:'center',marginTop:'2px',...fxGlowBorder}}>
-        <Sparkles size={13} style={{color:accent,...(T?.fx?.glowText?.(accent)||{})}}/>
-      </div>
+
       <div style={{display:'flex',flexDirection:'column',gap:'3px',flex:1,minWidth:0}}>
         {thinkText&&<ThinkingBlock text={thinkText} T={T}/>}
         {/* AI message wrapper — ink pakai left-rule, lainnya pakai bubble */}
