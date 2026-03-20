@@ -229,9 +229,10 @@ Get free API keys:
 - [Cerebras](https://cloud.cerebras.ai) — main AI
 - [Groq](https://console.groq.com) — fallback + vision
 
-**Option A — Termux (recommended):** setup `.bashrc` lengkap dengan yuyu shortcuts:
+**Option A — Termux (recommended):** copy template ini ke `~/.bashrc`, ganti `your_key` dengan key asli, lalu `source ~/.bashrc`:
+
 ```bash
-# ~/.bashrc — full setup
+# ~/.bashrc — YuyuCode full setup
 
 export ANDROID_HOME=$HOME/android-sdk
 export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
@@ -246,15 +247,136 @@ export VITE_GROQ_API_KEY=your_key
 # auto-start yuyu-server on every Termux session
 node ~/yuyu-server.js > /dev/null 2>&1 &
 
-# yuyu-apply — apply zip dari Claude (unzip + lint + test + rollback otomatis)
-yuyu-apply() { ... }   # lihat .bashrc lengkap di repo
+# ── yuyu-apply — apply zip dari Claude ───────────────────────────────────────
+yuyu-apply() {
+  local zip="${1:-yuyu-overhaul.zip}"
+  local DRY=0
+  if [ "${1}" = "--dry-run" ] || [ "${2}" = "--dry-run" ]; then
+    DRY=1
+    zip="${1:-yuyu-overhaul.zip}"
+    [ "${1}" = "--dry-run" ] && zip="yuyu-overhaul.zip"
+    echo "🔍 DRY RUN — tidak ada yang diubah"
+    echo ""
+  fi
 
-# yuyu-cp — copy file tunggal dari Download (auto-delegate zip ke yuyu-apply)
-yuyu-cp() { ... }      # lihat .bashrc lengkap di repo
+  cd ~/yuyucode
 
-# Tab completions untuk yuyu-apply, yuyu-cp, yuyu-map, yugit
+  echo "📦 Files dalam $zip:"
+  unzip -l /sdcard/Download/$zip | awk '/-----/{found=1;next} found && !/-----/{print "  →", $NF}' | grep -v "/$"
+  echo ""
+
+  if [ "$DRY" = "1" ]; then
+    echo "🔍 File yang akan di-overwrite:"
+    unzip -l /sdcard/Download/$zip | awk '/-----/{found=1;next} found && !/-----/{print $NF}' | grep -v "/$" | while read f; do
+      [ -f ~/yuyucode/$f ] && echo "  ⚠️  OVERWRITE: $f" || echo "  ✨ NEW: $f"
+    done
+    echo ""
+    echo "✋ Dry run selesai — jalankan tanpa --dry-run untuk apply"
+    return 0
+  fi
+
+  local SNAPSHOT=$(git rev-parse HEAD)
+  echo "📸 Snapshot: $SNAPSHOT"
+
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "⚠️  Ada perubahan lokal — stashing dulu..."
+    git stash push -m "yuyu-apply auto-stash $(date +%Y%m%d-%H%M%S)" || { echo "❌ stash failed"; return 1; }
+    local STASHED=1
+  fi
+
+  _yuyu_rollback() {
+    echo ""
+    echo "🔄 Rolling back ke $SNAPSHOT..."
+    git add -A
+    git reset --hard $SNAPSHOT
+    echo "✅ Rollback selesai — directory bersih"
+    if [ "${STASHED:-0}" = "1" ]; then
+      echo "💡 Stash masih ada — jalankan: git stash pop"
+    fi
+  }
+
+  cp /sdcard/Download/$zip ~/yuyucode/ || { echo "❌ cp failed"; return 1; }
+  unzip -o $zip || { echo "❌ unzip failed"; _yuyu_rollback; return 1; }
+  git add -A
+  echo "🧐 Memeriksa kesucian kode (ESLint)..."
+  npm run lint || { echo "❌ Lint failed!"; _yuyu_rollback; return 1; }
+  echo "✅ Kode suci dari dosa (Lint Clean)."
+  npx vitest run || { echo "❌ tests failed"; _yuyu_rollback; return 1; }
+  rm $zip
+  rm /sdcard/Download/$zip
+  echo "✅ all good, zip cleaned up"
+
+  if [ "${STASHED:-0}" = "1" ]; then
+    echo "💡 Stash masih ada — jalankan: git stash pop"
+  fi
+}
+
+# ── yuyu-cp — copy file tunggal dari Download ────────────────────────────────
+yuyu-cp() {
+  local file="${1}"
+  local src="/sdcard/Download/${file}"
+  local dest="$HOME/yuyucode/${file}"
+
+  if [ ! -f "$src" ]; then
+    echo "❌ File '$file' tidak ditemukan di /sdcard/Download/"
+    echo "📂 Isi Download terbaru:"
+    ls -t /sdcard/Download/ | head -n 5
+    return 1
+  fi
+
+  if [[ "$file" == *.zip ]]; then
+    echo "📦 Zip terdeteksi — delegasi ke yuyu-apply..."
+    yuyu-apply "$file"
+    return $?
+  fi
+
+  cd ~/yuyucode
+  if git ls-files --error-unmatch "$file" &>/dev/null 2>&1; then
+    if ! git diff --quiet "$file" 2>/dev/null; then
+      echo "⚠️  '$file' ada uncommitted changes di git."
+      printf "Lanjut overwrite? [y/N] "
+      read -r confirm
+      confirm=$(echo "$confirm" | tr -d '[:space:]\r')
+      [[ "$confirm" != "y" && "$confirm" != "Y" ]] && { echo "✋ Dibatalkan."; return 0; }
+    fi
+  fi
+
+  if cp "$src" "$dest" && rm "$src"; then
+    echo "✅ '$file' mendarat di yuyucode & Download dibersihkan."
+  else
+    echo "⚠️  Gagal memindahkan file. Cek izin storage Termux!"
+    return 1
+  fi
+}
+
+# ── Tab completions ───────────────────────────────────────────────────────────
+_yuyu_cp_completion() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local files=$(ls /sdcard/Download/ 2>/dev/null)
+  COMPREPLY=( $(compgen -W "$files" -- "$cur") )
+}
+complete -F _yuyu_cp_completion yuyu-cp
+
+_yuyu_apply_completion() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local zips=$(ls /sdcard/Download/*.zip 2>/dev/null | xargs -I{} basename {})
+  local flags="--dry-run"
+  COMPREPLY=( $(compgen -W "$zips $flags" -- "$cur") )
+}
+complete -F _yuyu_apply_completion yuyu-apply
+
+_yuyu_map_completion() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  COMPREPLY=( $(compgen -W "--verbose --compress-only" -- "$cur") )
+}
+complete -F _yuyu_map_completion yuyu-map
+
+_yugit_completion() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  COMPREPLY=( $(compgen -W "feat: fix: refactor: docs: test: chore: release: revert: feat!: fix!: --no-push --amend --hash=" -- "$cur") )
+}
+complete -F _yugit_completion yugit
 ```
-Template `.bashrc` lengkap tersedia di `bashrc_yuyu.txt` — download dan `cp` ke `~/.bashrc`.
 
 Then `source ~/.bashrc` once. After that, just open Termux and everything is ready.
 
