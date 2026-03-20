@@ -8,14 +8,13 @@ import { EditorView, basicSetup } from 'codemirror';
 import { EditorState, Compartment, StateEffect, StateField } from '@codemirror/state';
 import { Decoration, WidgetType, ViewPlugin, keymap, GutterMarker, gutter } from '@codemirror/view';
 import { linter, lintGutter } from '@codemirror/lint';
-import { syntaxTree } from '@codemirror/language';
+import { syntaxTree, foldAll, unfoldAll } from '@codemirror/language';
 import {
-  foldAll, unfoldAll,
   indentWithTab,
 } from '@codemirror/commands';
-import { 
-  selectNextOccurrence, 
-  selectSelectionMatches 
+import {
+  selectNextOccurrence,
+  selectSelectionMatches
 } from '@codemirror/search';
 import { collab, getSyncedVersion, sendableUpdates, receiveUpdates } from '@codemirror/collab';
 import { javascript } from '@codemirror/lang-javascript';
