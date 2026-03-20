@@ -137,8 +137,12 @@ export default function App() {
       Preferences.get({key:'yc_session_color'}), Preferences.get({key:'yc_plugins'}),
       Preferences.get({key:'yc_effort'}),    Preferences.get({key:'yc_thinking'}),
       Preferences.get({key:'yc_permissions'}),
-    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr,sc,pl,ef,tk,perm]) => {
-      ui.loadUIPrefs({theme:th.value,fontSize:fs.value,sidebarWidth:sw.value,customTheme:ct.value,onboarded:ob.value});
+      Preferences.get({key:'yc_vim'}),
+      Preferences.get({key:'yc_minimap'}),
+      Preferences.get({key:'yc_ghosttext'}),
+      Preferences.get({key:'yc_lint'}),
+    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr,sc,pl,ef,tk,perm,vm,mm,gt,lt]) => {
+      ui.loadUIPrefs({theme:th.value,fontSize:fs.value,sidebarWidth:sw.value,customTheme:ct.value,onboarded:ob.value,vim:vm.value,minimap:mm.value,ghostText:gt.value,lint:lt.value});
       project.loadProjectPrefs({folder:f.value,cmdHistory:ch.value,model:mo.value,hooks:hk.value,githubToken:ght.value,githubRepo:ghr.value,sessionColor:sc.value,plugins:pl.value,effort:ef.value,thinkingEnabled:tk.value,permissions:perm.value});
       file.loadFilePrefs({pinned:pi.value,recent:re.value});
       chat.loadChatPrefs({history:h.value,memories:mem.value,checkpoints:ckp.value});

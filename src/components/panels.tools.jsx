@@ -460,48 +460,105 @@ export function PluginsPanel({ activePlugins, folder, onToggle, onClose, T }) {
 }
 
 // ── ConfigPanel ───────────────────────────────────────────────────────────────
-
-// ── ConfigPanel ───────────────────────────────────────────────────────────────
-export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, models, onEffort, onFontSize, onTheme, onModel, onThinking, onClose, T }) {
-
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
+export function ConfigPanel({
+  effort, fontSize, theme, model, thinkingEnabled, models,
+  onEffort, onFontSize, onTheme, onModel, onThinking,
+  // Editor feature toggles (Fase 1+2)
+  vimMode, onVimMode,
+  showMinimap, onMinimap,
+  ghostTextEnabled, onGhostText,
+  lintEnabled, onLint,
+  onClose, T,
+}) {
+  const bg3          = T?.bg3          || 'rgba(255,255,255,.04)';
+  const border       = T?.border       || 'rgba(255,255,255,.06)';
+  const text         = T?.text         || '#f0f0f0';
+  const textMute     = T?.textMute     || 'rgba(255,255,255,.3)';
+  const accentBg     = T?.accentBg     || 'rgba(124,58,237,.1)';
   const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
-  const accent     = T?.accent     || '#a78bfa';
+  const accent       = T?.accent       || '#a78bfa';
+  const success      = T?.success      || '#4ade80';
+  const successBg    = T?.successBg    || 'rgba(74,222,128,.1)';
+  const warning      = T?.warning      || '#fbbf24';
+
   const configs = [
-    {label:'Effort Level', value:effort,         options:['low','medium','high'],      onChange:onEffort},
-    {label:'Font Size',    value:String(fontSize), options:['12','13','14','15','16'], onChange:v=>onFontSize(parseInt(v))},
-    {label:'Theme',        value:theme,            options:['obsidian','aurora','ink','neon'], onChange:onTheme},
-    {label:'Model',        value:model,            options:models.map(m=>m.id),        onChange:onModel},
+    { label: 'Effort Level', value: effort,          options: ['low','medium','high'],       onChange: onEffort },
+    { label: 'Font Size',    value: String(fontSize), options: ['12','13','14','15','16'],    onChange: v => onFontSize(parseInt(v)) },
+    { label: 'Theme',        value: theme,            options: ['obsidian','aurora','ink','neon'], onChange: onTheme },
+    { label: 'Model',        value: model,            options: models.map(m => m.id),         onChange: onModel },
   ];
+
+  // Editor toggles: [label, value, setter, color]
+  const editorToggles = [
+    { label: 'Vim Mode',       sublabel: 'hjkl navigation, normal/insert/visual', value: vimMode,           onToggle: onVimMode,    color: accent,   bg: accentBg,  br: accentBorder },
+    { label: 'AI Ghost Text',  sublabel: 'inline suggestion, Tab to accept',      value: ghostTextEnabled,  onToggle: onGhostText,  color: success,  bg: successBg, br: success+'44' },
+    { label: 'Minimap',        sublabel: 'canvas scroll map (side panel)',        value: showMinimap,       onToggle: onMinimap,    color: accent,   bg: accentBg,  br: accentBorder },
+    { label: 'Inline Lint',    sublabel: 'syntax error markers in gutter',        value: lintEnabled,       onToggle: onLint,       color: warning,  bg: 'rgba(251,191,36,.1)', br: warning+'44' },
+  ];
+
   return (
     <BottomSheet onClose={onClose}>
-      <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <div style={{display:'flex',alignItems:'center',marginBottom:'16px'}}>
-          <span style={{fontSize:'14px',fontWeight:'600',color:text,flex:1}}>Config</span>
-          <button onClick={onClose} style={{background:'none',border:'none',color:textMute,fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
+      <div style={{ padding: '0 16px 8px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+          <span style={{ fontSize: '14px', fontWeight: '600', color: text, flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Settings size={14}/> Config
+          </span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: textMute, fontSize: '16px', cursor: 'pointer' }}><X size={16}/></button>
         </div>
-        <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'12px'}}>
-          {configs.map(cfg=>(
-            <div key={cfg.label} style={{padding:'10px 12px',background:bg3,border:'1px solid '+border,borderRadius:'8px'}}>
-              <div style={{fontSize:'11px',color:textMute,marginBottom:'6px'}}>{cfg.label}</div>
-              <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
-                {cfg.options.map(opt=>(
-                  <button key={opt} onClick={()=>cfg.onChange(opt)} style={{background:cfg.value===opt?accentBg:bg3,border:'1px solid '+(cfg.value===opt?accentBorder:border),borderRadius:'6px',padding:'4px 10px',color:cfg.value===opt?accent:textMute,fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>
-                    {opt.length>20?opt.slice(0,20)+'…':opt}
+
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* Standard configs */}
+          {configs.map(cfg => (
+            <div key={cfg.label} style={{ padding: '10px 12px', background: bg3, border: '1px solid ' + border, borderRadius: '8px' }}>
+              <div style={{ fontSize: '11px', color: textMute, marginBottom: '6px' }}>{cfg.label}</div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {cfg.options.map(opt => (
+                  <button key={opt} onClick={() => cfg.onChange(opt)}
+                    style={{ background: cfg.value === opt ? accentBg : bg3, border: '1px solid ' + (cfg.value === opt ? accentBorder : border),
+                      borderRadius: '6px', padding: '4px 10px', color: cfg.value === opt ? accent : textMute,
+                      fontSize: '11px', cursor: 'pointer', fontFamily: 'monospace' }}>
+                    {opt.length > 20 ? opt.slice(0, 20) + '…' : opt}
                   </button>
                 ))}
               </div>
             </div>
           ))}
-          <div style={{padding:'10px 12px',background:bg3,border:'1px solid '+border,borderRadius:'8px'}}>
-            <div style={{fontSize:'11px',color:textMute,marginBottom:'6px'}}>Extended Thinking</div>
-            <button onClick={onThinking} style={{background:thinkingEnabled?accentBg:bg3,border:'1px solid '+(thinkingEnabled?accentBorder:border),borderRadius:'6px',padding:'4px 10px',color:thinkingEnabled?accent:textMute,fontSize:'11px',cursor:'pointer'}}>
-              {thinkingEnabled?'✓ ON':'○ OFF'}
+
+          {/* Extended Thinking */}
+          <div style={{ padding: '10px 12px', background: bg3, border: '1px solid ' + border, borderRadius: '8px' }}>
+            <div style={{ fontSize: '11px', color: textMute, marginBottom: '6px' }}>Extended Thinking</div>
+            <button onClick={onThinking}
+              style={{ background: thinkingEnabled ? accentBg : bg3, border: '1px solid ' + (thinkingEnabled ? accentBorder : border),
+                borderRadius: '6px', padding: '4px 10px', color: thinkingEnabled ? accent : textMute, fontSize: '11px', cursor: 'pointer' }}>
+              {thinkingEnabled ? '✓ ON' : '○ OFF'}
             </button>
+          </div>
+
+          {/* Editor Features section */}
+          <div style={{ padding: '6px 2px 2px' }}>
+            <div style={{ fontSize: '10px', color: textMute, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '600' }}>
+              Editor Features
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {editorToggles.map(t => (
+                <div key={t.label} style={{ padding: '10px 12px', background: t.value ? 'rgba(255,255,255,.025)' : bg3,
+                  border: '1px solid ' + (t.value ? t.br : border), borderRadius: '8px',
+                  display: 'flex', alignItems: 'center', gap: '10px', transition: 'all .15s' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '12px', color: t.value ? t.color : text, fontWeight: t.value ? '600' : '400' }}>
+                      {t.label}
+                    </div>
+                    <div style={{ fontSize: '10px', color: textMute, marginTop: '2px' }}>{t.sublabel}</div>
+                  </div>
+                  <div onClick={() => t.onToggle?.(!t.value)}
+                    style={{ width: '40px', height: '22px', borderRadius: '11px', flexShrink: 0, cursor: 'pointer',
+                      background: t.value ? t.color : 'rgba(255,255,255,.12)', position: 'relative', transition: 'background .2s' }}>
+                    <div style={{ position: 'absolute', top: '3px', left: t.value ? '20px' : '3px', width: '16px', height: '16px',
+                      borderRadius: '50%', background: 'white', transition: 'left .2s' }}/>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

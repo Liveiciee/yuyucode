@@ -1,20 +1,32 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { callServer } from '../api.js';
 import { executeAction, resolvePath } from '../utils.js';
 
 export function useFileStore() {
-  // ── File view / edit ──
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [fileContent, setFileContent]   = useState(null);
-  const [activeTab, setActiveTab]       = useState('chat');
-  const [editMode, setEditMode]         = useState(false);
-  const [splitView, setSplitView]       = useState(false);
+  // ── Multi-tab state ──
+  const [openTabs, setOpenTabs]       = useState([]);   // [{path, content, dirty}]
+  const [activeTabIdx, setActiveTabIdxRaw] = useState(0);
+
+  // ── Legacy single-view state (still used for some flows) ──
+  const [activeTab, setActiveTab]     = useState('chat'); // 'chat' | 'file'
+  const [editMode, setEditMode]       = useState(false);
+  const [splitView, setSplitView]     = useState(false);
+
+  // ── Derived compat ──
+  const selectedFile = openTabs[activeTabIdx]?.path  ?? null;
+  const fileContent  = openTabs[activeTabIdx]?.content ?? null;
 
   // ── Lists ──
   const [recentFiles, setRecentFilesRaw] = useState([]);
   const [pinnedFiles, setPinnedFilesRaw] = useState([]);
   const [editHistory, setEditHistory]    = useState([]);
+
+  // Ref to always read the latest openTabs in async contexts
+  const openTabsRef = useRef(openTabs);
+  const activeTabIdxRef = useRef(activeTabIdx);
+  useEffect(() => { openTabsRef.current = openTabs; });
+  useEffect(() => { activeTabIdxRef.current = activeTabIdx; });
 
   // ── Persisted setters ──
   function setRecentFiles(next) {
@@ -32,25 +44,96 @@ export function useFileStore() {
     if (recent) { try { setRecentFilesRaw(JSON.parse(recent)); } catch (_e) { } }
   }
 
-  // ── openFile ──
+  // ── setActiveTabIdx (also switches to file tab) ──
+  function setActiveTabIdx(idx) {
+    setActiveTabIdxRaw(idx);
+    if (idx >= 0 && openTabsRef.current.length > 0) {
+      setActiveTab('file');
+    }
+  }
+
+  // ── openFile — opens in existing tab or new tab ──
   async function openFile(path) {
-    setSelectedFile(path);
+    // Check if already open
+    const existing = openTabsRef.current.findIndex(t => t.path === path);
+    if (existing >= 0) {
+      setActiveTabIdx(existing);
+      setActiveTab('file');
+      setEditMode(false);
+      return;
+    }
+
+    // Load content
     setActiveTab('file');
     setEditMode(false);
     const r = await callServer({ type: 'read', path });
-    setFileContent(r.ok ? r.data : 'Error: ' + r.data);
+    const content = r.ok ? r.data : ('Error: ' + r.data);
+
+    setOpenTabs(prev => {
+      const newTabs = [...prev, { path, content, dirty: false }];
+      setActiveTabIdxRaw(newTabs.length - 1);
+      return newTabs;
+    });
+
+    // Recent files
     const next = [path, ...recentFiles.filter(f => f !== path)].slice(0, 8);
     setRecentFiles(next);
   }
 
-  // ── saveFile ──
+  // ── closeTab ──
+  function closeTab(idx) {
+    const tabs = openTabsRef.current;
+    if (tabs.length === 0) return;
+
+    setOpenTabs(prev => {
+      const newTabs = prev.filter((_, i) => i !== idx);
+      if (newTabs.length === 0) {
+        setActiveTabIdxRaw(0);
+        setActiveTab('chat');
+      } else {
+        const newActive = Math.min(activeTabIdxRef.current, newTabs.length - 1);
+        setActiveTabIdxRaw(Math.max(0, newActive));
+      }
+      return newTabs;
+    });
+  }
+
+  // ── updateTabContent — marks a tab dirty (from editor changes) ──
+  function updateTabContent(idx, content) {
+    setOpenTabs(prev => prev.map((t, i) =>
+      i === idx ? { ...t, content, dirty: true } : t
+    ));
+  }
+
+  // ── saveFile — saves current active tab to server ──
   async function saveFile(content, onMsg) {
-    if (!selectedFile) return;
-    setEditHistory(h => [...h.slice(-9), { path: selectedFile, content: fileContent || '' }]);
-    const r = await callServer({ type: 'write', path: selectedFile, content });
+    const tab = openTabsRef.current[activeTabIdxRef.current];
+    if (!tab) return;
+    setEditHistory(h => [...h.slice(-9), { path: tab.path, content: tab.content }]);
+    const r = await callServer({ type: 'write', path: tab.path, content });
     if (r.ok) {
-      setFileContent(content);
-      onMsg?.('💾 Saved: ' + selectedFile.split('/').pop());
+      setOpenTabs(prev => prev.map((t, i) =>
+        i === activeTabIdxRef.current ? { ...t, content, dirty: false } : t
+      ));
+      onMsg?.('💾 Saved: ' + tab.path.split('/').pop());
+    }
+  }
+
+  // ── Backward compat setters ──
+  function setSelectedFile(path) {
+    if (!path) {
+      const idx = activeTabIdxRef.current;
+      if (openTabsRef.current.length > 0) closeTab(idx);
+      else setActiveTab('chat');
+      return;
+    }
+    openFile(path);
+  }
+
+  function setFileContent(content) {
+    const idx = activeTabIdxRef.current;
+    if (idx >= 0 && openTabsRef.current.length > idx) {
+      updateTabContent(idx, content);
     }
   }
 
@@ -135,14 +218,26 @@ export function useFileStore() {
   }
 
   return {
+    // Multi-tab
+    openTabs, setOpenTabs,
+    activeTabIdx, setActiveTabIdx,
+    closeTab, updateTabContent,
+
+    // Backward compat derived
     selectedFile, setSelectedFile,
     fileContent, setFileContent,
+
+    // Legacy view state
     activeTab, setActiveTab,
     editMode, setEditMode,
     splitView, setSplitView,
+
+    // Lists
     recentFiles, setRecentFiles,
     pinnedFiles, setPinnedFiles,
     editHistory, setEditHistory,
+
+    // Actions
     loadFilePrefs,
     openFile, saveFile, togglePin, undoLastEdit,
     readFilesParallel, handleApprove,

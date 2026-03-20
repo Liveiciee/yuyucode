@@ -9,7 +9,12 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom'))
             return 'vendor';
-          if (id.includes('@codemirror'))
+          if (
+            id.includes('@codemirror') ||
+            id.includes('codemirror-vim') ||
+            id.includes('codemirror6-plugin') ||
+            id.includes('emmetio')
+          )
             return 'codemirror';
           if (id.includes('xterm'))
             return 'xterm';

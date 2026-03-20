@@ -222,6 +222,10 @@ export function AppPanels({
           model={project.model} thinkingEnabled={project.thinkingEnabled} models={MODELS}
           onEffort={v=>project.setEffort(v)} onFontSize={v=>ui.setFontSize(v)} onTheme={v=>ui.setTheme(v)}
           onModel={v=>project.setModel(v)} onThinking={()=>project.setThinkingEnabled(!project.thinkingEnabled)}
+          vimMode={ui.vimMode} onVimMode={v=>ui.setVimMode(v)}
+          showMinimap={ui.showMinimap} onMinimap={v=>ui.setShowMinimap(v)}
+          ghostTextEnabled={ui.ghostTextEnabled} onGhostText={v=>ui.setGhostTextEnabled(v)}
+          lintEnabled={ui.lintEnabled} onLint={v=>ui.setLintEnabled(v)}
           onClose={()=>ui.setShowConfig(false)}/>)}
       </Activity>
 

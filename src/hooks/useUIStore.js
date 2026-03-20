@@ -4,7 +4,7 @@ import { THEMES_MAP, THEME_KEYS, DEFAULT_THEME } from '../themes/index.js';
 
 export function useUIStore() {
   // ── Ambient brightness ──
-  const [brightnessLevel, setBrightnessLevel] = useState(1.0); // 0.0–1.0, default full
+  const [brightnessLevel, setBrightnessLevel] = useState(1.0);
 
   // ── Panels / Overlays ──
   const [showSidebar, setShowSidebar]         = useState(false);
@@ -33,6 +33,13 @@ export function useUIStore() {
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showOnboarding, setShowOnboarding]   = useState(false);
 
+  // ── Editor feature toggles (Fase 1+2) ──
+  const [vimMode, setVimModeRaw]               = useState(false);
+  const [showMinimap, setShowMinimapRaw]       = useState(false);
+  const [ghostTextEnabled, setGhostTextRaw]   = useState(false);
+  const [lintEnabled, setLintEnabledRaw]       = useState(false);
+  const [showLivePreview, setShowLivePreview]  = useState(false);
+
   // ── Theme / Display ──
   const [themeKey, setThemeKeyRaw]   = useState(DEFAULT_THEME);
   const [fontSize, setFontSizeRaw]   = useState(14);
@@ -54,11 +61,10 @@ export function useUIStore() {
   const [showMergeConflict, setShowMergeConflict] = useState(false);
   const [mergeConflictData, setMergeConflictData] = useState(null);
 
-  // ── Derived: T = active theme object ──────────────────────────────────────
-  // T punya semua token lama (bg, text, accent, ...) + token baru (bubble, chip, ...)
+  // ── Derived: T = active theme object ──
   const T = THEMES_MAP[themeKey] || THEMES_MAP[DEFAULT_THEME];
 
-  // ── Persisted setters ──────────────────────────────────────────────────────
+  // ── Persisted setters ──
   function setTheme(key) {
     const k = THEME_KEYS.includes(key) ? key : DEFAULT_THEME;
     setThemeKeyRaw(k);
@@ -72,14 +78,33 @@ export function useUIStore() {
     setSidebarWidthRaw(w);
     Preferences.set({ key: 'yc_sidebar_w', value: String(w) });
   }
+  function setVimMode(v) {
+    setVimModeRaw(v);
+    Preferences.set({ key: 'yc_vim', value: String(v) });
+  }
+  function setShowMinimap(v) {
+    setShowMinimapRaw(v);
+    Preferences.set({ key: 'yc_minimap', value: String(v) });
+  }
+  function setGhostTextEnabled(v) {
+    setGhostTextRaw(v);
+    Preferences.set({ key: 'yc_ghosttext', value: String(v) });
+  }
+  function setLintEnabled(v) {
+    setLintEnabledRaw(v);
+    Preferences.set({ key: 'yc_lint', value: String(v) });
+  }
 
-  // ── Load from Preferences ─────────────────────────────────────────────────
-  function loadUIPrefs({ theme: t, fontSize: fs, sidebarWidth: sw, onboarded }) {
-    // support lama (dark/darker/midnight/rose) → fallback ke obsidian
+  // ── Load from Preferences ──
+  function loadUIPrefs({ theme: t, fontSize: fs, sidebarWidth: sw, onboarded, vim: vm, minimap: mm, ghostText: gt, lint: lt }) {
     if (t && THEME_KEYS.includes(t)) setThemeKeyRaw(t);
-    else if (t) setThemeKeyRaw(DEFAULT_THEME); // migrate dari theme lama
+    else if (t) setThemeKeyRaw(DEFAULT_THEME);
     if (fs) setFontSizeRaw(parseInt(fs) || 14);
     if (sw) setSidebarWidthRaw(parseInt(sw) || 180);
+    if (vm === 'true') setVimModeRaw(true);
+    if (mm === 'true') setShowMinimapRaw(true);
+    if (gt === 'true') setGhostTextRaw(true);
+    if (lt === 'true') setLintEnabledRaw(true);
     if (!onboarded) setShowOnboarding(true);
   }
 
@@ -110,9 +135,14 @@ export function useUIStore() {
     showConfig, setShowConfig,
     showPalette, setShowPalette,
     showThemePicker, setShowThemePicker,
-    // compat alias — beberapa tempat pakai showThemeBuilder
     showThemeBuilder: showThemePicker, setShowThemeBuilder: setShowThemePicker,
     showOnboarding, setShowOnboarding,
+    // editor feature toggles
+    vimMode, setVimMode,
+    showMinimap, setShowMinimap,
+    ghostTextEnabled, setGhostTextEnabled,
+    lintEnabled, setLintEnabled,
+    showLivePreview, setShowLivePreview,
     // theme/display
     theme: themeKey, setTheme,
     themeKey, THEMES_MAP, THEME_KEYS,
