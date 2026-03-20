@@ -128,3 +128,38 @@ _yuyu_cp_completion() {
   COMPREPLY=( $(compgen -W "$files" -- "$cur") )
 }
 complete -F _yuyu_cp_completion yuyu-cp
+
+# ── yuyu-unstash — pop stash, auto-resolve conflicts ke HEAD ─────────────────
+yuyu-unstash() {
+  cd ~/yuyucode
+
+  local stash="${1:-stash@{0}}"
+
+  # Cek ada stash
+  if ! git stash list | grep -q "stash@"; then
+    echo "✅ Tidak ada stash."
+    return 0
+  fi
+
+  echo "📦 Popping $stash..."
+  git stash pop "$stash" 2>&1 | head -20
+
+  # Cek konflik
+  local conflicts=$(git diff --name-only --diff-filter=U 2>/dev/null)
+  if [ -z "$conflicts" ]; then
+    echo "✅ Stash pop bersih, tidak ada konflik."
+    return 0
+  fi
+
+  echo ""
+  echo "⚠️  Konflik ditemukan — auto-resolve ke HEAD:"
+  for f in $conflicts; do
+    git checkout HEAD -- "$f"
+    git add "$f"
+    echo "  ✅ $f → kept HEAD"
+  done
+
+  git stash drop 2>/dev/null
+  echo ""
+  echo "✅ Selesai! Perubahan stash yang tidak konflik sudah masuk."
+}
