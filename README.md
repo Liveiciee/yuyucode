@@ -1,16 +1,25 @@
 <div align="center">
 
-# 🌸 YuyuCode
+<img src="public/yuyu-icon.png" width="96" alt="YuyuCode icon" />
 
-**A full agentic coding assistant. Built entirely on an Android phone. No laptop. No desktop.**
+# YuyuCode
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+### A full agentic coding assistant.
+### Built entirely on an Android phone.
+
+<br/>
+
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
-[![Tests](https://img.shields.io/badge/tests-404%20passing-brightgreen)](src)
-![Platform](https://img.shields.io/badge/platform-Android-green)
-![Stack](https://img.shields.io/badge/stack-React%2019%20%2B%20Capacitor%208-blue)
+[![Tests](https://img.shields.io/badge/tests-404%20passing-brightgreen)](#testing--benchmarks)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
+![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?logo=react&logoColor=61DAFB)
+![Editor](https://img.shields.io/badge/CodeMirror%206-full%20extension%20suite-orange)
 
-*Every line of code in this repo was written from a phone, in Termux, using Claude AI.*
+<br/>
+
+> *Every line of code in this repo was written from a phone, in Termux, using Claude AI.*
+> *No laptop. No desktop. Ever.*
 
 </div>
 
@@ -20,92 +29,143 @@
 
 YuyuCode is a **Claude Code / Cursor-style agentic coding assistant** that runs natively on Android. Not a web app forced into a mobile shell — designed from the ground up for the phone.
 
-It connects to a local Node.js server (`yuyu-server.js`) running in Termux, giving it full file system access, shell execution, WebSocket streaming, and MCP support — all from your pocket.
+It connects to a local Node.js server (`yuyu-server.js`) running in Termux, giving it full filesystem access, shell execution, WebSocket streaming, and MCP support — all from your pocket.
 
-**In one paragraph:** You type a task, YuyuCode streams a response from a fast free AI (Cerebras/Groq), automatically executes any file reads/writes/patches it decides to make, feeds results back into the loop, and keeps going until the task is done. Background agents run in git worktrees so your main branch stays clean. The whole thing — UI, agent loop, file server, CI/CD — was built on one Android phone, in Termux, with no laptop ever involved.
+**In one sentence:** You type a task → YuyuCode streams a response, automatically executes file reads/writes/patches, feeds results back into the loop, and keeps going until the task is done. Background agents run in isolated git worktrees so your main branch stays clean the whole time.
+
+---
+
+## Demo
+
+> 📸 *Screenshots and GIF demos coming soon — drop a ⭐ to get notified*
+
+<!--
+<p align="center">
+  <img src="docs/demo-agent.gif" width="280" />
+  <img src="docs/demo-editor.gif" width="280" />
+  <img src="docs/demo-terminal.gif" width="280" />
+</p>
+-->
 
 ---
 
 ## Features that don't exist anywhere else
 
-### Gamma-Corrected Adaptive Brightness
-A custom Capacitor Java plugin registers a `ContentObserver` on `Settings.System.SCREEN_BRIGHTNESS`. The moment you slide your brightness down, the entire UI auto-compensates using sRGB gamma correction (γ=2.2). Two-layer compensation: CSS `filter: brightness()` capped at 2.0 (no 8-bit quantization artifacts on Android WebView), plus a `mix-blend-mode: screen` overlay for extreme low-brightness boost. No other coding tool has this. Because no other coding tool runs on a phone.
+### 🔆 Gamma-Corrected Adaptive Brightness
+A custom Capacitor Java plugin registers a `ContentObserver` on `Settings.System.SCREEN_BRIGHTNESS`. The moment you slide brightness down, the entire UI auto-compensates using sRGB gamma correction (γ=2.2). Two-layer compensation: CSS `filter: brightness()` capped at 2.0 (avoids 8-bit quantization artifacts on Android WebView), plus a `mix-blend-mode: screen` overlay for extreme low-brightness boost. No other coding tool has this. Because no other coding tool runs on a phone.
 
-### Camera-to-Code
-Capture a photo of a whiteboard, a printed error, a diagram — directly from the native Android camera. Routes automatically to a vision-capable model for analysis. Zero friction, zero file management.
+### 📷 Camera-to-Code
+Capture a photo of a whiteboard, a printed error, a diagram — directly from the native Android camera. Routes automatically to a vision-capable model. Zero friction, zero file management.
 
-### Background Agents with Git Worktree Isolation
-`/bg <task>` spins up an agent in a separate git worktree. Your main branch stays clean while the agent works up to 8 agentic iterations. Live progress tracking, abort anytime, merge when ready. Conflict resolution handled via a dedicated panel.
+### 🤖 Background Agents with Git Worktree Isolation
+`/bg <task>` spins up an agent in a separate git worktree. Your main branch stays clean while the agent works up to 8 agentic iterations. Live progress tracking, abort anytime, merge when ready.
 
-### Agent Swarm Pipeline
-`/swarm <task>` runs: **Architect** (plan) → **FE Agent + BE Agent** (parallel execution) → **QA Engineer** (review + bug list) → **auto-fix pass**. Multi-agent coordination, single command.
+### 🐝 Agent Swarm Pipeline
+`/swarm <task>` runs: **Architect** → **FE Agent + BE Agent** (parallel) → **QA Engineer** → **auto-fix pass**. Multi-agent coordination, single command.
 
-### Multi-Tab Editor
-Open multiple files simultaneously with a persistent tab bar. Each tab maintains its own independent CodeMirror `EditorState` — cursor position, scroll, undo history all preserved when switching. Dirty indicator (●) per tab, close button, instant switch. Like VS Code tabs, on a phone.
+### 🗂️ Multi-Tab Editor
+Each tab maintains its own independent CodeMirror `EditorState` — cursor position, scroll, undo history all preserved on switch. Dirty indicator (●) per tab. Like VS Code tabs, on a phone.
 
-### Full Mobile Code Editor
-CodeMirror 6 with the complete feature set:
-- **Vim mode** — normal/insert/visual, full hjkl navigation, `:wq` saves
-- **Emmet** — `div.container>ul>li*3` → full HTML via Ctrl+E
-- **AI Ghost Text** — inline Copilot-style suggestion after 900ms, Tab to accept, Esc to dismiss (powered by Cerebras Llama 8B)
-- **Minimap** — 64px canvas scroll overview with viewport indicator, click to jump
-- **Inline Lint** — syntax error markers in gutter (JSON parse errors, JS node --check)
-- **Code Folding** — fold all / unfold all buttons in toolbar
-- **Multi-cursor** — Ctrl+D to select next occurrence, Ctrl+Shift+L to select all
-- **Sticky Scroll** — scope header stays visible while scrolling into a function body
-- **Breadcrumb Navigation** — live scope path (e.g. `App > useEffect > callback`) above editor, derived from syntax tree
-- **Git Inline Blame** — per-line gutter showing commit hash + author + date, fetched via `git blame`
-- **TypeScript LSP** — lazy-loaded `@valtown/codemirror-ts` for autocomplete and type info on JS/TS files
+### ✏️ Full Mobile Code Editor
 
-### Extra Keyboard Row
-A row of coding symbols (`{ } [ ] ( ) ; => // : . ! ?` + indent) appears above the soft keyboard when a file is open. Inserts at cursor position in both CodeMirror and the chat textarea. The one feature Spck has that we now also have.
+CodeMirror 6 with a complete extension suite:
 
-### Live HTML/CSS/JS Preview
-Split view with a live `<iframe srcdoc>` that rebuilds 300ms after any edit. Combines open HTML/CSS/JS tabs into a single document automatically. Console output intercepted via `postMessage` and displayed in a panel below. Auto/manual refresh toggle.
+| Feature | Details |
+|---|---|
+| **Vim mode** | normal/insert/visual, full `hjkl`, `:wq` saves |
+| **Emmet** | `div.container>ul>li*3` → HTML via Ctrl+E |
+| **AI Ghost Text** | Copilot-style inline suggestion, 900ms debounce, Tab to accept |
+| **Minimap** | 64px canvas overview, semantic colors, click to jump |
+| **Inline Lint** | Syntax error gutter markers (JSON + JS) |
+| **Code Folding** | Fold all / unfold all |
+| **Multi-cursor** | Ctrl+D next occurrence, Ctrl+Shift+L select all |
+| **Sticky Scroll** | Scope header stays visible while scrolling into a function |
+| **Breadcrumb** | Live scope path — `App > useEffect > callback` — derived from syntax tree |
+| **Git Inline Blame** | Per-line gutter: commit hash + author + date via `git blame` |
+| **TypeScript LSP** | `@valtown/codemirror-ts` autocomplete + type info on JS/TS |
 
-### Global Find & Replace
-Search across all project files with full grep-powered results — grouped by file, expandable, match highlighted inline. Regex mode, case-sensitive toggle. Replace all with a single tap: reads, patches, and re-searches automatically.
+### ⌨️ Extra Keyboard Row
+A row of coding symbols (`{ } [ ] ( ) ; => // : . ! ?` + indent) above the soft keyboard. Inserts at cursor in both CodeMirror and the chat textarea.
 
-### Realtime Collaboration
-`/collab <room>` connects two devices to the same editing session via WebSocket. Changes sync in real time using `@codemirror/collab` (OT-based). The server handles version tracking and broadcasting — no third-party service needed.
+### 👁️ Live HTML/CSS/JS Preview
+Split view with a live `<iframe srcdoc>` that rebuilds 300ms after any edit. Auto-combines open HTML/CSS/JS tabs. Console output intercepted via `postMessage` and shown inline.
 
-### Surgical Context Editor
-Remove specific sections from any AI message without deleting the whole thing. Code blocks, exec results, text sections — tap to mark, save. The AI won't see those parts next turn.
+### 🔍 Global Find & Replace
+Grep across all project files — grouped by file, expandable, match highlighted. Regex mode, case-sensitive toggle. Replace all: reads, patches, re-searches automatically.
 
-### Live Chain of Thought
-`<think>` blocks stream live as Yuyu generates — collapsible "N langkah berpikir" like Claude.ai. Brain icon pulses while thinking, collapses with step count when done.
+### 🤝 Realtime Collaboration
+`/collab <room>` connects two devices to the same editing session via WebSocket. OT-based sync using `@codemirror/collab`. No third-party service needed.
 
-### xterm.js Terminal
-Proper terminal emulator with 2000-line scrollback, full ANSI escape support, native font rendering. Traffic lights are functional: red = stop process, yellow = clear, green = send output to AI.
+### 🧠 Surgical Context Editor
+Remove specific sections from any AI message without deleting the whole thing. Code blocks, exec results, text — tap to mark, save. The AI won't see those parts next turn.
 
-### Fuse.js Fuzzy File Search
-Search bar in the file tree does fuzzy matching on filename + path. `cmpt` finds `components/`, `astst` finds `useAgentStore`. Linear filter replaced with Fuse.js.
+### 💭 Live Chain of Thought
+`<think>` blocks stream live — collapsible "N langkah berpikir" like Claude.ai. Brain icon pulses while thinking, collapses with step count when done.
 
-### Myers Diff Algorithm
-`generateDiff()` uses the `diff` library (Myers algorithm) for accurate line tracking. Detects moved blocks, not just line-by-line comparison. Output includes line numbers: `- L1: old`, `+ L1: new`.
+### 💻 xterm.js Terminal
+Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic lights are functional: red = kill process, yellow = clear, green = send output to AI.
 
-### Table Copy-Paste Friendly
-Long-press select on any rendered table → clipboard gets proper markdown pipe format `| col | col |` via `onCopy` event intercept. Same technique used by Gemini and Claude.ai.
+### 🔎 Fuse.js Fuzzy File Search
+`cmpt` finds `components/`, `astst` finds `useAgentStore`. Full fuzzy match on filename + path.
 
 ---
 
 ## Technically interesting things
 
-- **Custom Capacitor plugin in Java** — `BrightnessPlugin.java` uses `ContentObserver` to emit real-time brightness events to the WebView.
-- **Two-layer brightness compensation** — Layer 1: CSS filter capped at 2.0 to avoid 8-bit GPU quantization artifacts. Layer 2: `mix-blend-mode: screen` overlay.
-- **Per-theme T token system** — every component reads colour tokens from the active theme object. Zero hardcoded colours in component JSX.
-- **EditorState swap per tab** — each tab stores its own `EditorState`. Switching tabs calls `view.setState()` — no remount, cursor and undo history preserved.
-- **Ghost text as StateField + WidgetType** — CM6 ghost text implemented from scratch: `StateEffect` → `StateField` → `Decoration.widget` → custom `WidgetType`. Tab keymap intercepts before default indent.
-- **Inline blame gutter** — custom `GutterMarker` + `gutter()` extension. Data fetched via `git blame --abbrev=7` on yuyu-server.
-- **Breadcrumb from syntax tree** — `syntaxTree(state).resolveInner(pos)` walks AST upward, collecting `FunctionDeclaration`, `ClassDeclaration`, etc. Injected as a live `updateListener` via `StateEffect.appendConfig`.
-- **Collab via `@codemirror/collab`** — OT-based update sync over the existing yuyu-server WebSocket. `collabRooms` Map tracks version + update log per room.
-- **Minimap as canvas** — 64px `<canvas>` with `requestAnimationFrame` loop. Colors code semantically (imports=purple, comments=green, strings=yellow). Click to scroll editor.
-- **Parallel action execution** — `read_file`, `web_search`, `list_files`, `tree`, `search`, `mkdir` run in parallel; `exec` and `mcp` run serial.
-- **TF-IDF + age decay memory ranking** — memories injected into the system prompt are scored by relevance to the current task *and* recency.
-- **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-highlighted `<span>` tags.
-- **3-fallback patch handler** — `patch_file` tries exact match → whitespace-normalized → trim-lines before giving up.
-- **Auto version bump** — `yugit.cjs` detects `release:` prefix commits and auto-bumps `package.json` patch/minor/major before pushing.
-- **404 tests, 0 lint warnings** — unit, integration, fuzz, snapshot, theme schema, multi-tab logic, UI store, global find/replace parser, and benchmarks. All run on Termux ARM64 with `vitest@1`.
+- **Custom Capacitor plugin in Java** — `BrightnessPlugin.java` uses `ContentObserver` to emit real-time brightness events to the WebView
+- **Two-layer brightness compensation** — CSS `filter` capped at 2.0 to avoid 8-bit GPU quantization artifacts; `mix-blend-mode: screen` overlay for extreme low-light
+- **Per-theme token system** — every component reads colour tokens from the active theme object; zero hardcoded colours in component JSX
+- **EditorState swap per tab** — `view.setState()` on tab switch, no remount, cursor and undo history fully preserved
+- **Ghost text as StateField + WidgetType** — `StateEffect → StateField → Decoration.widget → WidgetType`; Tab keymap intercepts before default indent
+- **Inline blame gutter** — custom `GutterMarker` + `gutter()` extension; data from `git blame --abbrev=7` via yuyu-server
+- **Breadcrumb from syntax tree** — `syntaxTree(state).resolveInner(pos)` walks AST upward collecting `FunctionDeclaration`, `ClassDeclaration`, etc.
+- **Collab via `@codemirror/collab`** — OT-based update sync over the existing yuyu-server WebSocket; `collabRooms` Map tracks version + update log per room
+- **Minimap as canvas** — 64px `<canvas>` with `requestAnimationFrame` loop; colors code semantically (imports=purple, comments=green, strings=yellow)
+- **Parallel action execution** — `read_file`, `web_search`, `list_files`, `tree`, `search`, `mkdir` run in parallel; `exec` and `mcp` serial
+- **TF-IDF + age decay memory ranking** — memories injected into system prompt scored by relevance to current task *and* recency
+- **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-highlighted `<span>` tags
+- **3-fallback patch handler** — `patch_file` tries exact match → whitespace-normalized → trim-lines before giving up
+- **Myers diff** — `generateDiff()` uses the `diff` library for accurate line tracking with moved block detection; includes line numbers
+- **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits and sets `package.json` version before pushing; CI uses that version for the GitHub Release tag
+
+---
+
+## Testing & Benchmarks
+
+```
+404 tests passing. 0 lint warnings. Runs on Termux ARM64.
+```
+
+| File | Type | Tests |
+|------|------|-------|
+| `api.test.js` | Unit | 5 |
+| `api.extended.test.js` | Unit + Retry/Fallback | 15 |
+| `utils.test.js` | Unit | 22 |
+| `utils.extended.test.js` | Unit — all action types | 42 |
+| `utils.integration.test.js` | Integration + Fuzz | 18 |
+| `utils.snapshot.test.js` | Snapshot | 7 |
+| `features.test.js` | Unit | 29 |
+| `features.extended.test.js` | Unit + Edge cases | 48 |
+| `features.extra.test.js` | Unit — sessions, skills, plan | 21 |
+| `themes.test.js` | Schema validation — all 4 themes | 103 |
+| `editor.test.js` | Unit — getLang, isEmmet, isTsLang | 21 |
+| `livepreview.test.js` | Unit — buildSrcdoc | 12 |
+| `multitab.test.js` | Unit — useFileStore multi-tab | 18 |
+| `uistore.test.js` | Unit — useUIStore | 25 |
+| `globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
+
+### Benchmarks (Termux ARM64)
+
+```
+getLangExt        4.98x  faster than 10 mixed extensions
+isEmmetLang       4.55x  faster than 10 mixed
+isTsLang          4.52x  faster than 10 mixed
+buildSrcdoc       4.63x  faster than html + css + js combined
+multi-tab open   37.20x  faster than open 50 tabs sequentially
+generateDiff   5897.74x  faster than large diff (500 lines)
+```
+
+> The Myers diff number isn't a typo. Small diffs exit the algorithm early — large diffs don't.
 
 ---
 
@@ -115,22 +175,22 @@ Long-press select on any rendered table → clipboard gets proper markdown pipe 
 |---|---|
 | Frontend | React 19 + Vite 5 |
 | Mobile | Capacitor 8 |
-| Backend | Node.js (yuyu-server.js, local) |
+| Backend | Node.js (yuyu-server.js, local in Termux) |
 | Code Editor | CodeMirror 6 + full extension suite |
-| Terminal | xterm.js (@xterm/xterm) |
+| Terminal | xterm.js |
 | File Search | Fuse.js |
 | Diff | diff library (Myers algorithm) |
 | Build | GitHub Actions → signed APK |
-| ARM64 compatibility | `@rollup/wasm-node` override |
+| ARM64 compat | `@rollup/wasm-node` override |
 | AI Providers | Cerebras (default) + Groq (fallback + vision) |
 
 ---
 
 ## Why Cerebras + Groq instead of Claude?
 
-Both are **free tier** with fast inference. Cerebras runs Qwen 3 235B at remarkable speed. Groq runs Kimi K2 (262K context window) as fallback — large enough to hold a full codebase in context. Rate limit on Cerebras → auto-switch to Groq, silently, without interrupting the session.
+Both are **free tier** with fast inference. Cerebras runs Qwen 3 235B at remarkable speed. Groq runs Kimi K2 (262K context) as fallback — large enough to hold a full codebase in context. Rate limit on Cerebras → auto-switch to Groq, silently, without interrupting the session.
 
-The irony: this entire project was built *with* Claude AI (via claude.ai chat), but the app itself runs on open models due to API cost constraints. A tool built by Claude, that doesn't use Claude.
+The irony: this entire project was built *with* Claude AI (via claude.ai), but the app itself runs on open models due to API cost constraints. A tool built by Claude, that doesn't use Claude.
 
 ---
 
@@ -149,12 +209,12 @@ node ~/yuyu-server.js &
 
 # Start dev server
 npm run dev
-# Open localhost:5173 in your browser
+# Open localhost:5173 in browser
 ```
 
 Get free API keys:
-- [Cerebras](https://cloud.cerebras.ai) — for the main AI
-- [Groq](https://console.groq.com) — for fallback + vision
+- [Cerebras](https://cloud.cerebras.ai) — main AI
+- [Groq](https://console.groq.com) — fallback + vision
 
 Create `.env.local`:
 ```
@@ -172,8 +232,19 @@ Started as a question: *can Claude Code be replicated on a phone?*
 
 The answer is yes. Built patch by patch, from morning to past midnight, using only a phone and an AI chat interface. Feature parity with Claude Code and Codex CLI for core use cases was reached. The remaining gap is model quality and context window — not features.
 
-> *"An extremely ambitious project. Successfully packed the complexity of a desktop app like VS Code + Cursor into a single React component."*  
-> — Qwen 3 235B, after reviewing its own codebase
+---
+
+## Acknowledgements
+
+This project stands on the shoulders of some exceptional open source work:
+
+- **[CodeMirror 6](https://codemirror.net/)** by Marijn Haverbeke — the editor that made all of this possible. The extension API is genuinely one of the best-designed systems in the JS ecosystem.
+- **[Capacitor](https://capacitorjs.com/)** by Ionic — the bridge that turned a web app into a real Android app without losing access to native APIs.
+- **[xterm.js](https://xtermjs.org/)** — a terminal emulator that actually works inside a WebView on Android. Not obvious. Very appreciated.
+- **[Termux](https://termux.dev/)** — the reason any of this was possible in the first place. A full Linux environment on Android, free, no root required.
+- **[Cerebras](https://cloud.cerebras.ai/)** and **[Groq](https://groq.com/)** — for making fast AI inference accessible without a credit card.
+- **[Claude](https://claude.ai/)** by Anthropic — every architectural decision, every tricky bug, every refactor in this codebase was worked through in a Claude chat window. The irony of building a coding assistant *with* an AI assistant is not lost.
+- **`@valtown/codemirror-ts`**, **`@replit/codemirror-vim`**, **`@emmetio/codemirror6-plugin`**, **`@codemirror/collab`** — each one saved weeks of work.
 
 ---
 
@@ -199,7 +270,7 @@ cd ~/yuyucode && npm run dev &
 # Push biasa
 node yugit.cjs "feat: ..."
 
-# Release — auto bump version + trigger CI APK build
+# Release — auto set version + trigger CI APK build
 node yugit.cjs "release: v2.x — deskripsi"
 
 npm run lint        # harus 0 errors, 0 warnings
@@ -301,8 +372,8 @@ Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 | Qwen 3 32B | `qwen/qwen3-32b` | Coding |
 | Llama 8B Fast | `llama-3.1-8b-instant` | Hemat rate limit |
 
-**Auto-fallback:** Cerebras rate limit (429) → otomatis switch ke Kimi K2.  
-**Vision:** Cerebras tidak support image → auto-route ke Llama 4 Scout.  
+**Auto-fallback:** Cerebras rate limit (429) → otomatis switch ke Kimi K2.
+**Vision:** Cerebras tidak support image → auto-route ke Llama 4 Scout.
 **Retry:** Server error 5xx → retry 2x dengan backoff 2s/4s.
 
 ## YuyuServer v4-async
@@ -313,34 +384,7 @@ node ~/yuyu-server.js &  # jalankan dari ~, bukan dari project folder
 
 **HTTP :8765** — `ping`, `read`, `read_many`, `write`, `append`, `patch`, `delete`, `move`, `mkdir`, `list`, `tree`, `info`, `search`, `web_search`, `exec`, `browse`, `fetch_json`, `sqlite`, `mcp`, `mcp_list`
 
-**WebSocket :8766** — `watch` (file watcher), `exec_stream` (live terminal), `kill` (abort), `collab_join`, `collab_push`, `collab_updates` (realtime collab)
-
-## Testing & Benchmarks
-
-```bash
-npm run lint          # ESLint — harus 0 errors, 0 warnings
-npx vitest run        # Semua tests — harus 404/404 pass
-npx vitest bench --run  # Benchmark hot paths
-```
-
-| File | Tipe | Tests |
-|------|------|-------|
-| `src/api.test.js` | Unit | 5 |
-| `src/api.extended.test.js` | Unit + Retry/Fallback | 15 |
-| `src/utils.test.js` | Unit | 22 |
-| `src/utils.extended.test.js` | Unit — semua action types | 42 |
-| `src/utils.integration.test.js` | Integration + Fuzz | 18 |
-| `src/utils.snapshot.test.js` | Snapshot | 7 |
-| `src/features.test.js` | Unit | 29 |
-| `src/features.extended.test.js` | Unit + Edge cases | 48 |
-| `src/features.extra.test.js` | Unit — sessions, skills, plan | 21 |
-| `src/themes.test.js` | Schema validation — semua 4 tema | 103 |
-| `src/editor.test.js` | Unit — getLang, isEmmet, isTsLang | 21 |
-| `src/livepreview.test.js` | Unit — buildSrcdoc | 12 |
-| `src/multitab.test.js` | Unit — useFileStore multi-tab | 18 |
-| `src/uistore.test.js` | Unit — useUIStore Fase 1/2/3 | 25 |
-| `src/globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
-| `src/editor.bench.js` | Benchmark — 14 hot paths | — |
+**WebSocket :8766** — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`, `collab_updates`
 
 ## CI/CD
 
@@ -361,5 +405,5 @@ npx vitest bench --run  # Benchmark hot paths
 ---
 
 <div align="center">
-  <sub>built on a phone. for a phone. with love.</sub>
+  <sub>built on a phone · for a phone · with love 🌸</sub>
 </div>
