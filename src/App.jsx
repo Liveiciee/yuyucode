@@ -568,45 +568,48 @@ export default function App() {
             </div>
           )}
 
-          {/* INPUT */}
+                    {/* INPUT */}
           {!ui.showTerminal&&(
-            <div style={{padding:'10px 12px',paddingBottom:'calc(10px + env(safe-area-inset-bottom, 0px))',borderTop:'1px solid '+T.border,background:T.bg,flexShrink:0,position:'relative'}}>
+            <div style={{padding:'8px 12px',paddingBottom:'calc(8px + env(safe-area-inset-bottom, 0px))',background:T.bg,flexShrink:0,position:'relative'}}>
               {/* slash suggestions */}
               {chat.slashSuggestions.length>0&&(
-                <div style={{position:'absolute',bottom:'100%',left:'12px',right:'12px',background:T.bg2,border:'1px solid '+T.border,borderRadius:'14px',zIndex:99,marginBottom:'8px',boxShadow:'0 16px 40px rgba(0,0,0,.7)',maxHeight:'280px',overflowY:'auto'}}>
+                <div style={{position:'absolute',bottom:'100%',left:'12px',right:'12px',background:T.bg2,border:'1px solid '+T.border,borderRadius:'14px',zIndex:99,marginBottom:'6px',boxShadow:'0 16px 40px rgba(0,0,0,.7)',maxHeight:'280px',overflowY:'auto'}}>
                   {chat.slashSuggestions.map(s=>(
                     <div key={s.cmd} onClick={()=>{chat.setInput(s.cmd);chat.setSlashSuggestions([]);inputRef.current?.focus();}}
                       style={{display:'flex',gap:'12px',padding:'10px 14px',cursor:'pointer',borderBottom:'1px solid '+T.borderSoft,alignItems:'center',minHeight:'44px'}}
                       onMouseEnter={e=>e.currentTarget.style.background=T.bg3}
-                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+                    >
                       <span style={{color:T.accent,fontFamily:'monospace',fontSize:'13px',flexShrink:0,minWidth:'110px',fontWeight:'500'}}>{s.cmd}</span>
                       <span style={{color:T.textMute,fontSize:'12px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.desc}</span>
                     </div>
                   ))}
                 </div>
               )}
-              {/* vision image */}
-              {chat.visionImage&&(
-                <div style={{marginBottom:'8px',position:'relative',display:'inline-block'}}>
-                  <img src={'data:image/jpeg;base64,'+chat.visionImage} alt="attached"
-                    style={{width:'48px',height:'48px',borderRadius:'10px',objectFit:'cover',border:'1px solid '+T.accentBorder}}/>
-                  <button onClick={()=>chat.setVisionImage(null)}
-                    style={{position:'absolute',top:'-6px',right:'-6px',background:T.error,border:'none',borderRadius:'50%',width:'16px',height:'16px',color:'white',fontSize:'9px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>×</button>
-                </div>
-              )}
-              <div style={{display:'flex',gap:'8px',alignItems:'flex-end'}}>
-                <button onClick={handleCameraCapture}
-                      title="Foto kamera"
-                      style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'18px',cursor:'pointer',padding:'6px',minWidth:'36px',minHeight:'36px',display:'flex',alignItems:'center',justifyContent:'center'}}><Camera size={17}/></button>
-                    <button onClick={()=>fileInputRef.current?.click()}
-                  style={{background:'none',border:'none',color:T.textMute,fontSize:'18px',cursor:'pointer',flexShrink:0,borderRadius:'10px',minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center'}}
-                  onMouseEnter={e=>e.currentTarget.style.color=T.textSec}
-                  onMouseLeave={e=>e.currentTarget.style.color=T.textMute}><Paperclip size={17}/></button>
+
+              {/* Unified composer — frontier AI style */}
+              <div style={{background:T.bg2,border:'1px solid '+T.border,borderRadius:'20px',overflow:'hidden',boxShadow:'0 2px 12px rgba(0,0,0,.25)',transition:'border-color .15s'}}
+                onFocusCapture={e=>{e.currentTarget.style.borderColor=T.accentBorder;}}
+                onBlurCapture={e=>{e.currentTarget.style.borderColor=T.border;}}>
+
+                {/* Vision preview */}
+                {chat.visionImage&&(
+                  <div style={{padding:'10px 14px 0',display:'flex'}}>
+                    <div style={{position:'relative',display:'inline-block'}}>
+                      <img src={'data:image/jpeg;base64,'+chat.visionImage} alt="attached"
+                        style={{width:'52px',height:'52px',borderRadius:'10px',objectFit:'cover',border:'1px solid '+T.accentBorder+'55',display:'block'}}/>
+                      <button onClick={()=>chat.setVisionImage(null)}
+                        style={{position:'absolute',top:'-5px',right:'-5px',background:T.bg,border:'1px solid '+T.border,borderRadius:'50%',width:'16px',height:'16px',color:T.textMute,fontSize:'9px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1}}>×</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Textarea — borderless, transparent */}
                 <textarea ref={inputRef} value={chat.input}
                   onChange={e=>{
                     chat.setInput(e.target.value);
                     e.target.style.height='auto';
-                    e.target.style.height=Math.min(e.target.scrollHeight,140)+'px';
+                    e.target.style.height=Math.min(e.target.scrollHeight,160)+'px';
                     if(e.target.value.startsWith('/')) chat.setSlashSuggestions(SLASH_COMMANDS.filter(s=>s.cmd.startsWith(e.target.value)));
                     else chat.setSlashSuggestions([]);
                   }}
@@ -616,20 +619,35 @@ export default function App() {
                   }}
                   placeholder="Tanya Yuyu, atau / untuk commands"
                   disabled={chat.loading} rows={1}
-                  style={{flex:1,background:T.bg3,border:'1px solid '+T.border,borderRadius:'14px',padding:'11px 14px',color:chat.loading?T.textMute:T.text,fontSize:'14px',resize:'none',outline:'none',fontFamily:'inherit',lineHeight:'1.5',transition:'border-color .15s'}}
-                  onFocus={e=>e.target.style.borderColor=T.accentBorder}
-                  onBlur={e=>e.target.style.borderColor=T.border}
+                  style={{width:'100%',background:'transparent',border:'none',outline:'none',resize:'none',padding:'12px 16px 4px',color:chat.loading?T.textMute:T.text,fontSize:'14px',fontFamily:'inherit',lineHeight:'1.6',display:'block',boxSizing:'border-box'}}
                 />
-                {chat.loading
-                  ?<button onClick={cancelMsg} style={{background:T.errorBg,border:'1px solid '+T.error+'33',borderRadius:'12px',color:T.error,fontSize:'16px',cursor:'pointer',flexShrink:0,minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center'}}>■</button>
-                  :<button onClick={()=>sendMsg()} style={{background:T.accent,border:'none',borderRadius:'12px',color:'white',fontSize:'16px',cursor:'pointer',fontWeight:'700',flexShrink:0,minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center'}}>↑</button>
-                }
-                <VoiceBtn disabled={chat.loading} T={T} onResult={txt=>{chat.setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}}/>
-                {project.pushToTalk&&<PushToTalkBtn onResult={v=>{ if(v?.trim()) { chat.setInput(''); sendMsg(v.trim()); } else { chat.setInput(v); } }} disabled={chat.loading} T={T}/>}
-                <button onClick={()=>{if(chat.ttsEnabled){stopTts();chat.setTtsEnabled(false);}else chat.setTtsEnabled(true);}}
-                  style={{background:chat.ttsEnabled?T.accentBg:'none',border:'1px solid '+(chat.ttsEnabled?T.accentBorder:T.border),borderRadius:'12px',color:chat.ttsEnabled?T.accent:T.textMute,fontSize:'15px',cursor:'pointer',flexShrink:0,minWidth:'44px',minHeight:'44px',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s'}}>
-                  {chat.ttsEnabled?<Volume2 size={16}/>:<VolumeX size={16}/>}
-                </button>
+
+                {/* Actions row */}
+                <div style={{display:'flex',alignItems:'center',padding:'4px 8px 8px',gap:'2px'}}>
+                  <button onClick={handleCameraCapture} title="Kamera"
+                    style={{background:'none',border:'none',color:T.textMute,cursor:'pointer',borderRadius:'10px',width:'34px',height:'34px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'color .15s,background .15s'}}
+                    onMouseEnter={e=>{e.currentTarget.style.background=T.bg3;e.currentTarget.style.color=T.textSec;}}
+                    onMouseLeave={e=>{e.currentTarget.style.background='none';e.currentTarget.style.color=T.textMute;}}
+                  ><Camera size={16}/></button>
+                  <button onClick={()=>fileInputRef.current?.click()} title="Lampirkan"
+                    style={{background:'none',border:'none',color:T.textMute,cursor:'pointer',borderRadius:'10px',width:'34px',height:'34px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'color .15s,background .15s'}}
+                    onMouseEnter={e=>{e.currentTarget.style.background=T.bg3;e.currentTarget.style.color=T.textSec;}}
+                    onMouseLeave={e=>{e.currentTarget.style.background='none';e.currentTarget.style.color=T.textMute;}}
+                  ><Paperclip size={16}/></button>
+                  <div style={{flex:1}}/>
+                  <VoiceBtn disabled={chat.loading} T={T} onResult={txt=>{chat.setInput(i=>i?i+' '+txt:txt);inputRef.current?.focus();}}/>
+                  {project.pushToTalk&&<PushToTalkBtn onResult={v=>{ if(v?.trim()) { chat.setInput(''); sendMsg(v.trim()); } else { chat.setInput(v); } }} disabled={chat.loading} T={T}/>}
+                  <button onClick={()=>{if(chat.ttsEnabled){stopTts();chat.setTtsEnabled(false);}else chat.setTtsEnabled(true);}} title={chat.ttsEnabled?'TTS aktif':'TTS mati'}
+                    style={{background:chat.ttsEnabled?T.accentBg:'none',border:'none',borderRadius:'10px',width:'34px',height:'34px',color:chat.ttsEnabled?T.accent:T.textMute,cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s'}}>
+                    {chat.ttsEnabled?<Volume2 size={15}/>:<VolumeX size={15}/>}
+                  </button>
+                  {chat.loading
+                    ?<button onClick={cancelMsg} title="Batalkan"
+                        style={{background:T.errorBg,border:'none',borderRadius:'12px',color:T.error,cursor:'pointer',flexShrink:0,width:'36px',height:'36px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',marginLeft:'4px'}}>■</button>
+                    :<button onClick={()=>sendMsg()} title="Kirim"
+                        style={{background:chat.input.trim()?T.accent:'rgba(255,255,255,.08)',border:'none',borderRadius:'12px',color:chat.input.trim()?'white':T.textMute,cursor:chat.input.trim()?'pointer':'default',flexShrink:0,width:'36px',height:'36px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px',fontWeight:'700',marginLeft:'4px',transition:'background .15s,color .15s'}}>↑</button>
+                  }
+                </div>
               </div>
             </div>
           )}
