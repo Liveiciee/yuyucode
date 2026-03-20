@@ -6,20 +6,19 @@ const path = require('path');
 const os = require('os');
 
 // Lazy-load once at module level for pure-function tests
-const {
-  extractSymbols,
-  compressSource,
-  extractImports,
-  computeSalience,
-  walkFiles,
-  generateMap,
-  generateCompressed,
-  generateLlmsTxt,
-  ensureHandoffTemplate,
-  getChangedFiles,
-  tryRepomix,
-  main,
-} = require('./yuyu-map.cjs');
+const _yuyuMap = require('./yuyu-map.cjs');
+const extractSymbols      = _yuyuMap.extractSymbols;
+const compressSource      = _yuyuMap.compressSource;
+const extractImports      = _yuyuMap.extractImports;
+const computeSalience     = _yuyuMap.computeSalience;
+const walkFiles           = _yuyuMap.walkFiles;
+const generateMap         = _yuyuMap.generateMap;
+const generateCompressed  = _yuyuMap.generateCompressed;
+const generateLlmsTxt     = _yuyuMap.generateLlmsTxt;
+const ensureHandoffTemplate = _yuyuMap.ensureHandoffTemplate;
+const getChangedFiles     = _yuyuMap.getChangedFiles;
+const tryRepomix          = _yuyuMap.tryRepomix;
+const main                = _yuyuMap.main;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // tryRepomix — uses dependency injection: tryRepomix(_spawnSync?)
