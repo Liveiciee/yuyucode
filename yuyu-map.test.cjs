@@ -560,12 +560,15 @@ describe('generateLlmsTxt', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('ensureHandoffTemplate', () => {
   let tmpDir;
+  let consoleSpy;
 
   beforeEach(() => {
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yuyu-handoff-'));
   });
 
   afterEach(() => {
+    consoleSpy.mockRestore();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -621,10 +624,13 @@ describe('ensureHandoffTemplate', () => {
 describe('main()', () => {
   let tmpDir;
   let yuyuDir;
+  let consoleSpy;
   // Fast mock: repomix "offline" — returns error immediately, no 90s timeout
   const fastSpawn = vi.fn(() => ({ error: new Error('offline'), status: null, stderr: '' }));
 
   beforeEach(() => {
+    // Silence console.log output from main() during tests
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     tmpDir  = fs.mkdtempSync(path.join(os.tmpdir(), 'yuyu-main-'));
     yuyuDir = path.join(tmpDir, '.yuyu');
     fs.mkdirSync(yuyuDir, { recursive: true });
@@ -632,6 +638,7 @@ describe('main()', () => {
   });
 
   afterEach(() => {
+    consoleSpy.mockRestore();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 

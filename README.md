@@ -10,7 +10,7 @@
 <br/>
 
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
-[![Tests](https://img.shields.io/badge/tests-516%20passing-brightgreen)](#testing--benchmarks)
+[![Tests](https://img.shields.io/badge/tests-546%20passing-brightgreen)](#testing--benchmarks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
 ![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?logo=react&logoColor=61DAFB)
@@ -143,7 +143,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 ## Testing & Benchmarks
 
 ```
-516 tests passing. 0 lint warnings. Runs on Termux ARM64.
+546 tests passing. 0 lint warnings. Runs on Termux ARM64.
 50 of which are property-based (inline fast-check-style, 100 random inputs each).
 ```
 
@@ -165,6 +165,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 | `uistore.test.js` | Unit — useUIStore | 25 |
 | `globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
 | `yuyu-map.test.cjs` | Unit — tryRepomix, extractSymbols, compressSource, walkFiles, generateLlmsTxt, ensureHandoffTemplate, main(), getChangedFiles | 80 |
+| `yuyu-server.test.cjs` | Integration — HTTP endpoints, read/write/patch/batch/exec, REST, error cases | 30 |
 
 ### Benchmarks (Termux ARM64)
 
@@ -463,7 +464,7 @@ yuyu-apply yuyu-map.zip         # zip dengan nama lain
 
 # Selalu setelah apply:
 npm run lint        # 🔍 Scouring... → ✨ 0 problems found! Code is pure.
-npx vitest run      # harus 516/516 pass
+npx vitest run      # harus 546/546 pass
 node yuyu-map.cjs   # update codebase map
 
 # Push biasa

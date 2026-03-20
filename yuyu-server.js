@@ -1,4 +1,4 @@
-// yuyu-server.js — v4-async
+// yuyu-server.js — v5
 // Run dari ~: node ~/yuyu-server.js &
 // Flags: --verbose (log every request)
 const http   = require('http');
@@ -30,7 +30,7 @@ function checkRateLimit(ip) {
 const HOME    = process.env.HOME;
 const PORT    = 8765;
 const WS_PORT = 8766;
-const VERSION = 'v4-async';
+const VERSION = 'v5';
 
 // ── MCP TOOL REGISTRY ─────────────────────────────────────────────────────────
 const MCP_TOOLS = {

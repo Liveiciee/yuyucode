@@ -16,5 +16,6 @@ export default defineConfig({
     pool,                      // vmThreads on x64, threads on ARM64 (safe)
     isolate: false,            // shared module cache — faster when mocks use DI
     css: false,                // skip CSS processing, zero tests need it
+    include: ['src/**/*.test.{js,cjs}', '*.test.cjs'],  // root + src test files
   },
 })

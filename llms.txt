@@ -81,7 +81,7 @@ Runs entirely on a phone (Oppo A77s, Snapdragon 680) via Termux. No laptop. No d
 - Slash commands in `useSlashCommands.js` (~60 commands)
 - /compact is deprecated — use /handoff instead
 - Theme tokens: never hardcode colors — use `T.colorName` from active theme
-- Tests: `npx vitest run` must pass 404/404. `npm run lint` must be 0 errors.
+- Tests: `npx vitest run` must pass 546/546. `npm run lint` must be 0 errors.
 
 ## Context quantization files (auto-loaded by gatherProjectContext)
 - `.yuyu/handoff.md` — session handoff (run /handoff to update)

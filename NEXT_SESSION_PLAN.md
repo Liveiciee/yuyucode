@@ -1,85 +1,77 @@
 # YuyuCode — Master Plan Sesi Berikutnya
-> Dibuat: 2026-03-21 | Status saat ini: v2.9.2 released ✅
+> Dibuat: 2026-03-21 | Status saat ini: v3.0 released ✅
 > Pesan dari owner: "Berat, Lama, Susah Bukan Hambatan. All in selama sesuai ekspektasi."
 
 ---
 
-## ✅ SELESAI SESI INI (v2.9.1 → v2.9.2)
+## ✅ SELESAI SESI INI (v2.9.2 → v3.0)
 
-### ✅ yuyu-bench.cjs v2 — DONE (1 command saja)
-- Rewrite pakai `--outputFile` → clean JSON, tidak parse stdout
-- `npm run bench` = run + auto-save (first time) ATAU compare (subsequent)
-- Tidak perlu lagi 3 command terpisah
-- Scripts: `bench`, `bench:save`, `bench:reset`
+### ✅ yuyu-server.test.cjs — DONE (0 → 30 tests)
+File baru di root. 30 tests, 10 describe groups:
+- REST endpoints: GET /, /health, /status, OPTIONS CORS
+- ping
+- read/write/delete: content, from/to slice, missing file errors, nested dirs
+- append
+- patch: exact match, not found error, delete by empty string
+- mkdir/list/info/move
+- read_many: multiple files, null for missing
+- batch: multi-action, partial failure, empty array error, continues after failure
+- exec: simple command, failing command
+- unknown type + invalid JSON body
 
-### ✅ yuyu-map.test.cjs property-based — DONE (80 → 92 tests)
-- `extractSymbols` — 6 property tests: no throw, always array, no dupes, non-code = empty, symbol fields, hook type
-- `compressSource` — 6 property tests: no throw, always string, output ≤ input, non-code unchanged, imports preserved, signature preserved
+### ✅ CI/CD — Lint + Test sebelum build — DONE
+`build-apk.yml` sekarang punya 2 step baru sebelum `Build Vite`:
+```yaml
+- name: Lint
+  run: npm run lint
+- name: Test
+  run: npx vitest run
+  env: CI: true
+```
+Build APK tidak akan jalan kalau lint atau test gagal.
 
-### ✅ yuyu-server rate limiting — DONE
-- 120 POST req/min per IP (in-memory, resets per menit)
-- Returns HTTP 429 kalau exceeded
-- Log ke console kalau `--verbose`
-
-### ✅ README snapshot workflow — DONE
-- Section baru: `## Snapshot Update Workflow`
-- Docs: update-snapshots command, commit workflow, warning
-
-### ✅ README bench usage — FIXED
-- Dari 3 command → 1 command: `npm run bench`
-- `npm run bench:save` untuk force update baseline
+### ✅ vitest.config.js — include root .cjs — DONE
+```js
+include: ['src/**/*.test.{js,cjs}', '*.test.cjs']
+```
+yuyu-server.test.cjs dan yuyu-map.test.cjs otomatis di-pick up.
 
 ---
 
 ## 📋 CONTEXT PENTING UNTUK SESI BARU
 
 ### State saat ini:
-- Version: 2.9.2
-- Tests: **516** ✅
-- yuyu-map.test.cjs: **92 tests** (80 unit + 12 property-based)
-- utils.integration.test.js: 38 tests (29 unit + 9 property-based)
+- Version: 3.0.0
+- Tests: 516 → **546+** ✅ (+ 30 yuyu-server)
+- Test files: 17 (tambah 1)
 - Lint: 0 errors ✅
-
-### Bench workflow (simpel):
-```bash
-# Baseline sudah tersimpan di .yuyu/bench-history.json ✅
-npm run bench          # run + compare ke baseline
-npm run bench          # berikutnya: run + compare
-npm run bench:save     # update baseline setelah intentional refactor
-npm run bench:reset    # clear semua history
-```
+- CI: lint + test + build ✅
 
 ### File-file kunci:
-- `yuyu-server.js` — rate limit 120/min, /health, /status, batch, --verbose
-- `yuyu-bench.cjs` — v2, outputFile approach, 1 command
-- `yuyu-map.test.cjs` — 92 tests termasuk property-based
-- `bashrc-additions.sh` — yuyu-status, yuyu-clean, yuyu-cp v2, auto-restart
+- `yuyu-server.test.cjs` — NEW, 30 tests, HTTP integration
+- `.github/workflows/build-apk.yml` — lint + test gate
+- `vitest.config.js` — include root .cjs files
 
 ### Command release:
 ```bash
 npm run lint && npx vitest run
-node yugit.cjs "release: v2.9.2 — bench v2, property tests, rate limit, snapshot docs"
+node yugit.cjs "release: v3.0 — server test suite, CI lint+test gate, full coverage"
 ```
 
 ---
 
-## 🔴 PRIORITAS TERSISA
+## 🔴 PRIORITAS TERSISA (minor)
 
-### P1 — App features (session-driven)
-- Apapun yang muncul saat pakai app — bug reports, UX improvements
-- Bisa `/review` di dalam app untuk generate improvement suggestions
+### P1 — yuyu-server improvements lanjutan
+- **WebSocket streaming batch** — parallel exec_stream via WS
+- **in-memory cache** untuk `read` requests (TTL 30s)
 
-### P2 — yuyu-server
-- **Streaming batch** — WebSocket batch untuk parallel exec_stream
-- **Cache** — simple in-memory cache untuk `read` requests (TTL 30s)
+### P2 — app features
+- Pakai app, catat bugs/UX issues, gas fix
 
-### P3 — Test completeness
-- `yuyu-server.js` belum punya test suite sama sekali
-- Bisa buat `yuyu-server.test.cjs` dengan mock HTTP requests
-
-### P4 — CI/CD
-- GitHub Actions — tambah test step sebelum build APK
-- Sekarang CI langsung build tanpa run tests
+### P3 — test improvements
+- `yuyu-server.test.cjs` — tambah rate limit test (429 response)
+- Property-based test untuk patch handler (random old_str patterns)
 
 ---
 
@@ -87,8 +79,7 @@ node yugit.cjs "release: v2.9.2 — bench v2, property tests, rate limit, snapsh
 
 1. Baca file ini
 2. Kirim zip fresh
-3. `npm run bench` — set baseline pertama kali
-4. Pakai app, catat bugs/UX issues
-5. Gas P3 (yuyu-server test suite) kalau mau coverage lebih
+3. Pakai app — catat semua yang annoying/broken
+4. Gas fix satu per satu
 
 > "Berat, Lama, Susah Bukan Hambatan" 🚀
