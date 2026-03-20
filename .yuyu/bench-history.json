@@ -1,0 +1,34 @@
+{
+  "empty tabs": {
+    "score": 6.12,
+    "savedAt": "2026-03-20T20:20:45.975Z"
+  },
+  "no action blocks": {
+    "score": 105.85,
+    "savedAt": "2026-03-20T20:20:45.975Z"
+  },
+  "non-code file (early return)": {
+    "score": 1416.58,
+    "savedAt": "2026-03-20T20:20:45.975Z"
+  },
+  "open 1 tab (Array spread)": {
+    "score": 56.62,
+    "savedAt": "2026-03-20T20:20:45.975Z"
+  },
+  "single call — jsx": {
+    "score": 10.35,
+    "savedAt": "2026-03-20T20:20:45.975Z"
+  },
+  "single call — ts": {
+    "score": 4.77,
+    "savedAt": "2026-03-20T20:20:45.975Z"
+  },
+  "small diff (4 lines)": {
+    "score": 5832.92,
+    "savedAt": "2026-03-20T20:20:45.975Z"
+  },
+  "small file — 1 import": {
+    "score": 5.49,
+    "savedAt": "2026-03-20T20:20:45.975Z"
+  }
+}
