@@ -6,7 +6,7 @@ import { THEMES, MODELS } from '../constants.js';
 import { Settings, GitBranch, Search, Plug, Github, Key, Puzzle, Brain, MapPin, Scissors, Bookmark, Zap, Globe, RotateCcw, Trash2, Check, X, ChevronDown, ChevronUp, ChevronRight, AlertTriangle, Eye, ScrollText, Pin, FileText, Pencil, Copy, Package, Terminal, Play, Square, ArrowRight, GitMerge, Plus, RefreshCw, BookOpen, Layers, Palette, Save, Upload, Download, Power, Shield, List, History, GitCompare, XCircle, MessageSquare, Network } from 'lucide-react';
 
 // ─── BOTTOM SHEET (reusable mobile-first wrapper) ─────────────────────────────
-export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=false }) {
+export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=false, T }) {
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const startY = useRef(null);
@@ -27,7 +27,7 @@ export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=fals
       onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
       <div onClick={onClose} style={{position:'absolute',inset:0,background:'rgba(0,0,0,.55)'}} />
       <div style={{
-        position:'relative', background:'#111113',
+        position:'relative', background:T?.bg2||'#111113',
         borderRadius:'18px 18px 0 0',
         maxHeight:height, display:'flex', flexDirection:'column',
         transform:`translateY(${dragY}px)`,
@@ -48,7 +48,7 @@ export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=fals
 }
 
 
-export function GitComparePanel({ folder, onClose }) {
+export function GitComparePanel({ folder, onClose, T:_T }) {
   const [diff, setDiff]       = useState('');
   const [loading, setLoading] = useState(true);
   const [staged, setStaged]   = useState(false);
@@ -184,7 +184,7 @@ export function GitComparePanel({ folder, onClose }) {
 }
 
 // ─── FILE HISTORY PANEL ───────────────────────────────────────────────────────
-export function FileHistoryPanel({ folder, filePath, onClose }) {
+export function FileHistoryPanel({ folder, filePath, onClose, T:_T }) {
   const [commits, setCommits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewing, setPreviewing] = useState(null);
@@ -260,7 +260,7 @@ export function FileHistoryPanel({ folder, filePath, onClose }) {
 }
 
 // ─── CUSTOM ACTIONS PANEL ─────────────────────────────────────────────────────
-export function CustomActionsPanel({ folder:_folder, onRun, onClose }) {
+export function CustomActionsPanel({ folder:_folder, onRun, onClose, T:_T }) {
   const [actions, setActions] = useState([]);
   const [newLabel, setNewLabel] = useState('');
   const [newCmd, setNewCmd] = useState('');
@@ -350,7 +350,7 @@ export function ShortcutsPanel({ onClose }) {
 }
 
 // ─── GIT BLAME PANEL ──────────────────────────────────────────────────────────
-export function GitBlamePanel({ folder, filePath, onClose }) {
+export function GitBlamePanel({ folder, filePath, onClose, T:_T }) {
   const [blame, setBlame] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -391,7 +391,7 @@ export function GitBlamePanel({ folder, filePath, onClose }) {
 }
 
 // ─── SNIPPET LIBRARY ──────────────────────────────────────────────────────────
-export function SnippetLibrary({ onInsert, onClose }) {
+export function SnippetLibrary({ onInsert, onClose, T:_T }) {
   const [snippets, setSnippets] = useState([]);
   const [newTitle, setNewTitle] = useState('');
   const [newCode, setNewCode] = useState('');
@@ -496,7 +496,7 @@ export function ThemeBuilder({ onClose, themeKey, themesMap, themeKeys, onTheme 
 }
 
 // ─── COMMAND PALETTE ──────────────────────────────────────────────────────────
-export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories, checkpoints, model, models,
+export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories, checkpoints, model, models, T:_T,
   onModelChange, onNewChat, theme, onThemeChange, showSidebar, onToggleSidebar,
   onShowMemory, onShowCheckpoints, onShowMCP, onShowGitHub, onShowDeploy,
   onShowDiff, onShowSearch, onShowSnippets, onShowCustomActions,
@@ -916,12 +916,12 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
 }
 
 // ── SkillsPanel ───────────────────────────────────────────────────────────────
-export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClose, accentColor }) {
+export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClose, accentColor, T }) {
   const [adding, setAdding]       = useState(false);
   const [newName, setNewName]     = useState('');
   const [newContent, setNewContent] = useState('');
   const [busy, setBusy]           = useState(false);
-  const T = accentColor || '#7c3aed';
+  const _acc = T?.accent || accentColor || '#7c3aed';
 
   async function handleUpload(e) {
     const file = e.target.files?.[0];
@@ -1031,9 +1031,9 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
 }
 
 // ── DeployPanel ───────────────────────────────────────────────────────────────
-export function DeployPanel({ deployLog, loading, onDeploy, onClose }) {
+export function DeployPanel({ deployLog, loading, onDeploy, onClose, T }) {
   return (
-    <BottomSheet onClose={onClose}>
+    <BottomSheet onClose={onClose} T={T}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
           <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}>Deploy</span>
@@ -1057,7 +1057,7 @@ export function DeployPanel({ deployLog, loading, onDeploy, onClose }) {
 }
 
 // ── McpPanel ──────────────────────────────────────────────────────────────────
-export function McpPanel({ mcpTools, folder: _folder, onResult, onClose }) {
+export function McpPanel({ mcpTools, folder: _folder, onResult, onClose, T:_T }) {
   const defaultTools = [['git',['status','log','diff']],['fetch',['browse']],['sqlite',['tables']],['github',['issues','pulls']],['system',['disk','memory']],['filesystem',['list']]];
   const entries = Object.keys(mcpTools).length > 0 ? Object.entries(mcpTools) : defaultTools;
   return (
@@ -1118,9 +1118,9 @@ export function GitHubPanel({ githubRepo, githubToken, githubData, onRepoChange,
 }
 
 // ── SessionsPanel ─────────────────────────────────────────────────────────────
-export function SessionsPanel({ sessions, onRestore, onClose }) {
+export function SessionsPanel({ sessions, onRestore, onClose, T }) {
   return (
-    <BottomSheet onClose={onClose}>
+    <BottomSheet onClose={onClose} T={T}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
           <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}><Save size={14}/> Saved Sessions</span>
@@ -1144,8 +1144,8 @@ export function SessionsPanel({ sessions, onRestore, onClose }) {
 }
 
 // ── PermissionsPanel ──────────────────────────────────────────────────────────
-export function PermissionsPanel({ permissions, accentColor, onToggle, onReset, onClose }) {
-  const T = accentColor || '#7c3aed';
+export function PermissionsPanel({ permissions, accentColor, onToggle, onReset, onClose, T }) {
+  const _acc = T?.accent || accentColor || '#7c3aed';
   return (
     <BottomSheet onClose={onClose}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -1179,7 +1179,7 @@ const BUILTIN_PLUGINS = [
   {id:'test_runner',  name:'Test Runner',   desc:'Jalankan tests setelah write',       hookType:'postWrite', cmd:'cd {{context}} && npm test -- --watchAll=false --passWithNoTests 2>&1 | tail -10'},
   {id:'auto_push',   name:'Git Auto Push', desc:'Push ke remote setelah commit',       hookType:'postWrite', cmd:'node yugit.cjs "auto push"'},
 ];
-export function PluginsPanel({ activePlugins, folder, onToggle, onClose }) {
+export function PluginsPanel({ activePlugins, folder, onToggle, onClose, T:_T }) {
   return (
     <BottomSheet onClose={onClose}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -1208,7 +1208,7 @@ export function PluginsPanel({ activePlugins, folder, onToggle, onClose }) {
 }
 
 // ── ConfigPanel ───────────────────────────────────────────────────────────────
-export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, models, onEffort, onFontSize, onTheme, onModel, onThinking, onClose }) {
+export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, models, onEffort, onFontSize, onTheme, onModel, onThinking, onClose, T:_T }) {
   const configs = [
     {label:'Effort Level', value:effort,         options:['low','medium','high'],      onChange:onEffort},
     {label:'Font Size',    value:String(fontSize), options:['12','13','14','15','16'], onChange:v=>onFontSize(parseInt(v))},

@@ -39,17 +39,18 @@ export default function App() {
 
   // ── Dynamic brightness filter — gamma-corrected (sRGB γ=2.2) ──
   // CSS brightness() adalah linear multiplier, bukan perceptual.
-  // Formula: decode γ dari screen brightness → kompensasi di linear space
-  // → encode balik ke γ space untuk CSS. Ini standar sRGB, bukan magic number.
+  // Formula: decode γ → kompensasi di linear space → encode balik ke sRGB.
+  // Aurora/Neon pakai cap lebih rendah — colored background over-saturate kalau boost penuh.
   const brightnessFilter = (() => {
     const b = ui.brightnessLevel;
-    if (b >= 0.95) return 'none';                        // full brightness: no filter
-    const safe = Math.max(b, 0.04);                      // floor 4% biar tidak infinity
-    const linear = Math.pow(safe, 2.2);                  // sRGB → linear light
-    const comp   = Math.pow(1 / linear, 1 / 2.2);        // compensate → back to sRGB
-    const bright = Math.min(comp, 6.0);                  // cap 6x biar tidak blown out
-    // contrast boost proporsional — makin redup makin butuh contrast
-    const contrast = 1 + (bright - 1) * 0.35;
+    if (b >= 0.95) return 'none';
+    const safe = Math.max(b, 0.04);
+    const linear = Math.pow(safe, 2.2);
+    const comp   = Math.pow(1 / linear, 1 / 2.2);
+    const themeName = (T?.name || '').toLowerCase();
+    const isColorful = themeName.includes('aurora') || themeName.includes('neon');
+    const bright   = Math.min(comp, isColorful ? 1.6 : 6.0);
+    const contrast = 1 + (bright - 1) * (isColorful ? 0.12 : 0.35);
     return `brightness(${bright.toFixed(3)}) contrast(${contrast.toFixed(3)})`;
   })();
   useBrightness(ui.setBrightnessLevel);
@@ -676,14 +677,14 @@ export default function App() {
       {/* OVERLAYS */}
       {ui.showSearch&&<SearchBar folder={project.folder} onSelectFile={p=>file.openFile(p)} onClose={()=>ui.setShowSearch(false)}/>}
       {ui.showShortcuts&&<ShortcutsPanel onClose={()=>ui.setShowShortcuts(false)}/>}
-      {ui.showDiff&&<GitComparePanel folder={project.folder} onClose={()=>ui.setShowDiff(false)}/>}
-      {ui.showBlame&&file.selectedFile&&<GitBlamePanel folder={project.folder} filePath={file.selectedFile} onClose={()=>ui.setShowBlame(false)}/>}
-      {ui.showSnippets&&<SnippetLibrary onInsert={code=>{chat.setInput(i=>i?i+'\n'+code:code);ui.setShowSnippets(false);inputRef.current?.focus();}} onClose={()=>ui.setShowSnippets(false)}/>}
-      {ui.showFileHistory&&file.selectedFile&&<FileHistoryPanel folder={project.folder} filePath={file.selectedFile} onClose={()=>ui.setShowFileHistory(false)}/>}
-      {ui.showCustomActions&&<CustomActionsPanel folder={project.folder} onRun={cmd=>runShortcut(cmd)} onClose={()=>ui.setShowCustomActions(false)}/>}
+      {ui.showDiff&&<GitComparePanel folder={project.folder} T={T} onClose={()=>ui.setShowDiff(false)}/>}
+      {ui.showBlame&&file.selectedFile&&<GitBlamePanel T={T} folder={project.folder} filePath={file.selectedFile} onClose={()=>ui.setShowBlame(false)}/>}
+      {ui.showSnippets&&<SnippetLibrary T={T} onInsert={code=>{chat.setInput(i=>i?i+'\n'+code:code);ui.setShowSnippets(false);inputRef.current?.focus();}} onClose={()=>ui.setShowSnippets(false)}/>}
+      {ui.showFileHistory&&file.selectedFile&&<FileHistoryPanel T={T} folder={project.folder} filePath={file.selectedFile} onClose={()=>ui.setShowFileHistory(false)}/>}
+      {ui.showCustomActions&&<CustomActionsPanel T={T} folder={project.folder} onRun={cmd=>runShortcut(cmd)} onClose={()=>ui.setShowCustomActions(false)}/>}
 
       {ui.showPalette&&(
-        <CommandPalette onClose={()=>ui.setShowPalette(false)}
+        <CommandPalette T={T} onClose={()=>ui.setShowPalette(false)}
           folder={project.folder} memories={chat.memories} checkpoints={chat.checkpoints} model={project.model} models={MODELS}
           onModelChange={id=>project.setModel(id)}
           onNewChat={()=>chat.clearChat()}
@@ -702,22 +703,22 @@ export default function App() {
 
       {/* MEMORY */}
       {ui.showMemory&&(
-        <BottomSheet onClose={()=>ui.setShowMemory(false)}>
+        <BottomSheet onClose={()=>ui.setShowMemory(false)} T={T}>
           <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-            <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}><Brain size={14}/> Auto Memories ({chat.memories.length})</span>
-              <button onClick={()=>{chat.setMemories([]);}} style={{background:'rgba(248,113,113,.08)',border:'1px solid rgba(248,113,113,.15)',borderRadius:'5px',padding:'2px 8px',color:'#f87171',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>clear all</button>
-              <button onClick={()=>ui.setShowMemory(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+            <div style={{display:'flex',alignItems:'center',marginBottom:'14px'}}>
+              <span style={{fontSize:'13px',fontWeight:'600',color:T.text,flex:1,display:'flex',alignItems:'center',gap:'6px'}}><Brain size={13} style={{color:T.accent}}/> Auto Memories <span style={{color:T.textMute,fontWeight:'400'}}>({chat.memories.length})</span></span>
+              <button onClick={()=>{chat.setMemories([]);}} style={{background:T.errorBg,border:'1px solid '+T.error+'33',borderRadius:'8px',padding:'4px 10px',color:T.error,fontSize:'11px',cursor:'pointer',marginRight:'8px',display:'flex',alignItems:'center',gap:'4px'}}><Trash2 size={10}/> Clear</button>
+              <button onClick={()=>ui.setShowMemory(false)} style={{background:'none',border:'none',color:T.textMute,fontSize:'18px',cursor:'pointer',lineHeight:1}}>×</button>
             </div>
-            <div style={{flex:1,overflowY:'auto'}}>
-              {chat.memories.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada memories~</div>}
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'6px'}}>
+              {chat.memories.length===0&&<div style={{color:T.textMute,fontSize:'12px',textAlign:'center',padding:'24px 0'}}>Belum ada memories~</div>}
               {chat.memories.map(m=>(
-                <div key={m.id} style={{display:'flex',gap:'8px',padding:'7px 10px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:'7px'}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:'12px',color:'rgba(255,255,255,.75)'}}>{m.text}</div>
-                    <div style={{fontSize:'10px',color:'rgba(255,255,255,.25)',marginTop:'2px'}}>{m.folder} · {m.ts}</div>
+                <div key={m.id} style={{display:'flex',gap:'8px',padding:'10px 12px',background:T.bg3,border:'1px solid '+T.border,borderRadius:'10px',alignItems:'flex-start'}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:'12.5px',color:T.text,lineHeight:'1.5'}}>{m.text}</div>
+                    <div style={{fontSize:'10px',color:T.textMute,marginTop:'4px'}}>{m.folder} · {m.ts}</div>
                   </div>
-                  <button onClick={()=>{const next=chat.memories.filter(x=>x.id!==m.id);chat.setMemories(next);}} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer',flexShrink:0}}>×</button>
+                  <button onClick={()=>{const next=chat.memories.filter(x=>x.id!==m.id);chat.setMemories(next);}} style={{background:'none',border:'none',color:T.error,opacity:.5,fontSize:'14px',cursor:'pointer',flexShrink:0,padding:'0 2px',lineHeight:1}} onMouseEnter={e=>e.currentTarget.style.opacity='1'} onMouseLeave={e=>e.currentTarget.style.opacity='.5'}>×</button>
                 </div>
               ))}
             </div>
@@ -727,17 +728,17 @@ export default function App() {
 
       {/* CHECKPOINTS */}
       {ui.showCheckpoints&&(
-        <BottomSheet onClose={()=>ui.setShowCheckpoints(false)}>
+        <BottomSheet onClose={()=>ui.setShowCheckpoints(false)} T={T}>
           <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-            <div style={{display:'flex',alignItems:'center',marginBottom:'12px'}}>
-              <span style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',flex:1}}><MapPin size={14}/> Checkpoints</span>
-              <button onClick={saveCheckpoint} style={{background:'rgba(74,222,128,.08)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'5px',padding:'2px 8px',color:'#4ade80',fontSize:'10px',cursor:'pointer',marginRight:'8px'}}>+ Save now</button>
-              <button onClick={()=>ui.setShowCheckpoints(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,.4)',fontSize:'16px',cursor:'pointer'}}>×</button>
+            <div style={{display:'flex',alignItems:'center',marginBottom:'14px'}}>
+              <span style={{fontSize:'13px',fontWeight:'600',color:T.text,flex:1,display:'flex',alignItems:'center',gap:'6px'}}><MapPin size={13} style={{color:T.accent}}/> Checkpoints <span style={{color:T.textMute,fontWeight:'400'}}>({chat.checkpoints.length})</span></span>
+              <button onClick={saveCheckpoint} style={{background:T.accentBg,border:'1px solid '+T.accentBorder,borderRadius:'8px',padding:'4px 10px',color:T.accent,fontSize:'11px',cursor:'pointer',marginRight:'8px',display:'flex',alignItems:'center',gap:'4px'}}><Plus size={10}/> Save</button>
+              <button onClick={()=>ui.setShowCheckpoints(false)} style={{background:'none',border:'none',color:T.textMute,fontSize:'18px',cursor:'pointer',lineHeight:1}}>×</button>
             </div>
             <div style={{flex:1,overflowY:'auto'}}>
               {chat.checkpoints.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada checkpoint~</div>}
               {chat.checkpoints.map(cp=>(
-                <div key={cp.id} style={{display:'flex',gap:'8px',alignItems:'center',padding:'8px 10px',marginBottom:'4px',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.06)',borderRadius:'7px'}}>
+                <div key={cp.id} style={{display:'flex',gap:'8px',alignItems:'center',padding:'10px 12px',marginBottom:'6px',background:T.bg3,border:'1px solid '+T.border,borderRadius:'10px'}}>
                   <div style={{flex:1}}>
                     <div style={{fontSize:'12px',color:'rgba(255,255,255,.75)'}}>{cp.label}</div>
                     <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)'}}>{cp.folder} · {cp.messages.length} pesan</div>
@@ -797,7 +798,7 @@ export default function App() {
       <Activity mode={ui.showMCP?'visible':'hidden'}>
       {/* MCP */}
       {ui.showMCP&&(
-        <McpPanel
+        <McpPanel T={T}
           mcpTools={project.mcpTools}
           folder={project.folder}
           onResult={async(tool,act)=>{const r=await callServer({type:'mcp',tool,action:act,params:{path:project.folder}});chat.setMessages(m=>[...m,{role:'assistant',content:`🔌 ${tool}/${act}:\n\`\`\`\n${(r.data||'').slice(0,1000)}\n\`\`\``,actions:[]}]);ui.setShowMCP(false);}}
@@ -827,7 +828,7 @@ export default function App() {
       <Activity mode={ui.showSessions?'visible':'hidden'}>
       {/* SESSIONS */}
       {ui.showSessions&&(
-        <SessionsPanel
+        <SessionsPanel T={T}
           sessions={ui.sessionList}
           onRestore={s=>{chat.setMessages(s.messages||[]);project.setFolder(s.folder||'');project.setFolderInput(s.folder||'');ui.setShowSessions(false);chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Sesi **'+s.name+'** dipulihkan.',actions:[]}]);}}
           onClose={()=>ui.setShowSessions(false)}
@@ -839,7 +840,7 @@ export default function App() {
       <Activity mode={ui.showPermissions?'visible':'hidden'}>
       {/* PERMISSIONS */}
       {ui.showPermissions&&(
-        <PermissionsPanel
+        <PermissionsPanel T={T}
           permissions={project.permissions}
           accentColor={T.accent}
           onToggle={tool=>project.setPermissions({...project.permissions,[tool]:!project.permissions[tool]})}
@@ -853,7 +854,7 @@ export default function App() {
       <Activity mode={ui.showPlugins?'visible':'hidden'}>
       {/* PLUGINS */}
       {ui.showPlugins&&(
-        <PluginsPanel
+        <PluginsPanel T={T}
           activePlugins={project.activePlugins}
           folder={project.folder}
           onToggle={(p,isActive,folder)=>{
@@ -899,7 +900,7 @@ export default function App() {
       <Activity mode={ui.showSkills?'visible':'hidden'}>
       {/* SKILLS */}
       {ui.showSkills&&(
-        <SkillsPanel
+        <SkillsPanel T={T}
           skills={project.skills}
           onToggle={name=>project.toggleSkill(name)}
           onUpload={async (name, text)=>{
@@ -924,7 +925,7 @@ export default function App() {
       <Activity mode={ui.showConfig?'visible':'hidden'}>
       {/* CONFIG */}
       {ui.showConfig&&(
-        <ConfigPanel
+        <ConfigPanel T={T}
           effort={project.effort}
           fontSize={ui.fontSize}
           theme={ui.theme}
@@ -945,7 +946,7 @@ export default function App() {
       <Activity mode={ui.showDeploy?'visible':'hidden'}>
       {/* DEPLOY */}
       {ui.showDeploy&&(
-        <DeployPanel
+        <DeployPanel T={T}
           deployLog={ui.deployLog}
           loading={chat.loading}
           onDeploy={runDeploy}
