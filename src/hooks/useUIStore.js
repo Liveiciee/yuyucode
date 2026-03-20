@@ -3,6 +3,9 @@ import { Preferences } from '@capacitor/preferences';
 import { THEMES_MAP, THEME_KEYS, DEFAULT_THEME } from '../themes/index.js';
 
 export function useUIStore() {
+  // ── Ambient brightness ──
+  const [lowLight, setLowLight] = useState(false);
+
   // ── Panels / Overlays ──
   const [showSidebar, setShowSidebar]         = useState(false);
   const [showTerminal, setShowTerminal]       = useState(false);
@@ -81,6 +84,7 @@ export function useUIStore() {
   }
 
   return {
+    lowLight, setLowLight,
     // panels
     showSidebar, setShowSidebar,
     showTerminal, setShowTerminal,

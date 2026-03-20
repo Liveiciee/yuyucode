@@ -26,6 +26,7 @@ import { useApprovalFlow }   from './hooks/useApprovalFlow.js';
 import { useDevTools }       from './hooks/useDevTools.js';
 import { useAgentLoop }      from './hooks/useAgentLoop.js';
 import { useGrowth }         from './hooks/useGrowth.js';
+import { useBrightness }     from './hooks/useBrightness.js';
 
 export default function App() {
   // ── STORES ──
@@ -35,6 +36,7 @@ export default function App() {
   const chat    = useChatStore();
   const T       = ui.T;
   const growth  = useGrowth();
+  useBrightness(ui.setLowLight);
 
   // ── REFS ──
   const abortRef             = useRef(null);
@@ -286,7 +288,8 @@ export default function App() {
   // ── RENDER ──
   return (
     <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:ui.fontSize+'px'}}
-      onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}>
+      onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}
+      data-lowlight={ui.lowLight?'1':undefined}>
       {ui.dragOver&&<div style={{position:'absolute',inset:0,background:'rgba(124,58,237,.15)',border:'2px dashed rgba(124,58,237,.5)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:'#a78bfa'}}>Drop file di sini~</span></div>}
       <ThemeEffects T={T}/>
       {/* Badge toast */}
@@ -301,6 +304,7 @@ export default function App() {
       )}
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+        [data-lowlight="1"]{filter:contrast(1.4) brightness(1.3) saturate(1.1);transition:filter .4s ease;}
         ::-webkit-scrollbar{width:3px;height:3px;}
         ::-webkit-scrollbar-track{background:transparent;}
         ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:99px;}
