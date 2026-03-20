@@ -36,7 +36,23 @@ export default function App() {
   const chat    = useChatStore();
   const T       = ui.T;
   const growth  = useGrowth();
-  useBrightness(ui.setLowLight);
+
+  // ── Dynamic brightness filter — gamma-corrected (sRGB γ=2.2) ──
+  // CSS brightness() adalah linear multiplier, bukan perceptual.
+  // Formula: decode γ dari screen brightness → kompensasi di linear space
+  // → encode balik ke γ space untuk CSS. Ini standar sRGB, bukan magic number.
+  const brightnessFilter = (() => {
+    const b = ui.brightnessLevel;
+    if (b >= 0.95) return 'none';                        // full brightness: no filter
+    const safe = Math.max(b, 0.04);                      // floor 4% biar tidak infinity
+    const linear = Math.pow(safe, 2.2);                  // sRGB → linear light
+    const comp   = Math.pow(1 / linear, 1 / 2.2);        // compensate → back to sRGB
+    const bright = Math.min(comp, 6.0);                  // cap 6x biar tidak blown out
+    // contrast boost proporsional — makin redup makin butuh contrast
+    const contrast = 1 + (bright - 1) * 0.35;
+    return `brightness(${bright.toFixed(3)}) contrast(${contrast.toFixed(3)})`;
+  })();
+  useBrightness(ui.setBrightnessLevel);
 
   // ── REFS ──
   const abortRef             = useRef(null);
@@ -287,9 +303,8 @@ export default function App() {
 
   // ── RENDER ──
   return (
-    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:ui.fontSize+'px'}}
-      onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}
-      data-lowlight={ui.lowLight?'1':undefined}>
+    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:ui.fontSize+'px',filter:brightnessFilter,transition:'filter .35s ease'}}
+      onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}>
       {ui.dragOver&&<div style={{position:'absolute',inset:0,background:'rgba(124,58,237,.15)',border:'2px dashed rgba(124,58,237,.5)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:'#a78bfa'}}>Drop file di sini~</span></div>}
       <ThemeEffects T={T}/>
       {/* Badge toast */}
@@ -304,7 +319,7 @@ export default function App() {
       )}
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-        [data-lowlight="1"]{filter:contrast(1.4) brightness(1.3) saturate(1.1);transition:filter .4s ease;}
+
         ::-webkit-scrollbar{width:3px;height:3px;}
         ::-webkit-scrollbar-track{background:transparent;}
         ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:99px;}

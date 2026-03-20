@@ -4,7 +4,7 @@ import { THEMES_MAP, THEME_KEYS, DEFAULT_THEME } from '../themes/index.js';
 
 export function useUIStore() {
   // ── Ambient brightness ──
-  const [lowLight, setLowLight] = useState(false);
+  const [brightnessLevel, setBrightnessLevel] = useState(1.0); // 0.0–1.0, default full
 
   // ── Panels / Overlays ──
   const [showSidebar, setShowSidebar]         = useState(false);
@@ -84,7 +84,7 @@ export function useUIStore() {
   }
 
   return {
-    lowLight, setLowLight,
+    brightnessLevel, setBrightnessLevel,
     // panels
     showSidebar, setShowSidebar,
     showTerminal, setShowTerminal,
