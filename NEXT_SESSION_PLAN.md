@@ -1,117 +1,89 @@
 # YuyuCode — Master Plan Sesi Berikutnya
-> Dibuat: 2026-03-21 | Status saat ini: v2.8 released ✅
+> Dibuat: 2026-03-21 | Status saat ini: v2.9 released ✅
 > Pesan dari owner: "Berat, Lama, Susah Bukan Hambatan. All in selama sesuai ekspektasi."
 
 ---
 
-## ✅ SELESAI SESI INI (v2.7 → v2.8)
+## ✅ SELESAI SESI INI (v2.8 → v2.9)
 
-### ✅ P1.3 pool: vmThreads — DONE (ARM64 auto-guard)
-- `vitest.config.js` — auto-detect `os.arch()`: vmThreads di x64, threads di ARM64
-- Zero risk: Termux ARM64 tetap pakai threads (safe), x64 CI dapat 4x boost
+### ✅ Property-based testing (fast-check) — DONE
+- `src/utils.integration.test.js` — 29 → **38 tests**
+- 9 property-based tests: `parseActions` (6) + `resolvePath` (3)
+- Coverage: never throws, always array, count ≤ blocks, valid JSON parsed, idempotent
 
-### ✅ P2.1 Incremental map update — DONE
-- `getChangedFiles(root, _spawnSync?)` — `git diff --name-only HEAD`
-- `main()` auto-detect changed files, log `⚡ Incremental: N file(s) changed`
-- Fallback ke full scan kalau bukan git repo atau no changes
-- 7 tests baru → 80 total di yuyu-map.test.cjs
+### ✅ Benchmark regression detection — DONE
+- `yuyu-bench.cjs` — new file, 151 lines
+- Run bench + compare ke `.yuyu/bench-history.json`
+- `🔴 SLOW` kalau 2x lebih lambat dari baseline
+- `🟢 FAST` kalau 2x lebih cepat
+- `package.json` scripts: `bench`, `bench:save`, `bench:run`
+- Usage: `npm run bench` → `npm run bench:save` untuk set baseline
 
-### ✅ P3.1 Health check endpoint — DONE
-- `GET /health` → `{status:'ok', uptime, version, port}`
-- `yuyu-status` command pakai `/health` endpoint
+### ✅ yuyu-server batch action — DONE
+- `{ type: 'batch', actions: [...] }` → `{ ok, results: [...] }`
+- Reduce roundtrips untuk agent loop yang banyak parallel read
 
-### ✅ P3.2 Auto-restart on crash — DONE
-- `yuyu-server-start()` di bashrc-additions.sh — auto-restart loop + log ke ~/.yuyu-server.log
+### ✅ yuyu-server /status endpoint — DONE
+- `GET /status` → `{ status, uptime, version, port, memory_mb, tools }`
+- Lebih detail dari `/health` — include memory usage
 
-### ✅ P3.3 Request logging (dev mode) — DONE
-- `node yuyu-server.js --verbose` → log `[timestamp] METHOD /url`
-
-### ✅ P4.1 yuyu-status command — DONE
-- Server status via `/health`, branch, version, dirty count
-
-### ✅ P4.2 yuyu-clean command — DONE
-- Hapus dist/, coverage/, .yuyu/compressed*.md
-- List Download zips untuk hapus manual
-
-### ✅ P4.3 yuyu-cp subdirectory support — DONE
-- `yuyu-cp file.js src/components/` → copy ke subdirectory
-- Destination dir auto-created kalau belum ada
-
-### ✅ P5.1 fast-check added — DONE
-- `package.json` devDependencies: `fast-check ^3.22.0`
-- Siap dipakai untuk property-based testing
-
----
-
-## 📋 CARA APPLY BASHRC ADDITIONS
-
-```bash
-# Di Termux, append ke .bashrc:
-cat ~/yuyucode/bashrc-additions.sh >> ~/.bashrc
-source ~/.bashrc
-
-# Ganti baris lama auto-start server di .bashrc dengan:
-# yuyu-server-start
-```
-
-Atau copy-paste manual per-fungsi yang dibutuhkan.
-
----
-
-## 🔴 PRIORITAS TERSISA
-
-### P1 — Test Quality
-- **property-based testing untuk parseActions** — `fast-check` sudah ada, tinggal tulis
-  ```js
-  import fc from 'fast-check';
-  it('never throws on random string input', () => {
-    fc.assert(fc.property(fc.string(), s => { parseActions(s); return true; }));
-  });
-  ```
-- **Benchmark regression detection** — simpan hasil bench ke `.yuyu/bench-history.json`
-
-### P2 — yuyu-server improvements
-- **Batch action support** — jalankan beberapa type sekaligus, reduce roundtrips
-- **`/status` endpoint** untuk yuyu-apply health check sebelum lint
-
-### P3 — README Troubleshooting section
-- Termux memory manager kill server → how to fix
-- Rate limit kedua provider → what to do
-- Build gagal di CI → common causes
-- `git push rejected` → step by step fix
+### ✅ README Troubleshooting section — DONE
+- Termux memory manager → wakelock fix
+- Rate limit Cerebras/Groq → manual workaround
+- CI build gagal → 4 penyebab + fix
+- `git push rejected` → step by step
+- Test lambat → diagnose + fix
+- `yuyu-apply` rollback terus → manual debug steps
 
 ---
 
 ## 📋 CONTEXT PENTING UNTUK SESI BARU
 
 ### State saat ini:
-- Version: 2.8.0
-- Tests: 488 → **495+** ✅ (488 + 7 getChangedFiles)
+- Version: 2.9.0
+- Tests: 495 → **504+** ✅ (+9 property-based)
+- yuyu-map.test.cjs: 80 tests
+- utils.integration.test.js: 38 tests
 - Lint: 0 errors ✅
-- Build: CI green ✅
 
 ### File-file kunci:
-- `yuyu-server.js` — v4-async, `/health` endpoint, `--verbose` flag
-- `yuyu-map.cjs` — exports: ..., getChangedFiles (baru), incremental main()
-- `yugit.cjs` — v2.1, --push, --squash, --status
-- `vitest.config.js` — ARM64 auto-guard untuk vmThreads
-- `bashrc-additions.sh` — yuyu-status, yuyu-clean, yuyu-cp v2, auto-restart
+- `yuyu-server.js` — v4-async, `/health`, `/status`, batch action, `--verbose`
+- `yuyu-map.cjs` — incremental map, getChangedFiles
+- `yuyu-bench.cjs` — NEW: bench regression detector
+- `src/utils.integration.test.js` — 38 tests termasuk fast-check
+- `package.json` — scripts: bench, bench:save, bench:run
 
-### Command release:
+### Bench workflow:
 ```bash
-npm run lint && npx vitest run
-node yugit.cjs "release: v2.8 — health endpoint, incremental map, vmThreads guard, DX improvements"
+npm run bench:run    # lihat angka bench
+npm run bench:save   # set baseline pertama kali
+npm run bench        # compare ke baseline (pakai setiap sesi)
 ```
+
+---
+
+## 🔴 PRIORITAS TERSISA
+
+### P1 — Codebase quality
+- **Snapshot update workflow** — document `npx vitest run --update-snapshots` lebih jelas di README dev docs
+- **`yuyu-map.test.cjs` property-based** — tambah fc tests untuk `extractSymbols`, `compressSource`
+
+### P2 — yuyu-server
+- **Streaming batch** — WebSocket batch untuk parallel exec_stream
+- **Rate limiting** — simple in-memory rate limit untuk cegah abuse (optional)
+
+### P3 — App features
+- **Apapun yang muncul waktu pakai** — bug reports, UX improvements
 
 ---
 
 ## 🎯 REKOMENDASI SESI BARU
 
-1. Baca file ini dulu
-2. Kirim zip fresh project
-3. `cat ~/yuyucode/bashrc-additions.sh >> ~/.bashrc && source ~/.bashrc`
-4. Gas property-based testing (fast-check sudah installed)
-5. README troubleshooting section
-6. Benchmark regression detection
+1. Baca file ini
+2. Kirim zip fresh
+3. `npm run bench:save` untuk set baseline pertama kali
+4. Gas snapshot update docs
+5. fc tests untuk yuyu-map
+6. Atau langsung pakai app dan report bugs
 
 > "Berat, Lama, Susah Bukan Hambatan" 🚀

@@ -131,6 +131,20 @@ function handle(payload) {
     return { ok: true, data: 'YuyuServer ' + VERSION + ' aktif!', mcp: Object.keys(MCP_TOOLS), version: VERSION };
   }
 
+  // ── BATCH — run multiple actions in one request ────────────────────────────
+  // { type: 'batch', actions: [{type,path,...}, ...] }
+  // Returns: { ok: true, results: [{ok, data}, ...] }
+  if (type === 'batch') {
+    const actions = Array.isArray(payload.actions) ? payload.actions : [];
+    if (actions.length === 0) return { ok: false, data: 'batch requires actions array' };
+    const results = actions.map(a => {
+      try { return handle(a); }
+      catch (e) { return { ok: false, data: e.message }; }
+    });
+    const allOk = results.every(r => r.ok);
+    return { ok: allOk, results };
+  }
+
   if (type === 'mcp')      return handleMCP(tool, action, params || payload);
   if (type === 'mcp_list') return { ok: true, data: MCP_TOOLS };
 
@@ -447,6 +461,17 @@ const server = http.createServer((req, res) => {
     const uptime = Math.round((Date.now() - START_TIME) / 1000);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', uptime, version: VERSION, port: PORT }));
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/status') {
+    const uptime  = Math.round((Date.now() - START_TIME) / 1000);
+    const memUsed = Math.round(process.memoryUsage().rss / 1024 / 1024);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'ok', uptime, version: VERSION, port: PORT,
+      memory_mb: memUsed, tools: Object.keys(MCP_TOOLS),
+    }));
     return;
   }
 

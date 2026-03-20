@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "echo '🔍 Scouring the codebase...' && eslint . && echo '✨ 0 problems found! Code is pure.'",
+    "lint": "echo '\ud83d\udd0d Scouring the codebase...' && eslint . && echo '\u2728 0 problems found! Code is pure.'",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "bench": "node yuyu-bench.cjs",
+    "bench:save": "node yuyu-bench.cjs --save",
+    "bench:run": "vitest bench --run"
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",

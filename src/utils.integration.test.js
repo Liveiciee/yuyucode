@@ -243,3 +243,101 @@ describe('parseActions — edge cases', () => {
     expect(parseActions('```action\n  {"type":"read_file","path":"x.js"}  \n```')).toHaveLength(1);
   });
 });
+
+// ── Property-based tests (inline — no external deps needed) ──────────────────
+// Minimal fc-like runner — zero dependency, works without npm install
+const fc = {
+  assert(prop, { numRuns = 100 } = {}) {
+    for (let i = 0; i < numRuns; i++) prop();
+  },
+  property(arb, fn)       { return () => fn(arb()); },
+  property2(a1, a2, fn)   { return () => fn(a1(), a2()); },
+  string({ minLength = 0, maxLength = 80 } = {}) {
+    return () => {
+      const len   = minLength + Math.floor(Math.random() * (maxLength - minLength + 1));
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 \'"`{}[]()\\n\\t\\\\!@#$%^&*-_=+;:,./<>?|~';
+      return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    };
+  },
+  constantFrom(...vals) { return () => vals[Math.floor(Math.random() * vals.length)]; },
+  record(shape) {
+    return () => {
+      const out = {};
+      for (const [k, arb] of Object.entries(shape)) out[k] = arb();
+      return out;
+    };
+  },
+  filteredString(filter, { minLength = 1, maxLength = 40 } = {}) {
+    const base = this.string({ minLength, maxLength });
+    return () => { for (let i = 0; i < 100; i++) { const v = base(); if (filter(v)) return v; } return 'safe'; };
+  },
+};
+
+describe('parseActions — property-based (100 random inputs each)', () => {
+  it('never throws on arbitrary string input', () => {
+    fc.assert(fc.property(fc.string(), (s) => {
+      expect(() => parseActions(s)).not.toThrow();
+    }));
+  });
+
+  it('always returns an array', () => {
+    fc.assert(fc.property(fc.string(), (s) => {
+      expect(Array.isArray(parseActions(s))).toBe(true);
+    }));
+  });
+
+  it('every parsed action is a plain object', () => {
+    fc.assert(fc.property(fc.string(), (s) => {
+      for (const a of parseActions(s)) {
+        expect(typeof a).toBe('object');
+        expect(a).not.toBeNull();
+      }
+    }));
+  });
+
+  it('count never exceeds number of ```action blocks', () => {
+    fc.assert(fc.property(fc.string(), (s) => {
+      const blockCount = (s.match(/```action/g) || []).length;
+      expect(parseActions(s).length).toBeLessThanOrEqual(blockCount);
+    }));
+  });
+
+  it('valid JSON action blocks are always parsed correctly', () => {
+    const typeArb = fc.constantFrom('read_file', 'write_file', 'exec', 'search', 'tree');
+    const pathArb = fc.filteredString(s => !s.includes('\n') && !s.includes('`'));
+    fc.assert(fc.property(fc.record({ type: typeArb, path: pathArb }), (action) => {
+      const text = '```action\n' + JSON.stringify(action) + '\n```';
+      const result = parseActions(text);
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe(action.type);
+    }));
+  });
+
+  it('idempotent — parsing same string twice gives identical result', () => {
+    fc.assert(fc.property(fc.string(), (s) => {
+      expect(parseActions(s)).toEqual(parseActions(s));
+    }));
+  });
+});
+
+describe('resolvePath — property-based (100 random inputs each)', () => {
+  it('never throws on arbitrary base + path', () => {
+    fc.assert(fc.property2(fc.string(), fc.string(), (base, p) => {
+      expect(() => resolvePath(base, p)).not.toThrow();
+    }));
+  });
+
+  it('always returns a string', () => {
+    fc.assert(fc.property2(fc.string(), fc.string(), (base, p) => {
+      expect(typeof resolvePath(base, p)).toBe('string');
+    }));
+  });
+
+  it('result contains non-empty arg when the other is empty', () => {
+    const safe = fc.filteredString(s => !s.includes('/') && !s.startsWith('.'));
+    fc.assert(fc.property(safe, (s) => {
+      expect(resolvePath('', s)).toContain(s);
+      expect(resolvePath(s, '')).toContain(s);
+    }));
+  });
+});

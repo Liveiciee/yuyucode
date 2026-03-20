@@ -552,7 +552,26 @@ function main(_opts = {}) {
 
   console.log(`\n✅ Done!`);
   console.log(`   🔥 Hot files: ${hot} | ƒ Symbols: ${totalSymbols}`);
-  console.log(`\n💡 Next: node yugit.cjs "feat: codebase quantization v2"`);
+  // Dynamic hint — suggest commit message based on changed files
+  try {
+    const diff   = spawnSync('git', ['diff', '--name-only', 'HEAD'],     { cwd: root, encoding: 'utf8', timeout: 3000, stdio: 'pipe' });
+    const staged = spawnSync('git', ['diff', '--cached', '--name-only'], { cwd: root, encoding: 'utf8', timeout: 3000, stdio: 'pipe' });
+    const changed = [...new Set([
+      ...(diff.stdout   || '').trim().split('\n'),
+      ...(staged.stdout || '').trim().split('\n'),
+    ])].filter(Boolean);
+    if (changed.length > 0) {
+      const names = changed.map(f => f.split('/').pop().replace(/\.[^.]+$/, ''));
+      const scope = changed.length === 1 ? names[0]
+        : changed.length <= 3           ? names.join(', ')
+        : `${changed.length} files`;
+      console.log(`\n💡 Next: node yugit.cjs "feat: update ${scope}"`);
+    } else {
+      console.log(`\n💡 Next: node yugit.cjs "chore: regenerate map"`);
+    }
+  } catch {
+    console.log(`\n💡 Next: node yugit.cjs "chore: update map"`);
+  }
 }
 
 if (require.main === module) {

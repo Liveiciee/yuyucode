@@ -393,6 +393,138 @@ VITE_GROQ_API_KEY=your_key
 
 ---
 
+## Troubleshooting
+
+### yuyu-server berhenti tiba-tiba (Termux memory manager kill)
+
+Android agresif kill background processes saat RAM habis. Solusi:
+
+```bash
+# 1. Acquire wakelock agar Termux tidak di-kill:
+termux-wake-lock
+
+# 2. Pakai auto-restart loop (ada di bashrc-additions.sh):
+yuyu-server-start   # restart otomatis kalau crash
+
+# 3. Cek server masih hidup:
+yuyu-status         # atau: curl localhost:8765/health
+
+# 4. Kalau masih mati terus — buka notifikasi Termux, tap "Acquire wakelock"
+```
+
+Alternatif: buka Termux lebih sering, atau aktifkan "Battery Optimization: Unrestricted" untuk Termux di Settings Android.
+
+---
+
+### Rate limit Cerebras atau Groq
+
+Keduanya free tier — rate limit bisa kena saat project besar.
+
+```
+# Gejala: response berhenti di tengah, error "429 Too Many Requests"
+```
+
+Yang terjadi secara otomatis:
+- Cerebras 429 → auto-switch ke Groq (Kimi K2 262K)
+- Groq 429 → agent loop berhenti, perlu tunggu ~1 menit
+
+Manual workaround:
+```bash
+# Cek sisa rate limit (Groq):
+curl -s -H "Authorization: Bearer $VITE_GROQ_API_KEY"   https://api.groq.com/openai/v1/models | head -5
+
+# Tunggu lalu retry — biasanya reset tiap 1 menit
+# Atau ganti ke model yang lebih hemat (llama-3.1-8b-instant) di Config panel
+```
+
+---
+
+### Build APK gagal di CI
+
+**Penyebab paling umum:**
+
+1. **`npm run build` error di CI** — biasanya dependency baru yang belum di-lock
+   ```bash
+   # Fix: commit package-lock.json kalau ada perubahan
+   git add package-lock.json && node yugit.cjs "chore: update lockfile"
+   ```
+
+2. **Capacitor sync gagal** — `android/` folder corrupt
+   ```bash
+   # Fix: re-sync dari local
+   npx cap sync android
+   # Lalu commit perubahan di android/
+   git add android/ && node yugit.cjs "chore: cap sync"
+   ```
+
+3. **Keystore error** — secrets tidak terset di GitHub
+   - Go to: repo → Settings → Secrets → Actions
+   - Pastikan ada: `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
+   - Encode keystore: `openssl base64 < keystore.jks | tr -d '
+'` (bukan `base64 -w 0`)
+
+4. **Build di-skip** — commit message hanya ubah `.md` files
+   - Normal behavior — push commit kecil lagi yang ubah source file
+
+---
+
+### `git push` rejected
+
+```
+! [rejected] main -> main (non-fast-forward)
+```
+
+```bash
+# Fix standar:
+git pull --rebase
+# Kalau ada conflict:
+git status   # lihat file yang conflict
+# Edit file, resolve conflict, lalu:
+git add .
+git rebase --continue
+# Kemudian:
+node yugit.cjs --push
+```
+
+Kalau pakai `--amend` dan push force gagal:
+```bash
+git push --force-with-lease   # lebih aman dari --force
+```
+
+---
+
+### Test tiba-tiba lambat (>30s)
+
+Cek apakah ada test yang memanggil `tryRepomix()` atau `main()` tanpa inject `spawnSync` mock:
+
+```bash
+# Identifikasi test lambat:
+npx vitest run --reporter=verbose 2>&1 | grep -E "ms|[0-9]+s"
+
+# Fix: pastikan semua main() tests pakai fastSpawn:
+# const fastSpawn = vi.fn(() => ({ error: new Error('offline'), status: null, stderr: '' }));
+# main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn })
+```
+
+---
+
+### `yuyu-apply` rollback terus
+
+Artinya lint atau test gagal setelah apply. Lihat error lebih detail:
+
+```bash
+# Manual apply tanpa rollback untuk debug:
+cd ~/yuyucode
+unzip -o /sdcard/Download/yuyu-overhaul.zip
+npm run lint          # lihat error apa
+npx vitest run        # lihat test yang fail
+
+# Kalau mau kembali bersih:
+git checkout HEAD -- .
+```
+
+---
+
 ## Known limitations
 
 This is a personal tool built by one person, on one phone, in sprint-style sessions. It works well for its creator. Before you adopt it, know what it is:
