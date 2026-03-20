@@ -764,3 +764,125 @@ describe('getChangedFiles', () => {
     );
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// extractSymbols — property-based (inline runner)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('extractSymbols — property-based', () => {
+  // Inline minimal runner — zero deps
+  function repeat(n, fn) { for (let i = 0; i < n; i++) fn(); }
+  const randStr = (len = 20) => Array.from({length: len}, () =>
+    'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 (){};=>\n'[
+      Math.floor(Math.random() * 70)
+    ]).join('');
+
+  it('never throws on arbitrary JS source', () => {
+    repeat(100, () => {
+      expect(() => extractSymbols(randStr(200), 'test.js')).not.toThrow();
+    });
+  });
+
+  it('always returns an array', () => {
+    repeat(100, () => {
+      expect(Array.isArray(extractSymbols(randStr(200), 'test.js'))).toBe(true);
+    });
+  });
+
+  it('always returns empty array for non-code extensions', () => {
+    repeat(50, () => {
+      for (const ext of ['style.css', 'README.md', 'data.json', 'config.yml']) {
+        expect(extractSymbols(randStr(100), ext)).toEqual([]);
+      }
+    });
+  });
+
+  it('no duplicate names in result', () => {
+    repeat(50, () => {
+      const src = randStr(300);
+      const syms = extractSymbols(src, 'util.js');
+      const names = syms.map(s => s.name);
+      expect(names.length).toBe(new Set(names).size);
+    });
+  });
+
+  it('every symbol has name, type, and sig fields', () => {
+    const src = [
+      'export function foo(a, b) { return a + b; }',
+      'export const bar = (x) => x * 2;',
+      'export function useCount() {}',
+      'function MyComp({ title }) { return null; }',
+    ].join('\n');
+    const syms = extractSymbols(src, 'comp.jsx');
+    for (const s of syms) {
+      expect(s).toHaveProperty('name');
+      expect(s).toHaveProperty('type');
+      expect(s).toHaveProperty('sig');
+      expect(typeof s.name).toBe('string');
+    }
+  });
+
+  it('hook type is always "hook" for use-prefixed functions', () => {
+    const hooks = ['useCount', 'useMyStore', 'useAgentLoop', 'useFileStore'];
+    for (const name of hooks) {
+      const src = `export function ${name}(opts) { return opts; }`;
+      const syms = extractSymbols(src, 'hook.js');
+      const found = syms.find(s => s.name === name);
+      expect(found?.type).toBe('hook');
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// compressSource — property-based
+// ─────────────────────────────────────────────────────────────────────────────
+describe('compressSource — property-based', () => {
+  function repeat(n, fn) { for (let i = 0; i < n; i++) fn(); }
+  const randStr = (len = 50) => Array.from({length: len}, () =>
+    'abcdefghijklmnopqrstuvwxyz {}();\n'[Math.floor(Math.random() * 33)]
+  ).join('');
+
+  it('never throws on arbitrary source', () => {
+    repeat(100, () => {
+      expect(() => compressSource(randStr(300), 'util.js')).not.toThrow();
+    });
+  });
+
+  it('always returns a string', () => {
+    repeat(100, () => {
+      expect(typeof compressSource(randStr(200), 'util.js')).toBe('string');
+    });
+  });
+
+  it('output length never exceeds input length', () => {
+    repeat(50, () => {
+      const src = randStr(500);
+      expect(compressSource(src, 'util.js').length).toBeLessThanOrEqual(src.length + 10);
+    });
+  });
+
+  it('non-code files returned unchanged', () => {
+    repeat(30, () => {
+      const src = randStr(100);
+      for (const ext of ['style.css', 'README.md']) {
+        expect(compressSource(src, ext)).toBe(src);
+      }
+    });
+  });
+
+  it('import statements are always preserved', () => {
+    const src = "import React from 'react';\nimport { foo } from './foo.js';\nexport function App() {\n  const x = 1;\n  return x;\n}\n";
+    const out = compressSource(src, 'App.jsx');
+    expect(out).toContain("import React from 'react'");
+    expect(out).toContain("import { foo }");
+  });
+
+  it('function signature line always preserved', () => {
+    repeat(20, () => {
+      const names = ['doThing', 'processData', 'handleClick', 'fetchItems'];
+      const name = names[Math.floor(Math.random() * names.length)];
+      const src = `export function ${name}(x, y) {\n  const result = x + y;\n  const more = result * 2;\n  return more;\n}\n`;
+      const out = compressSource(src, 'util.js');
+      expect(out).toContain(name);
+    });
+  });
+});

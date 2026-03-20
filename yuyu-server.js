@@ -9,6 +9,24 @@ const { execSync, spawn } = require('child_process');
 const VERBOSE    = process.argv.includes('--verbose');
 const START_TIME = Date.now();
 
+// ── Simple in-memory rate limiter ─────────────────────────────────────────────
+// Prevents runaway agent loops from hammering the server.
+// Default: 120 requests/minute per IP (generous for normal use).
+const RATE_LIMIT    = 120;   // max requests per window
+const RATE_WINDOW   = 60_000; // 1 minute
+const _rateCounts   = new Map(); // ip → { count, windowStart }
+
+function checkRateLimit(ip) {
+  const now  = Date.now();
+  const data = _rateCounts.get(ip) || { count: 0, windowStart: now };
+  if (now - data.windowStart > RATE_WINDOW) {
+    data.count = 0; data.windowStart = now;
+  }
+  data.count++;
+  _rateCounts.set(ip, data);
+  return data.count <= RATE_LIMIT;
+}
+
 const HOME    = process.env.HOME;
 const PORT    = 8765;
 const WS_PORT = 8766;
@@ -455,6 +473,17 @@ const server = http.createServer((req, res) => {
 
   if (VERBOSE) {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  }
+
+  // Rate limit — only applies to POST (action requests)
+  if (req.method === 'POST') {
+    const ip = req.socket.remoteAddress || 'unknown';
+    if (!checkRateLimit(ip)) {
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, data: 'Rate limit exceeded. Max ' + RATE_LIMIT + ' req/min.' }));
+      if (VERBOSE) console.log(`  ⚠ Rate limit hit: ${ip}`);
+      return;
+    }
   }
 
   if (req.method === 'GET' && req.url === '/health') {

@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// yuyu-bench.cjs — Benchmark regression detector
-// Usage:
-//   node yuyu-bench.cjs          # run bench + compare to history
-//   node yuyu-bench.cjs --save   # run bench + save as new baseline
+// yuyu-bench.cjs — Benchmark regression detector v2
+//
+// Satu command untuk segalanya:
+//   node yuyu-bench.cjs          # run + auto-save (first time) atau compare (subsequent)
+//   node yuyu-bench.cjs --save   # force update baseline
 //   node yuyu-bench.cjs --reset  # clear history
 //
-// Saves results to .yuyu/bench-history.json
-// Warns when any bench is 2x slower than baseline.
+// Simpan hasil ke .yuyu/bench-history.json
+// Flag 🔴 kalau ada bench 2x lebih lambat dari baseline.
 
 const fs   = require('fs');
 const path = require('path');
@@ -15,137 +16,132 @@ const { spawnSync } = require('child_process');
 const ROOT      = process.cwd();
 const YUYU_DIR  = path.join(ROOT, '.yuyu');
 const HIST_FILE = path.join(YUYU_DIR, 'bench-history.json');
-const THRESHOLD = 2.0; // warn if Nx slower than baseline
+const OUT_FILE  = path.join(YUYU_DIR, 'bench-results.json');
+const THRESHOLD = 2.0;
 
 const SAVE  = process.argv.includes('--save');
 const RESET = process.argv.includes('--reset');
 
 if (RESET) {
-  if (fs.existsSync(HIST_FILE)) {
-    fs.unlinkSync(HIST_FILE);
-    console.log('🗑  bench-history.json cleared.');
-  } else {
-    console.log('ℹ  No history to reset.');
-  }
+  [HIST_FILE, OUT_FILE].forEach(f => { if (fs.existsSync(f)) fs.unlinkSync(f); });
+  console.log('🗑  bench history cleared.');
   process.exit(0);
 }
 
-// ── Run vitest bench with JSON reporter ───────────────────────────────────────
+if (!fs.existsSync(YUYU_DIR)) fs.mkdirSync(YUYU_DIR, { recursive: true });
+
+// ── Run vitest bench → write JSON to file (clean, no stdout parse) ────────────
 console.log('🏃 Running benchmarks...\n');
 
 const result = spawnSync(
-  'npx', ['vitest', 'bench', '--run', '--reporter=json'],
-  { cwd: ROOT, encoding: 'utf8', timeout: 120_000, stdio: 'pipe' }
+  'npx',
+  ['vitest', 'bench', '--run', '--reporter=json', `--outputFile=${OUT_FILE}`],
+  { cwd: ROOT, encoding: 'utf8', timeout: 120_000, stdio: 'inherit' }
 );
 
-if (result.error || result.status !== 0) {
-  console.error('❌ vitest bench failed:\n' + (result.stderr || result.stdout || '').slice(0, 500));
+if (result.error) {
+  console.error('❌ spawn error:', result.error.message);
   process.exit(1);
 }
 
-// ── Parse JSON output ─────────────────────────────────────────────────────────
+if (!fs.existsSync(OUT_FILE)) {
+  console.error('❌ Output file not created. Mungkin tidak ada bench files.');
+  process.exit(1);
+}
+
+// ── Parse output JSON ─────────────────────────────────────────────────────────
 let benchData;
 try {
-  // vitest JSON reporter outputs to stdout — find the JSON blob
-  const stdout = result.stdout || '';
-  const jsonStart = stdout.indexOf('{');
-  const jsonEnd   = stdout.lastIndexOf('}');
-  if (jsonStart === -1 || jsonEnd === -1) throw new Error('No JSON found in output');
-  benchData = JSON.parse(stdout.slice(jsonStart, jsonEnd + 1));
+  benchData = JSON.parse(fs.readFileSync(OUT_FILE, 'utf8'));
 } catch (e) {
-  console.error('❌ Could not parse vitest bench output:', e.message);
-  console.log('Raw stdout (first 300 chars):', (result.stdout || '').slice(0, 300));
+  console.error('❌ Parse bench output gagal:', e.message);
   process.exit(1);
 }
 
-// ── Extract bench results: { name -> hz (ops/sec) } ──────────────────────────
-function extractBenches(data, out = {}) {
-  if (!data) return out;
-  if (Array.isArray(data)) { data.forEach(d => extractBenches(d, out)); return out; }
-  if (data.type === 'bench' && data.name && data.result?.hz) {
-    out[data.name] = { hz: data.result.hz, mean: data.result.mean };
+// ── Extract: { "desc > name" → hz } ──────────────────────────────────────────
+function extract(node, suite = '', out = {}) {
+  if (!node) return out;
+  const nodes = Array.isArray(node) ? node : [node];
+  for (const n of nodes) {
+    const name = suite ? `${suite} > ${n.name}` : (n.name || '');
+    if (n.result?.hz)                   out[name] = { hz: n.result.hz };
+    if (n.tasks)    extract(n.tasks,    name, out);
+    if (n.children) extract(n.children, name, out);
+    if (n.testResults) extract(n.testResults, suite, out);
   }
-  if (data.tasks)    extractBenches(data.tasks, out);
-  if (data.children) extractBenches(data.children, out);
   return out;
 }
 
-const current = extractBenches(benchData);
+const current = extract(benchData?.testResults || benchData);
 const names   = Object.keys(current);
 
 if (names.length === 0) {
-  console.log('⚠  No bench results found. Run: npx vitest bench --run');
+  // Fallback: try flat structure
+  console.log('⚠  No benchmark results parsed. Check editor.bench.js exists.');
   process.exit(0);
 }
 
-console.log(`📊 ${names.length} benchmarks found.\n`);
+console.log(`\n📊 ${names.length} benchmarks\n`);
 
-// ── Load or create history ────────────────────────────────────────────────────
-if (!fs.existsSync(YUYU_DIR)) fs.mkdirSync(YUYU_DIR, { recursive: true });
-
-const history = fs.existsSync(HIST_FILE)
-  ? JSON.parse(fs.readFileSync(HIST_FILE, 'utf8'))
-  : {};
-
-// ── Compare ───────────────────────────────────────────────────────────────────
+// ── Load history ──────────────────────────────────────────────────────────────
+const history  = fs.existsSync(HIST_FILE) ? JSON.parse(fs.readFileSync(HIST_FILE, 'utf8')) : {};
+const isFirst  = Object.keys(history).length === 0;
 const timestamp = new Date().toISOString();
-let regressions = 0;
-let improvements = 0;
 
-console.log('═'.repeat(60));
+// ── Compare & print ───────────────────────────────────────────────────────────
+let regressions = 0, improvements = 0;
+const W = 50;
+
+console.log('─'.repeat(W + 25));
 for (const name of names) {
-  const cur = current[name];
+  const cur  = current[name];
   const prev = history[name];
-  const hzStr = cur.hz >= 1e6
-    ? (cur.hz / 1e6).toFixed(2) + 'M ops/s'
-    : cur.hz >= 1e3
-    ? (cur.hz / 1e3).toFixed(1) + 'K ops/s'
-    : cur.hz.toFixed(0) + ' ops/s';
+  const fmt  = hz => hz >= 1e6 ? (hz/1e6).toFixed(2)+'M/s'
+                    : hz >= 1e3 ? (hz/1e3).toFixed(1)+'K/s'
+                    : hz.toFixed(0)+'/s';
 
-  if (!prev) {
-    console.log(`  ✨ NEW   ${name.padEnd(45)} ${hzStr}`);
+  if (!prev || isFirst) {
+    console.log(`  ✨ NEW   ${name.slice(0,W).padEnd(W)} ${fmt(cur.hz)}`);
     continue;
   }
 
   const ratio = cur.hz / prev.hz;
   if (ratio < 1 / THRESHOLD) {
-    console.log(`  🔴 SLOW  ${name.padEnd(45)} ${hzStr}  (${ratio.toFixed(2)}x — was ${(prev.hz/1e3).toFixed(1)}K)`);
+    console.log(`  🔴 SLOW  ${name.slice(0,W).padEnd(W)} ${fmt(cur.hz)}  (${ratio.toFixed(2)}x vs ${fmt(prev.hz)})`);
     regressions++;
   } else if (ratio > THRESHOLD) {
-    console.log(`  🟢 FAST  ${name.padEnd(45)} ${hzStr}  (${ratio.toFixed(1)}x faster)`);
+    console.log(`  🟢 FAST  ${name.slice(0,W).padEnd(W)} ${fmt(cur.hz)}  (${ratio.toFixed(1)}x)`);
     improvements++;
   } else {
-    console.log(`  ✅ OK    ${name.padEnd(45)} ${hzStr}  (${ratio.toFixed(2)}x)`);
+    console.log(`  ✅ OK    ${name.slice(0,W).padEnd(W)} ${fmt(cur.hz)}  (${ratio.toFixed(2)}x)`);
   }
 }
-console.log('═'.repeat(60));
+console.log('─'.repeat(W + 25));
 
-// ── Save / update history ─────────────────────────────────────────────────────
-if (SAVE || Object.keys(history).length === 0) {
-  const newHistory = {};
-  for (const name of names) {
+// ── Save history ──────────────────────────────────────────────────────────────
+const newHistory = { ...history };
+for (const name of names) {
+  if (SAVE || isFirst || !newHistory[name]) {
     newHistory[name] = { hz: current[name].hz, savedAt: timestamp };
   }
-  fs.writeFileSync(HIST_FILE, JSON.stringify(newHistory, null, 2));
-  console.log(`\n💾 Saved ${names.length} baselines → .yuyu/bench-history.json`);
+}
+fs.writeFileSync(HIST_FILE, JSON.stringify(newHistory, null, 2));
+
+if (SAVE || isFirst) {
+  console.log(`\n💾 ${names.length} baselines saved → .yuyu/bench-history.json`);
 } else {
-  // Update history with new results (rolling — keep existing baselines)
-  for (const name of names) {
-    if (!history[name]) {
-      history[name] = { hz: current[name].hz, savedAt: timestamp };
-    }
-  }
-  fs.writeFileSync(HIST_FILE, JSON.stringify(history, null, 2));
+  const newOnes = names.filter(n => !history[n]).length;
+  if (newOnes > 0) console.log(`\n💾 ${newOnes} new bench(es) added to history`);
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log('');
 if (regressions > 0) {
-  console.log(`⚠️  ${regressions} regression(s) detected! Check 🔴 entries above.`);
-  console.log('   Kalau disengaja (refactor): node yuyu-bench.cjs --save');
+  console.log(`⚠️  ${regressions} regression(s)! See 🔴 above.`);
+  console.log('   Disengaja? Update baseline: node yuyu-bench.cjs --save');
   process.exitCode = 1;
-} else {
-  console.log(`✅ No regressions. ${improvements > 0 ? improvements + ' improvement(s)!' : 'All stable.'}`);
+} else if (!isFirst) {
+  console.log(`✅ No regressions.${improvements ? ` ${improvements} improvement(s) 🎉` : ' All stable.'}`);
 }
-console.log(`\n💡 Tip: node yuyu-bench.cjs --save   # update baseline`);
-console.log(`        node yuyu-bench.cjs --reset  # clear history`);
+console.log('\n💡 node yuyu-bench.cjs --save    # update baseline after intentional change');
+console.log('   node yuyu-bench.cjs --reset   # clear all history');

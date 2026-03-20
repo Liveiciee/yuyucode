@@ -1,17 +1,17 @@
 {
   "name": "yuyucode",
   "private": true,
-  "version": "2.8.0",
+  "version": "2.9.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "echo '\ud83d\udd0d Scouring the codebase...' && eslint . && echo '\u2728 0 problems found! Code is pure.'",
+    "lint": "echo '🔍 Scouring the codebase...' && eslint . && echo '✨ 0 problems found! Code is pure.'",
     "preview": "vite preview",
     "test": "vitest",
     "bench": "node yuyu-bench.cjs",
     "bench:save": "node yuyu-bench.cjs --save",
-    "bench:run": "vitest bench --run"
+    "bench:reset": "node yuyu-bench.cjs --reset"
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",

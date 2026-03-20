@@ -64,7 +64,7 @@ A custom Capacitor Java plugin registers a `ContentObserver` on `Settings.System
 Capture a photo of a whiteboard, a printed error, a diagram — directly from the native Android camera. Routes automatically to a vision-capable model. Zero friction, zero file management.
 
 ### 🤖 Background Agents with Git Worktree Isolation
-`/bg <task>` spins up an agent in a separate git worktree. Your main branch stays clean while the agent works. Iterations scale with effort: 3 (low), 10 (medium), 20 (high). Live progress tracking, abort anytime, merge when ready.
+`/bg <task>` spins up an agent in a separate git worktree. Your main branch stays clean while the agent works up to 8 agentic iterations. Live progress tracking, abort anytime, merge when ready.
 
 ### 🐝 Agent Swarm Pipeline
 `/swarm <task>` runs: **Architect** → **FE Agent + BE Agent** (parallel) → **QA Engineer** → **auto-fix pass**. Multi-agent coordination, single command.
@@ -449,6 +449,26 @@ This project stands on the shoulders of some exceptional open source work:
 - Jangan override `global.TextDecoder` di test files — infinite recursion di Node 24.
 - Keystore encoding: `openssl base64` + `tr -d '\n'`, bukan `base64 -w 0`.
 
+## Snapshot Update Workflow
+
+Snapshot tests di `utils.snapshot.test.js` perlu di-update kalau output fungsi berubah secara intentional:
+
+```bash
+# Update semua snapshots:
+npx vitest run --update-snapshots
+
+# Update satu file saja:
+npx vitest run src/utils.snapshot.test.js --update-snapshots
+
+# Commit hasilnya:
+git add src/__snapshots__/
+node yugit.cjs "test: update snapshots after intentional output change"
+```
+
+⚠️ Jangan update snapshots kalau tidak yakin perubahan output disengaja — snapshot yang salah menyembunyikan bug.
+
+---
+
 ## Workflow Harian
 
 ```bash
@@ -480,9 +500,8 @@ node yugit.cjs --status                           # lihat branch + dirty + recen
 # Release — auto set version + trigger CI APK build
 node yugit.cjs "release: v2.x — deskripsi"
 
-npx vitest bench --run  # benchmark hot paths (opsional)
-npm run bench           # benchmark + compare ke history (regresi detection)
-npm run bench:save      # set/update baseline
+npm run bench           # run bench + auto-save (first time) atau compare (subsequent)
+npm run bench:save      # force update baseline setelah intentional refactor
 ```
 
 ### yuyu-apply — smart zip applier
@@ -536,7 +555,7 @@ src/
 │   ├── useMediaHandlers.js # Camera, image attach, drag & drop
 │   ├── useNotifications.js # Push notification, haptic, TTS
 │   ├── useProjectStore.js  # Folder, model, effort, permissions, hooks, plugins
-│   ├── useSlashCommands.js # /command handler (~58 commands)
+│   ├── useSlashCommands.js # /command handler (~60 commands)
 │   └── useUIStore.js       # All UI state + Fase 1/2/3 editor toggles
 ├── themes/
 │   ├── index.js        # Theme registry
@@ -592,8 +611,6 @@ Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 | Llama 4 Scout | `meta-llama/llama-4-scout-17b-16e-instruct` | Vision — auto-route kalau ada gambar |
 | Qwen 3 32B | `qwen/qwen3-32b` | Coding |
 | Llama 8B Fast | `llama-3.1-8b-instant` | Hemat rate limit |
-| Qwen 3 32B | `qwen/qwen3-32b` | Coding |
-| Llama 8B Fast | `llama-3.1-8b-instant` | Hemat rate limit |
 
 **Auto-fallback:** Cerebras rate limit (429) → otomatis switch ke Kimi K2.
 **Vision:** Cerebras tidak support image → auto-route ke Llama 4 Scout.
@@ -608,6 +625,8 @@ node ~/yuyu-server.js &  # jalankan dari ~, bukan dari project folder
 **HTTP :8765** — `ping`, `read`, `read_many`, `write`, `append`, `patch`, `delete`, `move`, `mkdir`, `list`, `tree`, `info`, `search`, `web_search`, `exec`, `browse`, `fetch_json`, `sqlite`, `mcp`, `mcp_list`, `batch`
 
 **REST** — `GET /health` → `{status, uptime, version}` | `GET /status` → `{status, uptime, memory_mb, tools}`
+
+**Rate limiting** — 120 POST req/min per IP (in-memory). Returns HTTP 429 kalau exceeded.
 
 **WebSocket :8766** — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`, `collab_updates`
 
