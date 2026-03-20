@@ -306,7 +306,7 @@ export default function App() {
   return (
     <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:ui.fontSize+'px',filter:brightnessFilter,transition:'filter .35s ease'}}
       onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}>
-      {ui.dragOver&&<div style={{position:'absolute',inset:0,background:'rgba(124,58,237,.15)',border:'2px dashed rgba(124,58,237,.5)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:'#a78bfa'}}>Drop file di sini~</span></div>}
+      {ui.dragOver&&<div style={{position:'absolute',inset:0,background:T.accentBg,border:'2px dashed '+T.accentBorder,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:T.accent}}>Drop file di sini~</span></div>}
       <ThemeEffects T={T}/>
       {/* Badge toast */}
       {growth.newBadge&&(
@@ -388,7 +388,7 @@ export default function App() {
         <div style={{padding:'8px 12px',borderBottom:'1px solid '+T.border,display:'flex',gap:'6px',background:T.bg2,flexShrink:0}}>
           <input value={project.folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="nama folder" onKeyDown={e=>e.key==='Enter'&&saveFolder(project.folderInput)}
             style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'6px 10px',color:T.text,fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
-          <button onClick={()=>saveFolder(project.folderInput)} style={{background:'rgba(255,255,255,.08)',border:'none',borderRadius:'6px',padding:'6px 12px',color:'rgba(255,255,255,.7)',fontSize:'12px',cursor:'pointer'}}><Check size={14}/></button>
+          <button onClick={()=>saveFolder(project.folderInput)} style={{background:T.bg3,border:'none',borderRadius:'6px',padding:'6px 12px',color:T.textSec,fontSize:'12px',cursor:'pointer'}}><Check size={14}/></button>
         </div>
       )}
 
@@ -410,16 +410,16 @@ export default function App() {
         {ui.showSidebar&&(
           <>
             <div onClick={()=>ui.setShowSidebar(false)}
-              style={{position:'absolute',inset:0,zIndex:19,background:'rgba(0,0,0,.4)',backdropFilter:'blur(2px)'}}/>
+              style={{position:'absolute',inset:0,zIndex:19,background:T.bg+'aa',backdropFilter:'blur(2px)'}}/>
             <div style={{position:'absolute',top:0,left:0,bottom:0,width:ui.sidebarWidth+'px',borderRight:'1px solid '+T.border,display:'flex',flexDirection:'column',background:T.bg2,zIndex:20}}>
-              <div style={{padding:'5px 8px',borderBottom:'1px solid rgba(255,255,255,.05)',display:'flex',gap:'4px',alignItems:'center'}}>
-                <span style={{fontSize:'10px',color:'rgba(255,255,255,.25)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{project.folder}</span>
+              <div style={{padding:'5px 8px',borderBottom:'1px solid '+T.border,display:'flex',gap:'4px',alignItems:'center'}}>
+                <span style={{fontSize:'10px',color:T.textMute,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{project.folder}</span>
               </div>
               {file.recentFiles.length>0&&(
-                <div style={{padding:'4px 8px',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
-                  <div style={{fontSize:'9px',color:'rgba(255,255,255,.2)',marginBottom:'3px',letterSpacing:'.05em'}}>RECENT</div>
+                <div style={{padding:'4px 8px',borderBottom:'1px solid '+T.border}}>
+                  <div style={{fontSize:'9px',color:T.textMute,marginBottom:'3px',letterSpacing:'.05em'}}>RECENT</div>
                   {file.recentFiles.slice(0,4).map(f=>(
-                    <div key={f} onClick={()=>{file.openFile(f);ui.setShowSidebar(false);}} style={{fontSize:'11px',color:'rgba(255,255,255,.4)',padding:'2px 4px',cursor:'pointer',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',borderRadius:'3px'}}
+                    <div key={f} onClick={()=>{file.openFile(f);ui.setShowSidebar(false);}} style={{fontSize:'11px',color:T.textMute,padding:'2px 4px',cursor:'pointer',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',borderRadius:'3px'}}
                       onMouseEnter={e=>e.currentTarget.style.color=T.text} onMouseLeave={e=>e.currentTarget.style.color=T.textMute}>
                       {f.split('/').pop()}
                     </div>
@@ -485,7 +485,7 @@ export default function App() {
                   </div>
                 </div>
               )}
-              {chat.loading&&!chat.streaming&&<div style={{padding:'2px 16px'}}><div style={{color:'rgba(255,255,255,.3)',fontSize:'13px'}}>Yuyu lagi mikir···</div></div>}
+              {chat.loading&&!chat.streaming&&<div style={{padding:'2px 16px'}}><div style={{color:T.textMute,fontSize:'13px'}}>Yuyu lagi mikir···</div></div>}
               <div ref={bottomRef}/>
               </div>
             </div>
@@ -516,10 +516,10 @@ export default function App() {
                   onMouseLeave={e=>e.currentTarget.style.color=T.textMute}>×</button>
               </div>
               <div style={{display:'flex',fontFamily:'monospace',fontSize:'11px',lineHeight:'1.6'}}>
-                <div style={{padding:'8px 6px',color:'rgba(255,255,255,.2)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'36px',flexShrink:0,background:'rgba(255,255,255,.01)'}}>
+                <div style={{padding:'8px 6px',color:T.textMute,textAlign:'right',userSelect:'none',borderRight:'1px solid '+T.border,minWidth:'36px',flexShrink:0,background:T.bg3}}>
                   {(file.fileContent||'').split('\n').map((_,i)=><div key={i}>{i+1}</div>)}
                 </div>
-                <pre style={{margin:0,padding:'8px 12px',whiteSpace:'pre-wrap',wordBreak:'break-word',color:'rgba(255,255,255,.7)',flex:1}} dangerouslySetInnerHTML={{__html:hl(file.fileContent||'',file.selectedFile?.split('.').pop()||'')}}/>
+                <pre style={{margin:0,padding:'8px 12px',whiteSpace:'pre-wrap',wordBreak:'break-word',color:T.textSec,flex:1}} dangerouslySetInnerHTML={{__html:hl(file.fileContent||'',file.selectedFile?.split('.').pop()||'')}}/>
               </div>
             </div>
           )}
@@ -529,14 +529,14 @@ export default function App() {
             <div style={{flex:1,overflow:'hidden',display:'flex'}}>
               {file.splitView?(
                 <>
-                  <div style={{flex:1,overflow:'hidden',borderRight:'1px solid rgba(255,255,255,.07)'}}>
+                  <div style={{flex:1,overflow:'hidden',borderRight:'1px solid '+T.border}}>
                     <FileEditor T={T} path={file.selectedFile} content={file.fileContent||''} onSave={c=>file.saveFile(c,msg=>chat.setMessages(m=>[...m,{role:'assistant',content:msg,actions:[]}]))} onClose={()=>file.setEditMode(false)}/>
                   </div>
                   <div style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
                     {chat.messages.slice(-10).map((m,i)=>(
                       <div key={i} style={{padding:'4px 12px'}}>
-                        <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)',marginBottom:'2px'}}>{m.role==='user'?'Papa':'Yuyu'}</div>
-                        <div style={{fontSize:'12px',color:'rgba(255,255,255,.7)',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>{m.content.replace(/```action[\s\S]*?```/g,'').slice(0,300)}</div>
+                        <div style={{fontSize:'10px',color:T.textMute,marginBottom:'2px'}}>{m.role==='user'?'Papa':'Yuyu'}</div>
+                        <div style={{fontSize:'12px',color:T.textSec,whiteSpace:'pre-wrap',wordBreak:'break-word'}}>{m.content.replace(/```action[\s\S]*?```/g,'').slice(0,300)}</div>
                       </div>
                     ))}
                   </div>
@@ -736,14 +736,14 @@ export default function App() {
               <button onClick={()=>ui.setShowCheckpoints(false)} style={{background:'none',border:'none',color:T.textMute,fontSize:'18px',cursor:'pointer',lineHeight:1}}>×</button>
             </div>
             <div style={{flex:1,overflowY:'auto'}}>
-              {chat.checkpoints.length===0&&<div style={{color:'rgba(255,255,255,.3)',fontSize:'12px'}}>Belum ada checkpoint~</div>}
+              {chat.checkpoints.length===0&&<div style={{color:T.textMute,fontSize:'12px'}}>Belum ada checkpoint~</div>}
               {chat.checkpoints.map(cp=>(
                 <div key={cp.id} style={{display:'flex',gap:'8px',alignItems:'center',padding:'10px 12px',marginBottom:'6px',background:T.bg3,border:'1px solid '+T.border,borderRadius:'10px'}}>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:'12px',color:'rgba(255,255,255,.75)'}}>{cp.label}</div>
-                    <div style={{fontSize:'10px',color:'rgba(255,255,255,.3)'}}>{cp.folder} · {cp.messages.length} pesan</div>
+                    <div style={{fontSize:'12px',color:T.text}}>{cp.label}</div>
+                    <div style={{fontSize:'10px',color:T.textMute}}>{cp.folder} · {cp.messages.length} pesan</div>
                   </div>
-                  <button onClick={()=>restoreCheckpoint(cp)} style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.2)',borderRadius:'5px',padding:'2px 8px',color:'#a78bfa',fontSize:'10px',cursor:'pointer'}}>restore</button>
+                  <button onClick={()=>restoreCheckpoint(cp)} style={{background:T.accentBg,border:'1px solid '+T.accentBorder,borderRadius:'5px',padding:'2px 8px',color:T.accent,fontSize:'10px',cursor:'pointer'}}>restore</button>
                   <button onClick={()=>{const next=chat.checkpoints.filter(x=>x.id!==cp.id);chat.setCheckpoints(next);}} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer'}}>×</button>
                 </div>
               ))}
@@ -960,7 +960,7 @@ export default function App() {
 
       {/* COMMIT MESSAGE MODAL */}
       {ui.commitModal&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}}>
+        <div style={{position:'fixed',inset:0,background:T.bg+'bf',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}}>
           <div style={{background:T.bg2,border:'1px solid '+T.border,borderRadius:'14px',padding:'20px',width:'100%',maxWidth:'380px',boxShadow:'0 20px 60px rgba(0,0,0,.7)'}}>
             <div style={{fontSize:'14px',fontWeight:'600',color:T.text,marginBottom:'4px'}}>↑ Push ke Remote</div>
             <div style={{fontSize:'11px',color:T.textMute,marginBottom:'14px'}}>node yugit.cjs "..."</div>

@@ -37,7 +37,7 @@ export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=fals
         {/* drag handle zone */}
         <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
           style={{padding:'10px 0 4px',display:'flex',justifyContent:'center',flexShrink:0,touchAction:'none',cursor:'grab'}}>
-          <div style={{width:'40px',height:'4px',borderRadius:'2px',background:'rgba(255,255,255,.18)'}} />
+          <div style={{width:'40px',height:'4px',borderRadius:'2px',background:(T?.border||'rgba(255,255,255,.18)')}} />
         </div>
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',paddingBottom:'env(safe-area-inset-bottom,8px)'}}>
           {children}
@@ -55,7 +55,10 @@ export function GitComparePanel({ folder, onClose, T }) {
   const text       = T?.text       || '#f0f0f0';
   const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
   const accent     = T?.accent     || '#a78bfa';
+  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
   const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
+  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
+  const borderMed  = T?.borderMed  || 'rgba(255,255,255,.1)';
   const [diff, setDiff]       = useState('');
   const [loading, setLoading] = useState(true);
   const [staged, setStaged]   = useState(false);
@@ -85,7 +88,7 @@ export function GitComparePanel({ folder, onClose, T }) {
     if (line.startsWith('+++') || line.startsWith('---')) return { color:'rgba(255,255,255,.3)', bg:'transparent', bold:false };
     if (line.startsWith('+'))            return { color:'#4ade80', bg:'rgba(74,222,128,.07)',   bold:false };
     if (line.startsWith('-'))            return { color:'#f87171', bg:'rgba(248,113,113,.07)',  bold:false };
-    return { color:'rgba(255,255,255,.55)', bg:'transparent', bold:false };
+    return { color:textSec, bg:'transparent', bold:false };
   }
 
   function renderUnified() {
@@ -129,7 +132,7 @@ export function GitComparePanel({ folder, onClose, T }) {
 
     return hunks.map((hunk, hi) => (
       <div key={hi} style={{marginBottom:'12px'}}>
-        <div style={{padding:'4px 10px',background:accentBg,color:accent,fontSize:'10px',fontFamily:'monospace',borderBottom:'1px solid rgba(124,58,237,.15)'}}>
+        <div style={{padding:'4px 10px',background:accentBg,color:accent,fontSize:'10px',fontFamily:'monospace',borderBottom:'1px solid '+accentBorder}}>
           {hunk.file} {hunk.header}
         </div>
         <div style={{display:'flex'}}>
@@ -155,7 +158,7 @@ export function GitComparePanel({ folder, onClose, T }) {
   }
 
   const tabBtn = (label, active, onClick) => (
-    <button onClick={onClick} style={{background:active?'rgba(255,255,255,.1)':'none',border:'1px solid '+(active?'rgba(255,255,255,.15)':'rgba(255,255,255,.07)'),borderRadius:'5px',padding:'3px 9px',color:active?'#f0f0f0':'rgba(255,255,255,.4)',fontSize:'11px',cursor:'pointer'}}>{label}</button>
+    <button onClick={onClick} style={{background:active?'rgba(255,255,255,.1)':'none',border:'1px solid '+(active?borderMed:border),borderRadius:'5px',padding:'3px 9px',color:active?text:textMute,fontSize:'11px',cursor:'pointer'}}>{label}</button>
   );
 
   return (
@@ -172,7 +175,7 @@ export function GitComparePanel({ folder, onClose, T }) {
         <div style={{flex:1}}/>
         {tabBtn('unstaged', !staged, ()=>{setStaged(false);load(false);})}
         {tabBtn('staged',    staged, ()=>{setStaged(true);load(true);})}
-        <div style={{width:'1px',height:'16px',background:'rgba(255,255,255,.1)'}}/>
+        <div style={{width:'1px',height:'16px',background:borderMed}}/>
         {tabBtn('unified', view==='unified', ()=>setView('unified'))}
         {tabBtn('split',   view==='split',   ()=>setView('split'))}
         <button onClick={onClose} style={{background:'none',border:'none',color:textMute,fontSize:'16px',cursor:'pointer',marginLeft:'2px'}}><X size={16}/></button>
@@ -322,11 +325,11 @@ export function CustomActionsPanel({ folder:_folder, onRun, onClose, T }) {
         </div>
       )}
       <div style={{flex:1,overflowY:'auto'}}>
-        {actions.length===0&&<div style={{color:'rgba(255,255,255,.2)',fontSize:'12px'}}>Belum ada custom action. Tambah shortcut command favoritmu~</div>}
+        {actions.length===0&&<div style={{color:textMute,fontSize:'12px'}}>Belum ada custom action. Tambah shortcut command favoritmu~</div>}
         {actions.map(a=>(
           <div key={a.id} style={{display:'flex',alignItems:'center',gap:'8px',padding:'8px 10px',marginBottom:'4px',background:bg3,border:'1px solid '+border,borderRadius:'7px'}}>
             <div style={{flex:1}}>
-              <div style={{fontSize:'12px',color:'rgba(255,255,255,.8)',fontWeight:'500'}}>{a.label}</div>
+              <div style={{fontSize:'12px',color:text,fontWeight:'500'}}>{a.label}</div>
               <div style={{fontSize:'10px',color:textMute,fontFamily:'monospace'}}>{a.cmd}</div>
             </div>
             <button onClick={()=>{onRun(a.cmd);onClose();}} style={{background:accentBg,border:'1px solid '+accentBorder,borderRadius:'5px',padding:'2px 8px',color:accent,fontSize:'10px',cursor:'pointer'}}>▶ Run</button>
@@ -342,6 +345,7 @@ export function CustomActionsPanel({ folder:_folder, onRun, onClose, T }) {
 // ─── SHORTCUTS PANEL ──────────────────────────────────────────────────────────
 export function ShortcutsPanel({ onClose, T }) {
 
+  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
   const border     = T?.border     || 'rgba(255,255,255,.06)';
   const text       = T?.text       || '#f0f0f0';
   const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
@@ -368,7 +372,7 @@ export function ShortcutsPanel({ onClose, T }) {
       </div>
       {shortcuts.map(([key,desc],i)=>(
         <div key={i} style={{display:'flex',alignItems:'center',gap:'12px',padding:'6px 0',borderBottom:'1px solid '+border}}>
-          <code style={{background:'rgba(255,255,255,.08)',padding:'2px 8px',borderRadius:'4px',fontSize:'12px',color:accent,fontFamily:'monospace',flexShrink:0,minWidth:'120px'}}>{key}</code>
+          <code style={{background:bg3,padding:'2px 8px',borderRadius:'4px',fontSize:'12px',color:accent,fontFamily:'monospace',flexShrink:0,minWidth:'120px'}}>{key}</code>
           <span style={{fontSize:'12px',color:textSec}}>{desc}</span>
         </div>
       ))}
@@ -434,6 +438,7 @@ export function SnippetLibrary({ onInsert, onClose, T }) {
   const accent     = T?.accent     || '#a78bfa';
   const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
   const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
+  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
   const [snippets, setSnippets] = useState([]);
   const [newTitle, setNewTitle] = useState('');
   const [newCode, setNewCode] = useState('');
@@ -473,11 +478,11 @@ export function SnippetLibrary({ onInsert, onClose, T }) {
         </div>
       )}
       <div style={{flex:1,overflowY:'auto',padding:'8px'}}>
-        {snippets.length===0 && <div style={{color:'rgba(255,255,255,.2)',fontSize:'12px',padding:'8px'}}>Belum ada snippet~</div>}
+        {snippets.length===0 && <div style={{color:textMute,fontSize:'12px',padding:'8px'}}>Belum ada snippet~</div>}
         {snippets.map(s => (
           <div key={s.id} style={{background:bg3,border:'1px solid '+border,borderRadius:'8px',padding:'8px 10px',marginBottom:'6px'}}>
             <div style={{display:'flex',alignItems:'center',marginBottom:'4px'}}>
-              <span style={{fontSize:'12px',color:'rgba(255,255,255,.7)',fontWeight:'500',flex:1}}>{s.title}</span>
+              <span style={{fontSize:'12px',color:textSec,fontWeight:'500',flex:1}}>{s.title}</span>
               <button onClick={()=>onInsert(s.code)} style={{background:accentBg,border:'1px solid '+accentBorder,borderRadius:'4px',padding:'1px 7px',color:accent,fontSize:'10px',cursor:'pointer',marginRight:'4px'}}>insert</button>
               <button onClick={()=>save(snippets.filter(x=>x.id!==s.id))} style={{background:'none',border:'none',color:'rgba(248,113,113,.5)',fontSize:'12px',cursor:'pointer'}}><X size={16}/></button>
             </div>
@@ -513,7 +518,7 @@ export function ThemeBuilder({ onClose, themeKey, themesMap, themeKeys, onTheme,
               <button key={key} onClick={()=>{ onTheme(key); onClose(); }} style={{
                 display:'flex', alignItems:'center', gap:'14px',
                 padding:'12px 14px', borderRadius:'12px', cursor:'pointer', textAlign:'left',
-                background: active ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.03)',
+                background: active ? bg3 : 'rgba(255,255,255,.02)',
                 border: active ? '1px solid '+borderMed : '1px solid '+border,
                 transition:'all .15s',
               }}>
@@ -524,8 +529,8 @@ export function ThemeBuilder({ onClose, themeKey, themesMap, themeKeys, onTheme,
                   boxShadow: active ? '0 0 12px '+th.accent+'66' : 'none',
                 }}/>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:'13px',fontWeight:active?'700':'500',color:active?'#f0ede8':'#706860'}}>{th.name||key}</div>
-                  <div style={{fontSize:'10px',color:'#3a3530',marginTop:'2px',fontFamily:'monospace'}}>{th.accent}</div>
+                  <div style={{fontSize:'13px',fontWeight:active?'700':'500',color:active?text:textMute}}>{th.name||key}</div>
+                  <div style={{fontSize:'10px',color:textMute,marginTop:'2px',fontFamily:'monospace'}}>{th.accent}</div>
                 </div>
                 {active && <span style={{fontSize:'11px',color:th.accent||'#888'}}><Check size={11}/> aktif</span>}
               </button>
@@ -533,7 +538,7 @@ export function ThemeBuilder({ onClose, themeKey, themesMap, themeKeys, onTheme,
           })}
         </div>
         <div style={{marginTop:'14px',padding:'10px 12px',borderRadius:'8px',background:bg3,border:'1px solid '+border}}>
-          <div style={{fontSize:'10px',color:'rgba(255,255,255,.25)',lineHeight:'1.5'}}>
+          <div style={{fontSize:'10px',color:textMute,lineHeight:'1.5'}}>
             Tambah theme: buat file <span style={{fontFamily:'monospace',color:textMute}}>src/themes/nama.js</span> lalu tambah import di <span style={{fontFamily:'monospace',color:textMute}}>src/themes/index.js</span>
           </div>
         </div>
@@ -551,6 +556,7 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
   onShowSkills,
   runTests, generateCommitMsg, exportChat, compactContext }) {
 
+  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
   const border     = T?.border     || 'rgba(255,255,255,.06)';
   const text       = T?.text       || '#f0f0f0';
   const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
@@ -620,11 +626,11 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
         <div style={{maxHeight:'60vh',overflowY:'auto',padding:'6px'}}>
           {display.map(section=>(
             <div key={section.label}>
-              {!q && <div style={{padding:'6px 10px 3px',fontSize:'9px',letterSpacing:'.08em',color:'rgba(255,255,255,.25)',textTransform:'uppercase',fontWeight:'600'}}>{section.label}</div>}
+              {!q && <div style={{padding:'6px 10px 3px',fontSize:'9px',letterSpacing:'.08em',color:textMute,textTransform:'uppercase',fontWeight:'600'}}>{section.label}</div>}
               {section.items.map((item,i)=>(
                 <div key={i} onClick={item.action}
                   style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px 10px',borderRadius:'7px',cursor:'pointer'}}
-                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'}
+                  onMouseEnter={e=>e.currentTarget.style.background=bg3}
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                   <span style={{fontSize:'14px',width:'20px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{(()=>{
                     const iconMap = {
@@ -640,7 +646,7 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
                   })()}</span>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:'12px',color:text,fontWeight:'500'}}>{item.label}</div>
-                    <div style={{fontSize:'10px',color:'rgba(255,255,255,.35)',marginTop:'1px'}}>{item.sub}</div>
+                    <div style={{fontSize:'10px',color:textMute,marginTop:'1px'}}>{item.sub}</div>
                   </div>
                   {item._section&&q&&<span style={{fontSize:'9px',color:textMute,flexShrink:0}}>{item._section}</span>}
                 </div>
@@ -668,6 +674,7 @@ export function DepGraphPanel({ depGraph, onClose, T }) {
   const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
   const accent     = T?.accent     || '#a78bfa';
   const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
+  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
   const containerRef = useRef(null);
   const [hovered, setHovered] = useState(null);
 
@@ -733,13 +740,13 @@ export function DepGraphPanel({ depGraph, onClose, T }) {
       .attr('r', d => RADIUS[d.type] || 10)
       .attr('fill', d => COLOR[d.type])
       .attr('fill-opacity', 0.85)
-      .attr('stroke', 'rgba(255,255,255,.2)').attr('stroke-width', 1.5);
+      .attr('stroke', T?.border||'rgba(255,255,255,.2)').attr('stroke-width', 1.5);
 
     node.append('text')
       .text(d => d.label.length > 14 ? d.label.slice(0, 12) + '…' : d.label)
       .attr('text-anchor', 'middle')
       .attr('dy', d => (RADIUS[d.type] || 10) + 13)
-      .attr('fill', 'rgba(255,255,255,.65)')
+      .attr('fill', T?.textSec||'rgba(255,255,255,.65)')
       .attr('font-size', '9px').attr('font-family', 'monospace')
       .style('pointer-events', 'none');
 
@@ -755,7 +762,7 @@ export function DepGraphPanel({ depGraph, onClose, T }) {
     });
 
     return () => { sim.stop(); d3.select(el).selectAll('*').remove(); };
-  }, [depGraph]);
+  }, [depGraph]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const localCount = depGraph?.nodes
     ? depGraph.nodes.filter(n => n.type === 'local').length
@@ -775,7 +782,7 @@ export function DepGraphPanel({ depGraph, onClose, T }) {
         <button onClick={onClose} style={{background:'none',border:'none',color:textMute,fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
       </div>
       {hovered && (
-        <div style={{padding:'4px 12px',background:accentBg,borderBottom:'1px solid rgba(124,58,237,.15)',fontSize:'10px',color:accent,fontFamily:'monospace',flexShrink:0}}>
+        <div style={{padding:'4px 12px',background:accentBg,borderBottom:'1px solid '+accentBorder,fontSize:'10px',color:accent,fontFamily:'monospace',flexShrink:0}}>
           {hovered}
         </div>
       )}
@@ -793,7 +800,7 @@ export function DepGraphPanel({ depGraph, onClose, T }) {
 // ─── ELICITATION PANEL (AI-requested dynamic form) ───────────────────────────
 export function ElicitationPanel({ data, onSubmit, onDismiss, T }) {
 
-  const bg2        = T?.bg2        || '#111113';
+  const bg2        = T?.bg2        || '#131108';
   const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
   const border     = T?.border     || 'rgba(255,255,255,.06)';
   const borderMed  = T?.borderMed  || 'rgba(255,255,255,.1)';
@@ -885,6 +892,9 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
   const accent     = T?.accent     || '#a78bfa';
   const error      = T?.error      || '#f87171';
   const errorBg    = T?.errorBg    || 'rgba(248,113,113,.1)';
+  const bg2        = T?.bg2        || '#131108';
+  const text       = T?.text       || '#f0f0f0';
+  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
   const [resolving, setResolving] = useState(false);
   const [previews, setPreviews]   = useState({});
   const [status, setStatus]       = useState('');
@@ -944,14 +954,14 @@ export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClos
             <div key={cf} style={{padding:'9px 12px',marginBottom:'6px',background:bg3,border:'1px solid rgba(248,113,113,.12)',borderRadius:'8px'}}>
               <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:preview?'6px':'0'}}>
                 <span style={{fontSize:'10px',color:'#f87171'}}><AlertTriangle size={13}/></span>
-                <span style={{fontSize:'12px',color:'rgba(255,255,255,.8)',fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cf}</span>
+                <span style={{fontSize:'12px',color:text,fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cf}</span>
                 <button onClick={() => loadPreview(cf)}
                   style={{background:bg3,border:'1px solid '+border,borderRadius:'4px',padding:'2px 7px',color:textMute,fontSize:'9px',cursor:'pointer',flexShrink:0}}>
                   preview
                 </button>
               </div>
               {preview && (
-                <pre style={{margin:0,padding:'6px 8px',background:'rgba(0,0,0,.5)',borderRadius:'5px',fontSize:'9px',color:'rgba(255,255,255,.45)',fontFamily:'monospace',maxHeight:'90px',overflow:'auto',whiteSpace:'pre-wrap',wordBreak:'break-all'}}>
+                <pre style={{margin:0,padding:'6px 8px',background:bg2,borderRadius:'5px',fontSize:'9px',color:textSec,fontFamily:'monospace',maxHeight:'90px',overflow:'auto',whiteSpace:'pre-wrap',wordBreak:'break-all'}}>
                   {preview.slice(0, 400)}
                 </pre>
               )}
@@ -1003,6 +1013,7 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
   const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
   const accent     = T?.accent     || '#a78bfa';
   const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
+  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
   async function handleUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1034,7 +1045,7 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
         {/* Header */}
         <div style={{display:'flex', alignItems:'center', marginBottom:'12px', gap:'6px'}}>
           <span style={{fontSize:'14px', fontWeight:'600', color:'#f0f0f0', flex:1}}><Puzzle size={14}/> Skills</span>
-          <label style={{background:'rgba(124,58,237,.1)', border:'1px solid '+accentBorder, borderRadius:'7px', padding:'6px 10px', color:'#a78bfa', fontSize:'11px', cursor:'pointer', minHeight:'32px', display:'flex', alignItems:'center'}}>
+          <label style={{background:accentBg, border:'1px solid '+accentBorder, borderRadius:'7px', padding:'6px 10px', color:'#a78bfa', fontSize:'11px', cursor:'pointer', minHeight:'32px', display:'flex', alignItems:'center'}}>
             ↑ Upload .md
             <input type="file" accept=".md,text/markdown,text/plain" style={{display:'none'}} disabled={busy} onChange={handleUpload}/>
           </label>
@@ -1054,7 +1065,7 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
               placeholder="Isi skill dalam Markdown&#10;&#10;Gunakan frontmatter:&#10;---&#10;name: nama&#10;description: ...&#10;---"
               style={{...inputStyle, resize:'vertical', minHeight:'120px', lineHeight:'1.6'}}/>
             <button onClick={handleAdd} disabled={!newName.trim()||!newContent.trim()||busy}
-              style={{background:'rgba(124,58,237,.18)', border:'1px solid rgba(124,58,237,.3)', borderRadius:'7px', padding:'9px', color:'#a78bfa', fontSize:'12px', cursor:'pointer', fontWeight:'500', opacity:(!newName.trim()||!newContent.trim()||busy)?0.45:1}}>
+              style={{background:accentBg, border:'1px solid '+accentBorder, borderRadius:'7px', padding:'9px', color:accent, fontSize:'12px', cursor:'pointer', fontWeight:'500', opacity:(!newName.trim()||!newContent.trim()||busy)?0.45:1}}>
               {busy ? 'Menyimpan...' : 'Simpan ke .claude/skills/'}
             </button>
           </div>
@@ -1063,21 +1074,21 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
         {/* Skill list */}
         <div style={{flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:'6px'}}>
           {skills.length === 0 && (
-            <div style={{color:'rgba(255,255,255,.3)', fontSize:'12px', padding:'8px 0'}}>
+            <div style={{color:textMute, fontSize:'12px', padding:'8px 0'}}>
               Belum ada skill.<br/>Upload .md atau ketik <code style={{color:accent}}>/init</code> untuk generate dari project ini.
             </div>
           )}
           {skills.map(s => (
             <div key={s.name} style={{
               padding:'10px 12px', borderRadius:'8px', display:'flex', alignItems:'center', gap:'10px',
-              background: s.active ? 'rgba(124,58,237,.05)' : 'rgba(255,255,255,.02)',
-              border: '1px solid ' + (s.active ? 'rgba(124,58,237,.2)' : 'rgba(255,255,255,.06)'),
+              background: s.active ? accentBg : bg3,
+              border: '1px solid ' + (s.active ? accentBorder : border),
             }}>
               <div style={{flex:1, minWidth:0}}>
-                <div style={{fontSize:'13px', fontWeight:'500', color: s.active ? '#c4b5fd' : 'rgba(255,255,255,.4)', marginBottom:'2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                <div style={{fontSize:'13px', fontWeight:'500', color: s.active ? accent : textMute, marginBottom:'2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
                   {s.name}
                 </div>
-                <div style={{fontSize:'10px', color:'rgba(255,255,255,.22)', fontFamily:'monospace'}}>
+                <div style={{fontSize:'10px', color:textMute, fontFamily:'monospace'}}>
                   {Math.round((s.content||'').length/100)/10}KB
                   {s.builtin ? ' · SKILL.md (root)' : ' · .claude/skills/'}
                   {!s.active && <span style={{color:textMute}}> · dimatikan</span>}
@@ -1102,7 +1113,7 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
         </div>
 
         {/* Footer hint */}
-        <div style={{marginTop:'10px', fontSize:'10px', color:'rgba(255,255,255,.2)', textAlign:'center'}}>
+        <div style={{marginTop:'10px', fontSize:'10px', color:textMute, textAlign:'center'}}>
           Skill aktif otomatis di-inject ke context AI berdasarkan relevansi task
         </div>
       </div>
@@ -1118,6 +1129,8 @@ export function DeployPanel({ deployLog, loading, onDeploy, onClose, T }) {
   const accent     = T?.accent     || '#a78bfa';
   const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
   const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
+  const bg2        = T?.bg2        || '#131108';
+  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
   return (
     <BottomSheet onClose={onClose} T={T}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -1134,7 +1147,7 @@ export function DeployPanel({ deployLog, loading, onDeploy, onClose, T }) {
           ))}
         </div>
         {deployLog
-          ? <div style={{flex:1,background:'#0a0a0b',border:'1px solid '+border,borderRadius:'8px',padding:'12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(255,255,255,.7)',overflowY:'auto',whiteSpace:'pre-wrap'}}>{deployLog}</div>
+          ? <div style={{flex:1,background:bg2,border:'1px solid '+border,borderRadius:'8px',padding:'12px',fontFamily:'monospace',fontSize:'11px',color:textSec,overflowY:'auto',whiteSpace:'pre-wrap'}}>{deployLog}</div>
           : <div style={{color:textMute,fontSize:'12px'}}>Pilih platform untuk deploy~</div>
         }
       </div>
@@ -1204,7 +1217,7 @@ export function GitHubPanel({ githubRepo, githubToken, githubData, onRepoChange,
         <div style={{flex:1,overflowY:'auto'}}>
           {githubData&&Array.isArray(githubData.data)&&githubData.data.map((item,i)=>(
             <div key={i} style={{padding:'8px 10px',marginBottom:'4px',background:bg3,border:'1px solid '+border,borderRadius:'7px'}}>
-              <div style={{fontSize:'12px',color:'rgba(255,255,255,.8)',marginBottom:'2px'}}>#{item.number} {item.title}</div>
+              <div style={{fontSize:'12px',color:text,marginBottom:'2px'}}>#{item.number} {item.title}</div>
               <div style={{fontSize:'10px',color:textMute}}>{item.state} · {item.user?.login}</div>
               <button onClick={()=>onAskYuyu(item)} style={{background:accentBg,border:'1px solid '+accentBorder,borderRadius:'4px',padding:'2px 7px',color:accent,fontSize:'10px',cursor:'pointer',marginTop:'4px'}}>Ask Yuyu</button>
             </div>
@@ -1288,8 +1301,11 @@ const BUILTIN_PLUGINS = [
   {id:'auto_push',   name:'Git Auto Push', desc:'Push ke remote setelah commit',       hookType:'postWrite', cmd:'node yugit.cjs "auto push"'},
 ];
 export function PluginsPanel({ activePlugins, folder, onToggle, onClose, T }) {
+  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
+  const border     = T?.border     || 'rgba(255,255,255,.06)';
   const text       = T?.text       || '#f0f0f0';
   const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
+  const success    = T?.success    || '#4ade80';
   return (
     <BottomSheet onClose={onClose}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -1300,9 +1316,9 @@ export function PluginsPanel({ activePlugins, folder, onToggle, onClose, T }) {
         {BUILTIN_PLUGINS.map(p=>{
           const isActive=!!activePlugins[p.id];
           return (
-            <div key={p.id} style={{padding:'10px 12px',marginBottom:'8px',background:isActive?'rgba(74,222,128,.04)':'rgba(255,255,255,.03)',border:'1px solid '+(isActive?'rgba(74,222,128,.18)':'rgba(255,255,255,.07)'),borderRadius:'8px',display:'flex',alignItems:'center',gap:'10px'}}>
+            <div key={p.id} style={{padding:'10px 12px',marginBottom:'8px',background:isActive?'rgba(74,222,128,.04)':bg3,border:'1px solid '+(isActive?'rgba(74,222,128,.18)':border),borderRadius:'8px',display:'flex',alignItems:'center',gap:'10px'}}>
               <div style={{flex:1}}>
-                <div style={{fontSize:'13px',color:isActive?'#4ade80':'#f0f0f0',fontWeight:'500',marginBottom:'2px'}}>{p.name}</div>
+                <div style={{fontSize:'13px',color:isActive?success:text,fontWeight:'500',marginBottom:'2px'}}>{p.name}</div>
                 <div style={{fontSize:'11px',color:textMute,marginBottom:'3px'}}>{p.desc}</div>
                 <div style={{fontSize:'9px',color:textMute,fontFamily:'monospace'}}>{p.hookType}</div>
               </div>
@@ -1324,6 +1340,9 @@ export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, m
   const border     = T?.border     || 'rgba(255,255,255,.06)';
   const text       = T?.text       || '#f0f0f0';
   const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
+  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
+  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
+  const accent     = T?.accent     || '#a78bfa';
   const configs = [
     {label:'Effort Level', value:effort,         options:['low','medium','high'],      onChange:onEffort},
     {label:'Font Size',    value:String(fontSize), options:['12','13','14','15','16'], onChange:v=>onFontSize(parseInt(v))},
@@ -1343,7 +1362,7 @@ export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, m
               <div style={{fontSize:'11px',color:textMute,marginBottom:'6px'}}>{cfg.label}</div>
               <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
                 {cfg.options.map(opt=>(
-                  <button key={opt} onClick={()=>cfg.onChange(opt)} style={{background:cfg.value===opt?'rgba(124,58,237,.3)':'rgba(255,255,255,.05)',border:'1px solid '+(cfg.value===opt?'rgba(124,58,237,.5)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:cfg.value===opt?'#a78bfa':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>
+                  <button key={opt} onClick={()=>cfg.onChange(opt)} style={{background:cfg.value===opt?accentBg:bg3,border:'1px solid '+(cfg.value===opt?accentBorder:border),borderRadius:'6px',padding:'4px 10px',color:cfg.value===opt?accent:textMute,fontSize:'11px',cursor:'pointer',fontFamily:'monospace'}}>
                     {opt.length>20?opt.slice(0,20)+'…':opt}
                   </button>
                 ))}
@@ -1352,7 +1371,7 @@ export function ConfigPanel({ effort, fontSize, theme, model, thinkingEnabled, m
           ))}
           <div style={{padding:'10px 12px',background:bg3,border:'1px solid '+border,borderRadius:'8px'}}>
             <div style={{fontSize:'11px',color:textMute,marginBottom:'6px'}}>Extended Thinking</div>
-            <button onClick={onThinking} style={{background:thinkingEnabled?'rgba(124,58,237,.3)':'rgba(255,255,255,.05)',border:'1px solid '+(thinkingEnabled?'rgba(124,58,237,.5)':'rgba(255,255,255,.08)'),borderRadius:'6px',padding:'4px 10px',color:thinkingEnabled?'#a78bfa':'rgba(255,255,255,.5)',fontSize:'11px',cursor:'pointer'}}>
+            <button onClick={onThinking} style={{background:thinkingEnabled?accentBg:bg3,border:'1px solid '+(thinkingEnabled?accentBorder:border),borderRadius:'6px',padding:'4px 10px',color:thinkingEnabled?accent:textMute,fontSize:'11px',cursor:'pointer'}}>
               {thinkingEnabled?'✓ ON':'○ OFF'}
             </button>
           </div>
@@ -1381,6 +1400,8 @@ export function BgAgentPanel({ agents, onMerge, onAbort, onClose, T }) {
   const text       = T?.text       || '#f0f0f0';
   const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
   const accent     = T?.accent     || '#a78bfa';
+  const bg2        = T?.bg2        || '#131108';
+  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
   const statusColor = { preparing:'#fbbf24', running:'#60a5fa', done:'#4ade80', error:'#f87171', aborted:'rgba(255,255,255,.3)', merged:'rgba(255,255,255,.2)', conflict:'#f97316' };
   const statusIcon  = { preparing:'…', running:'↻', done:'✓', error:'✗', aborted:'⏹', merged:'⇄', conflict:'!' };
 
@@ -1423,9 +1444,9 @@ export function BgAgentPanel({ agents, onMerge, onAbort, onClose, T }) {
 
                 {/* Log — last 4 entries */}
                 {agent.log?.length > 0 && (
-                  <div style={{background:'rgba(0,0,0,.2)',borderRadius:'6px',padding:'6px 8px',marginBottom:'8px',maxHeight:'80px',overflowY:'auto'}}>
+                  <div style={{background:bg2,borderRadius:'6px',padding:'6px 8px',marginBottom:'8px',maxHeight:'80px',overflowY:'auto'}}>
                     {agent.log.slice(-4).map((l,i) => (
-                      <div key={i} style={{fontSize:'10px',color:'rgba(255,255,255,.45)',fontFamily:'monospace',lineHeight:'1.6'}}>{l}</div>
+                      <div key={i} style={{fontSize:'10px',color:textSec,fontFamily:'monospace',lineHeight:'1.6'}}>{l}</div>
                     ))}
                   </div>
                 )}

@@ -1,37 +1,47 @@
-// ── YuyuCode Theme Schema ────────────────────────────────────────────────────
-// Copy file ini, rename, isi token-nya, lalu import di src/theme.js
-// Semua nilai adalah CSS color string — hex, rgba, gradient, apapun valid.
+// ── My Brand Theme — Template untuk Custom Theme ────────────────────────────
+// TEMPLATE: Ini bukan tema aktif. Copy, rename, isi token, import di index.js.
+// Lihat src/themes/obsidian.js untuk referensi skema lengkap.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** @type {import('./schema').YuyuTheme} */
+/** @type {import('./index').YuyuTheme} */
 const theme = {
-  name: 'My Custom Theme',   // nama yang muncul di app
+  name: 'My Brand',
 
-  // ── Global ────────────────────────────────────────────────────────────────
-  bg:          '#111',       // background utama app
-  scanlines:   true,         // efek scanline subtle (true/false)
+  // ── Global colours ────────────────────────────────────────────────────────
+  bg:           '#111',
+  bg2:          '#161412',
+  bg3:          '#1c1916',
+  border:       'rgba(255,255,255,.05)',
+  borderSoft:   'rgba(255,255,255,.03)',
+  text:         '#ede8d8',
+  textSec:      '#c4b8a0',
+  textMute:     '#3a3428',
+  accent:       '#d97706',
+  accentBg:     'rgba(217,119,6,.09)',
+  accentBorder: 'rgba(217,119,6,.22)',
+  success:      '#4ade80',
+  successBg:    'rgba(74,222,128,.08)',
+  error:        '#f87171',
+  errorBg:      'rgba(248,113,113,.1)',
+  warning:      '#fbbf24',
+  warningBg:    'rgba(251,191,36,.08)',
 
   // ── Atmosphere (glow blobs di bg) ─────────────────────────────────────────
   atm: [
-    { color: 'rgba(99,102,241,.1)', x: '-15%', y: '-20%', size: '60%' },
-    { color: 'rgba(217,119,6,.07)', x: '90%',  y: '60%',  size: '45%' },
+    { color: 'rgba(217,119,6,.08)', x: '88%',  y: '55%', size: '55%' },
+    { color: 'rgba(99,102,241,.04)', x: '-12%', y: '-18%', size: '48%' },
   ],
+  scanlines: true,
 
   // ── Header ────────────────────────────────────────────────────────────────
   header: {
     bg:          'rgba(20,18,16,.88)',
-    border:      'rgba(255,255,255,.05)',
     logoGrad:    'linear-gradient(135deg,#d97706,#b45309)',
     logoShadow:  '0 4px 16px rgba(217,119,6,.28)',
     titleColor:  '#ede8de',
-    accentColor: 'rgba(217,119,6,.65)',    // warna "code" di logo
-    statusDot:   'rgba(0,255,140,.4)',     // dot online indicator
-    metaColor:   '#38342e',               // text model/effort
-    btnBg:       'rgba(255,255,255,.025)',
-    btnBorder:   'rgba(255,255,255,.06)',
-    btnColor:    'rgba(64,57,50,.5)',
-    btnHoverBg:  'rgba(255,255,255,.06)',
-    btnHoverColor: '#8a8070',
+    accentColor: 'rgba(217,119,6,.65)',
+    statusDot:   'rgba(0,255,140,.4)',
+    metaColor:   '#38342e',
   },
 
   // ── Chat Bubbles ──────────────────────────────────────────────────────────
@@ -41,12 +51,14 @@ const theme = {
       border: 'rgba(217,119,6,.18)',
       color:  '#ede0c8',
       shadow: '0 4px 20px rgba(0,0,0,.3)',
+      radius: '16px 4px 16px 16px',
     },
     ai: {
       bg:     'rgba(255,255,255,.033)',
       border: 'rgba(255,255,255,.055)',
       color:  '#c4bcb0',
       shadow: '0 2px 12px rgba(0,0,0,.2)',
+      radius: '4px 16px 16px 16px',
     },
     thinking: {
       color:   'rgba(217,119,6,.4)',
@@ -63,7 +75,7 @@ const theme = {
     check:  'rgba(0,200,100,.5)',
   },
 
-  // ── Code Blocks (di dalam AI bubble) ─────────────────────────────────────
+  // ── Code Blocks ───────────────────────────────────────────────────────────
   code: {
     bg:     'rgba(0,0,0,.4)',
     border: '1px solid rgba(217,119,6,.07)',
@@ -75,46 +87,39 @@ const theme = {
 
   // ── Input Area ────────────────────────────────────────────────────────────
   input: {
-    areaBg:      'rgba(15,13,11,.92)',
-    areaBorder:  'rgba(255,255,255,.045)',
-    boxBg:       'rgba(255,255,255,.035)',
-    boxBorder:   'rgba(255,255,255,.07)',
     focusBorder: 'rgba(217,119,6,.22)',
     focusShadow: '0 0 0 3px rgba(217,119,6,.06)',
-    color:       '#d8d0c4',
     caret:       '#d97706',
-    placeholder: '#302820',
-    cameraBg:    'rgba(255,255,255,.03)',
-    cameraBorder:'rgba(255,255,255,.07)',
-    cameraColor: '#4a4540',
     sendGrad:    'linear-gradient(135deg,#d97706,#b45309)',
     sendShadow:  '0 3px 12px rgba(217,119,6,.3)',
   },
 
   // ── Slash Command Popup ───────────────────────────────────────────────────
   slash: {
-    bg:        'rgba(18,16,14,.97)',
-    border:    'rgba(255,255,255,.08)',
-    shadow:    '0 -12px 40px rgba(0,0,0,.5)',
-    divider:   'rgba(255,255,255,.04)',
-    hoverBg:   'rgba(255,255,255,.04)',
     cmdColor:  'rgba(217,119,6,.85)',
     descColor: '#302820',
   },
 
-  // ── File Tree (sidebar) ───────────────────────────────────────────────────
-  tree: {
-    bg:           '#0e0c0a',
-    border:       'rgba(255,255,255,.05)',
-    itemColor:    '#585048',
-    itemHoverBg:  'rgba(255,255,255,.04)',
-    itemActiveBg: 'rgba(217,119,6,.08)',
-    itemActiveColor: '#d97706',
-    folderColor:  '#c8a060',
-  },
+  // ── Per-theme CSS & Animations ────────────────────────────────────────────
+  css: `
+    @keyframes mybrandPulse {
+      0%,100% { opacity:.8; }
+      50%     { opacity:1; }
+    }
+  `,
 
-  // ── Accent (warna utama — dipakai untuk highlight, selected, dsb) ─────────
-  accent: '#d97706',
+  // ── Visual FX helpers (dipakai oleh MsgBubble) ───────────────────────────
+  fx: {
+    aiBubble:   () => ({ boxShadow: '0 2px 12px rgba(0,0,0,.4)' }),
+    userBubble: () => ({ boxShadow: '0 0 12px rgba(217,119,6,.1), 0 2px 16px rgba(0,0,0,.4)' }),
+    glowBorder: (color='#d97706', intensity=1) => ({
+      boxShadow: `0 0 ${8*intensity}px ${color}22, inset 0 0 ${4*intensity}px ${color}08`,
+    }),
+    codeBlock:  () => ({ boxShadow: '0 0 1px rgba(217,119,6,.15), inset 0 0 6px rgba(0,0,0,.3)' }),
+    chipOk:     () => ({ boxShadow: '0 0 6px rgba(0,200,110,.18)' }),
+    glowText:   (color='#d97706') => ({ textShadow: `0 0 4px ${color}44` }),
+    inputFocus: () => ({ boxShadow: '0 0 0 1px rgba(217,119,6,.25), 0 0 10px rgba(217,119,6,.1)' }),
+  },
 };
 
 export default theme;
