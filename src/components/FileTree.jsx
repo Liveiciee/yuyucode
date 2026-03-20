@@ -1,10 +1,11 @@
 import {
-  Folder, FolderOpen, File, FilePlus, FolderPlus, RotateCcw, Pencil, Trash2,
+  Folder, FolderOpen, File, FilePlus, FolderPlus, RotateCcw, Pencil, Trash2, Search,
   FileCode, FileJson, FileText, Image, Coffee, Braces, Globe, Settings,
   Package, GitBranch, Database, Film, Music, Archive, Shield, Terminal,
   Layers, Cpu, Hash,
 } from 'lucide-react';
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import Fuse from 'fuse.js';
 import { callServer } from '../api.js';
 
 function getFileIconData(name) {
@@ -63,6 +64,7 @@ export function FileTree({ folder, onSelectFile, selectedFile, T }) {
   const [tree, setTree]         = useState(null);
   const [expanded, setExpanded] = useState({});
   const [loading, setLoading]   = useState(false);
+  const [query, setQuery]       = useState('');
   const [ctxMenu, setCtxMenu]   = useState(null);
   const [renaming, setRenaming] = useState(null);
   const [creating, setCreating] = useState(null);
@@ -120,7 +122,26 @@ export function FileTree({ folder, onSelectFile, selectedFile, T }) {
     setCtxMenu(null); load();
   }
 
-  const inputStyle = (borderColor) => ({
+  // Flatten tree into searchable list
+  function flattenTree(items, basePath, acc = []) {
+    if (!items) return acc;
+    for (const item of items) {
+      const fp = basePath + '/' + item.name;
+      if (!item.isDir) acc.push({ name: item.name, path: fp });
+      if (item.isDir && expanded[fp] && Array.isArray(expanded[fp]))
+        flattenTree(expanded[fp], fp, acc);
+    }
+    return acc;
+  }
+  const allFiles = useMemo(() => tree ? flattenTree(tree, folder) : [], [tree, expanded, folder]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fuse = useMemo(() => new Fuse(allFiles, {
+    keys: ['name', 'path'], threshold: 0.35, includeScore: true,
+  }), [allFiles]);
+  const searchResults = useMemo(() =>
+    query.trim() ? fuse.search(query).slice(0, 20).map(r => r.item) : null,
+  [query, fuse]);
+
+    const inputStyle = (borderColor) => ({
     flex:1, background:bg3, border:'1px solid '+borderColor, borderRadius:'4px',
     padding:'2px 6px', color:text, fontSize:'12px', outline:'none', fontFamily:'monospace',
   });
@@ -205,6 +226,16 @@ export function FileTree({ folder, onSelectFile, selectedFile, T }) {
           {iconBtn(load,'Refresh',<RotateCcw size={11}/>)}
         </div>
       </div>
+      {/* Fuzzy search */}
+      <div style={{padding:'0 8px 5px',display:'flex',alignItems:'center',gap:'5px'}}>
+        <Search size={10} style={{color:textMute,flexShrink:0}}/>
+        <input value={query} onChange={e=>setQuery(e.target.value)}
+          placeholder="filter files..."
+          style={{flex:1,background:bg3,border:'1px solid '+border,borderRadius:'5px',
+            padding:'3px 7px',color:text,fontSize:'11px',outline:'none',fontFamily:'monospace'}}
+          onKeyDown={e=>{if(e.key==='Escape'){setQuery('');e.target.blur();}}}
+        />
+      </div>
 
       {creating&&creating.parentPath===folder&&(
         <div style={{padding:'3px 10px',display:'flex',gap:'6px',alignItems:'center',marginBottom:'2px'}}>
@@ -217,7 +248,31 @@ export function FileTree({ folder, onSelectFile, selectedFile, T }) {
       )}
 
       {loading&&<div style={{padding:'10px 14px',fontSize:'11.5px',color:textMute}}>Loading…</div>}
-      {tree&&renderItems(tree,folder,0)}
+      {searchResults ? (
+        searchResults.length === 0
+          ? <div style={{padding:'10px 14px',fontSize:'11px',color:textMute}}>Tidak ada hasil</div>
+          : searchResults.map(item=>(
+            <div key={item.path}
+              onClick={()=>{onSelectFile(item.path);setQuery('');}}
+              style={{display:'flex',alignItems:'center',gap:'6px',padding:'3px 10px',
+                cursor:'pointer',background:selectedFile===item.path?accentBg:'transparent',
+                borderRadius:'4px',transition:'background .1s'}}
+              onMouseEnter={e=>{if(selectedFile!==item.path)e.currentTarget.style.background=bg3;}}
+              onMouseLeave={e=>{e.currentTarget.style.background=selectedFile===item.path?accentBg:'transparent';}}>
+              <FileIcon name={item.name} size={13}/>
+              <span style={{fontSize:'12px',color:selectedFile===item.path?accent:textSec,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>
+                {item.name}
+              </span>
+              <span style={{fontSize:'9px',color:textMute,flexShrink:0,overflow:'hidden',
+                textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'80px',direction:'rtl'}}>
+                {item.path.replace(folder,'').split('/').slice(1,-1).join('/')||'/'}
+              </span>
+            </div>
+          ))
+      ) : (
+        tree && renderItems(tree, folder, 0)
+      )}
 
       {ctxMenu&&(
         <div style={{position:'fixed',top:ctxMenu.y,left:ctxMenu.x,background:bg2,border:'1px solid '+border,borderRadius:'10px',padding:'4px',zIndex:999,minWidth:'150px',boxShadow:'0 10px 30px rgba(0,0,0,.6)',overflow:'hidden'}}>

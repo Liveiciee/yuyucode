@@ -1,4 +1,5 @@
 import { callServer } from './api.js';
+import { diffLines } from 'diff';
 
 // ── TOKEN COUNT ──
 export function countTokens(msgs) {
@@ -100,21 +101,26 @@ export function parseActions(text) {
 // Returns a compact unified-diff-style string for display (not patch format).
 export function generateDiff(original, patched, maxLines = 40) {
   if (!original || !patched) return '';
-  const oldLines = original.split('\n');
-  const newLines = patched.split('\n');
-  const lines = [];
-  const maxL  = Math.max(oldLines.length, newLines.length);
-  let   shown = 0;
-
-  for (let i = 0; i < maxL && shown < maxLines; i++) {
-    const o = oldLines[i];
-    const n = newLines[i];
-    if (o === n) continue;
-    if (o !== undefined) { lines.push(`- L${i + 1}: ${o}`); shown++; }
-    if (n !== undefined) { lines.push(`+ L${i + 1}: ${n}`); shown++; }
+  const hunks = diffLines(original, patched);
+  const result = [];
+  let shown = 0;
+  let oldLine = 1, newLine = 1;
+  for (const hunk of hunks) {
+    const hunkLines = hunk.value.split('\n').filter((l, i, a) => !(i === a.length - 1 && l === ''));
+    if (!hunk.added && !hunk.removed) {
+      oldLine += hunkLines.length;
+      newLine += hunkLines.length;
+      continue;
+    }
+    for (const line of hunkLines) {
+      if (shown >= maxLines) { result.push(`... (baris lebih)`); return result.join('\n'); }
+      if (hunk.removed) { result.push(`- L${oldLine}: ${line}`); oldLine++; shown++; }
+      if (hunk.added)   { result.push(`+ L${newLine}: ${line}`); newLine++; shown++; }
+    }
+    if (!hunk.removed) newLine += hunkLines.length - (hunk.added ? hunkLines.length : 0);
+    if (!hunk.added)   oldLine += hunkLines.length - (hunk.removed ? hunkLines.length : 0);
   }
-  if (shown >= maxLines) lines.push(`... (${maxL - maxLines} baris lebih)`);
-  return lines.join('\n');
+  return result.join('\n');
 }
 
 // ── ACTION EXECUTOR ──
