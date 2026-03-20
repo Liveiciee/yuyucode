@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Activity } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { Menu, Command, Camera, Paperclip, Trash2, Radio, RotateCcw, AlertTriangle, Pin, Eye, ScrollText, Brain, MapPin, Zap, Plus, Volume2, VolumeX, GitBranch, ChevronRight, FilePlus2, Check, X } from 'lucide-react';
-import { MAX_HISTORY, MODELS, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS, THEMES } from './constants.js';
+import { MAX_HISTORY, MODELS, GIT_SHORTCUTS, FOLLOW_UPS, SLASH_COMMANDS } from './constants.js';
 import { callServer } from './api.js';
 import { countTokens, hl } from './utils.js';
 import { loadSessions, getBgAgents, mergeBackgroundAgent, abortBgAgent } from './features.js';
@@ -310,11 +310,11 @@ export default function App() {
       <ThemeEffects T={T}/>
       {/* Badge toast */}
       {growth.newBadge&&(
-        <div style={{position:'fixed',top:'60px',left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.92)',border:'1px solid rgba(124,58,237,.4)',borderRadius:'14px',padding:'12px 20px',zIndex:999,display:'flex',alignItems:'center',gap:'10px',boxShadow:'0 8px 32px rgba(0,0,0,.6)',animation:'fadeUp .3s ease'}}>
+        <div style={{position:'fixed',top:'60px',left:'50%',transform:'translateX(-50%)',background:T.bg2,border:'1px solid '+T.accentBorder,borderRadius:'14px',padding:'12px 20px',zIndex:999,display:'flex',alignItems:'center',gap:'10px',boxShadow:'0 8px 32px rgba(0,0,0,.6)',animation:'fadeUp .3s ease'}}>
           <span style={{fontSize:'22px'}}>{growth.newBadge.label.split(' ')[0]}</span>
           <div>
-            <div style={{fontSize:'13px',fontWeight:'700',color:'#f0f0f0'}}>{growth.newBadge.label}</div>
-            <div style={{fontSize:'11px',color:'rgba(255,255,255,.5)'}}>{growth.newBadge.desc}</div>
+            <div style={{fontSize:'13px',fontWeight:'700',color:T.text}}>{growth.newBadge.label}</div>
+            <div style={{fontSize:'11px',color:T.textSec}}>{growth.newBadge.desc}</div>
           </div>
         </div>
       )}
@@ -392,7 +392,7 @@ export default function App() {
         </div>
       )}
 
-      <UndoBar history={file.editHistory} onUndo={undoLastEdit}/>
+      <UndoBar T={T} history={file.editHistory} onUndo={undoLastEdit}/>
 
       {/* UNIFIED STATUS BAR — single strip, priority-based */}
       {(()=>{
@@ -420,7 +420,7 @@ export default function App() {
                   <div style={{fontSize:'9px',color:'rgba(255,255,255,.2)',marginBottom:'3px',letterSpacing:'.05em'}}>RECENT</div>
                   {file.recentFiles.slice(0,4).map(f=>(
                     <div key={f} onClick={()=>{file.openFile(f);ui.setShowSidebar(false);}} style={{fontSize:'11px',color:'rgba(255,255,255,.4)',padding:'2px 4px',cursor:'pointer',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',borderRadius:'3px'}}
-                      onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,.7)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,.4)'}>
+                      onMouseEnter={e=>e.currentTarget.style.color=T.text} onMouseLeave={e=>e.currentTarget.style.color=T.textMute}>
                       {f.split('/').pop()}
                     </div>
                   ))}
@@ -530,7 +530,7 @@ export default function App() {
               {file.splitView?(
                 <>
                   <div style={{flex:1,overflow:'hidden',borderRight:'1px solid rgba(255,255,255,.07)'}}>
-                    <FileEditor path={file.selectedFile} content={file.fileContent||''} onSave={c=>file.saveFile(c,msg=>chat.setMessages(m=>[...m,{role:'assistant',content:msg,actions:[]}]))} onClose={()=>file.setEditMode(false)}/>
+                    <FileEditor T={T} path={file.selectedFile} content={file.fileContent||''} onSave={c=>file.saveFile(c,msg=>chat.setMessages(m=>[...m,{role:'assistant',content:msg,actions:[]}]))} onClose={()=>file.setEditMode(false)}/>
                   </div>
                   <div style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
                     {chat.messages.slice(-10).map((m,i)=>(
@@ -542,7 +542,7 @@ export default function App() {
                   </div>
                 </>
               ):(
-                <FileEditor path={file.selectedFile} content={file.fileContent||''} onSave={c=>file.saveFile(c,msg=>chat.setMessages(m=>[...m,{role:'assistant',content:msg,actions:[]}]))} onClose={()=>file.setEditMode(false)}/>
+                <FileEditor T={T} path={file.selectedFile} content={file.fileContent||''} onSave={c=>file.saveFile(c,msg=>chat.setMessages(m=>[...m,{role:'assistant',content:msg,actions:[]}]))} onClose={()=>file.setEditMode(false)}/>
               )}
             </div>
           )}
@@ -675,8 +675,8 @@ export default function App() {
       </div>
 
       {/* OVERLAYS */}
-      {ui.showSearch&&<SearchBar folder={project.folder} onSelectFile={p=>file.openFile(p)} onClose={()=>ui.setShowSearch(false)}/>}
-      {ui.showShortcuts&&<ShortcutsPanel onClose={()=>ui.setShowShortcuts(false)}/>}
+      {ui.showSearch&&<SearchBar T={T} folder={project.folder} onSelectFile={p=>file.openFile(p)} onClose={()=>ui.setShowSearch(false)}/>}
+      {ui.showShortcuts&&<ShortcutsPanel T={T} onClose={()=>ui.setShowShortcuts(false)}/>}
       {ui.showDiff&&<GitComparePanel folder={project.folder} T={T} onClose={()=>ui.setShowDiff(false)}/>}
       {ui.showBlame&&file.selectedFile&&<GitBlamePanel T={T} folder={project.folder} filePath={file.selectedFile} onClose={()=>ui.setShowBlame(false)}/>}
       {ui.showSnippets&&<SnippetLibrary T={T} onInsert={code=>{chat.setInput(i=>i?i+'\n'+code:code);ui.setShowSnippets(false);inputRef.current?.focus();}} onClose={()=>ui.setShowSnippets(false)}/>}
@@ -754,41 +754,41 @@ export default function App() {
 
       {/* SWARM LOG */}
       {chat.swarmRunning&&(
-        <div style={{position:'fixed',bottom:'80px',right:'12px',background:'rgba(0,0,0,.92)',border:'1px solid rgba(124,58,237,.3)',borderRadius:'10px',padding:'12px',zIndex:98,maxWidth:'280px',maxHeight:'200px',overflowY:'auto'}}>
-          <div style={{fontSize:'11px',fontWeight:'600',color:'#a78bfa',marginBottom:'6px'}}><Zap size={13}/> Agent Swarm Running···</div>
-          {chat.swarmLog.map((l,i)=><div key={i} style={{fontSize:'10px',color:'rgba(255,255,255,.6)',marginBottom:'2px'}}>{l}</div>)}
+        <div style={{position:'fixed',bottom:'80px',right:'12px',background:T.bg2,border:'1px solid '+T.accentBorder,borderRadius:'10px',padding:'12px',zIndex:98,maxWidth:'280px',maxHeight:'200px',overflowY:'auto'}}>
+          <div style={{fontSize:'11px',fontWeight:'600',color:T.accent,marginBottom:'6px'}}><Zap size={13}/> Agent Swarm Running···</div>
+          {chat.swarmLog.map((l,i)=><div key={i} style={{fontSize:'10px',color:T.textSec,marginBottom:'2px'}}>{l}</div>)}
         </div>
       )}
 
-      {ui.showDepGraph&&ui.depGraph&&<DepGraphPanel depGraph={ui.depGraph} onClose={()=>ui.setShowDepGraph(false)}/>}
+      {ui.showDepGraph&&ui.depGraph&&<DepGraphPanel T={T} depGraph={ui.depGraph} onClose={()=>ui.setShowDepGraph(false)}/>}
 
       {ui.elicitationData&&(
-        <ElicitationPanel data={ui.elicitationData}
+        <ElicitationPanel T={T} data={ui.elicitationData}
           onSubmit={result=>{ui.setElicitationData(null);sendMsg(result);}}
           onDismiss={()=>ui.setElicitationData(null)}/>
       )}
 
       {ui.showMergeConflict&&ui.mergeConflictData&&(
-        <MergeConflictPanel data={ui.mergeConflictData} folder={project.folder}
+        <MergeConflictPanel T={T} data={ui.mergeConflictData} folder={project.folder}
           onResolved={strategy=>{ui.setShowMergeConflict(false);ui.setMergeConflictData(null);chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Konflik resolved via **'+strategy+'**.',actions:[]}]);}}
           onAborted={()=>{ui.setShowMergeConflict(false);ui.setMergeConflictData(null);chat.setMessages(m=>[...m,{role:'assistant',content:'↩ Merge dibatalkan.',actions:[]}]);}}
           onClose={()=>ui.setShowMergeConflict(false)}/>
       )}
 
-      {ui.showThemeBuilder&&<ThemeBuilder current={ui.customTheme||THEMES[ui.theme]} onSave={t=>{ui.setCustomTheme(t);Preferences.set({key:'yc_custom_theme',value:JSON.stringify(t)});ui.setShowThemeBuilder(false);}} onClose={()=>ui.setShowThemeBuilder(false)}/>}
+      {ui.showThemeBuilder&&<ThemeBuilder T={T} themeKey={ui.theme} themesMap={ui.THEMES_MAP} themeKeys={ui.THEME_KEYS} onTheme={t=>ui.setTheme(t)} onClose={()=>ui.setShowThemeBuilder(false)}/>}
 
       {/* ONBOARDING */}
       {ui.showOnboarding&&(
-        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.95)',zIndex:100,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px'}}>
+        <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:T.bg,zIndex:100,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px'}}>
           <div style={{fontSize:'32px',marginBottom:'12px'}}>🌸</div>
-          <div style={{fontSize:'20px',fontWeight:'700',color:'#f0f0f0',marginBottom:'6px'}}>Halo Papa! Yuyu siap~</div>
-          <div style={{fontSize:'13px',color:'rgba(255,255,255,.5)',marginBottom:'24px',textAlign:'center'}}>Setup cepat sebelum mulai</div>
+          <div style={{fontSize:'20px',fontWeight:'700',color:T.text,marginBottom:'6px'}}>Halo Papa! Yuyu siap~</div>
+          <div style={{fontSize:'13px',color:T.textSec,marginBottom:'24px',textAlign:'center'}}>Setup cepat sebelum mulai</div>
           <div style={{width:'100%',maxWidth:'320px',display:'flex',flexDirection:'column',gap:'10px'}}>
             <input value={project.folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="contoh: yuyucode"
-              style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'8px',padding:'10px 14px',color:'#f0f0f0',fontSize:'14px',outline:'none',fontFamily:'monospace'}}/>
-            <div style={{background:'rgba(0,0,0,.5)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'6px',padding:'8px 12px',fontFamily:'monospace',fontSize:'11px',color:'rgba(74,222,128,.8)'}}>node ~/yuyu-server.js &</div>
+              style={{background:T.bg3,border:'1px solid '+T.borderMed,borderRadius:'8px',padding:'10px 14px',color:T.text,fontSize:'14px',outline:'none',fontFamily:'monospace'}}/>
+            <div style={{background:T.bg,border:'1px solid '+T.border,borderRadius:'6px',padding:'8px 12px',fontFamily:'monospace',fontSize:'11px',color:T.success}}>node ~/yuyu-server.js &</div>
             <button onClick={()=>{saveFolder(project.folderInput);Preferences.set({key:'yc_onboarded',value:'1'});ui.setShowOnboarding(false);haptic('medium');}}
-              style={{background:'#7c3aed',border:'none',borderRadius:'10px',padding:'12px',color:'white',fontSize:'14px',cursor:'pointer',fontWeight:'600',marginTop:'8px'}}>
+              style={{background:T.accent,border:'none',borderRadius:'10px',padding:'12px',color:'white',fontSize:'14px',cursor:'pointer',fontWeight:'600',marginTop:'8px'}}>
               Mulai Coding!
             </button>
           </div>
@@ -811,7 +811,7 @@ export default function App() {
       <Activity mode={ui.showGitHub?'visible':'hidden'}>
       {/* GITHUB */}
       {ui.showGitHub&&(
-        <GitHubPanel
+        <GitHubPanel T={T}
           githubRepo={project.githubRepo}
           githubToken={project.githubToken}
           githubData={project.githubData}
@@ -878,7 +878,7 @@ export default function App() {
       {/* BG AGENTS */}
       <Activity mode={ui.showBgAgents?'visible':'hidden'}>
       {ui.showBgAgents&&(
-        <BgAgentPanel
+        <BgAgentPanel T={T}
           agents={getBgAgents()}
           onMerge={async id=>{
             chat.setLoading(true);
@@ -961,18 +961,18 @@ export default function App() {
       {/* COMMIT MESSAGE MODAL */}
       {ui.commitModal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}}>
-          <div style={{background:'#111113',border:'1px solid rgba(255,255,255,.1)',borderRadius:'14px',padding:'20px',width:'100%',maxWidth:'380px',boxShadow:'0 20px 60px rgba(0,0,0,.7)'}}>
-            <div style={{fontSize:'14px',fontWeight:'600',color:'#f0f0f0',marginBottom:'4px'}}>↑ Push ke Remote</div>
-            <div style={{fontSize:'11px',color:'rgba(255,255,255,.3)',marginBottom:'14px'}}>node yugit.cjs "..."</div>
+          <div style={{background:T.bg2,border:'1px solid '+T.border,borderRadius:'14px',padding:'20px',width:'100%',maxWidth:'380px',boxShadow:'0 20px 60px rgba(0,0,0,.7)'}}>
+            <div style={{fontSize:'14px',fontWeight:'600',color:T.text,marginBottom:'4px'}}>↑ Push ke Remote</div>
+            <div style={{fontSize:'11px',color:T.textMute,marginBottom:'14px'}}>node yugit.cjs "..."</div>
             <input autoFocus value={ui.commitMsg} onChange={e=>ui.setCommitMsg(e.target.value)}
               onKeyDown={e=>{
                 if(e.key==='Enter'&&ui.commitMsg.trim()){ui.setCommitModal(false);runShortcut('node yugit.cjs "'+ui.commitMsg.trim().replace(/"/g,'\\"')+'"');}
                 if(e.key==='Escape') ui.setCommitModal(false);
               }}
               placeholder="commit message..."
-              style={{width:'100%',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:'8px',padding:'10px 12px',color:'#f0f0f0',fontSize:'13px',outline:'none',fontFamily:'monospace',marginBottom:'12px',boxSizing:'border-box'}}/>
+              style={{width:'100%',background:T.bg3,border:'1px solid '+T.borderMed,borderRadius:'8px',padding:'10px 12px',color:T.text,fontSize:'13px',outline:'none',fontFamily:'monospace',marginBottom:'12px',boxSizing:'border-box'}}/>
             <div style={{display:'flex',gap:'8px'}}>
-              <button onClick={()=>ui.setCommitModal(false)} style={{flex:1,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:'8px',padding:'9px',color:'rgba(255,255,255,.4)',fontSize:'12px',cursor:'pointer'}}><X size={13}/> Batal</button>
+              <button onClick={()=>ui.setCommitModal(false)} style={{flex:1,background:T.bg3,border:'1px solid '+T.border,borderRadius:'8px',padding:'9px',color:T.textMute,fontSize:'12px',cursor:'pointer'}}><X size={13}/> Batal</button>
               <button disabled={!ui.commitMsg.trim()} onClick={()=>{ui.setCommitModal(false);runShortcut('node yugit.cjs "'+ui.commitMsg.trim().replace(/"/g,'\\"')+'"');}}
                 style={{flex:2,background:ui.commitMsg.trim()?T.accent:'rgba(255,255,255,.05)',border:'none',borderRadius:'8px',padding:'9px',color:'white',fontSize:'12px',cursor:ui.commitMsg.trim()?'pointer':'default',fontWeight:'600',opacity:ui.commitMsg.trim()?1:.4}}>
                 ↑ Push

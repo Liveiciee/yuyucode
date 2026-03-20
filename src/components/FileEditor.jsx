@@ -1,7 +1,7 @@
 import { Save, X } from 'lucide-react';
 import React, { useState, useRef } from "react";
 
-export function FileEditor({ path, content, onSave, onClose }) {
+export function FileEditor({ path, content, onSave, onClose, T }) {
   const [text, setText] = useState(content || '');
   const [saved, setSaved] = useState(true);
   const [cursor, setCursor] = useState({ line:1, col:1 });
@@ -32,11 +32,25 @@ export function FileEditor({ path, content, onSave, onClose }) {
     return result;
   }
 
+
+  const bg        = T?.bg        || '#0d0d0e';
+  const bg3       = T?.bg3       || 'rgba(255,255,255,.04)';
+  const border    = T?.border    || 'rgba(255,255,255,.06)';
+  const textColor = T?.text      || 'rgba(255,255,255,.85)';
+  const textMute  = T?.textMute  || 'rgba(255,255,255,.3)';
+  const accent    = T?.accent    || '#a78bfa';
+  const accentBg  = T?.accentBg  || 'rgba(124,58,237,.2)';
+  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.35)';
+  const success   = T?.success   || '#4ade80';
+  const successBg = T?.successBg || 'rgba(74,222,128,.12)';
+  const successBorder = 'rgba(74,222,128,.25)';
+  const warning   = T?.warning   || '#fbbf24';
+
   // ── Sticky toolbar button style ──
   const tbBtn = (active) => ({
-    background: active ? 'rgba(124,58,237,.2)' : 'rgba(255,255,255,.05)',
-    border: '1px solid ' + (active ? 'rgba(124,58,237,.35)' : 'rgba(255,255,255,.08)'),
-    borderRadius: '7px', padding: '7px 14px', color: active ? '#a78bfa' : 'rgba(255,255,255,.55)',
+    background: active ? accentBg : bg3,
+    border: '1px solid ' + (active ? accentBorder : border),
+    borderRadius: '7px', padding: '7px 14px', color: active ? accent : textMute,
     fontSize: '12px', cursor: 'pointer', minHeight: '36px', whiteSpace: 'nowrap',
   });
 
@@ -44,18 +58,18 @@ export function FileEditor({ path, content, onSave, onClose }) {
     <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
 
       {/* ── Sticky toolbar ── */}
-      <div style={{padding:'6px 10px',borderBottom:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',gap:'6px',background:'rgba(255,255,255,.02)',flexShrink:0,overflowX:'auto'}}>
-        <span style={{fontSize:'11px',color:'rgba(255,255,255,.35)',fontFamily:'monospace',flexShrink:0,maxWidth:'140px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{path?.split('/').pop()}</span>
+      <div style={{padding:'6px 10px',borderBottom:'1px solid '+border,display:'flex',alignItems:'center',gap:'6px',background:bg3,flexShrink:0,overflowX:'auto'}}>
+        <span style={{fontSize:'11px',color:textMute,fontFamily:'monospace',flexShrink:0,maxWidth:'140px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{path?.split('/').pop()}</span>
         <div style={{flex:1}}/>
-        {!saved && <span style={{fontSize:'10px',color:'rgba(251,191,36,.7)',flexShrink:0}}>●</span>}
-        <span style={{fontSize:'10px',color:'rgba(255,255,255,.2)',fontFamily:'monospace',flexShrink:0}}>{cursor.line}:{cursor.col}</span>
+        {!saved && <span style={{fontSize:'10px',color:warning,flexShrink:0}}>●</span>}
+        <span style={{fontSize:'10px',color:textMute,fontFamily:'monospace',flexShrink:0}}>{cursor.line}:{cursor.col}</span>
         {!saved && (
           <button onClick={()=>setShowInlineDiff(!showInlineDiff)} style={tbBtn(showInlineDiff)}>◐ diff</button>
         )}
-        <button onClick={save} style={{...tbBtn(false),background:'rgba(74,222,128,.12)',border:'1px solid rgba(74,222,128,.25)',color:'#4ade80',fontWeight:'500'}}>
+        <button onClick={save} style={{...tbBtn(false),background:successBg,border:'1px solid '+successBorder,color:success,fontWeight:'500'}}>
           <Save size={13}/> Save
         </button>
-        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,.3)',fontSize:'18px',cursor:'pointer',padding:'4px 6px',flexShrink:0}}>×</button>
+        <button onClick={onClose} style={{background:'none',border:'none',color:textMute,fontSize:'18px',cursor:'pointer',padding:'4px 6px',flexShrink:0}}>×</button>
       </div>
 
       <div style={{flex:1,display:'flex',overflow:'hidden'}}>
@@ -70,7 +84,7 @@ export function FileEditor({ path, content, onSave, onClose }) {
           </div>
         ) : (
           <>
-            <div style={{padding:'8px 4px',color:'rgba(255,255,255,.18)',textAlign:'right',userSelect:'none',borderRight:'1px solid rgba(255,255,255,.05)',minWidth:'38px',flexShrink:0,fontSize:'12px',lineHeight:'1.6',fontFamily:'monospace',overflowY:'hidden',background:'rgba(255,255,255,.01)'}}>
+            <div style={{padding:'8px 4px',color:textMute,textAlign:'right',userSelect:'none',borderRight:'1px solid '+border,minWidth:'38px',flexShrink:0,fontSize:'12px',lineHeight:'1.6',fontFamily:'monospace',overflowY:'hidden',background:bg3}}>
               {text.split('\n').map((_,i)=><div key={i}>{i+1}</div>)}
             </div>
             <textarea ref={textareaRef} value={text}
@@ -80,7 +94,7 @@ export function FileEditor({ path, content, onSave, onClose }) {
                 if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();save();return;}
                 if(e.key==='Tab'){e.preventDefault();const s=e.target.selectionStart;const val=text.slice(0,s)+'  '+text.slice(e.target.selectionEnd);setText(val);setTimeout(()=>{e.target.selectionStart=e.target.selectionEnd=s+2;},0);}
               }}
-              style={{flex:1,background:'#0d0d0e',border:'none',outline:'none',color:'rgba(255,255,255,.85)',fontSize:'13px',lineHeight:'1.6',fontFamily:'monospace',padding:'8px 12px',resize:'none',whiteSpace:'pre',overflowWrap:'normal',overflowX:'auto'}}
+              style={{flex:1,background:bg,border:'none',outline:'none',color:textColor,fontSize:'13px',lineHeight:'1.6',fontFamily:'monospace',padding:'8px 12px',resize:'none',whiteSpace:'pre',overflowWrap:'normal',overflowX:'auto'}}
               spellCheck={false} autoCapitalize="none" autoCorrect="off"
             />
           </>
