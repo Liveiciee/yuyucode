@@ -153,7 +153,7 @@ export function useProjectStore() {
     setNotesRaw(notesR.value || '');
     if (branchR.ok) setBranch(branchR.data.trim());
     setAgentsMd(agentsR.ok && agentsR.data ? agentsR.data : '');
-    // Auto-load skills dari .claude/skills/, respect saved active map
+    // Auto-load skills dari .yuyu/skills/, respect saved active map
     (async () => {
       let activeMap = {};
       try { const r = await Preferences.get({ key: 'yc_skills_active_' + f }); activeMap = r.value ? JSON.parse(r.value) : {}; } catch (_e) {}

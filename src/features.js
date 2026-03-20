@@ -221,21 +221,21 @@ export function abortBgAgent(id) {
 }
 
 // ─── SKILLS SYSTEM ────────────────────────────────────────────────────────────
-// ── loadSkills: .claude/skills/*.md only ─────────────────────────────────────
+// ── loadSkills: .yuyu/skills/*.md only ─────────────────────────────────────
 export async function loadSkills(folder, activeMap = {}) {
   const skills = [];
-  // .claude/skills/*.md
-  const list = await callServer({ type: 'list', path: folder + '/.claude/skills' });
+  // .yuyu/skills/*.md
+  const list = await callServer({ type: 'list', path: folder + '/.yuyu/skills' });
   if (list.ok && Array.isArray(list.data)) {
     const files = list.data.filter(f => !f.isDir && f.name.endsWith('.md'));
     const reads = await Promise.all(files.map(f =>
-      callServer({ type: 'read', path: folder + '/.claude/skills/' + f.name })
+      callServer({ type: 'read', path: folder + '/.yuyu/skills/' + f.name })
     ));
     files.forEach((f, i) => {
       if (reads[i].ok && reads[i].data)
         skills.push({
           name: f.name, content: reads[i].data,
-          path: folder + '/.claude/skills/' + f.name, builtin: false,
+          path: folder + '/.yuyu/skills/' + f.name, builtin: false,
           active: activeMap[f.name] !== false,   // default on
         });
     });
@@ -243,17 +243,17 @@ export async function loadSkills(folder, activeMap = {}) {
   return skills;
 }
 
-// ── Upload / save skill to .claude/skills/ ────────────────────────────────────
+// ── Upload / save skill to .yuyu/skills/ ────────────────────────────────────
 export async function saveSkillFile(folder, name, content) {
   const safeName = name.replace(/[^a-z0-9._-]/gi, '-').replace(/\.md$/i, '') + '.md';
-  const path = folder + '/.claude/skills/' + safeName;
-  await callServer({ type: 'mkdir', path: folder + '/.claude/skills' });
+  const path = folder + '/.yuyu/skills/' + safeName;
+  await callServer({ type: 'mkdir', path: folder + '/.yuyu/skills' });
   return callServer({ type: 'write', path, content });
 }
 
 // ── Delete skill file ─────────────────────────────────────────────────────────
 export async function deleteSkillFile(folder, name) {
-  return callServer({ type: 'delete', path: folder + '/.claude/skills/' + name });
+  return callServer({ type: 'delete', path: folder + '/.yuyu/skills/' + name });
 }
 
 export function selectSkills(skills, taskText) {

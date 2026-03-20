@@ -172,7 +172,7 @@ describe('deleteSkillFile', () => {
     await deleteSkillFile('/project', 'react.md');
     expect(callServer).toHaveBeenCalledWith({
       type: 'delete',
-      path: '/project/.claude/skills/react.md',
+      path: '/project/.yuyu/skills/react.md',
     });
   });
 });

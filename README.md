@@ -196,7 +196,7 @@ openssl base64 < ~/yuyucode-jks.jks | tr -d '\n'
 - `readSSEStream` harus di-export dari `api.js` supaya bisa di-test
 
 ### Skills
-- Skills disimpan di `.claude/skills/` — kelola via `/skills` panel
+- Skills disimpan di `.yuyu/skills/` — kelola via `/skills` panel
 - `/init` akan generate `SKILL.md` di **root project folder** sebagai skill utama. Gunakan `/init overwrite` untuk timpa yang sudah ada
 
 ### Misc
