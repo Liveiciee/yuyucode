@@ -10,7 +10,7 @@
 <br/>
 
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
-[![Tests](https://img.shields.io/badge/tests-451%20passing-brightgreen)](#testing--benchmarks)
+[![Tests](https://img.shields.io/badge/tests-504%20passing-brightgreen)](#testing--benchmarks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
 ![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?logo=react&logoColor=61DAFB)
@@ -132,14 +132,19 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 - **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-highlighted `<span>` tags
 - **3-fallback patch handler** — `patch_file` tries exact match → whitespace-normalized → trim-lines before giving up
 - **Myers diff** — `generateDiff()` uses the `diff` library for accurate line tracking with moved block detection; includes line numbers
-- **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits and sets `package.json` version before pushing; CI uses that version for the GitHub Release tag. Supports `--no-push`, `--amend`, `--hash` revert, scope `feat(x):`, breaking change `feat!:`, and body/footer multi-line commits.
+- **Batch server action** — `{ type: 'batch', actions: [...] }` runs multiple server ops in a single HTTP request; reduces agent loop roundtrips for parallel reads
+- **Incremental codebase map** — `yuyu-map.cjs` runs `git diff --name-only HEAD` before scanning; only reports changed files, full rescan still used for salience scoring
+- **Benchmark regression detector** — `yuyu-bench.cjs` stores results in `.yuyu/bench-history.json`; flags any function that regresses 2× vs baseline (`npm run bench`)
+- **Property-based test coverage** — `parseActions` and `resolvePath` are fuzz-tested with 100 random inputs per property; inline fc-style runner, zero extra deps
+- **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits and sets `package.json` version before pushing; CI uses that version for the GitHub Release tag. Supports `--no-push`, `--amend`, `--hash` revert, scope `feat(x):`, breaking change `feat!:`, body/footer multi-line commits, `--push` (push-only), `--squash N` (squash last N commits), and `--status` (quick git overview).
 
 ---
 
 ## Testing & Benchmarks
 
 ```
-451 tests passing. 0 lint warnings. Runs on Termux ARM64.
+504 tests passing. 0 lint warnings. Runs on Termux ARM64.
+38 of which are property-based (inline fast-check-style, 100 random inputs each).
 ```
 
 | File | Type | Tests |
@@ -159,7 +164,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 | `multitab.test.js` | Unit — useFileStore multi-tab | 18 |
 | `uistore.test.js` | Unit — useUIStore | 25 |
 | `globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
-| `yuyu-map.test.cjs` | Unit — tryRepomix, extractSymbols, compressSource, walkFiles | 47 |
+| `yuyu-map.test.cjs` | Unit — tryRepomix, extractSymbols, compressSource, walkFiles, generateLlmsTxt, ensureHandoffTemplate, main(), getChangedFiles | 80 |
 
 ### Benchmarks (Termux ARM64)
 
@@ -393,138 +398,6 @@ VITE_GROQ_API_KEY=your_key
 
 ---
 
-## Troubleshooting
-
-### yuyu-server berhenti tiba-tiba (Termux memory manager kill)
-
-Android agresif kill background processes saat RAM habis. Solusi:
-
-```bash
-# 1. Acquire wakelock agar Termux tidak di-kill:
-termux-wake-lock
-
-# 2. Pakai auto-restart loop (ada di bashrc-additions.sh):
-yuyu-server-start   # restart otomatis kalau crash
-
-# 3. Cek server masih hidup:
-yuyu-status         # atau: curl localhost:8765/health
-
-# 4. Kalau masih mati terus — buka notifikasi Termux, tap "Acquire wakelock"
-```
-
-Alternatif: buka Termux lebih sering, atau aktifkan "Battery Optimization: Unrestricted" untuk Termux di Settings Android.
-
----
-
-### Rate limit Cerebras atau Groq
-
-Keduanya free tier — rate limit bisa kena saat project besar.
-
-```
-# Gejala: response berhenti di tengah, error "429 Too Many Requests"
-```
-
-Yang terjadi secara otomatis:
-- Cerebras 429 → auto-switch ke Groq (Kimi K2 262K)
-- Groq 429 → agent loop berhenti, perlu tunggu ~1 menit
-
-Manual workaround:
-```bash
-# Cek sisa rate limit (Groq):
-curl -s -H "Authorization: Bearer $VITE_GROQ_API_KEY"   https://api.groq.com/openai/v1/models | head -5
-
-# Tunggu lalu retry — biasanya reset tiap 1 menit
-# Atau ganti ke model yang lebih hemat (llama-3.1-8b-instant) di Config panel
-```
-
----
-
-### Build APK gagal di CI
-
-**Penyebab paling umum:**
-
-1. **`npm run build` error di CI** — biasanya dependency baru yang belum di-lock
-   ```bash
-   # Fix: commit package-lock.json kalau ada perubahan
-   git add package-lock.json && node yugit.cjs "chore: update lockfile"
-   ```
-
-2. **Capacitor sync gagal** — `android/` folder corrupt
-   ```bash
-   # Fix: re-sync dari local
-   npx cap sync android
-   # Lalu commit perubahan di android/
-   git add android/ && node yugit.cjs "chore: cap sync"
-   ```
-
-3. **Keystore error** — secrets tidak terset di GitHub
-   - Go to: repo → Settings → Secrets → Actions
-   - Pastikan ada: `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
-   - Encode keystore: `openssl base64 < keystore.jks | tr -d '
-'` (bukan `base64 -w 0`)
-
-4. **Build di-skip** — commit message hanya ubah `.md` files
-   - Normal behavior — push commit kecil lagi yang ubah source file
-
----
-
-### `git push` rejected
-
-```
-! [rejected] main -> main (non-fast-forward)
-```
-
-```bash
-# Fix standar:
-git pull --rebase
-# Kalau ada conflict:
-git status   # lihat file yang conflict
-# Edit file, resolve conflict, lalu:
-git add .
-git rebase --continue
-# Kemudian:
-node yugit.cjs --push
-```
-
-Kalau pakai `--amend` dan push force gagal:
-```bash
-git push --force-with-lease   # lebih aman dari --force
-```
-
----
-
-### Test tiba-tiba lambat (>30s)
-
-Cek apakah ada test yang memanggil `tryRepomix()` atau `main()` tanpa inject `spawnSync` mock:
-
-```bash
-# Identifikasi test lambat:
-npx vitest run --reporter=verbose 2>&1 | grep -E "ms|[0-9]+s"
-
-# Fix: pastikan semua main() tests pakai fastSpawn:
-# const fastSpawn = vi.fn(() => ({ error: new Error('offline'), status: null, stderr: '' }));
-# main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn })
-```
-
----
-
-### `yuyu-apply` rollback terus
-
-Artinya lint atau test gagal setelah apply. Lihat error lebih detail:
-
-```bash
-# Manual apply tanpa rollback untuk debug:
-cd ~/yuyucode
-unzip -o /sdcard/Download/yuyu-overhaul.zip
-npm run lint          # lihat error apa
-npx vitest run        # lihat test yang fail
-
-# Kalau mau kembali bersih:
-git checkout HEAD -- .
-```
-
----
-
 ## Known limitations
 
 This is a personal tool built by one person, on one phone, in sprint-style sessions. It works well for its creator. Before you adopt it, know what it is:
@@ -590,7 +463,7 @@ yuyu-apply yuyu-map.zip         # zip dengan nama lain
 
 # Selalu setelah apply:
 npm run lint        # 🔍 Scouring... → ✨ 0 problems found! Code is pure.
-npx vitest run      # harus 451/451 pass
+npx vitest run      # harus 504/504 pass
 node yuyu-map.cjs   # update codebase map
 
 # Push biasa
@@ -600,11 +473,16 @@ node yugit.cjs "feat: thing" --no-push             # commit lokal, push nanti
 node yugit.cjs "fix: typo" --amend                 # amend last commit
 node yugit.cjs "revert: bad deploy" --hash=abc123  # git revert otomatis
 node yugit.cjs "feat!: overhaul"                   # breaking change
+node yugit.cjs --push                              # push tanpa commit baru
+node yugit.cjs --squash 3                         # squash 3 commit terakhir
+node yugit.cjs --status                           # lihat branch + dirty + recent commits
 
 # Release — auto set version + trigger CI APK build
 node yugit.cjs "release: v2.x — deskripsi"
 
 npx vitest bench --run  # benchmark hot paths (opsional)
+npm run bench           # benchmark + compare ke history (regresi detection)
+npm run bench:save      # set/update baseline
 ```
 
 ### yuyu-apply — smart zip applier
@@ -725,7 +603,9 @@ Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 node ~/yuyu-server.js &  # jalankan dari ~, bukan dari project folder
 ```
 
-**HTTP :8765** — `ping`, `read`, `read_many`, `write`, `append`, `patch`, `delete`, `move`, `mkdir`, `list`, `tree`, `info`, `search`, `web_search`, `exec`, `browse`, `fetch_json`, `sqlite`, `mcp`, `mcp_list`
+**HTTP :8765** — `ping`, `read`, `read_many`, `write`, `append`, `patch`, `delete`, `move`, `mkdir`, `list`, `tree`, `info`, `search`, `web_search`, `exec`, `browse`, `fetch_json`, `sqlite`, `mcp`, `mcp_list`, `batch`
+
+**REST** — `GET /health` → `{status, uptime, version}` | `GET /status` → `{status, uptime, memory_mb, tools}`
 
 **WebSocket :8766** — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`, `collab_updates`
 
