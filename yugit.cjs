@@ -2,7 +2,6 @@
 // yugit.cjs — YuyuCode git helper v2
 // Usage:
 //   node yugit.cjs "feat(api): add endpoint"          # commit + push
-console.log("DEBUG argv:", JSON.stringify(process.argv));
 //   node yugit.cjs "fix: broken layout" --no-push     # commit only
 //   node yugit.cjs "docs: update readme" --amend      # amend last commit
 //   node yugit.cjs "revert: bad deploy" --hash abc123 # git revert <hash>
