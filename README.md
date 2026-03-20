@@ -10,7 +10,7 @@
 <br/>
 
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
-[![Tests](https://img.shields.io/badge/tests-404%20passing-brightgreen)](#testing--benchmarks)
+[![Tests](https://img.shields.io/badge/tests-451%20passing-brightgreen)](#testing--benchmarks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
 ![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?logo=react&logoColor=61DAFB)
@@ -132,14 +132,14 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 - **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-highlighted `<span>` tags
 - **3-fallback patch handler** — `patch_file` tries exact match → whitespace-normalized → trim-lines before giving up
 - **Myers diff** — `generateDiff()` uses the `diff` library for accurate line tracking with moved block detection; includes line numbers
-- **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits and sets `package.json` version before pushing; CI uses that version for the GitHub Release tag
+- **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits and sets `package.json` version before pushing; CI uses that version for the GitHub Release tag. Supports `--no-push`, `--amend`, `--hash` revert, scope `feat(x):`, breaking change `feat!:`, and body/footer multi-line commits.
 
 ---
 
 ## Testing & Benchmarks
 
 ```
-404 tests passing. 0 lint warnings. Runs on Termux ARM64.
+451 tests passing. 0 lint warnings. Runs on Termux ARM64.
 ```
 
 | File | Type | Tests |
@@ -159,16 +159,20 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 | `multitab.test.js` | Unit — useFileStore multi-tab | 18 |
 | `uistore.test.js` | Unit — useUIStore | 25 |
 | `globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
+| `yuyu-map.test.cjs` | Unit — tryRepomix, extractSymbols, compressSource, walkFiles | 47 |
 
 ### Benchmarks (Termux ARM64)
 
 ```
-getLangExt        4.98x  faster than 10 mixed extensions
-isEmmetLang       4.55x  faster than 10 mixed
-isTsLang          4.52x  faster than 10 mixed
-buildSrcdoc       4.63x  faster than html + css + js combined
-multi-tab open   37.20x  faster than open 50 tabs sequentially
-generateDiff   5897.74x  faster than large diff (500 lines)
+getLangExt          4.89x  faster than 10 mixed extensions
+isEmmetLang         4.54x  faster than 10 mixed
+isTsLang            4.66x  faster than 10 mixed
+buildSrcdoc         4.95x  faster than html + css + js combined
+multi-tab open     36.55x  faster than open 50 tabs sequentially
+generateDiff     5829.58x  faster than large diff (500 lines)
+extractSymbols    181.28x  faster than large file (10 components, ~500 lines)
+compressSource    624.92x  faster than large file (500 lines)
+parseActions       82.54x  faster than mixed valid/invalid blocks (agent loop hot path)
 ```
 
 > The Myers diff number isn't a typo. Small diffs exit the algorithm early — large diffs don't.
@@ -225,15 +229,33 @@ Get free API keys:
 - [Cerebras](https://cloud.cerebras.ai) — main AI
 - [Groq](https://console.groq.com) — fallback + vision
 
-**Option A — Termux (recommended):** add to `~/.bashrc` so keys and server auto-load every session:
+**Option A — Termux (recommended):** setup `.bashrc` lengkap dengan yuyu shortcuts:
 ```bash
-# ~/.bashrc
+# ~/.bashrc — full setup
+
+export ANDROID_HOME=$HOME/android-sdk
+export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
 export VITE_CEREBRAS_API_KEY=your_key
 export VITE_GROQ_API_KEY=your_key
 
 # auto-start yuyu-server on every Termux session
 node ~/yuyu-server.js > /dev/null 2>&1 &
+
+# yuyu-apply — apply zip dari Claude (unzip + lint + test + rollback otomatis)
+yuyu-apply() { ... }   # lihat .bashrc lengkap di repo
+
+# yuyu-cp — copy file tunggal dari Download (auto-delegate zip ke yuyu-apply)
+yuyu-cp() { ... }      # lihat .bashrc lengkap di repo
+
+# Tab completions untuk yuyu-apply, yuyu-cp, yuyu-map, yugit
 ```
+Template `.bashrc` lengkap tersedia di `bashrc_yuyu.txt` — download dan `cp` ke `~/.bashrc`.
+
 Then `source ~/.bashrc` once. After that, just open Termux and everything is ready.
 
 **Option B — `.env.local`** (if you prefer not touching `.bashrc`):
@@ -303,16 +325,43 @@ This project stands on the shoulders of some exceptional open source work:
 node ~/yuyu-server.js &
 cd ~/yuyucode && npm run dev &
 
+# Apply file dari Claude:
+yuyu-cp README.md               # file tunggal — copy + hapus dari Download
+yuyu-apply                      # zip — unzip + lint + test + rollback otomatis
+yuyu-apply --dry-run            # preview dulu sebelum apply
+yuyu-apply yuyu-map.zip         # zip dengan nama lain
+
+# Selalu setelah apply:
+npm run lint        # harus 0 errors, 0 warnings
+npx vitest run      # harus 451/451 pass
+node yuyu-map.cjs   # update codebase map
+
 # Push biasa
 node yugit.cjs "feat: ..."
+node yugit.cjs "feat(api): add endpoint"           # dengan scope
+node yugit.cjs "feat: thing" --no-push             # commit lokal, push nanti
+node yugit.cjs "fix: typo" --amend                 # amend last commit
+node yugit.cjs "revert: bad deploy" --hash=abc123  # git revert otomatis
+node yugit.cjs "feat!: overhaul"                   # breaking change
 
 # Release — auto set version + trigger CI APK build
 node yugit.cjs "release: v2.x — deskripsi"
 
-npm run lint        # harus 0 errors, 0 warnings
-npx vitest run      # harus 404/404 pass
-npx vitest bench --run  # benchmark hot paths
+npx vitest bench --run  # benchmark hot paths (opsional)
 ```
+
+### yuyu-apply — smart zip applier
+- 📸 Snapshot git HEAD sebelum apply
+- ⚠️ Auto-stash uncommitted changes
+- 🔍 `--dry-run` untuk preview file yang akan di-overwrite
+- 🔄 Auto-rollback `git reset --hard` kalau lint/test gagal
+- ✅ Hapus zip dari project + Download kalau semua hijau
+
+### yuyu-cp — smart file copy
+- Auto-delegate ke `yuyu-apply` kalau file adalah zip
+- ⚠️ Warn kalau file ada uncommitted changes di git
+- ✅ Hapus dari Download otomatis setelah copy
+- Tab completion: `yuyu-cp <TAB>` → list file di Download
 
 ## Arsitektur
 

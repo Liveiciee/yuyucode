@@ -1,13 +1,30 @@
 #!/usr/bin/env node
-// yugit.cjs — YuyuCode git helper
-// Usage: node yugit.cjs "commit message"
-// Auto-bumps package.json version on "release:" prefix commits.
+// yugit.cjs — YuyuCode git helper v2
+// Usage:
+//   node yugit.cjs "feat(api): add endpoint"          # commit + push
+//   node yugit.cjs "fix: broken layout" --no-push     # commit only
+//   node yugit.cjs "docs: update readme" --amend      # amend last commit
+//   node yugit.cjs "revert: bad deploy" --hash abc123 # git revert <hash>
+//   node yugit.cjs "feat: thing" "body text" "BREAKING CHANGE: x"  # with body/footer
+//   node yugit.cjs "release: v2.x — desc"             # auto version bump + push
 
 const { execSync } = require('child_process');
 const fs   = require('fs');
 const path = require('path');
 
-const msg = process.argv.slice(2).join(' ') || 'update by yuyu';
+// ── Parse args ────────────────────────────────────────────────────────────────
+const rawArgs   = process.argv.slice(2);
+const NO_PUSH   = rawArgs.includes('--no-push');
+const AMEND     = rawArgs.includes('--amend');
+const hashFlag  = rawArgs.find(a => a.startsWith('--hash='));
+const HASH      = hashFlag ? hashFlag.split('=')[1] : (rawArgs[rawArgs.indexOf('--hash') + 1]);
+
+// Filter flags out — remaining args are: [msg, body?, footer?]
+const msgArgs = rawArgs.filter(a => !a.startsWith('--') && a !== HASH);
+const msg     = msgArgs[0] || 'update by yuyu';
+const body    = msgArgs[1] || null;
+const footer  = msgArgs[2] || null;
+
 const CWD = { cwd: process.cwd(), encoding: 'utf8', stdio: ['pipe','pipe','pipe'] };
 
 function run(cmd) {
@@ -19,17 +36,25 @@ function tryRun(cmd) {
   catch (e) { return { ok: false, out: (e.stderr || e.stdout || e.message || '').trim() }; }
 }
 
+// ── Conventional commit type extractor (scope-aware) ─────────────────────────
+// Handles: feat(api): desc → type=feat, scope=api
+function parseCommitType(m) {
+  const match = m.match(/^(\w+)(?:\(([^)]+)\))?(!)?:/);
+  if (!match) return { type: null, scope: null, breaking: false };
+  return { type: match[1], scope: match[2] || null, breaking: !!match[3] };
+}
+
 // ── Auto version bump ─────────────────────────────────────────────────────────
 function bumpVersion() {
   const pkgPath = path.join(process.cwd(), 'package.json');
   if (!fs.existsSync(pkgPath)) return null;
 
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  const pkg     = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
   const current = pkg.version || '0.0.0';
-  const parts = current.split('.').map(Number);
+  const parts   = current.split('.').map(Number);
   if (parts.length !== 3 || parts.some(isNaN)) return null;
 
-  // Jika pesan mengandung vX.Y atau vX.Y.Z → SET langsung ke versi itu
+  // Explicit vX.Y or vX.Y.Z in message → set directly
   const vMatch = msg.match(/\bv(\d+\.\d+(?:\.\d+)?)\b/);
   let next;
   if (vMatch) {
@@ -37,9 +62,9 @@ function bumpVersion() {
     while (targetParts.length < 3) targetParts.push(0);
     next = targetParts.join('.');
   } else {
-    // patch bump: 2.5.0 → 2.5.1, unless msg contains "major" or "minor"
     const lowerMsg = msg.toLowerCase();
-    if (lowerMsg.includes('major')) {
+    const { breaking } = parseCommitType(msg);
+    if (breaking || lowerMsg.includes('major')) {
       parts[0]++; parts[1] = 0; parts[2] = 0;
     } else if (lowerMsg.includes('minor')) {
       parts[1]++; parts[2] = 0;
@@ -48,32 +73,87 @@ function bumpVersion() {
     }
     next = parts.join('.');
   }
+
   pkg.version = next;
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
   return { from: current, to: next };
 }
 
-console.log('🚀 YuyuGit starting...\n');
+// ── Diff stat display ─────────────────────────────────────────────────────────
+function showDiffStat() {
+  const stat = tryRun('git diff --cached --stat');
+  if (stat.ok && stat.out) {
+    console.log('📊 Staged changes:\n' + stat.out + '\n');
+  }
+}
 
-// ── status ────────────────────────────────────────────────────────────────────
+// ── Build commit message (multi-line support) ─────────────────────────────────
+function buildCommitArgs(finalMsg) {
+  const args = [`-m "${finalMsg.replace(/"/g, "'")}"`];
+  if (body)   args.push(`-m "${body.replace(/"/g, "'")}"`);
+  if (footer) args.push(`-m "${footer.replace(/"/g, "'")}"`);
+  return args.join(' ');
+}
+
+console.log('🚀 YuyuGit v2 starting...\n');
+
+// ── Sanity check ──────────────────────────────────────────────────────────────
 const status = tryRun('git status --short');
 if (!status.ok) {
   console.error('❌ Bukan git repo atau git tidak tersedia:\n', status.out);
   process.exit(1);
 }
 
+const { type: commitType, scope, breaking } = parseCommitType(msg);
 const isRelease = msg.trim().toLowerCase().startsWith('release:');
+const isRevert  = msg.trim().toLowerCase().startsWith('revert:');
 
-// ── auto bump version jika release ───────────────────────────────────────────
+if (scope)    console.log(`📦 Scope: ${scope}`);
+if (breaking) console.log('⚠️  BREAKING CHANGE detected');
+
+// ── AMEND mode ────────────────────────────────────────────────────────────────
+if (AMEND) {
+  console.log('✏️  Amending last commit...\n');
+  const add = tryRun('git add -A');
+  if (!add.ok) { console.error('❌ git add gagal:\n', add.out); process.exit(1); }
+  showDiffStat();
+  const amend = tryRun(`git commit --amend ${buildCommitArgs(msg)}`);
+  if (!amend.ok) { console.error('❌ amend gagal:\n', amend.out); process.exit(1); }
+  console.log('✅ Amended:', amend.out.split('\n')[0]);
+  if (!NO_PUSH) {
+    console.log('📡 Force pushing...');
+    const push = tryRun('git push --force-with-lease');
+    if (!push.ok) { console.error('❌ push gagal:\n', push.out); process.exit(1); }
+    console.log('✅ Force push berhasil!');
+  } else {
+    console.log('💡 --no-push: skip push. Jalankan: git push --force-with-lease');
+  }
+  process.exit(0);
+}
+
+// ── REVERT mode ───────────────────────────────────────────────────────────────
+if (isRevert && HASH) {
+  console.log(`⏪ Reverting commit ${HASH}...\n`);
+  const revert = tryRun(`git revert ${HASH} --no-edit`);
+  if (!revert.ok) { console.error('❌ revert gagal:\n', revert.out); process.exit(1); }
+  console.log('✅ Reverted:', revert.out.split('\n')[0]);
+  if (!NO_PUSH) {
+    console.log('📡 Pushing...');
+    const push = tryRun('git push');
+    if (!push.ok) { console.error('❌ push gagal:\n', push.out); process.exit(1); }
+    console.log('✅ Push berhasil!');
+  }
+  process.exit(0);
+}
+
+// ── Auto bump version on release ──────────────────────────────────────────────
 let bumped = null;
 if (isRelease) {
   bumped = bumpVersion();
-  if (bumped) {
-    console.log(`🔢 Version bumped: ${bumped.from} → ${bumped.to}\n`);
-  }
+  if (bumped) console.log(`🔢 Version bumped: ${bumped.from} → ${bumped.to}\n`);
 }
 
-// Re-check status after possible package.json edit
+// ── Re-check status after possible package.json edit ─────────────────────────
 const statusAfter = tryRun('git status --short');
 if (!statusAfter.out && !status.out) {
   console.log('✅ Tidak ada perubahan. Sudah up to date~');
@@ -81,16 +161,17 @@ if (!statusAfter.out && !status.out) {
 }
 console.log('📝 Changed files:\n' + (statusAfter.out || status.out) + '\n');
 
-// ── add ───────────────────────────────────────────────────────────────────────
+// ── git add ───────────────────────────────────────────────────────────────────
 const add = tryRun('git add -A');
-if (!add.ok) {
-  console.error('❌ git add gagal:\n', add.out);
-  process.exit(1);
-}
+if (!add.ok) { console.error('❌ git add gagal:\n', add.out); process.exit(1); }
 
-// ── commit ────────────────────────────────────────────────────────────────────
-const finalMsg = bumped ? `${msg} [v${bumped.to}]` : msg;
-const commit = tryRun(`git commit -m "${finalMsg.replace(/"/g, "'")}"`);
+showDiffStat();
+
+// ── git commit ────────────────────────────────────────────────────────────────
+const finalMsg    = bumped ? `${msg} [v${bumped.to}]` : msg;
+const commitArgs  = buildCommitArgs(finalMsg);
+const commit      = tryRun(`git commit ${commitArgs}`);
+
 if (!commit.ok) {
   if (commit.out.includes('nothing to commit')) {
     console.log('✅ Nothing to commit, working tree clean~');
@@ -100,9 +181,16 @@ if (!commit.ok) {
   }
 } else {
   console.log('✅ Committed:', commit.out.split('\n')[0]);
+  if (body)   console.log('   Body:', body);
+  if (footer) console.log('   Footer:', footer);
 }
 
-// ── push ──────────────────────────────────────────────────────────────────────
+// ── git push ──────────────────────────────────────────────────────────────────
+if (NO_PUSH) {
+  console.log('\n💡 --no-push: commit lokal selesai. Jalankan: node yugit.cjs --push');
+  process.exit(0);
+}
+
 console.log('📡 Pushing...');
 const push = tryRun('git push');
 if (!push.ok) {
@@ -119,11 +207,11 @@ if (!push.ok) {
   } else if (push.out.includes('no upstream')) {
     const branch = tryRun('git branch --show-current');
     console.log('\n💡 Fix: belum ada upstream branch. Jalankan:');
-    console.log(`   git push --set-upstream origin ${branch.out||'main'}`);
+    console.log(`   git push --set-upstream origin ${branch.out || 'main'}`);
   }
   process.exit(1);
 }
 
 console.log('✅ Push berhasil! Kode Papa sudah terbang ke GitHub 🌸');
-if (bumped) console.log(`📦 Package version: ${bumped.to}`);
+if (bumped)  console.log(`📦 Package version: ${bumped.to}`);
 if (push.out) console.log(push.out);
