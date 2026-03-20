@@ -8,6 +8,7 @@ export default defineConfig({
     globals: true,
     setupFiles: './src/setupTest.js',
     pool: 'threads',           // worker_threads > forks on ARM64
+    isolate: false,            // shared module cache — faster when mocks use DI
     css: false,                // skip CSS processing, zero tests need it
   },
 })

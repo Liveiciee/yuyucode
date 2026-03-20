@@ -7,6 +7,9 @@
 //   node yugit.cjs "revert: bad deploy" --hash abc123 # git revert <hash>
 //   node yugit.cjs "feat: thing" "body text" "BREAKING CHANGE: x"  # with body/footer
 //   node yugit.cjs "release: v2.x — desc"             # auto version bump + push
+//   node yugit.cjs --push                              # push existing local commits
+//   node yugit.cjs --squash 3                         # squash last N commits
+//   node yugit.cjs --status                           # show branch + changes + recent commits
 
 const { execSync } = require('child_process');
 const fs   = require('fs');
@@ -16,12 +19,16 @@ const path = require('path');
 const rawArgs   = process.argv.slice(2);
 const NO_PUSH   = rawArgs.includes('--no-push');
 const AMEND     = rawArgs.includes('--amend');
+const PUSH_ONLY = rawArgs.includes('--push');
+const STATUS    = rawArgs.includes('--status');
 const hashFlag  = rawArgs.find(a => a.startsWith('--hash='));
 const hashIdx   = rawArgs.indexOf('--hash');
 const HASH      = hashFlag ? hashFlag.split('=')[1] : (hashIdx !== -1 ? rawArgs[hashIdx + 1] : undefined);
+const squashIdx = rawArgs.indexOf('--squash');
+const SQUASH    = squashIdx !== -1 ? parseInt(rawArgs[squashIdx + 1], 10) : null;
 
 // Filter flags out — remaining args are: [msg, body?, footer?]
-const msgArgs = rawArgs.filter(a => !a.startsWith('--') && a !== HASH);
+const msgArgs = rawArgs.filter(a => !a.startsWith('--') && a !== HASH && (squashIdx === -1 || a !== rawArgs[squashIdx + 1]));
 const msg     = msgArgs[0] || 'update by yuyu';
 const body    = msgArgs[1] || null;
 const footer  = msgArgs[2] || null;
@@ -103,6 +110,75 @@ const status = tryRun('git status --short');
 if (!status.ok) {
   console.error('❌ Bukan git repo atau git tidak tersedia:\n', status.out);
   process.exit(1);
+}
+
+// ── STATUS mode ───────────────────────────────────────────────────────────────
+if (STATUS) {
+  const branch    = tryRun('git branch --show-current');
+  const ahead     = tryRun('git rev-list @{u}..HEAD --count 2>/dev/null || echo 0');
+  const logRecent = tryRun('git log --oneline -3');
+  const dirty     = status.out.trim();
+
+  console.log(`🌿 Branch: ${branch.ok ? branch.out : '(unknown)'}`);
+  if (ahead.ok && ahead.out !== '0') console.log(`📡 ${ahead.out} commit(s) belum di-push`);
+  if (dirty) {
+    console.log(`\n📝 Uncommitted changes:\n${dirty}`);
+  } else {
+    console.log('✅ Working tree clean');
+  }
+  if (logRecent.ok && logRecent.out) {
+    console.log(`\n🕐 3 commit terakhir:\n${logRecent.out}`);
+  }
+  process.exit(0);
+}
+
+// ── PUSH-ONLY mode ────────────────────────────────────────────────────────────
+if (PUSH_ONLY) {
+  console.log('📡 Pushing existing local commits...');
+  const push = tryRun('git push');
+  if (!push.ok) {
+    console.error('❌ git push gagal:\n' + push.out);
+    if (push.out.includes('rejected')) {
+      console.log('\n💡 Fix: git pull --rebase dulu baru push lagi.');
+    }
+    process.exit(1);
+  }
+  console.log('✅ Push berhasil! 🌸');
+  if (push.out) console.log(push.out);
+  process.exit(0);
+}
+
+// ── SQUASH mode ───────────────────────────────────────────────────────────────
+if (SQUASH !== null) {
+  if (isNaN(SQUASH) || SQUASH < 2) {
+    console.error('❌ --squash butuh angka >= 2. Contoh: node yugit.cjs --squash 3');
+    process.exit(1);
+  }
+  console.log(`🗜  Squashing ${SQUASH} commit terakhir...\n`);
+  const log = tryRun(`git log --oneline -${SQUASH}`);
+  if (log.ok) console.log('Commits yang akan di-squash:\n' + log.out + '\n');
+
+  // Get the commit message of the oldest commit being squashed
+  const oldestMsg = tryRun(`git log --format=%s -1 HEAD~${SQUASH - 1}`);
+  const squashMsg = msg || (oldestMsg.ok ? oldestMsg.out : `squash: ${SQUASH} commits`);
+
+  const squash = tryRun(`git reset --soft HEAD~${SQUASH}`);
+  if (!squash.ok) { console.error('❌ squash gagal:\n', squash.out); process.exit(1); }
+
+  const commitArgs = buildCommitArgs(squashMsg);
+  const commit = tryRun(`git commit ${commitArgs}`);
+  if (!commit.ok) { console.error('❌ commit gagal:\n', commit.out); process.exit(1); }
+  console.log('✅ Squash selesai:', commit.out.split('\n')[0]);
+
+  if (!NO_PUSH) {
+    console.log('📡 Force pushing...');
+    const push = tryRun('git push --force-with-lease');
+    if (!push.ok) { console.error('❌ push gagal:\n', push.out); process.exit(1); }
+    console.log('✅ Force push berhasil!');
+  } else {
+    console.log('💡 --no-push: jalankan: git push --force-with-lease');
+  }
+  process.exit(0);
 }
 
 const { type: commitType, scope, breaking } = parseCommitType(msg);

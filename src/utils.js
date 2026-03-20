@@ -124,14 +124,14 @@ export function generateDiff(original, patched, maxLines = 40) {
 }
 
 // ── ACTION EXECUTOR ──
-export async function executeAction(action, baseFolder) {
+export async function executeAction(action, baseFolder, _callServer = callServer) {
   const base = baseFolder || '';
 
   if (action.type === 'read_file') {
     const payload = { type: 'read', path: resolvePath(base, action.path) };
     if (action.from) payload.from = action.from;
     if (action.to)   payload.to   = action.to;
-    const r = await callServer(payload);
+    const r = await _callServer(payload);
     if (r.ok && r.meta) {
       r.data = `[Lines ${action.from || 1}–${action.to || r.meta.totalLines} / ${r.meta.totalLines} | ${Math.round(r.meta.totalChars / 1000)}KB]\n` + r.data;
     }
@@ -139,15 +139,15 @@ export async function executeAction(action, baseFolder) {
   }
 
   if (action.type === 'write_file') {
-    return callServer({ type: 'write', path: resolvePath(base, action.path), content: action.content });
+    return _callServer({ type: 'write', path: resolvePath(base, action.path), content: action.content });
   }
 
   if (action.type === 'append_file') {
-    return callServer({ type: 'append', path: resolvePath(base, action.path), content: action.content });
+    return _callServer({ type: 'append', path: resolvePath(base, action.path), content: action.content });
   }
 
   if (action.type === 'patch_file') {
-    return callServer({
+    return _callServer({
       type:    'patch',
       path:    resolvePath(base, action.path),
       old_str: action.old_str,
@@ -156,7 +156,7 @@ export async function executeAction(action, baseFolder) {
   }
 
   if (action.type === 'list_files') {
-    const r = await callServer({ type: 'list', path: resolvePath(base, action.path) });
+    const r = await _callServer({ type: 'list', path: resolvePath(base, action.path) });
     if (r.ok && Array.isArray(r.data)) {
       r.data = r.data
         .map(f => (f.isDir ? '📁 ' : '📄 ') + f.name + (f.size ? ` (${Math.round(f.size / 1024)}KB)` : ''))
@@ -166,31 +166,31 @@ export async function executeAction(action, baseFolder) {
   }
 
   if (action.type === 'tree') {
-    return callServer({ type: 'tree', path: resolvePath(base, action.path || ''), depth: action.depth || 3 });
+    return _callServer({ type: 'tree', path: resolvePath(base, action.path || ''), depth: action.depth || 3 });
   }
 
   if (action.type === 'exec') {
-    return callServer({ type: 'exec', path: base, command: action.command });
+    return _callServer({ type: 'exec', path: base, command: action.command });
   }
 
   if (action.type === 'search') {
-    return callServer({ type: 'search', path: resolvePath(base, action.path || ''), content: action.query });
+    return _callServer({ type: 'search', path: resolvePath(base, action.path || ''), content: action.query });
   }
 
   if (action.type === 'web_search') {
-    return callServer({ type: 'web_search', query: action.query });
+    return _callServer({ type: 'web_search', query: action.query });
   }
 
   if (action.type === 'file_info') {
-    return callServer({ type: 'info', path: resolvePath(base, action.path) });
+    return _callServer({ type: 'info', path: resolvePath(base, action.path) });
   }
 
   if (action.type === 'delete_file') {
-    return callServer({ type: 'delete', path: resolvePath(base, action.path) });
+    return _callServer({ type: 'delete', path: resolvePath(base, action.path) });
   }
 
   if (action.type === 'move_file') {
-    return callServer({
+    return _callServer({
       type: 'move',
       from: resolvePath(base, action.from || action.path),
       to:   resolvePath(base, action.to),
@@ -198,28 +198,28 @@ export async function executeAction(action, baseFolder) {
   }
 
   if (action.type === 'mkdir') {
-    return callServer({ type: 'mkdir', path: resolvePath(base, action.path) });
+    return _callServer({ type: 'mkdir', path: resolvePath(base, action.path) });
   }
 
   if (action.type === 'find_symbol') {
-    return callServer({ type: 'search', path: resolvePath(base, action.path || ''), content: action.symbol });
+    return _callServer({ type: 'search', path: resolvePath(base, action.path || ''), content: action.symbol });
   }
 
   if (action.type === 'mcp') {
-    return callServer({ type: 'mcp', tool: action.tool, action: action.action, params: action.params || {} });
+    return _callServer({ type: 'mcp', tool: action.tool, action: action.action, params: action.params || {} });
   }
 
   if (action.type === 'create_structure') {
     const results = [];
     for (const item of (action.files || [])) {
-      const r = await callServer({ type: 'write', path: resolvePath(base, item.path), content: item.content || '' });
+      const r = await _callServer({ type: 'write', path: resolvePath(base, item.path), content: item.content || '' });
       results.push((r.ok ? '✅' : '❌') + ' ' + item.path);
     }
     return { ok: true, data: results.join('\n') };
   }
 
   if (action.type === 'lint') {
-    const r = await callServer({ type: 'read', path: resolvePath(base, action.path) });
+    const r = await _callServer({ type: 'read', path: resolvePath(base, action.path) });
     if (!r.ok) return r;
     const issues = [];
     const lines  = r.data.split('\n');

@@ -51,14 +51,16 @@ function extractSymbols(src, filePath) {
   if (!CODE_EXTS.has(path.extname(filePath))) return symbols;
 
   const patterns = [
-    // export function / async function
-    { re: /^export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]{0,120})\)/gm, type: 'fn' },
-    // export const = arrow
-    { re: /^export\s+const\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]{0,120})\)\s*=>/gm, type: 'fn' },
-    // React components (Uppercase)
+    // Custom hooks (useXxx) — MUST come before fn patterns to avoid misclassification
+    { re: /^(?:export\s+)?(?:async\s+)?function\s+(use[A-Z]\w+)\s*\(([^)]{0,120})\)/gm, type: 'hook' },
+    // export const = arrow hook (useXxx = () =>)
+    { re: /^export\s+const\s+(use[A-Z]\w+)\s*=\s*(?:async\s*)?\(([^)]{0,120})\)\s*=>/gm, type: 'hook' },
+    // React components (Uppercase) — before generic fn to catch non-exported components
     { re: /^(?:export\s+)?(?:default\s+)?function\s+([A-Z]\w+)\s*\(([^)]{0,80})\)/gm, type: 'component' },
-    // Custom hooks (useXxx)
-    { re: /^(?:export\s+)?function\s+(use[A-Z]\w+)\s*\(([^)]{0,120})\)/gm, type: 'hook' },
+    // export function / async function (non-hook, non-component)
+    { re: /^export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]{0,120})\)/gm, type: 'fn' },
+    // export const = arrow (non-hook)
+    { re: /^export\s+const\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]{0,120})\)\s*=>/gm, type: 'fn' },
     // Named exports
     { re: /^export\s+(?:const|let|var)\s+(\w+)\s*=/gm, type: 'export' },
   ];
@@ -375,8 +377,8 @@ node yuyu-map.cjs --compress-only  # only update compressed.md
 }
 
 // ── HANDOFF TEMPLATE ──────────────────────────────────────────────────────────
-function ensureHandoffTemplate() {
-  const p = path.join(YUYU_DIR, 'handoff.md');
+function ensureHandoffTemplate(_yuyuDir = YUYU_DIR) {
+  const p = path.join(_yuyuDir, 'handoff.md');
   if (fs.existsSync(p)) return;
   fs.writeFileSync(p, `# YuyuCode — Session Handoff
 > Last updated: ${new Date().toISOString().split('T')[0]}
@@ -458,17 +460,21 @@ function tryRepomix(_spawnSync = spawnSync, _outFile) {
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
-function main() {
+function main(_opts = {}) {
+  const root       = _opts.root      || ROOT;
+  const yuyuDir    = _opts.yuyuDir   || path.join(root, '.yuyu');
+  const _spawnSync = _opts.spawnSync || spawnSync;
+
   console.log('🗺  YuyuMap v2 starting...\n');
 
-  if (!fs.existsSync(YUYU_DIR)) {
-    fs.mkdirSync(YUYU_DIR, { recursive: true });
+  if (!fs.existsSync(yuyuDir)) {
+    fs.mkdirSync(yuyuDir, { recursive: true });
     console.log('  📁 Created .yuyu/');
   }
 
-  const srcDir    = path.join(ROOT, 'src');
-  const rootFiles = fs.existsSync(ROOT)
-    ? fs.readdirSync(ROOT).filter(f => CODE_EXTS.has(path.extname(f)) && !f.startsWith('.')).map(f => path.join(ROOT, f))
+  const srcDir    = path.join(root, 'src');
+  const rootFiles = fs.existsSync(root)
+    ? fs.readdirSync(root).filter(f => CODE_EXTS.has(path.extname(f)) && !f.startsWith('.')).map(f => path.join(root, f))
     : [];
 
   const allFiles = [...walkFiles(srcDir, ALL_EXTS), ...rootFiles];
@@ -479,11 +485,11 @@ function main() {
   console.log(`  📊 Analyzed ${count} files`);
 
   // Generate compressed.md — repomix first, regex fallback if offline/unavailable
-  const compPath = path.join(YUYU_DIR, 'compressed.md');
+  const compPath = path.join(yuyuDir, 'compressed.md');
   let compressed;
   let compressedBy;
 
-  const repomixOut = tryRepomix();
+  const repomixOut = tryRepomix(_spawnSync);
   if (repomixOut) {
     compressed   = repomixOut;
     compressedBy = 'repomix';
@@ -501,18 +507,18 @@ function main() {
   if (!COMPRESS_ONLY) {
     // map.md
     const mapMd   = generateMap(fileData);
-    const mapPath = path.join(YUYU_DIR, 'map.md');
+    const mapPath = path.join(yuyuDir, 'map.md');
     fs.writeFileSync(mapPath, mapMd);
     console.log(`  🗺  .yuyu/map.md — ${mapMd.split('\n').length} lines`);
 
     // llms.txt
     const llmsTxt  = generateLlmsTxt(fileData);
-    const llmsPath = path.join(ROOT, 'llms.txt');
+    const llmsPath = path.join(root, 'llms.txt');
     fs.writeFileSync(llmsPath, llmsTxt);
     console.log(`  📄 llms.txt — ${llmsTxt.split('\n').length} lines`);
 
     // handoff template
-    ensureHandoffTemplate();
+    ensureHandoffTemplate(yuyuDir);
   }
 
   const hot          = Object.values(fileData).filter(d => d.salience > 20).length;
@@ -536,5 +542,7 @@ module.exports = {
   generateMap,
   generateCompressed,
   generateLlmsTxt,
+  ensureHandoffTemplate,
   tryRepomix,
+  main,
 };

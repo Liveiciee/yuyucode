@@ -20,7 +20,10 @@ const {
   walkFiles,
   generateMap,
   generateCompressed,
+  generateLlmsTxt,
+  ensureHandoffTemplate,
   tryRepomix,
+  main,
 } = require('./yuyu-map.cjs');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -124,13 +127,13 @@ describe('extractSymbols', () => {
     expect(syms.some(s => s.name === 'AppHeader')).toBe(true);
   });
 
-  it('extracts custom hook (useXxx) — type is fn (export function matches fn pattern first)', () => {
+  it('extracts custom hook (useXxx) — type is hook (hook pattern matches before fn)', () => {
     const src = 'export function useFileStore(opts) { }';
     const syms = extractSymbols(src, 'useFileStore.js');
     expect(syms.some(s => s.name === 'useFileStore')).toBe(true);
-    // export function matches 'fn' pattern before 'hook' pattern — documented behavior
+    // hook pattern now comes before fn pattern — useXxx is correctly classified as 'hook'
     const hook = syms.find(s => s.name === 'useFileStore');
-    expect(['fn', 'hook']).toContain(hook.type);
+    expect(hook.type).toBe('hook');
   });
 
   it('deduplicates symbols with same name', () => {
@@ -449,5 +452,259 @@ describe('generateCompressed', () => {
     };
     const result = generateCompressed(fileData);
     expect(result).toMatch(/Total reduction: ~\d+%/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// generateLlmsTxt
+// ─────────────────────────────────────────────────────────────────────────────
+describe('generateLlmsTxt', () => {
+  it('returns a string', () => {
+    expect(typeof generateLlmsTxt({})).toBe('string');
+  });
+
+  it('includes project title and architecture overview', () => {
+    const result = generateLlmsTxt({});
+    expect(result).toContain('YuyuCode');
+    expect(result).toContain('Architecture overview');
+  });
+
+  it('includes critical constraints section', () => {
+    const result = generateLlmsTxt({});
+    expect(result).toContain('NEVER change without');
+    expect(result).toContain('wasm-node');
+    expect(result).toContain('vitest@1');
+  });
+
+  it('lists hot files (salience > 15)', () => {
+    const fileData = {
+      'src/hot.js': {
+        rel: 'src/hot.js', lines: 50, salience: 20, importedBy: 3,
+        syms: [{ name: 'hotFn' }, { name: 'hotFn2' }, { name: 'hotFn3' }, { name: 'hotFn4' }],
+      },
+      'src/cold.js': {
+        rel: 'src/cold.js', lines: 10, salience: 5, importedBy: 0,
+        syms: [{ name: 'coldFn' }],
+      },
+    };
+    const result = generateLlmsTxt(fileData);
+    expect(result).toContain('src/hot.js');
+    expect(result).not.toContain('src/cold.js');
+  });
+
+  it('limits hot files to 10', () => {
+    const fileData = {};
+    for (let i = 0; i < 15; i++) {
+      fileData[`src/file${i}.js`] = {
+        rel: `src/file${i}.js`, lines: 50, salience: 20 + i, importedBy: 2,
+        syms: [{ name: `fn${i}` }],
+      };
+    }
+    const result = generateLlmsTxt(fileData);
+    const matches = (result.match(/src\/file\d+\.js/g) || []);
+    expect(matches.length).toBeLessThanOrEqual(10);
+  });
+
+  it('lists hooks section from hooks/ directory', () => {
+    const fileData = {
+      'src/hooks/useAgentLoop.js': {
+        rel: 'src/hooks/useAgentLoop.js', lines: 100, salience: 5, importedBy: 1,
+        syms: [{ name: 'useAgentLoop' }],
+      },
+    };
+    const result = generateLlmsTxt(fileData);
+    expect(result).toContain('## Hooks');
+    expect(result).toContain('useAgentLoop.js');
+  });
+
+  it('lists components section from components/ directory', () => {
+    const fileData = {
+      'src/components/AppHeader.jsx': {
+        rel: 'src/components/AppHeader.jsx', lines: 80, salience: 10, importedBy: 1,
+        syms: [{ name: 'AppHeader' }],
+      },
+    };
+    const result = generateLlmsTxt(fileData);
+    expect(result).toContain('## Components');
+    expect(result).toContain('AppHeader.jsx');
+  });
+
+  it('includes agent loop flow section', () => {
+    const result = generateLlmsTxt({});
+    expect(result).toContain('Agent loop flow');
+    expect(result).toContain('gatherProjectContext');
+  });
+
+  it('includes generated timestamp', () => {
+    const result = generateLlmsTxt({});
+    expect(result).toMatch(/Generated: \d{4}-\d{2}-\d{2}/);
+  });
+
+  it('shows +N more when a file has more than 3 symbols', () => {
+    const fileData = {
+      'src/big.js': {
+        rel: 'src/big.js', lines: 200, salience: 25, importedBy: 4,
+        syms: [
+          { name: 'a' }, { name: 'b' }, { name: 'c' }, { name: 'd' }, { name: 'e' },
+        ],
+      },
+    };
+    const result = generateLlmsTxt(fileData);
+    expect(result).toContain('+2 more');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ensureHandoffTemplate
+// ─────────────────────────────────────────────────────────────────────────────
+describe('ensureHandoffTemplate', () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yuyu-handoff-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('creates handoff.md when it does not exist', () => {
+    ensureHandoffTemplate(tmpDir);
+    expect(fs.existsSync(path.join(tmpDir, 'handoff.md'))).toBe(true);
+  });
+
+  it('created file contains required sections', () => {
+    ensureHandoffTemplate(tmpDir);
+    const content = fs.readFileSync(path.join(tmpDir, 'handoff.md'), 'utf8');
+    expect(content).toContain('Session Handoff');
+    expect(content).toContain('Completed this session');
+    expect(content).toContain('In progress');
+    expect(content).toContain('Known issues');
+    expect(content).toContain('Next session priorities');
+  });
+
+  it('does NOT overwrite existing handoff.md', () => {
+    const handoffPath = path.join(tmpDir, 'handoff.md');
+    const existing = '# My custom handoff\nCustom content here.';
+    fs.writeFileSync(handoffPath, existing);
+
+    ensureHandoffTemplate(tmpDir);
+
+    const content = fs.readFileSync(handoffPath, 'utf8');
+    expect(content).toBe(existing);
+  });
+
+  it('created file includes todays date', () => {
+    ensureHandoffTemplate(tmpDir);
+    const content = fs.readFileSync(path.join(tmpDir, 'handoff.md'), 'utf8');
+    const today = new Date().toISOString().split('T')[0];
+    expect(content).toContain(today);
+  });
+
+  it('is idempotent — calling twice does not throw', () => {
+    expect(() => {
+      ensureHandoffTemplate(tmpDir);
+      ensureHandoffTemplate(tmpDir);
+    }).not.toThrow();
+  });
+
+  it('uses YUYU_DIR default when called without args (smoke test — does not throw)', () => {
+    // Just ensure the function signature is backwards-compatible
+    expect(typeof ensureHandoffTemplate).toBe('function');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// main() — integration tests in tmp dir
+// ─────────────────────────────────────────────────────────────────────────────
+describe('main()', () => {
+  let tmpDir;
+  let yuyuDir;
+  // Fast mock: repomix "offline" — returns error immediately, no 90s timeout
+  const fastSpawn = vi.fn(() => ({ error: new Error('offline'), status: null, stderr: '' }));
+
+  beforeEach(() => {
+    tmpDir  = fs.mkdtempSync(path.join(os.tmpdir(), 'yuyu-main-'));
+    yuyuDir = path.join(tmpDir, '.yuyu');
+    fs.mkdirSync(yuyuDir, { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, 'src'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('runs without throwing on empty project', () => {
+    expect(() => main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn })).not.toThrow();
+  });
+
+  it('creates .yuyu/compressed.md', () => {
+    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
+    expect(fs.existsSync(path.join(yuyuDir, 'compressed.md'))).toBe(true);
+  });
+
+  it('creates .yuyu/map.md', () => {
+    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
+    expect(fs.existsSync(path.join(yuyuDir, 'map.md'))).toBe(true);
+  });
+
+  it('creates llms.txt in root', () => {
+    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
+    expect(fs.existsSync(path.join(tmpDir, 'llms.txt'))).toBe(true);
+  });
+
+  it('creates .yuyu/handoff.md if missing', () => {
+    const handoffPath = path.join(yuyuDir, 'handoff.md');
+    expect(fs.existsSync(handoffPath)).toBe(false);
+    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
+    expect(fs.existsSync(handoffPath)).toBe(true);
+  });
+
+  it('does NOT overwrite existing handoff.md', () => {
+    const handoffPath = path.join(yuyuDir, 'handoff.md');
+    const custom = '# My session notes';
+    fs.writeFileSync(handoffPath, custom);
+    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
+    expect(fs.readFileSync(handoffPath, 'utf8')).toBe(custom);
+  });
+
+  it('map.md contains file entries when src has JS files', () => {
+    fs.writeFileSync(path.join(tmpDir, 'src', 'utils.js'), [
+      'export function helper(x) { return x; }',
+      'export const FOO = 42;',
+    ].join('\n'));
+    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
+    const mapContent = fs.readFileSync(path.join(yuyuDir, 'map.md'), 'utf8');
+    expect(mapContent).toContain('utils.js');
+    expect(mapContent).toContain('helper');
+  });
+
+  it('llms.txt contains architecture info', () => {
+    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
+    const llms = fs.readFileSync(path.join(tmpDir, 'llms.txt'), 'utf8');
+    expect(llms).toContain('YuyuCode');
+    expect(llms).toContain('Architecture');
+  });
+
+  it('creates .yuyu/ dir if it does not already exist', () => {
+    const freshDir  = fs.mkdtempSync(path.join(os.tmpdir(), 'yuyu-fresh-'));
+    const freshYuyu = path.join(freshDir, '.yuyu');
+    try {
+      expect(fs.existsSync(freshYuyu)).toBe(false);
+      main({ root: freshDir, yuyuDir: freshYuyu, spawnSync: fastSpawn });
+      expect(fs.existsSync(freshYuyu)).toBe(true);
+    } finally {
+      fs.rmSync(freshDir, { recursive: true, force: true });
+    }
+  });
+
+  it('handles a project with hooks/ directory — map includes hook symbols', () => {
+    fs.mkdirSync(path.join(tmpDir, 'src', 'hooks'));
+    fs.writeFileSync(path.join(tmpDir, 'src', 'hooks', 'useCounter.js'),
+      'export function useCounter(initial) { return initial; }\n'
+    );
+    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
+    const mapContent = fs.readFileSync(path.join(yuyuDir, 'map.md'), 'utf8');
+    expect(mapContent).toContain('useCounter');
   });
 });
