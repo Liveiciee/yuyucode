@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 
 // ── Pure logic extracted dari GlobalFindReplace ───────────────────────────────

@@ -408,8 +408,8 @@ function ensureHandoffTemplate() {
 // Tries to run `npx repomix --compress` and write to compressed-repomix.md.
 // Returns the output string on success, null on any failure (offline, not
 // installed, non-zero exit, timeout, etc.).
-function tryRepomix() {
-  const outFile = path.join(YUYU_DIR, 'compressed-repomix.md');
+function tryRepomix(_spawnSync = spawnSync, _outFile) {
+  const outFile = _outFile || path.join(YUYU_DIR, 'compressed-repomix.md');
   const ignore  = [
     'android', 'dist', '.yuyu', 'coverage',
     '.gradle', 'build', 'public', '__snapshots__', 'node_modules',
@@ -418,7 +418,7 @@ function tryRepomix() {
   log('  🔄 Trying repomix --compress...');
 
   try {
-    const result = spawnSync(
+    const result = _spawnSync(
       'npx',
       [
         '--yes', 'repomix',
@@ -523,4 +523,18 @@ function main() {
   console.log(`\n💡 Next: node yugit.cjs "feat: codebase quantization v2"`);
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  walkFiles,
+  extractSymbols,
+  compressSource,
+  extractImports,
+  computeSalience,
+  generateMap,
+  generateCompressed,
+  generateLlmsTxt,
+  tryRepomix,
+};

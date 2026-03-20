@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { THEMES_MAP, THEME_KEYS, DEFAULT_THEME } from './themes/index.js';
 

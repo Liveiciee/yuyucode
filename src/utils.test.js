@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { countTokens, getFileIcon, hl, resolvePath, parseActions } from "./utils.js";
 

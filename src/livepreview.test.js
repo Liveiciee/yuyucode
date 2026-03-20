@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 
 // ── Inline buildSrcdoc (copied — cannot import component directly in jsdom) ───
