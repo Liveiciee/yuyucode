@@ -334,10 +334,13 @@ yuyu-cp() {
   if git ls-files --error-unmatch "$file" &>/dev/null 2>&1; then
     if ! git diff --quiet "$file" 2>/dev/null; then
       echo "⚠️  '$file' ada uncommitted changes di git."
-      printf "Lanjut overwrite? [y/N] "
-      read -r confirm
-      confirm=$(echo "$confirm" | tr -d '[:space:]\r')
-      [[ "$confirm" != "y" && "$confirm" != "Y" ]] && { echo "✋ Dibatalkan."; return 0; }
+      echo -n "Lanjut overwrite? Tekan y/Y untuk lanjut, lainnya batal: "
+      read -s -n 1 key
+      echo ""
+      case "$key" in
+        y|Y) echo "👍 Overwriting..." ;;
+        *)   echo "✋ Dibatalkan. Amankan dulu kodinganmu!"; return 0 ;;
+      esac
     fi
   fi
 
