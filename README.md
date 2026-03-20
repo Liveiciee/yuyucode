@@ -122,7 +122,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 - **Collab via `@codemirror/collab`** — OT-based update sync over the existing yuyu-server WebSocket; `collabRooms` Map tracks version + update log per room
 - **Minimap as canvas** — 64px `<canvas>` with `requestAnimationFrame` loop; colors code semantically (imports=purple, comments=green, strings=yellow)
 - **Parallel action execution** — `read_file`, `web_search`, `list_files`, `tree`, `search`, `mkdir` run in parallel; `exec` and `mcp` serial
-- **TF-IDF + age decay memory ranking** — memories injected into system prompt scored by relevance to current task *and* recency
+- **TF-IDF + age decay memory ranking** — memories injected into system prompt scored by relevance to current task *and* recency (14-day linear decay). Effectively a mini-RAG pipeline running entirely client-side, no vector DB required
 - **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-highlighted `<span>` tags
 - **3-fallback patch handler** — `patch_file` tries exact match → whitespace-normalized → trim-lines before giving up
 - **Myers diff** — `generateDiff()` uses the `diff` library for accurate line tracking with moved block detection; includes line numbers
@@ -166,6 +166,9 @@ generateDiff   5897.74x  faster than large diff (500 lines)
 ```
 
 > The Myers diff number isn't a typo. Small diffs exit the algorithm early — large diffs don't.
+>
+> Benchmarks run on Oppo A77s (Snapdragon 680, 8GB RAM) via Termux ARM64.
+> Not a MacBook. Not a server. A ~$130 phone from 2022.
 
 ---
 
