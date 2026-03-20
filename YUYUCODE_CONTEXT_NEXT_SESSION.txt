@@ -1,0 +1,306 @@
+PROJECT CONTEXT — YUYUCODE WORLD CODE EDITOR KILLER PLAN
+Baca ini sebelum mulai. Ini state snapshot project YuyuCode per sesi terakhir.
+
+═══════════════════════════════════════════════════════════
+SIAPA DAN APA
+═══════════════════════════════════════════════════════════
+
+Owner: Solo dev, Android-only, semua coding dari Termux ARM64.
+Tidak ada laptop. Tidak ada desktop. Semua dari HP.
+
+YuyuCode: React 19 + Capacitor 8, Android app, agentic coding assistant.
+Tujuan jangka panjang: ngalahin SEMUA code editor di dunia dalam segala aspek —
+termasuk Spck, VS Code Mobile, Adobe Code Editor, Zed, Cursor — di Android.
+
+Push command: node yugit.cjs "pesan" dari ~/yuyucode/
+Build APK: CI-only (GitHub Actions). JANGAN npm run build lokal.
+Standard sebelum push: npm run lint (0 errors, 0 warnings) && npx vitest run (310/310)
+
+
+═══════════════════════════════════════════════════════════
+STATE TERKINI — v2.3 (sudah di-push, build hijau)
+═══════════════════════════════════════════════════════════
+
+Yang sudah dikerjakan dan selesai di sesi ini:
+
+1. REFACTOR ARSITEKTUR
+   - App.jsx (986 baris) → dipecah jadi 5 komponen:
+     AppHeader.jsx (77L), AppSidebar.jsx (37L), AppChat.jsx (265L),
+     AppPanels.jsx (261L), App.jsx baru (319L)
+   - panels.jsx (1479 baris) → dipecah jadi 5 file:
+     panels.jsx (barrel, 17L), panels.base.jsx (166L),
+     panels.git.jsx (536L), panels.agent.jsx (317L), panels.tools.jsx (524L)
+
+2. STREAMING & CHAIN OF THOUGHT
+   - StreamingBubble komponen baru — streaming text muncul dalam AI bubble proper
+   - ThinkingBlock live — <think> tags di-parse realtime saat streaming
+   - Setelah selesai: collapsible "N langkah berpikir" seperti Claude.ai
+   - agentStatus state di useChatStore — "Iter 2/10", "Membaca context..." dengan Loader icon
+   - Bukan emoji untuk icon — semua pakai lucide-react
+
+3. CODE BLOCKS IMPROVED
+   - Lang label kiri, Copy button kanan — persis Claude.ai / Gemini style
+   - Sebelumnya: ada wrapper dengan padding berlebih, tidak clean
+
+4. CODEMIRROR 6 EDITOR (FileEditor.jsx)
+   - Ganti plain textarea dengan CodeMirror 6
+   - Syntax highlight: JS/JSX/TS/TSX/CSS/HTML/JSON/Python/Markdown
+   - Bracket matching, auto-indent, line numbers, find/replace (Ctrl+F), Ctrl+S
+   - Dynamic theme reconfigure via Compartment (ikut T token system)
+   - Import dari 'codemirror' bukan '@codemirror/basic-setup' (deprecated)
+
+5. XTERM.JS TERMINAL (Terminal.jsx)
+   - Ganti custom colorLine renderer dengan xterm.js (@xterm/xterm)
+   - Full ANSI escape support, 2000-line scrollback, proper font rendering
+   - CSS inject manual via <style> tag (bukan import global — akan corrupt flex layout)
+   - Traffic lights fungsional: merah=stop, kuning=clear, hijau=send to AI
+   - Hint labels fade saat mengetik command
+   - TrafficDot komponen terpisah (ESLint react-hooks/refs tidak bisa trace cross-boundary)
+
+6. FUSE.JS FUZZY SEARCH (FileTree.jsx)
+   - Search bar di atas file tree
+   - Fuzzy match pada filename + path dengan threshold 0.35
+   - Real-time results, ESC untuk clear
+
+7. MYERS DIFF (utils.js)
+   - generateDiff() pakai diffLines dari library 'diff'
+   - Output: "- L1: teks lama" / "+ L1: teks baru" dengan line number tracking
+   - Detect moved blocks, bukan hanya line-by-line comparison
+
+8. TABLE COPY-PASTE FRIENDLY (MsgBubble.jsx)
+   - onCopy handler di MsgContent wrapper
+   - Long-press select pada tabel → clipboard dapat markdown pipe format
+   - e.clipboardData.setData() + e.preventDefault() — same technique as Gemini
+
+9. CI OPTIMIZATION
+   - paths-ignore di build-apk.yml — push yang cuma ubah .md skip CI otomatis
+   - Hemat ~20-30% CI minutes
+
+10. PACKAGE YANG DITAMBAH
+    codemirror, @codemirror/lang-* (6 langs), @codemirror/state, @codemirror/view,
+    @xterm/xterm, @xterm/addon-fit, fuse.js, diff
+    vite.config.js manual chunks: vendor/codemirror/xterm/d3 dipisah
+
+
+═══════════════════════════════════════════════════════════
+MASTER PLAN — WORLD KILLER ROADMAP
+═══════════════════════════════════════════════════════════
+
+Penelitian mendalam sudah dilakukan. Ini roadmap komprehensif berdasarkan
+gap nyata vs Spck, VS Code, Zed, Cursor, dan semua editor yang ada.
+
+─────────────────────────────────────────
+FASE 1 — Editor Core (ngalahin Spck dulu)
+─────────────────────────────────────────
+
+[ ] 1. MULTI-TAB EDITOR (PRIORITAS TINGGI)
+    - useFileStore sekarang: selectedFile (satu file)
+    - Target: openTabs[] array, activeTabIdx, tiap tab punya path+content+dirty+CM view instance
+    - UI: tab bar di atas editor, close button per tab, unsaved dot indicator
+    - CodeMirror: tiap tab punya EditorState tersendiri, swap state saat ganti tab
+    - Effort: medium-heavy
+
+[ ] 2. TYPESCRIPT/JS LANGUAGE SERVER (KILLER FEATURE)
+    - @valtown/codemirror-ts atau @marimo-team/codemirror-languageserver
+    - TypeScript server di Web Worker via comlink — tidak block UI
+    - Hasil: autocomplete yang tahu return type useState, hover type info, inline error
+    - Package yang dibutuhkan: @codemirror/autocomplete, comlink, typescript
+    - Effort: heavy, payoff terbesar
+
+[ ] 3. INLINE AI GHOST TEXT (COPILOT-STYLE)
+    - codemirror-extension-inline-suggestion
+    - fetchFn async ke Cerebras/Groq API — ghost text yang bisa Tab untuk accept
+    - Ini yang Spck tidak punya sama sekali
+    - Effort: medium
+
+[ ] 4. VIM KEYBINDINGS
+    - @replit/codemirror-vim
+    - vim() extension sebelum basicSetup
+    - Toggle via /vim slash command atau config panel
+    - Effort: ringan, satu hari
+
+[ ] 5. EMMET ABBREVIATION
+    - @emmetio/codemirror6-plugin (disponsori CodePen + Replit)
+    - div.container>ul>li*3 → full HTML via Tab
+    - Aktif untuk HTML/JSX/TSX
+    - Effort: ringan
+
+─────────────────────────────────────────
+FASE 2 — Visual Power Features
+─────────────────────────────────────────
+
+[ ] 6. EXTRA KEYBOARD ROW (MOBILE KILLER)
+    - Row custom di atas soft keyboard: {} [] () ; => // Tab :
+    - Pure React div, position sticky, detect keyboard via visualViewport resize
+    - Tidak butuh native Android keyboard customization
+    - Ini yang Spck punya dan YuyuCode belum ada
+    - Effort: medium
+
+[ ] 7. LIVE HTML/CSS/JS PREVIEW
+    - iframe dengan srcdoc, debounced update 300ms
+    - Combine HTML+CSS+JS jadi satu dokumen
+    - Intercept console.log via postMessage → tampil di panel bawah
+    - Split: editor kiri, preview iframe kanan
+    - Effort: medium
+
+[ ] 8. MINIMAP
+    - @replit/codemirror-minimap
+    - Mode 'blocks' lebih cocok untuk mobile (lebih ringan dari 'characters')
+    - Berfungsi sebagai scroll thumb visual
+    - Effort: ringan
+
+[ ] 9. INLINE LINT MARKERS
+    - @codemirror/lint
+    - Jalankan ESLint/syntax check via Termux server, inject hasilnya sebagai gutter markers
+    - Red squiggly lines persis VS Code
+    - Effort: medium
+
+─────────────────────────────────────────
+FASE 3 — IDE-Level (ngalahin VS Code + Cursor)
+─────────────────────────────────────────
+
+[ ] 10. AI INLINE TRANSFORMATION (CURSOR-STYLE)
+    - @marimo-team/codemirror-ai
+    - Select code → keyboard shortcut → AI streaming langsung di editor
+    - Accept/reject UI inline, next-edit prediction
+    - YuyuCode punya agent loop yang lebih powerful dari Cursor
+    - Effort: medium-heavy
+
+[ ] 11. GIT INLINE BLAME
+    - Tiap line gutter: commit hash + author + relative time
+    - Data dari callServer({type:'exec', command:'git blame'})
+    - Click untuk lihat full commit detail
+    - Zed punya ini, VS Code punya ini, Spck tidak
+    - Effort: medium
+
+[ ] 12. GLOBAL FIND & REPLACE
+    - Search across all files di project
+    - Integrated ke editor panel, bukan hanya /search slash command
+    - Highlight semua occurrences, replace one/all
+    - Effort: medium
+
+[ ] 13. STICKY SCROLL (SCOPE BREADCRUMBS)
+    - Scope parent tetap sticky di top editor saat scroll ke dalam function body
+    - @codemirror/language support ini
+    - Zed punya, VS Code punya
+    - Effort: medium
+
+[ ] 14. COLLABORATION REALTIME
+    - @codemirror/collab + WebSocket ke yuyu-server
+    - Dua device edit file yang sama realtime
+    - Tidak ada editor Android yang punya ini
+    - Effort: heavy
+
+[ ] 15. CODE FOLDING YANG PROPER
+    - basicSetup punya basic folding, tapi perlu fold-all / unfold-all
+    - Keyboard shortcut + gutter button
+    - Effort: ringan
+
+[ ] 16. MULTI-CURSOR
+    - CodeMirror 6 sudah support via @codemirror/commands
+    - Alt+click untuk tambah cursor, Ctrl+D untuk select next occurrence
+    - Effort: ringan, mostly config
+
+[ ] 17. BREADCRUMB NAVIGATION
+    - Path file + scope saat ini di atas editor: src / components / FileEditor.jsx > buildTheme
+    - @codemirror/language untuk detect scope
+    - Click untuk navigate
+    - Effort: medium
+
+
+═══════════════════════════════════════════════════════════
+PACKAGES YANG PERLU DITAMBAH (belum ada di package.json)
+═══════════════════════════════════════════════════════════
+
+Untuk Fase 1-2:
+npm install \
+  @replit/codemirror-vim \
+  @emmetio/codemirror6-plugin \
+  @replit/codemirror-minimap \
+  codemirror-extension-inline-suggestion \
+  @codemirror/autocomplete \
+  @codemirror/lint \
+  @codemirror/commands \
+  comlink \
+  typescript
+
+Untuk Fase 3 tambahan:
+npm install \
+  @marimo-team/codemirror-ai \
+  @marimo-team/codemirror-languageserver \
+  @codemirror/collab
+
+
+═══════════════════════════════════════════════════════════
+GOTCHAS PENTING YANG SUDAH DIPELAJARI
+═══════════════════════════════════════════════════════════
+
+1. ESLint react-hooks/refs
+   - termRef.current di dalam array literal yang di-render = warning
+   - Fix: extract ke komponen terpisah. Component boundary memutus ESLint trace.
+   - Jangan pakai eslint-disable-next-line react-hooks/refs — tidak akan bekerja
+     karena rule trace melalui function calls, bukan hanya next line
+
+2. xterm.js layout di WebView
+   - JANGAN import '@xterm/xterm/css/xterm.css' global — corrupt flex layout
+   - Inject CSS minimal via <style> tag dalam komponen
+   - Container xterm perlu: minHeight:0, position:'relative', overflow:'hidden'
+   - FitAddon.fit() harus dipanggil dalam requestAnimationFrame setelah mount
+
+3. CodeMirror import
+   - 'codemirror' (bukan '@codemirror/basic-setup' — deprecated)
+   - Compartment untuk dynamic reconfigure tanpa destroy/remount
+
+4. String escape di JSX/Python
+   - '\|' di JSX string = invalid escape → pakai '[|]' dalam regex atau '\\\\|'
+   - Python heredoc dengan backslash sering corrupt JSX string constants
+   - Selalu verify dengan grep setelah Python string replacement
+
+5. vitest@1 wajib
+   - vitest@4 crash silent di Termux ARM64
+   - Jangan upgrade vitest
+
+6. generateDiff format baru
+   - Output: "- L3: teks" / "+ L3: teks" (dengan line number)
+   - Tests expect format ini — jangan ubah tanpa update tests
+
+7. CI paths-ignore
+   - Push yang cuma ubah .md files → skip CI otomatis
+   - workflow_dispatch tetap bisa trigger manual
+
+8. Panels split
+   - panels.jsx sekarang barrel re-export
+   - Edit panel: buka file yang sesuai (panels.git.jsx, panels.agent.jsx, dll)
+   - Jangan edit panels.jsx langsung — isinya cuma export statements
+
+
+═══════════════════════════════════════════════════════════
+URUTAN PENGERJAAN YANG DIREKOMENDASIKAN
+═══════════════════════════════════════════════════════════
+
+NEXT SESSION — mulai dari:
+  1. Multi-tab editor (paling kerasa sehari-hari)
+  2. Extra keyboard row (mobile-specific killer feature)
+  3. Emmet + Vim mode (low effort, high payoff)
+
+Setelah itu:
+  4. TypeScript LSP + Inline AI (ini yang jadi frontier killer)
+  5. Live HTML preview + Minimap
+
+Selalu: npm run lint && npx vitest run sebelum push.
+Selalu: node yugit.cjs "pesan" bukan git push manual.
+Release: node yugit.cjs "release: v2.x — deskripsi"
+
+
+═══════════════════════════════════════════════════════════
+CATATAN PENTING DARI OWNER
+═══════════════════════════════════════════════════════════
+
+- Tidak peduli seberapa lama dan berat implementasinya
+- Target: ngalahin Spck, Adobe Code Editor, VS Code Mobile, dan semua
+  code editor di Android dalam SEMUA aspek
+- YuyuCode unggul yang tidak bisa ditiru app lain: AI agentic loop yang
+  execute task sendiri + background agents + built on/for Android
+- Jangan pakai emoji sebagai icon — gunakan lucide-react
+- Semua warna dari T token system, bukan hardcode
+- Setiap fitur baru: 0 lint errors, 0 warnings, tests tetap 310/310 sebelum push
