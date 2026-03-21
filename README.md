@@ -13,8 +13,9 @@
 [![Quality Gate](https://github.com/liveiciee/yuyucode/actions/workflows/quality.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
 [![CodeQL](https://github.com/liveiciee/yuyucode/actions/workflows/codeql.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
 [![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=alert_status)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
+[![SonarCloud Coverage](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=coverage)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![Version](https://img.shields.io/badge/version-4.1.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-546%20passing-brightgreen)](#testing--benchmarks)
+[![Tests](https://img.shields.io/badge/tests-661%20passing-brightgreen)](#testing--benchmarks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
 ![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?logo=react&logoColor=61DAFB)
@@ -183,7 +184,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 ## Testing & Benchmarks
 
 ```
-546 tests passing. 0 lint warnings. Runs on Termux ARM64.
+661 tests passing. 0 lint warnings. Runs on Termux ARM64.
 50 of which are property-based (fast-check, 100 random inputs each).
 ```
 
@@ -206,6 +207,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 | `globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
 | `yuyu-map.test.cjs` | Unit — map, symbols, compress, handoff, llms.txt | 92 |
 | `yuyu-server.test.cjs` | Integration — HTTP, read/write/patch/batch/exec | 30 |
+| `useSlashCommands.test.js` | Unit — all 68 slash command handlers | 115 |
 
 ### Benchmarks (Termux ARM64)
 
@@ -486,12 +488,14 @@ WebSocket :8766 — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`
 8. GitHub Release hanya kalau commit diawali `release:`
 9. Push yang hanya ubah `.md` → skip CI
 
-**Secrets:** `VITE_CEREBRAS_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_TAVILY_API_KEY`, `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
+**Secrets:** `VITE_CEREBRAS_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_TAVILY_API_KEY`, `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `SONAR_TOKEN`
 
 ## State v4.1
 
-- Version: 4.1.0 · Tests: 546 ✅ · Slash commands: ~68
+- Version: 4.1.0 · Tests: 661 ✅ · Slash commands: ~68
 - Features: YUYU.md, visual diff review + reject feedback, ghost text L1+L2, /review --all, contextual slash suggestions, context bar, graceful stop, chat search, /pin, /undo, /diff, /ask, offline detect, read cache
+- CI/CD: CodeQL ✅ · SonarCloud Quality Gate ✅ · Semgrep SAST ✅
+- SonarCloud: Security A · Maintainability A · Reliability in progress (cognitive complexity refactor)
 
 </details>
 

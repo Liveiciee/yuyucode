@@ -151,14 +151,17 @@ export function FileTree({ folder, onSelectFile, selectedFile, T }) {
     return [...items]
       .sort((a,b)=>(a.isDir&&!b.isDir)?-1:(!a.isDir&&b.isDir)?1:a.name.localeCompare(b.name))
       .filter(item=>!skip.includes(item.name))
-      .map(item=>{
-        const fullPath = basePath+'/'+item.name;
-        const isSelected = selectedFile===fullPath;
-        const isExp = expanded[fullPath];
-        const indent = 8+depth*14;
-        return (
-          <div key={item.name}>
-            {renaming===fullPath?(
+      .map(item=>renderItem(item, basePath, depth));
+  }
+
+  function renderItem(item, basePath, depth) {
+    const fullPath = basePath + '/' + item.name;
+    const isSelected = selectedFile === fullPath;
+    const isExp = expanded[fullPath];
+    const indent = 8 + depth * 14;
+    return (
+      <div key={item.name}>
+        {renaming === fullPath ? (
               <div style={{padding:`2px 6px 2px ${indent}px`,display:'flex',gap:'4px',alignItems:'center'}}>
                 <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)}
                   onKeyDown={e=>{if(e.key==='Enter')doRename(fullPath);if(e.key==='Escape'){setRenaming(null);setNewName('');}}}
@@ -196,7 +199,6 @@ export function FileTree({ folder, onSelectFile, selectedFile, T }) {
             )}
           </div>
         );
-      });
   }
 
   const iconBtn = (onClick, title, children) => (

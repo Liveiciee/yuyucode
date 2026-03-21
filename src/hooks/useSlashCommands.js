@@ -2,8 +2,80 @@ import { useCallback, useRef } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { callServer, askCerebrasStream } from '../api.js';
 import { MODELS } from '../constants.js';
-import { countTokens, parseActions } from '../utils.js';
+import { countTokens } from '../utils.js';
 import { generatePlan, runBackgroundAgent, mergeBackgroundAgent, tokenTracker, saveSession, loadSessions, rewindMessages } from '../features.js';
+
+// ── buildDepGraph — parse import graph up to 2 levels deep ──────────────────
+// eslint-disable-next-line no-unused-vars
+async function buildDepGraph(rootFile) {
+  const importRegex = /(?:import|require)\s+.*?['"](.+?)['"]/g;
+  const nodesMap = {};
+  const edges = [];
+
+  async function parseFile(path, depth) {
+    if (depth > 2 || nodesMap[path]) return;
+    const r = await callServer({ type: 'read', path });
+    if (!r.ok) return;
+    const label = path.split('/').pop().replace(/\.(jsx?|tsx?)$/, '');
+    nodesMap[path] = { id: path, label, type: depth === 0 ? 'root' : 'local' };
+    const src = r.data || '';
+    let m2;
+    const re = new RegExp(importRegex.source, 'g');
+    while ((m2 = re.exec(src)) !== null) {
+      const imp = m2[1];
+      if (!imp.startsWith('.')) {
+        if (!nodesMap[imp]) nodesMap[imp] = { id: imp, label: imp.split('/').pop(), type: 'external' };
+        edges.push({ source: path, target: imp });
+      } else {
+        const base2 = path.split('/').slice(0, -1).join('/');
+        const candidates = [imp, imp + '.jsx', imp + '.js', imp + '.ts', imp + '.tsx']
+          .map(s => base2 + '/' + s.replace('./', '/').replace('//', '/'))
+          .concat([base2 + '/' + imp.replace('./', '').replace('//', '/')]);
+        for (const cand of candidates) {
+          const cr = await callServer({ type: 'read', path: cand });
+          if (cr.ok) { if (!nodesMap[cand]) await parseFile(cand, depth + 1); edges.push({ source: path, target: cand }); break; }
+        }
+      }
+    }
+  }
+
+  await parseFile(rootFile, 0);
+  return { nodes: Object.values(nodesMap), edges };
+}
+
+
+// ── parseActionsLocal — extract action blocks from AI reply ─────────────────
+function parseActionsLocal(text) {
+  const regex = /```action\n([\s\S]*?)```/g;
+  const actions = [];
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    try { actions.push(JSON.parse(m[1].trim())); } catch (_e) { }
+  }
+  return actions;
+}
+
+// ── processBatchFile — run batch command on a single file ───────────────────
+async function processBatchFile(f, folder, batchCmd, callAI, signal, setMessages) {
+  const filePath = folder + '/src/' + f.name;
+  const r = await callServer({ type: 'read', path: filePath });
+  if (!r.ok) return 'failed';
+  try {
+    const reply = await callAI([
+      { role: 'system', content: 'Kamu adalah code editor. Task: ' + batchCmd + '\nFile: ' + filePath + '\nGunakan write_file action untuk apply perubahan. Kalau tidak ada yang perlu diubah, balas hanya kata SKIP.' },
+      { role: 'user', content: '```\n' + r.data.slice(0, 6000) + '\n```' },
+    ], () => { }, signal);
+    if (reply.trim().toUpperCase().startsWith('SKIP')) return 'skipped';
+    const acts = parseActionsLocal(reply).filter(a => a.type === 'write_file');
+    acts.forEach(w => { if (!w.path.startsWith('/')) w.path = folder + '/src/' + w.path.replace(/^\.\//, ''); });
+    return acts;
+  } catch (e) {
+    if (e.name === 'AbortError') return 'aborted';
+    setMessages(m => [...m, { role: 'assistant', content: '  ❌ ' + f.name + ': ' + e.message.slice(0, 60), actions: [] }]);
+    return 'failed';
+  }
+}
+
 
 export function useSlashCommands({
   // state
@@ -337,24 +409,12 @@ export function useSlashCommands({
     let failed = 0;
     for (const f of files) {
       if (ctrl.signal.aborted) break;
-      const filePath = folder + '/src/' + f.name;
-      const r = await callServer({ type: 'read', path: filePath });
-      if (!r.ok) { failed++; continue; }
-      try {
-        const reply = await callAI([
-          { role: 'system', content: 'Kamu adalah code editor. Task: ' + batchCmd + '\nFile: ' + filePath + '\nGunakan write_file action untuk apply perubahan. Kalau tidak ada yang perlu diubah, balas hanya kata SKIP.' },
-          { role: 'user', content: '```\n' + r.data.slice(0, 6000) + '\n```' },
-        ], () => { }, ctrl.signal);
-        if (reply.trim().toUpperCase().startsWith('SKIP')) { skipped++; continue; }
-        const writes = parseActions(reply).filter(a => a.type === 'write_file');
-        writes.forEach(w => { if (!w.path.startsWith('/')) w.path = folder + '/src/' + w.path.replace(/^\.?\//, ''); });
-        allWrites.push(...writes);
-        setMessages(m => [...m, { role: 'assistant', content: '  ' + (writes.length > 0 ? '✅' : '⏭') + ' ' + f.name + (writes.length > 0 ? ' — ' + writes.length + ' perubahan' : ''), actions: [] }]);
-      } catch (e) {
-        if (e.name === 'AbortError') break;
-        failed++;
-        setMessages(m => [...m, { role: 'assistant', content: '  ❌ ' + f.name + ': ' + e.message.slice(0, 60), actions: [] }]);
-      }
+      const result = await processBatchFile(f, folder, batchCmd, callAI, ctrl.signal, setMessages);
+      if (result === 'aborted') break;
+      if (result === 'failed') { failed++; continue; }
+      if (result === 'skipped') { skipped++; continue; }
+      allWrites.push(...result);
+      setMessages(m => [...m, { role: 'assistant', content: '  ' + (result.length > 0 ? '✅' : '⏭') + ' ' + f.name + (result.length > 0 ? ' — ' + result.length + ' perubahan' : ''), actions: [] }]);
     }
     if (allWrites.length > 0) {
       setMessages(m => [...m, { role: 'assistant', content: '📦 **Batch siap — menunggu approval!**\n' + allWrites.length + ' perubahan di ' + new Set(allWrites.map(w => w.path.split('/').pop())).size + ' file (' + skipped + ' di-skip, ' + failed + ' gagal).\nReview dan approve di bawah~', actions: allWrites.map(a => ({ ...a, executed: false })) }]);

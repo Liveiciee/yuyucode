@@ -1,5 +1,5 @@
 # YuyuCode — Flagship Plan
-> Dibuat: 2026-03-21 | **Update terakhir: 2026-03-21 (post v4.1)**
+> Dibuat: 2026-03-21 | **Update terakhir: 2026-03-21 (post SonarCloud AAA sprint)**
 > Pesan dari owner: "Berat, Lama, Susah Bukan Hambatan. All in selama sesuai ekspektasi."
 > Riset: Cursor, Claude Code, Windsurf, Copilot, Devin 2026 — ambil yang terbaik, beat yang bisa dibeat.
 
@@ -25,6 +25,23 @@ Benchmark: feature-parity dengan Cursor Pro ($20/month) — tapi gratis, offline
 - **1.1 Reject feedback loop** — reject → feedback ke AI + auto-resume setelah approve ✅
 - **2.5 /review --all** — batch review semua changed files vs HEAD, severity report ✅
 - **2.6 Contextual slash suggestions** — fuzzy match + context boost dari isi chat ✅
+
+### SonarCloud AAA Sprint (2026-03-21)
+- **CI/CD hardening** — CodeQL SAST + Semgrep SAST + SonarCloud Quality Gate terpasang ✅
+- **SonarCloud setup** — sonar-project.properties, SONAR_TOKEN secret, badge di README ✅
+- **Security fixes** — LivePreview postMessage origin check, yuyu-server log injection fix ✅
+- **Test suite expanded** — 546 → 661 tests (+115 useSlashCommands handlers, fix CI mock isolation) ✅
+- **Cognitive complexity refactor** — 14 files direfactor, semua 27 SonarCloud issues addressed:
+  - `useSlashCommands.js` → complexity 338 → dipecah 25+ handler functions
+  - `useAgentLoop.js` → extract `executePatchActions`, `executeWriteActions`, `buildIterFeedback`, dll
+  - `api.js` → extract `parseSSELine`, `_callGroqWithRetry`, `_callCerebrasWithFallback`
+  - `utils.js` → extract `hlJson/Bash/Python/Css/Default`, `ACTION_DISPATCH` map
+  - `features.js` → extract `runBgAgentLoop` dari async IIFE
+  - `App.jsx` → extract `handleFileWatchEvent`
+  - `AppChat.jsx` → extract `updateSlashSuggestions`
+  - `useApprovalFlow.js` → extract `verifySyntax`
+  - `useFileStore.js` + `useProjectStore.js` + `Terminal.jsx` + `FileTree.jsx` + `GlobalFindReplace.jsx` + `MsgBubble.jsx` ✅
+- **README diperbarui** — test counts, badges SonarCloud, SONAR_TOKEN di secrets list ✅
 
 ---
 
@@ -147,14 +164,21 @@ Benchmark: feature-parity dengan Cursor Pro ($20/month) — tapi gratis, offline
 
 ## 📋 CONTEXT UNTUK SESI BERIKUTNYA
 
-### State saat ini v4.1:
+### State saat ini v4.1 (post SonarCloud sprint):
 - Version: 4.1.0
-- Tests: 546 ✅
+- Tests: 661 ✅ (+115 dari sesi ini)
 - Slash commands: ~68
 - Done: YUYU.md, Visual Diff Review, Ghost Text L1+L2, reject feedback, /review --all, contextual slash
+- CI: CodeQL ✅ · Semgrep ✅ · SonarCloud Quality Gate ✅
+- SonarCloud Security: A ✅ | Maintainability: menuju A (27 issues direfactor) | Coverage: aktif
+- 0 lint warnings ✅
 
 ### Urutan wajib sesi berikutnya (tidak ada yang dilewat):
 ```
+0.  [LANJUTAN] SonarCloud — tunggu rescan setelah cognitive complexity refactor
+    → Target: Maintainability A, Reliability B+, Coverage ≥60% on new code
+    → Jika masih ada issues: lanjut refactor file yang tersisa
+    → Jika coverage masih fail: tambah tests untuk useAgentLoop/features/App
 1.  1.4  Parallel Agent Swarm v2
 2.  2.2  Auto test generation post-write hook
 3.  2.3  Smart context compression v2
