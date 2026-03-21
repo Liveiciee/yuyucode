@@ -36,13 +36,8 @@ export function hl(code, lang = '') {
   }
 
   if (L === 'json') {
-<<<<<<< Updated upstream
     s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*")(\s*:)/g, '<span style="color:#79b8ff">$1</span>$2'));
     s = protect(s, t => t.replace(/:\s*("(?:[^"\\]|\\.)*")/g, ': <span style="color:#98c379">$1</span>'));
-=======
-    s = protect(s, t => t.replace(/(\"(?:[^\"\\]|\\.)*\")(\s*:)/g, '<span style="color:#79b8ff">$1</span>$2'));
-    s = protect(s, t => t.replace(/:\s*(\"(?:[^\"\\]|\\.)*\")/g, ': <span style="color:#98c379">$1</span>'));
->>>>>>> Stashed changes
     s = protect(s, t => t.replace(/\b(true|false|null)\b/g, '<span style="color:#f97583">$1</span>'));
     s = protect(s, t => t.replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>'));
     return s;
@@ -50,11 +45,7 @@ export function hl(code, lang = '') {
   if (L === 'bash' || L === 'sh') {
     s = protect(s, t => t.replace(/(#.*$)/gm, '<span style="color:#6a737d">$1</span>'));
     s = protect(s, t => t.replace(/\b(echo|cd|ls|git|npm|node|export|source|if|then|fi|for|do|done|while|function|return|mkdir|cp|mv|rm|chmod|curl|wget)\b/g, '<span style="color:#c678dd">$1</span>'));
-<<<<<<< Updated upstream
     s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
-=======
-    s = protect(s, t => t.replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
->>>>>>> Stashed changes
     s = protect(s, t => t.replace(/(\$\w+|\$\{[^}]+\})/g, '<span style="color:#79b8ff">$1</span>'));
     return s;
   }
@@ -76,11 +67,7 @@ export function hl(code, lang = '') {
   // default JS/JSX/TS/TSX
   s = protect(s, t => t.replace(/(\/\/.*$|\/\*[\s\S]*?\*\/)/gm, '<span style="color:#6a737d">$1</span>'));
   s = protect(s, t => t.replace(/(`(?:[^`\\]|\\.)*`)/g, '<span style="color:#98c379">$1</span>'));
-<<<<<<< Updated upstream
   s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
-=======
-  s = protect(s, t => t.replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
->>>>>>> Stashed changes
   s = protect(s, t => t.replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|finally|class|new|this|from|of|in|typeof|instanceof|null|undefined|true|false|throw|switch|case|break|continue|extends|super|static|get|set|type|interface|enum|as|keyof|readonly)\b/g, '<span style="color:#c678dd">$1</span>'));
   s = protect(s, t => t.replace(/\b([A-Z][a-zA-Z0-9]*)\b/g, '<span style="color:#79b8ff">$1</span>'));
   s = protect(s, t => t.replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>'));
