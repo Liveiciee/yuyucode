@@ -8,7 +8,7 @@ import { generatePlan, runBackgroundAgent, mergeBackgroundAgent, tokenTracker, s
 // ── buildDepGraph — parse import graph up to 2 levels deep ──────────────────
 // eslint-disable-next-line no-unused-vars
 async function buildDepGraph(rootFile) {
-  const importRegex = /(?:import|require)\s+.*?['"](.+?)['"]/g;
+  const importRegex = /(?:import|require)\s+[^'"]*['"]([^'"]+)['"]/g;
   const nodesMap = {};
   const edges = [];
 
@@ -230,7 +230,7 @@ export function useSlashCommands({
     if (!selectedFile) { setMessages(m => [...m, { role: 'assistant', content: 'Buka file dulu Papa~', actions: [] }]); return; }
     setLoading(true);
     setMessages(m => [...m, { role: 'assistant', content: '🕸 Building dep graph (2 levels)...', actions: [] }]);
-    const importRegex = /(?:import|require)\s+.*?['"](.+?)['"]/g;
+    const importRegex = /(?:import|require)\s+[^'"]*['"]([^'"]+)['"]/g;
     const nodesMap = {};
     const edges = [];
 
