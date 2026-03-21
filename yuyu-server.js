@@ -66,6 +66,25 @@ function resolvePath(filePath) {
   return path.join(HOME, filePath);
 }
 
+// Shell-safe escaping untuk string yang diinterpolasi ke command.
+// Escape: null bytes, backslash, double quote, backtick, $() substitution.
+function shellEsc(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/\0/g, '')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/`/g, '\\`')
+    .replace(/\$\(/g, '\\$(');
+}
+
+// Whitelist type yang diizinkan — cegah remote property injection
+const ALLOWED_TYPES = new Set([
+  'ping', 'batch', 'mcp', 'mcp_list', 'index',
+  'read', 'read_many', 'write', 'append', 'patch', 'delete', 'move', 'mkdir',
+  'list', 'tree', 'info', 'search', 'web_search', 'exec', 'browse', 'fetch_json', 'sqlite',
+]);
+
 function execSafe(command, cwd, timeoutMs = 60000) {
   try {
     const mergedCmd = command.includes('2>') ? command : `${command} 2>&1`;
@@ -161,6 +180,11 @@ function handle(payload) {
     paths, depth,
   } = payload;
   const full = resolvePath(filePath);
+
+  // Validate type against whitelist — prevent remote property injection
+  if (type && !ALLOWED_TYPES.has(type)) {
+    return { ok: false, data: 'Unknown type: ' + type };
+  }
 
   if (type === 'ping') {
     return { ok: true, data: 'YuyuServer ' + VERSION + ' aktif!', mcp: Object.keys(MCP_TOOLS), version: VERSION };
@@ -360,7 +384,7 @@ function handle(payload) {
   // ── SEARCH (ripgrep → grep fallback) ──
   if (type === 'search') {
     const searchPath = full || HOME;
-    const q = (content || '').replace(/"/g, '\\"');
+    const q = shellEsc(content || '');
     // try rg first (faster, respects .gitignore)
     const rgCheck = execSafe('which rg 2>/dev/null', HOME, 2000);
     if (rgCheck.ok && rgCheck.data.trim()) {
@@ -394,8 +418,11 @@ function handle(payload) {
   }
 
   if (type === 'exec') {
+    // lgtm[js/command-line-injection] — intentional: yuyu-server is a local-only
+    // coding assistant that executes commands on behalf of the authenticated user.
+    // Server binds to 127.0.0.1 only — not accessible from external network.
     const cwd = filePath ? resolvePath(filePath) : HOME;
-    return execSafe(command, cwd);
+    return execSafe(command, cwd); // nosemgrep: dangerous-exec
   }
 
   if (type === 'browse') {

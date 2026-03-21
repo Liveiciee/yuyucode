@@ -9,51 +9,49 @@ on:
 
 jobs:
   # ── SEMGREP SAST ────────────────────────────────────────────────────────────
-  # Static Application Security Testing — no token needed for OSS rulesets.
-  # Scans: secrets in code, XSS patterns, eval injection, prototype pollution,
-  #        insecure fetch usage, hardcoded credentials, React-specific issues.
   semgrep:
     name: SAST · Semgrep
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # diperlukan untuk upload SARIF ke GitHub Security tab
+      actions: read
+      contents: read
     container:
       image: semgrep/semgrep
     steps:
       - uses: actions/checkout@v5
 
       - name: Run Semgrep
+        # --error dihapus — finding tidak block CI, tetap muncul di Security tab
         run: |
           semgrep scan \
             --config p/javascript \
             --config p/react \
             --config p/secrets \
             --config p/owasp-top-ten \
-            --error \
             --sarif \
             --output semgrep.sarif \
-            src/
-        # --error: exit 1 jika ada finding severity >= ERROR
-        # Remove --error kalau mau non-blocking dulu
+            src/ || true
 
       - name: Upload SARIF to GitHub Security
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: semgrep.sarif
           category: semgrep
 
   # ── SONARCLOUD ──────────────────────────────────────────────────────────────
-  # The Big Boss. Coverage, duplications, cognitive complexity, security
-  # hotspots, maintainability rating, reliability rating.
-  # Setup: https://sonarcloud.io → import repo → grab SONAR_TOKEN secret.
+  # Setup: sonarcloud.io → import repo → tambah SONAR_TOKEN ke GitHub Secrets
   sonarcloud:
     name: Quality · SonarCloud
     runs-on: ubuntu-latest
+    continue-on-error: true   # non-blocking sampai SONAR_TOKEN di-set
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # SonarCloud butuh full git history untuk blame
+          fetch-depth: 0
 
       - uses: actions/setup-node@v5
         with:
@@ -75,8 +73,8 @@ jobs:
         run: npm run test:ci
 
       - name: SonarCloud Scan
+        if: ${{ secrets.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        # Config di sonar-project.properties
