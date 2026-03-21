@@ -13,35 +13,28 @@ export default defineConfig({
     globals: true,
     setupFiles: './src/setupTest.js',
     pool,
-    isolate: false,
+    // isolate: false speeds up local dev, but in CI parallel threads can
+    // cache modules before vi.mock applies → mocks silently broken.
+    // Keep isolate: true in CI for correctness.
+    isolate: !isCI,
     css: false,
     coverage: {
       provider: 'v8',
       exclude: [
-        // CLI tools
         'yugit.cjs',
         'yuyu-bench.cjs',
-        // Server — tested separately by yuyu-server.test.cjs
         'yuyu-server.js',
-        // Build artifacts & APK assets
         'public/**',
         'android/**',
-        // Stale patch dir
         'patch/**',
-        // Entry point
         'src/main.jsx',
-        // Native Capacitor bridge
         'src/plugins/**',
-        // Pure config/data
         'src/constants.js',
         'src/theme.js',
         'src/setupTest.js',
-        // UI components
         'src/components/**',
         'src/App.jsx',
-        // Theme pure data
         'src/themes/**',
-        // Test files
         '**/*.test.*',
         '**/*.bench.*',
       ],
