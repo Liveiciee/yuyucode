@@ -1,12 +1,12 @@
 {
   "name": "yuyucode",
   "private": true,
-  "version": "3.0.1",
+  "version": "2.9.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "echo '🔍 Scouring the codebase...' && eslint . && echo '✨ 0 problems found! Code is pure.'",
+    "lint": "echo '\ud83d\udd0d Scouring the codebase...' && eslint . && echo '\u2728 0 problems found! Code is pure.'",
     "preview": "vite preview",
     "test": "vitest",
     "bench": "node yuyu-bench.cjs",

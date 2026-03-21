@@ -34,19 +34,24 @@ export default function App() {
   // ── Dynamic brightness filter — gamma-corrected two-layer ──
   // Layer 1: CSS brightness capped at 2.0 (no 8-bit quantization artifacts).
   // Layer 2: mix-blend-mode:screen overlay for extreme low brightness boost.
+  //
+  // Dead zone: 35%–100% → no compensation (normal colors, save battery).
+  // Compensation only kicks in below 35% where screen is genuinely dark.
   const _brightnessCalc = (() => {
     const b = ui.brightnessLevel;
-    if (b >= 0.95) return { filter: 'none', overlay: 0 };
-    const safe       = Math.max(b, 0.04);
+    if (b >= 0.35) return { filter: 'none', overlay: 0 };  // dead zone — no filter
+    // Remap 0–0.35 → 0–1 so gamma math works on full range
+    const remapped   = b / 0.35;
+    const safe       = Math.max(remapped, 0.04);
     const linear     = Math.pow(safe, 2.2);
     const comp       = Math.pow(1 / linear, 1 / 2.2);
     const themeName  = (T?.name || '').toLowerCase();
     const isColorful = themeName.includes('aurora') || themeName.includes('neon');
-    const CSS_CAP    = isColorful ? 1.6 : 2.0;
+    const CSS_CAP    = isColorful ? 1.5 : 1.8;
     const bright     = Math.min(comp, CSS_CAP);
-    const contrast   = 1 + (bright - 1) * (isColorful ? 0.12 : 0.25);
+    const contrast   = 1 + (bright - 1) * (isColorful ? 0.10 : 0.20);
     const filter     = `brightness(${bright.toFixed(3)}) contrast(${contrast.toFixed(3)})`;
-    const overlay    = Math.min(0.40, Math.max(0, comp - CSS_CAP) * 0.09);
+    const overlay    = Math.min(0.35, Math.max(0, comp - CSS_CAP) * 0.08);
     return { filter, overlay };
   })();
   const brightnessFilter  = _brightnessCalc.filter;
