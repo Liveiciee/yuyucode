@@ -23,10 +23,10 @@ export function useNotifications() {
     if (typeof window.speechSynthesis === 'undefined' || typeof window.SpeechSynthesisUtterance !== 'function') return;
     window.speechSynthesis.cancel();
     const clean = text
-      .replace(/```[\s\S]*?```/g, '')
+      .replace(/```.*?```/gs, '')
       .replace(/[#*_~>]/g, '')
       .replace(/`/g, '')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/\[([^\]]+)\]\([^()]+\)/g, '$1')
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 500);
