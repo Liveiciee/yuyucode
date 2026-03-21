@@ -89,6 +89,8 @@ export function LivePreview({ tabs, T, onClose }) {
   // Console message listener
   useEffect(() => {
     function onMsg(e) {
+      // srcdoc iframes have origin 'null' — reject anything else
+      if (e.origin !== 'null') return;
       if (e.data?.type !== 'console') return;
       const { level, args } = e.data;
       setLogs(prev => [...prev.slice(-99), { level, text: args.join(' '), ts: Date.now() }]);

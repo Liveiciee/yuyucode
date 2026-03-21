@@ -523,7 +523,9 @@ const server = http.createServer((req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
   if (VERBOSE) {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    const safeMethod = ['GET','POST','PUT','DELETE','PATCH','OPTIONS','HEAD'].includes(req.method) ? req.method : 'UNKNOWN';
+    const safeUrl = req.url ? req.url.replace(/[\r\n]/g, '') : '/';
+    console.log(`[${new Date().toISOString()}] ${safeMethod} ${safeUrl}`);
   }
 
   // Rate limit — only applies to POST (action requests)
