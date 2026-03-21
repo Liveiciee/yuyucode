@@ -27,7 +27,7 @@ export function hl(code, lang = '') {
   // Protect already-generated spans from subsequent regex passes
   function protect(str, fn) {
     const saved = [];
-    const hidden = str.replace(/<span[^>]*>[\s\S]*?<\/span>/g, m => {
+    const hidden = str.replace(/<span[^>]*>.*?<\/span>/gs, m => {
       saved.push(m);
       return `_${saved.length - 1}_`;
     });
@@ -51,21 +51,21 @@ export function hl(code, lang = '') {
   }
   if (L === 'python' || L === 'py') {
     s = protect(s, t => t.replace(/(#.*$)/gm, '<span style="color:#6a737d">$1</span>'));
-    s = protect(s, t => t.replace(/("""[\s\S]*?"""|'''[\s\S]*?''')/g, '<span style="color:#98c379">$1</span>'));
+    s = protect(s, t => t.replace(/(""".*?"""|'''.*?''')/gs, '<span style="color:#98c379">$1</span>'));
     s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
     s = protect(s, t => t.replace(/\b(def|class|import|from|return|if|elif|else|for|while|try|except|with|as|in|not|and|or|True|False|None|lambda|yield|async|await|pass|raise|del|global|nonlocal)\b/g, '<span style="color:#c678dd">$1</span>'));
     s = protect(s, t => t.replace(/\b(\d+\.?\d*)\b/g, '<span style="color:#d19a66">$1</span>'));
     return s;
   }
   if (L === 'css') {
-    s = protect(s, t => t.replace(/(\/\*[\s\S]*?\*\/)/g, '<span style="color:#6a737d">$1</span>'));
+    s = protect(s, t => t.replace(/(\/\*.*?\*\/)/g, '<span style="color:#6a737d">$1</span>'));
     s = protect(s, t => t.replace(/([.#]?[\w-]+)\s*\{/g, '<span style="color:#79b8ff">$1</span>{'));
     s = protect(s, t => t.replace(/([\w-]+)\s*:/g, '<span style="color:#b392f0">$1</span>:'));
     s = protect(s, t => t.replace(/:\s*([^;{]+)/g, ': <span style="color:#98c379">$1</span>'));
     return s;
   }
   // default JS/JSX/TS/TSX
-  s = protect(s, t => t.replace(/(\/\/.*$|\/\*[\s\S]*?\*\/)/gm, '<span style="color:#6a737d">$1</span>'));
+  s = protect(s, t => t.replace(/(\/\/.*$|\/\*.*?\*\/)/gms, '<span style="color:#6a737d">$1</span>'));
   s = protect(s, t => t.replace(/(`(?:[^`\\]|\\.)*`)/g, '<span style="color:#98c379">$1</span>'));
   s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
   s = protect(s, t => t.replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|finally|class|new|this|from|of|in|typeof|instanceof|null|undefined|true|false|throw|switch|case|break|continue|extends|super|static|get|set|type|interface|enum|as|keyof|readonly)\b/g, '<span style="color:#c678dd">$1</span>'));
@@ -88,7 +88,7 @@ export function resolvePath(base, p) {
 
 // ── ACTION PARSER ──
 export function parseActions(text) {
-  const regex = /```action\n([\s\S]*?)```/g;
+  const regex = /```action\n(.*?)```/gs;
   const actions = [];
   let m;
   while ((m = regex.exec(text)) !== null) {
