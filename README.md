@@ -46,20 +46,12 @@ It connects to a local Node.js server (`yuyu-server.js`) running in Termux, givi
 
 > 📸 *Screenshots and GIF demos coming soon — drop a ⭐ to get notified*
 
-<!--
-<p align="center">
-  <img src="docs/demo-agent.gif" width="280" />
-  <img src="docs/demo-editor.gif" width="280" />
-  <img src="docs/demo-terminal.gif" width="280" />
-</p>
--->
-
 ---
 
 ## Features that don't exist anywhere else
 
-### 🔆 Gamma-Corrected Adaptive Brightness
-A custom Capacitor Java plugin registers a `ContentObserver` on `Settings.System.SCREEN_BRIGHTNESS`. The moment you slide brightness down, the entire UI auto-compensates using sRGB gamma correction (γ=2.2). Two-layer compensation: CSS `filter: brightness()` capped at 2.0 (avoids 8-bit quantization artifacts on Android WebView), plus a `mix-blend-mode: screen` overlay for extreme low-brightness boost. No other coding tool has this. Because no other coding tool runs on a phone.
+### 🔆 Perceptual Brightness Compensation
+A native Capacitor plugin streams real-time brightness values from `Settings.System.SCREEN_BRIGHTNESS` via `ContentObserver`. Below 25% screen brightness, the UI compensates using **Weber-Fechner perceptual scaling** — humans perceive brightness logarithmically, so linear boosts feel wrong. The compensation applies a gentle `brightness(1.0–1.4×)` + slight desaturation to counteract the warm-orange shift CSS `brightness()` introduces. A frosted overlay (`backdrop-filter: blur`) adds depth at extreme low-light. Zero processing above 25% — no visible effect in normal use.
 
 ### 📷 Camera-to-Code
 Capture a photo of a whiteboard, a printed error, a diagram — directly from the native Android camera. Routes automatically to a vision-capable model. Zero friction, zero file management.
@@ -69,6 +61,12 @@ Capture a photo of a whiteboard, a printed error, a diagram — directly from th
 
 ### 🐝 Agent Swarm Pipeline
 `/swarm <task>` runs: **Architect** → **FE Agent + BE Agent** (parallel) → **QA Engineer** → **auto-fix pass**. Multi-agent coordination, single command.
+
+### 📋 YUYU.md — Persistent Project Rules
+Drop a `YUYU.md` in your project root — Yuyu reads it every session, before every agent loop. Define coding standards, architecture decisions, forbidden patterns, preferred libraries. `/rules add "..."` to append from chat. `/rules init` to auto-generate one from your codebase.
+
+### 🔍 Visual Diff Review
+Toggle **Diff Review** in `/config` — agent pauses before applying any `patch_file` or `write_file`. Each pending change shows a colour-coded diff (green adds, red removes) inline in chat. Accept per-file or all at once. Reject sends the reason back to the agent — it self-corrects and tries again. Approving resumes the loop automatically.
 
 ### 🗂️ Multi-Tab Editor
 Each tab maintains its own independent CodeMirror `EditorState` — cursor position, scroll, undo history all preserved on switch. Dirty indicator (●) per tab. Like VS Code tabs, on a phone.
@@ -81,7 +79,7 @@ CodeMirror 6 with a complete extension suite:
 |---|---|
 | **Vim mode** | normal/insert/visual, full `hjkl`, `:wq` saves |
 | **Emmet** | `div.container>ul>li*3` → HTML via Ctrl+E |
-| **AI Ghost Text L1+L2** | L1: next line 300ms (Tab accept) · L2: 2-3 baris 900ms (Tab+Tab accept), warna berbeda |
+| **AI Ghost Text L1+L2** | L1: next line 300ms (Tab) · L2: 2–3 lines 900ms (Tab+Tab), distinct colour |
 | **Minimap** | 64px canvas overview, semantic colors, click to jump |
 | **Inline Lint** | Syntax error gutter markers (JSON + JS) |
 | **Code Folding** | Fold all / unfold all |
@@ -101,19 +99,19 @@ Split view with a live `<iframe srcdoc>` that rebuilds 300ms after any edit. Aut
 Grep across all project files — grouped by file, expandable, match highlighted. Regex mode, case-sensitive toggle. Replace all: reads, patches, re-searches automatically.
 
 ### 📌 Pinned Context Files
-`/pin src/api.js` — file di-pin ke context permanent. Selalu masuk ke setiap agent loop tanpa perlu buka manual. `/unpin` untuk lepas.
+`/pin src/api.js` — file always injected into every agent loop. `/unpin` to release.
 
 ### 🔍 Chat Search
-Tombol 🔍 di input area atau `/search <query>` untuk cari di history chat. Klik hasil → scroll ke message.
+`/search <query>` — search across full chat history. Click result → scroll to message.
 
 ### ⏸ Graceful Stop
-Tombol ⏸ muncul saat agent loop berjalan — selesaikan iterasi ini dulu baru berhenti. Berbeda dengan ■ hard abort.
+⏸ button during agent loop — finishes current iteration cleanly before stopping. Different from ■ hard abort.
 
 ### ↩ Global Undo
-`/undo` atau `/undo 3` — batalkan N file edit terakhir dari agent, kembalikan ke versi sebelumnya.
+`/undo` or `/undo 3` — roll back N last file edits made by the agent.
 
 ### 🤖 One-shot Model Override
-`/ask kimi review kode ini` — tanya model tertentu sekali tanpa ganti default. Alias: `kimi`, `llama`, `llama8b`, `qwen`, `scout`, `qwen235`.
+`/ask kimi review this` — query a specific model once without changing the default. Aliases: `kimi`, `llama`, `llama8b`, `qwen`, `scout`, `qwen235`.
 
 ### 🤝 Realtime Collaboration
 `/collab <room>` connects two devices to the same editing session via WebSocket. OT-based sync using `@codemirror/collab`. No third-party service needed.
@@ -122,7 +120,7 @@ Tombol ⏸ muncul saat agent loop berjalan — selesaikan iterasi ini dulu baru 
 Remove specific sections from any AI message without deleting the whole thing. Code blocks, exec results, text — tap to mark, save. The AI won't see those parts next turn.
 
 ### 💭 Live Chain of Thought
-`<think>` blocks stream live — collapsible "N langkah berpikir" like Claude.ai. Brain icon pulses while thinking, collapses with step count when done.
+`<think>` blocks stream live — collapsible "N langkah berpikir". Brain icon pulses while thinking, collapses with step count when done.
 
 ### 💻 xterm.js Terminal
 Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic lights are functional: red = kill process, yellow = clear, green = send output to AI.
@@ -130,41 +128,33 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 ### 🔎 Fuse.js Fuzzy File Search
 `cmpt` finds `components/`, `astst` finds `useAgentStore`. Full fuzzy match on filename + path.
 
-### 📋 YUYU.md — Persistent Project Rules
-Drop a `YUYU.md` in your project root — Yuyu reads it every session, before every agent loop. Coding standards, architecture decisions, forbidden patterns. `/rules add "..."` to append from chat. `/rules init` to generate one from your codebase.
-
-### 🔍 Visual Diff Review
-Toggle **Diff Review** in `/config` — agent pauses before applying any `patch_file` or `write_file`. Each file shows a colour-coded diff (green adds, red removes) before you approve. Reject sends feedback back to the agent with your reason. Accept resumes the loop automatically.
-
 ### 📝 /review --all
-`/review --all` reads all files changed vs HEAD (up to 8), runs a structured PR-level review across all of them — bugs, security issues, missing error handling, performance flags — with severity per finding.
+`/review --all` reads all files changed vs HEAD (up to 8) and runs a structured PR-level review — missing error handling, security issues, missing tests, performance flags — with severity per finding (🔴 High / 🟡 Medium / 🟢 Low).
 
 ---
 
 ## Technically interesting things
 
-- **Custom Capacitor plugin in Java** — `BrightnessPlugin.java` uses `ContentObserver` to emit real-time brightness events to the WebView
-- **Two-layer brightness compensation** — CSS `filter` capped at 2.0 to avoid 8-bit GPU quantization artifacts; `mix-blend-mode: screen` overlay for extreme low-light
+- **Perceptual brightness compensation** — `ContentObserver` streams brightness changes from native Android. Below 25%, applies Weber-Fechner-scaled `brightness(1.0–1.4×)` + desaturation (-18%) via CSS filter. Frosted `backdrop-filter: blur` overlay for extreme low-light depth. Zero cost above 25%.
 - **Per-theme token system** — every component reads colour tokens from the active theme object; zero hardcoded colours in component JSX
 - **EditorState swap per tab** — `view.setState()` on tab switch, no remount, cursor and undo history fully preserved
-- **Ghost text as StateField + WidgetType** — `StateEffect → StateField → Decoration.widget → WidgetType`; Tab keymap intercepts before default indent
+- **Two-level ghost text** — L1: `StateField` + 300ms debounce, Llama 8B, next-line. L2: `ghostL2Field` + 900ms, 2–3 line lookahead, dimmer colour. Tab accepts L1; double-Tab (< 400ms gap) accepts L2 via timestamp delta.
+- **Diff review intercept** — `diffReview` ON → agent pre-computes `generateDiff()` on all write/patch actions, marks them `pending`, pushes to chat, `return`s — loop pauses. `useApprovalFlow.handleApprove()` resumes via `sendMsgRef`. Reject sends AI feedback; agent self-corrects without full restart.
+- **YUYU.md context injection** — loaded in `gatherProjectContext()` each session, injected into `buildSystemPrompt()` after AGENTS.md. State synced via `project.setYuyuMd()` so mid-session edits take effect next iteration.
 - **Inline blame gutter** — custom `GutterMarker` + `gutter()` extension; data from `git blame --abbrev=7` via yuyu-server
 - **Breadcrumb from syntax tree** — `syntaxTree(state).resolveInner(pos)` walks AST upward collecting `FunctionDeclaration`, `ClassDeclaration`, etc.
-- **Collab via `@codemirror/collab`** — OT-based update sync over the existing yuyu-server WebSocket; `collabRooms` Map tracks version + update log per room
-- **Minimap as canvas** — 64px `<canvas>` with `requestAnimationFrame` loop; colors code semantically (imports=purple, comments=green, strings=yellow)
+- **Collab via `@codemirror/collab`** — OT-based update sync over yuyu-server WebSocket; `collabRooms` Map tracks version + update log per room
+- **Minimap as canvas** — 64px `<canvas>` with `requestAnimationFrame`; colors code semantically (imports=purple, comments=green, strings=yellow)
 - **Parallel action execution** — `read_file`, `web_search`, `list_files`, `tree`, `search`, `mkdir` run in parallel; `exec` and `mcp` serial
-- **TF-IDF + age decay memory ranking** — memories injected into system prompt scored by relevance to current task *and* recency (14-day linear decay). Effectively a mini-RAG pipeline running entirely client-side, no vector DB required
+- **TF-IDF + age decay memory ranking** — memories scored by relevance + recency (14-day linear decay). Mini-RAG pipeline, fully client-side, no vector DB.
 - **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-highlighted `<span>` tags
 - **3-fallback patch handler** — `patch_file` tries exact match → whitespace-normalized → trim-lines before giving up
-- **Myers diff** — `generateDiff()` uses the `diff` library for accurate line tracking with moved block detection; includes line numbers
-- **Batch server action** — `{ type: 'batch', actions: [...] }` runs multiple server ops in a single HTTP request; reduces agent loop roundtrips for parallel reads
-- **Incremental codebase map** — `yuyu-map.cjs` runs `git diff --name-only HEAD` before scanning; only reports changed files, full rescan still used for salience scoring
-- **Benchmark regression detector** — `yuyu-bench.cjs` stores results in `.yuyu/bench-history.json`; flags any function that regresses 2× vs baseline (`npm run bench`)
-- **Property-based test coverage** — `parseActions` and `resolvePath` are fuzz-tested with 100 random inputs per property; inline fc-style runner, zero extra deps
-- **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits and sets `package.json` version before pushing; CI uses that version for the GitHub Release tag. Supports `--no-push`, `--amend`, `--hash` revert, scope `feat(x):`, breaking change `feat!:`, body/footer multi-line commits, `--push` (push-only), `--squash N` (squash last N commits), and `--status` (quick git overview).
-- **Two-level ghost text** — L1 (`StateField` + 300ms debounce, Llama 8B) for next-line; L2 (`ghostL2Field` + 900ms, separate `Decoration`) for 2–3 line lookahead. Tab accepts L1; double-Tab accepts L2 via timestamp delta < 400ms.
-- **Diff review intercept** — when `diffReview` is ON, agent loop pre-computes `generateDiff()` on patch/write actions, marks them `pending`, pushes to UI, and `return`s — loop pauses. `useApprovalFlow.handleApprove()` resumes via `sendMsgRef` with approve/reject context. Reject triggers AI self-correction without re-entering loop from scratch.
-- **YUYU.md context injection** — loaded in `gatherProjectContext()` at the start of every session, re-read fresh each time, injected into `buildSystemPrompt()` after AGENTS.md. Higher priority than notes, lower than system prompt.
+- **Myers diff** — `generateDiff()` uses the `diff` library for accurate line tracking; includes line numbers
+- **Batch server action** — `{ type: 'batch', actions: [...] }` runs multiple ops in one HTTP request; reduces agent loop roundtrips
+- **Incremental codebase map** — `yuyu-map.cjs` runs `git diff --name-only HEAD` before scanning; only changed files re-analyzed
+- **Benchmark regression detector** — `yuyu-bench.cjs` stores results in `.yuyu/bench-history.json`; flags 2× regressions vs baseline
+- **Property-based test coverage** — `parseActions` and `resolvePath` fuzz-tested with 100 random inputs each; inline fast-check-style runner, zero extra deps
+- **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits, sets `package.json` version, triggers CI APK build. Supports `--no-push`, `--amend`, `--hash` revert, scopes, breaking changes, `--push`, `--squash N`, `--status`.
 
 ---
 
@@ -192,8 +182,8 @@ Toggle **Diff Review** in `/config` — agent pauses before applying any `patch_
 | `multitab.test.js` | Unit — useFileStore multi-tab | 18 |
 | `uistore.test.js` | Unit — useUIStore | 25 |
 | `globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
-| `yuyu-map.test.cjs` | Unit — tryRepomix, extractSymbols, compressSource, walkFiles, generateLlmsTxt, ensureHandoffTemplate, main(), getChangedFiles | 80 |
-| `yuyu-server.test.cjs` | Integration — HTTP endpoints, read/write/patch/batch/exec, REST, error cases | 30 |
+| `yuyu-map.test.cjs` | Unit — map, symbols, compress, handoff, llms.txt | 80 |
+| `yuyu-server.test.cjs` | Integration — HTTP, read/write/patch/batch/exec | 30 |
 
 ### Benchmarks (Termux ARM64)
 
@@ -257,187 +247,30 @@ npm run dev
 ```
 
 > **Note:** `yuyu-server.js` must be running before using the app.
-> See API keys setup below — Option A handles this automatically via `.bashrc`.
 
 Get free API keys:
 - [Cerebras](https://cloud.cerebras.ai) — main AI
 - [Groq](https://console.groq.com) — fallback + vision
 
-**Option A — Termux (recommended):** copy template ini ke `~/.bashrc`, ganti `your_key` dengan key asli, lalu `source ~/.bashrc`:
+**Option A — Termux `.bashrc` (recommended):** See full setup template in the Developer Documentation section below.
 
-```bash
-# ~/.bashrc — YuyuCode full setup
-
-export ANDROID_HOME=$HOME/android-sdk
-export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-
-export VITE_CEREBRAS_API_KEY=your_key
-export VITE_GROQ_API_KEY=your_key
-
-# auto-start yuyu-server on every Termux session
-node ~/yuyu-server.js > /dev/null 2>&1 &
-
-# ── yuyu-apply — apply zip dari Claude ───────────────────────────────────────
-yuyu-apply() {
-  local zip="${1:-yuyu-overhaul.zip}"
-  local DRY=0
-  if [ "${1}" = "--dry-run" ] || [ "${2}" = "--dry-run" ]; then
-    DRY=1
-    zip="${1:-yuyu-overhaul.zip}"
-    [ "${1}" = "--dry-run" ] && zip="yuyu-overhaul.zip"
-    echo "🔍 DRY RUN — tidak ada yang diubah"
-    echo ""
-  fi
-
-  cd ~/yuyucode
-
-  echo "📦 Files dalam $zip:"
-  unzip -l /sdcard/Download/$zip | awk '/-----/{found=1;next} found && !/-----/{print "  →", $NF}' | grep -v "/$"
-  echo ""
-
-  if [ "$DRY" = "1" ]; then
-    echo "🔍 File yang akan di-overwrite:"
-    unzip -l /sdcard/Download/$zip | awk '/-----/{found=1;next} found && !/-----/{print $NF}' | grep -v "/$" | while read f; do
-      [ -f ~/yuyucode/$f ] && echo "  ⚠️  OVERWRITE: $f" || echo "  ✨ NEW: $f"
-    done
-    echo ""
-    echo "✋ Dry run selesai — jalankan tanpa --dry-run untuk apply"
-    return 0
-  fi
-
-  local SNAPSHOT=$(git rev-parse HEAD)
-  echo "📸 Snapshot: $SNAPSHOT"
-
-  if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo "⚠️  Ada perubahan lokal — stashing dulu..."
-    git stash push -m "yuyu-apply auto-stash $(date +%Y%m%d-%H%M%S)" || { echo "❌ stash failed"; return 1; }
-    local STASHED=1
-  fi
-
-  _yuyu_rollback() {
-    echo ""
-    echo "🔄 Rolling back ke $SNAPSHOT..."
-    git add -A
-    git reset --hard $SNAPSHOT
-    echo "✅ Rollback selesai — directory bersih"
-    if [ "${STASHED:-0}" = "1" ]; then
-      echo "💡 Stash masih ada — jalankan: git stash pop"
-    fi
-  }
-
-  cp /sdcard/Download/$zip ~/yuyucode/ || { echo "❌ cp failed"; return 1; }
-  unzip -o $zip || { echo "❌ unzip failed"; _yuyu_rollback; return 1; }
-  git add -A
-  echo "🧐 Memeriksa kesucian kode (ESLint)..."
-  npm run lint || { echo "❌ Lint failed!"; _yuyu_rollback; return 1; }
-  echo "✅ Kode suci dari dosa (Lint Clean)."
-  npx vitest run || { echo "❌ tests failed"; _yuyu_rollback; return 1; }
-  rm $zip
-  rm /sdcard/Download/$zip
-  echo "✅ all good, zip cleaned up"
-
-  if [ "${STASHED:-0}" = "1" ]; then
-    echo "💡 Stash masih ada — jalankan: git stash pop"
-  fi
-}
-
-# ── yuyu-cp — copy file tunggal dari Download ────────────────────────────────
-yuyu-cp() {
-  local file="${1}"
-  local src="/sdcard/Download/${file}"
-  local dest="$HOME/yuyucode/${file}"
-
-  if [ ! -f "$src" ]; then
-    echo "❌ File '$file' tidak ditemukan di /sdcard/Download/"
-    echo "📂 Isi Download terbaru:"
-    ls -t /sdcard/Download/ | head -n 5
-    return 1
-  fi
-
-  if [[ "$file" == *.zip ]]; then
-    echo "📦 Zip terdeteksi — delegasi ke yuyu-apply..."
-    yuyu-apply "$file"
-    return $?
-  fi
-
-  cd ~/yuyucode
-  if git ls-files --error-unmatch "$file" &>/dev/null 2>&1; then
-    if ! git diff --quiet "$file" 2>/dev/null; then
-      echo "⚠️  '$file' ada uncommitted changes di git."
-      echo -n "Lanjut overwrite? Tekan y/Y untuk lanjut, lainnya batal: "
-      read -s -n 1 key
-      echo ""
-      case "$key" in
-        y|Y) echo "👍 Overwriting..." ;;
-        *)   echo "✋ Dibatalkan. Amankan dulu kodinganmu!"; return 0 ;;
-      esac
-    fi
-  fi
-
-  if cp "$src" "$dest" && rm "$src"; then
-    echo "✅ '$file' mendarat di yuyucode & Download dibersihkan."
-  else
-    echo "⚠️  Gagal memindahkan file. Cek izin storage Termux!"
-    return 1
-  fi
-}
-
-# ── Tab completions ───────────────────────────────────────────────────────────
-_yuyu_cp_completion() {
-  local cur="${COMP_WORDS[COMP_CWORD]}"
-  local files=$(ls /sdcard/Download/ 2>/dev/null)
-  COMPREPLY=( $(compgen -W "$files" -- "$cur") )
-}
-complete -F _yuyu_cp_completion yuyu-cp
-
-_yuyu_apply_completion() {
-  local cur="${COMP_WORDS[COMP_CWORD]}"
-  local zips=$(ls /sdcard/Download/*.zip 2>/dev/null | xargs -I{} basename {})
-  local flags="--dry-run"
-  COMPREPLY=( $(compgen -W "$zips $flags" -- "$cur") )
-}
-complete -F _yuyu_apply_completion yuyu-apply
-
-_yuyu_map_completion() {
-  local cur="${COMP_WORDS[COMP_CWORD]}"
-  COMPREPLY=( $(compgen -W "--verbose --compress-only" -- "$cur") )
-}
-complete -F _yuyu_map_completion yuyu-map
-
-_yugit_completion() {
-  local cur="${COMP_WORDS[COMP_CWORD]}"
-  COMPREPLY=( $(compgen -W "feat: fix: refactor: docs: test: chore: release: revert: feat!: fix!: --no-push --amend --hash=" -- "$cur") )
-}
-complete -F _yugit_completion yugit
-```
-
-Then `source ~/.bashrc` once. After that, just open Termux and everything is ready.
-
-**Option B — `.env.local`** (if you prefer not touching `.bashrc`):
+**Option B — `.env.local`:**
 ```
 VITE_CEREBRAS_API_KEY=your_key
 VITE_GROQ_API_KEY=your_key
 ```
 
-> **Note:** `npm run build` works on ARM64 (Termux) via the `@rollup/wasm-node` override in `package.json` — takes ~1-2 minutes. The signed APK is produced by CI (keystore lives in GitHub Secrets). Do NOT remove that override.
+> **Note:** `npm run build` works on ARM64 (Termux) via the `@rollup/wasm-node` override — takes ~1-2 minutes. The signed APK is produced by CI. Do NOT remove that override.
 
 ---
 
 ## Known limitations
 
-This is a personal tool built by one person, on one phone, in sprint-style sessions. It works well for its creator. Before you adopt it, know what it is:
-
-- **Requires `yuyu-server.js` running in Termux at all times.** If Termux gets killed by Android's memory manager mid-session, the app stops working. No graceful fallback, no offline mode.
-- **Depends entirely on free-tier AI APIs.** Cerebras and Groq are generous, but rate limits are real. If both are exhausted mid-task, the agent loop stops. There is no paid fallback.
-- **Single-developer bus factor.** The dev environment lives on one device. Core logic is concentrated in a small number of large files — built for speed, not for onboarding strangers.
-- **Not tested on other devices.** All development and benchmarking was done on one Oppo A77s. Behavior on other Android versions or Termux configurations is unknown.
-- **`npm run build` works, but takes ~1-2 minutes on ARM64.** The signed APK still requires GitHub Actions (keystore lives in CI secrets).
-
-If you're okay with all of the above — welcome. It's a genuinely capable tool.
+- **Requires `yuyu-server.js` running in Termux at all times.** If Termux gets killed by Android's memory manager, the app stops working.
+- **Depends entirely on free-tier AI APIs.** Rate limits are real. Both Cerebras and Groq exhausted mid-task = agent loop stops.
+- **Single-developer bus factor.** Core logic is concentrated in a small number of large files — built for speed, not for onboarding strangers.
+- **Not tested on other devices.** All development and benchmarking was done on one Oppo A77s.
+- **`npm run build` takes ~1-2 minutes on ARM64.** Signed APK requires GitHub Actions.
 
 ---
 
@@ -445,7 +278,7 @@ If you're okay with all of the above — welcome. It's a genuinely capable tool.
 
 Started as a question: *can Claude Code be replicated on a phone?*
 
-Turned out: yes, mostly. Built patch by patch, from morning to past midnight, using only a phone and an AI chat interface. Core features — streaming, file patching, background agents, multi-tab editor — all work. The remaining gap is model quality and context window size, not features.
+Turned out: yes, mostly. Built patch by patch, from morning to past midnight, using only a phone and an AI chat interface. Core features — streaming, file patching, background agents, multi-tab editor, visual diff review, persistent project memory — all work. The remaining gap is model quality and context window size, not features.
 
 It's not a polished product. It's proof that the constraints were never the hardware.
 
@@ -453,15 +286,13 @@ It's not a polished product. It's proof that the constraints were never the hard
 
 ## Acknowledgements
 
-This project stands on the shoulders of some exceptional open source work:
-
-- **[CodeMirror 6](https://codemirror.net/)** by Marijn Haverbeke — the editor that made all of this possible. The extension API is genuinely one of the best-designed systems in the JS ecosystem.
-- **[Capacitor](https://capacitorjs.com/)** by Ionic — the bridge that turned a web app into a real Android app without losing access to native APIs.
-- **[xterm.js](https://xtermjs.org/)** — a terminal emulator that actually works inside a WebView on Android. Not obvious. Very appreciated.
-- **[Termux](https://termux.dev/)** — the reason any of this was possible in the first place. A full Linux environment on Android, free, no root required.
+- **[CodeMirror 6](https://codemirror.net/)** by Marijn Haverbeke — the editor that made all of this possible.
+- **[Capacitor](https://capacitorjs.com/)** by Ionic — the bridge that turned a web app into a real Android app.
+- **[xterm.js](https://xtermjs.org/)** — a terminal emulator that actually works inside a WebView on Android.
+- **[Termux](https://termux.dev/)** — the reason any of this was possible in the first place.
 - **[Cerebras](https://cloud.cerebras.ai/)** and **[Groq](https://groq.com/)** — for making fast AI inference accessible without a credit card.
-- **[Claude](https://claude.ai/)** by Anthropic — every architectural decision, every tricky bug, every refactor in this codebase was worked through in a Claude chat window. The irony of building a coding assistant *with* an AI assistant is not lost.
-- **`@valtown/codemirror-ts`**, **`@replit/codemirror-vim`**, **`@emmetio/codemirror6-plugin`**, **`@codemirror/collab`** — each one saved weeks of work.
+- **[Claude](https://claude.ai/)** by Anthropic — every architectural decision, every tricky bug, every refactor in this codebase was worked through in a Claude chat window.
+- **`@valtown/codemirror-ts`**, **`@replit/codemirror-vim`**, **`@emmetio/codemirror6-plugin`**, **`@codemirror/collab`**, **`@capgo/capacitor-brightness`** — each one saved weeks of work.
 
 ---
 
@@ -484,105 +315,85 @@ This project stands on the shoulders of some exceptional open source work:
 node ~/yuyu-server.js &
 cd ~/yuyucode && npm run dev &
 
-# Apply file dari Claude:
-yuyu-cp README.md               # file tunggal — copy + hapus dari Download
-yuyu-apply                      # zip — unzip + lint + test + rollback otomatis
-yuyu-apply --dry-run            # preview dulu sebelum apply
-yuyu-apply yuyu-map.zip         # zip dengan nama lain
+# Apply dari Claude — kirim hanya file yang disentuh (cek: git diff --name-only HEAD):
+yuyu-apply yuyu-patch.zip       # zip — unzip + lint + test + rollback otomatis
+yuyu-apply --dry-run            # preview dulu
+yuyu-cp README.md               # file tunggal
 
 # Selalu setelah apply:
-npm run lint        # 🔍 Scouring... → ✨ 0 problems found! Code is pure.
+npm run lint        # 0 problems
 npx vitest run      # harus 546/546 pass
 node yuyu-map.cjs   # update codebase map
 
-# Push biasa
+# Push
 node yugit.cjs "feat: ..."
-node yugit.cjs "feat(api): add endpoint"           # dengan scope
-node yugit.cjs "feat: thing" --no-push             # commit lokal, push nanti
-node yugit.cjs "fix: typo" --amend                 # amend last commit
-node yugit.cjs "revert: bad deploy" --hash=abc123  # git revert otomatis
-node yugit.cjs "feat!: overhaul"                   # breaking change
-node yugit.cjs --push                              # push tanpa commit baru
-node yugit.cjs --squash 3                         # squash 3 commit terakhir
-node yugit.cjs --status                           # lihat branch + dirty + recent commits
+node yugit.cjs "feat(api): add endpoint"
+node yugit.cjs "feat!: overhaul"            # breaking change
+node yugit.cjs "fix: typo" --amend
+node yugit.cjs "revert: bad" --hash=abc123
+node yugit.cjs --push
+node yugit.cjs --squash 3
+node yugit.cjs --status
 
-# Release — auto set version + trigger CI APK build
+# Release — auto bump version + trigger CI APK
 node yugit.cjs "release: v4.x — deskripsi"
 
-npx vitest bench --run  # benchmark hot paths (opsional)
-npm run bench           # benchmark + compare ke history (regresi detection)
+npm run bench           # benchmark + compare ke history
 npm run bench:save      # set/update baseline
 ```
-
-### yuyu-apply — smart zip applier
-- 📸 Snapshot git HEAD sebelum apply
-- ⚠️ Auto-stash uncommitted changes
-- 🔍 `--dry-run` untuk preview file yang akan di-overwrite
-- 🧐 Lint dengan feedback jelas — *"Memeriksa kesucian kode"* → *"Kode suci dari dosa"*
-- 🔄 Auto-rollback `git reset --hard` kalau lint/test gagal
-- ✅ Hapus zip dari project + Download kalau semua hijau
-
-### yuyu-cp — smart file copy
-- Auto-delegate ke `yuyu-apply` kalau file adalah zip
-- ⚠️ Warn kalau file ada uncommitted changes di git
-- ✅ Hapus dari Download otomatis setelah copy
-- Tab completion: `yuyu-cp <TAB>` → list file di Download
 
 ## Arsitektur
 
 ```
 src/
-├── App.jsx                 # Root — mounts semua stores + hooks
+├── App.jsx                 # Root — mounts semua stores + hooks, brightness compensation
 ├── components/
 │   ├── AppHeader.jsx       # Header bar (status, model, tools)
 │   ├── AppSidebar.jsx      # File tree sidebar
 │   ├── AppChat.jsx         # Main area: tabs, chat, editor, terminal, preview
 │   ├── AppPanels.jsx       # Semua overlay panels
-│   ├── FileEditor.jsx      # CodeMirror 6 — multi-tab, vim, ghost text, blame, collab
+│   ├── FileEditor.jsx      # CodeMirror 6 — multi-tab, vim, ghost text L1+L2, blame, collab
 │   ├── KeyboardRow.jsx     # Extra symbol row above keyboard
 │   ├── LivePreview.jsx     # iframe HTML/CSS/JS preview
-│   ├── GlobalFindReplace.jsx # Search+replace across all files
+│   ├── GlobalFindReplace.jsx
 │   ├── Terminal.jsx        # xterm.js terminal
 │   ├── FileTree.jsx        # Fuse.js fuzzy file tree
-│   ├── MsgBubble.jsx       # Chat message renderer
-│   ├── SearchBar.jsx       # Global file search
-│   ├── ThemeEffects.jsx    # Per-theme keyframe animations
-│   ├── VoiceBtn.jsx        # STT voice input
-│   ├── panels.jsx          # Barrel re-export
+│   ├── MsgBubble.jsx       # Chat message renderer + DiffReviewCard
+│   ├── SearchBar.jsx
+│   ├── ThemeEffects.jsx
+│   ├── VoiceBtn.jsx
 │   ├── panels.base.jsx     # BottomSheet, CommandPalette
 │   ├── panels.git.jsx      # GitCompare, FileHistory, GitBlame, DepGraph, MergeConflict
 │   ├── panels.agent.jsx    # Elicitation, Skills, BgAgent
 │   └── panels.tools.jsx    # Config, Deploy, MCP, GitHub, Sessions, Permissions, Plugins
 ├── hooks/
-│   ├── useAgentLoop.js     # Core AI loop — stream, parse, execute, retry
+│   ├── useAgentLoop.js     # Core AI loop — stream, parse, execute, diff review intercept
 │   ├── useAgentSwarm.js    # Multi-agent swarm pipeline
-│   ├── useApprovalFlow.js  # Write approval + atomic rollback
-│   ├── useBrightness.js    # Real-time brightness via Capacitor plugin
+│   ├── useApprovalFlow.js  # Write approval + reject feedback + atomic rollback + auto-resume
+│   ├── useBrightness.js    # Real-time brightness via @capgo/capacitor-brightness
 │   ├── useChatStore.js     # Messages, streaming, memories, checkpoints
-│   ├── useDevTools.js      # GitHub, deploy, commit msg, tests, browse, shortcuts
-│   ├── useFileStore.js     # Multi-tab: openTabs[], activeTabIdx, openFile, closeTab
+│   ├── useDevTools.js      # GitHub, deploy, commit msg, tests, browse
+│   ├── useFileStore.js     # Multi-tab state
 │   ├── useGrowth.js        # XP, streak, badge, learnedStyle
 │   ├── useMediaHandlers.js # Camera, image attach, drag & drop
 │   ├── useNotifications.js # Push notification, haptic, TTS
-│   ├── useProjectStore.js  # Folder, model, effort, permissions, hooks, plugins
-│   ├── useSlashCommands.js # /command handler (~60 commands)
-│   └── useUIStore.js       # All UI state + Fase 1/2/3 editor toggles
+│   ├── useProjectStore.js  # Folder, model, effort, permissions, YUYU.md, diffReview
+│   ├── useSlashCommands.js # ~68 slash commands
+│   └── useUIStore.js       # All UI state + editor feature toggles
 ├── themes/
-│   ├── index.js        # Theme registry
-│   ├── obsidian.js     # Obsidian Warm (default)
-│   ├── aurora.js       # Aurora Glass
-│   ├── ink.js          # Ink & Paper
-│   └── neon.js         # Neon Terminal
+│   ├── obsidian.js         # Obsidian Warm (default)
+│   ├── aurora.js, ink.js, neon.js, mybrand.js
+│   └── index.js
 └── plugins/
-    └── brightness.js   # JS bridge untuk BrightnessPlugin.java
+    └── brightness.js       # Bridge untuk @capgo/capacitor-brightness
 ```
 
-## Editor Feature Toggles (Config Panel)
+## Editor Feature Toggles (/config)
 
 | Toggle | Key | Default | Keterangan |
 |--------|-----|---------|------------|
 | Vim Mode | `yc_vim` | off | hjkl, normal/insert/visual |
-| AI Ghost Text | `yc_ghosttext` | off | Copilot-style, Tab accept |
+| AI Ghost Text | `yc_ghosttext` | off | L1+L2, Tab / Tab+Tab |
 | Minimap | `yc_minimap` | off | Canvas scroll overview |
 | Inline Lint | `yc_lint` | off | JSON + JS syntax check |
 | TypeScript LSP | `yc_tslsp` | off | Autocomplete + types |
@@ -590,20 +401,22 @@ src/
 | Multi-cursor | `yc_multicursor` | **on** | Ctrl+D, Ctrl+Shift+L |
 | Sticky Scroll | `yc_stickyscroll` | off | Scope header sticky |
 | Realtime Collab | `yc_collab` | off | OT sync via WebSocket |
+| Diff Review | `yc_diff_review` | off | Pause loop, show diff sebelum apply |
 
 ## Cara Kerja Agent Loop
 
-Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
+`src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 
-1. **Auto-compact** — kalau context > 80.000 chars dan pesan > 12, kompres otomatis
-2. **gatherProjectContext** — sebelum iter 1, baca tree + file kunci project secara paralel
-3. Set `agentStatus` → tampil di UI ("Iter 2/10", "Membaca context...")
-4. Kirim ke AI API (streaming) — `<think>` blocks tampil live di `StreamingBubble`
-5. Parse semua `action` blocks dari response
-6. Eksekusi actions: parallel (read/search/list/tree/mkdir) atau serial (exec/mcp)
-7. `patch_file` → auto-execute dengan 3 fallback di server
-8. `write_file` → auto-execute + backup otomatis untuk undo
-9. Feed hasil balik ke AI → lanjut loop
+1. Auto-compact kalau context > 80.000 chars dan pesan > 12
+2. `gatherProjectContext` — handoff.md → YUYU.md → map.md → llms.txt → tree → keyword files (paralel)
+3. Set `agentStatus` → tampil di UI
+4. Kirim ke AI (streaming) — `<think>` blocks tampil live
+5. Parse semua `action` blocks
+6. Parallel: read/search/list/tree/mkdir — Serial: exec/mcp
+7. **diffReview ON** → pre-compute diff, mark `pending`, pause — tunggu user
+8. **diffReview OFF** → auto-execute dengan backup
+9. Reject → kirim feedback ke AI, loop lanjut. Approve → resume via sendMsgRef.
+10. Feed hasil ke AI → lanjut loop
 
 ## AI Provider
 
@@ -614,43 +427,46 @@ Ada di `src/hooks/useAgentLoop.js`. Setiap pesan masuk → loop sampai MAX_ITER:
 | Llama 3.1 8B | `llama3.1-8b` |
 
 ### Groq (fallback + vision)
-| Model | ID | Keterangan |
-|-------|-----|------------|
-| Kimi K2 | `moonshotai/kimi-k2-instruct-0905` | Context 262K — fallback utama |
+| Model | ID | Note |
+|-------|-----|------|
+| Kimi K2 | `moonshotai/kimi-k2-instruct-0905` | 262K context, fallback utama |
 | Llama 3.3 70B | `llama-3.3-70b-versatile` | Serbaguna |
 | Llama 4 Scout | `meta-llama/llama-4-scout-17b-16e-instruct` | Vision — auto-route kalau ada gambar |
 | Qwen 3 32B | `qwen/qwen3-32b` | Coding |
 | Llama 8B Fast | `llama-3.1-8b-instant` | Hemat rate limit |
 
-**Auto-fallback:** Cerebras rate limit (429) → otomatis switch ke Kimi K2.
-**Vision:** Cerebras tidak support image → auto-route ke Llama 4 Scout.
-**Retry:** Server error 5xx → retry 2x dengan backoff 2s/4s.
+Auto-fallback: Cerebras 429 → Kimi K2. Vision: Cerebras → Llama 4 Scout. Retry 5xx: 2× backoff 2s/4s.
 
 ## YuyuServer v4-async
 
 ```bash
-node ~/yuyu-server.js &  # jalankan dari ~, bukan dari project folder
+node ~/yuyu-server.js &  # dari ~, bukan project folder
 ```
 
-**HTTP :8765** — `ping`, `read`, `read_many`, `write`, `append`, `patch`, `delete`, `move`, `mkdir`, `list`, `tree`, `info`, `search`, `web_search`, `exec`, `browse`, `fetch_json`, `sqlite`, `mcp`, `mcp_list`, `batch`
+HTTP :8765 — `ping`, `read`, `read_many`, `write`, `append`, `patch`, `delete`, `move`, `mkdir`, `list`, `tree`, `info`, `search`, `web_search`, `exec`, `browse`, `fetch_json`, `sqlite`, `mcp`, `mcp_list`, `batch`, `index`
 
-**REST** — `GET /health` → `{status, uptime, version}` | `GET /status` → `{status, uptime, memory_mb, tools}`
+REST — `GET /health`, `GET /status`
 
-**WebSocket :8766** — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`, `collab_updates`
+WebSocket :8766 — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`, `collab_updates`
 
 ## CI/CD
 
 1. Install deps (cached)
-2. `npm run build` (Vite → dist/)
-3. Setup Java 21 + Android SDK 34
-4. `cap sync android` + restore custom icons
+2. `npm run build` → dist/
+3. Java 21 + Android SDK 34
+4. `cap sync android` + restore icons
 5. Auto-bump `versionCode` = GitHub run number
 6. `./gradlew assembleRelease`
-7. Sign APK dengan keystore dari Secrets
+7. Sign APK
 8. GitHub Release hanya kalau commit diawali `release:`
-9. Push yang hanya ubah `.md` → skip CI otomatis
+9. Push yang hanya ubah `.md` → skip CI
 
-**GitHub Secrets:** `VITE_CEREBRAS_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_TAVILY_API_KEY`, `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
+**Secrets:** `VITE_CEREBRAS_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_TAVILY_API_KEY`, `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
+
+## State v4.1
+
+- Version: 4.1.0 · Tests: 546 ✅ · Slash commands: ~68
+- Features: YUYU.md, visual diff review + reject feedback, ghost text L1+L2, /review --all, contextual slash suggestions, context bar, graceful stop, chat search, /pin, /undo, /diff, /ask, offline detect, read cache
 
 </details>
 
