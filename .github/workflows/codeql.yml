@@ -1,0 +1,39 @@
+name: CodeQL · SAST
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * 1'  # Senin 03:00 UTC — weekly deep scan
+
+jobs:
+  analyze:
+    name: CodeQL · JavaScript
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+          # Queries:
+          # security-extended  — lebih banyak security rules dari default
+          # security-and-quality — security + code quality (duplicate, dead code)
+          queries: security-extended, security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: codeql-javascript
+          # Hasil muncul di: GitHub → Security → Code scanning alerts
