@@ -68,14 +68,14 @@ function resolvePath(filePath) {
 
 function execSafe(command, cwd, timeoutMs = 60000) {
   try {
-    const mergedCmd = command.includes('2>') ? command : command + ' 2>&1';
+    const mergedCmd = command.includes('2>') ? command : `${command} 2>&1`;
     const out = execSync(mergedCmd, {
       cwd: cwd || HOME, encoding: 'utf8',
       timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024,
     });
     return { ok: true, data: out || '(selesai)' };
   } catch(e) {
-    const errMsg = (e.stdout || '') + (e.stderr || '') || e.message;
+    const errMsg = `${e.stdout || ''}${e.stderr || ''}` || e.message;
     return { ok: false, data: errMsg.slice(0, 3000) };
   }
 }
@@ -85,14 +85,14 @@ function execSafe(command, cwd, timeoutMs = 60000) {
 function applyPatch(filePath, oldStr, newStr) {
   if (!filePath || !oldStr) return { ok: false, data: 'path dan old_str diperlukan' };
   const full = resolvePath(filePath);
-  if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ditemukan: ' + filePath };
+  if (!fs.existsSync(full)) return { ok: false, data: `File tidak ditemukan: ${filePath}` };
   const content = fs.readFileSync(full, 'utf8');
   const replacement = newStr !== undefined ? newStr : '';
 
   // Exact match
   if (content.includes(oldStr)) {
     fs.writeFileSync(full, content.replace(oldStr, replacement), 'utf8');
-    return { ok: true, data: '✅ Patch OK: ' + filePath };
+    return { ok: true, data: `✅ Patch OK: ${filePath}` };
   }
 
   // Whitespace-normalized fallback
@@ -101,7 +101,7 @@ function applyPatch(filePath, oldStr, newStr) {
   const normOld     = normalize(oldStr);
   if (normContent.includes(normOld)) {
     fs.writeFileSync(full, normContent.replace(normOld, replacement), 'utf8');
-    return { ok: true, data: '✅ Patch (whitespace-norm) OK: ' + filePath };
+    return { ok: true, data: `✅ Patch (whitespace-norm) OK: ${filePath}` };
   }
 
   // Trim-lines fallback (untuk trailing space)
@@ -110,7 +110,7 @@ function applyPatch(filePath, oldStr, newStr) {
   const trimOld     = trimLines(normOld);
   if (trimContent.includes(trimOld)) {
     fs.writeFileSync(full, trimContent.replace(trimOld, replacement), 'utf8');
-    return { ok: true, data: '✅ Patch (trimmed) OK: ' + filePath };
+    return { ok: true, data: `✅ Patch (trimmed) OK: ${filePath}` };
   }
 
   // Not found: return context around closest match for debugging
@@ -119,11 +119,11 @@ function applyPatch(filePath, oldStr, newStr) {
   const fileLines = normContent.split('\n');
   const nearIdx   = fileLines.findIndex(l => l.trim().includes(firstLine.slice(0, 30)));
   const ctx = nearIdx !== -1
-    ? '\n\nContext sekitar baris ' + (nearIdx + 1) + ':\n' + fileLines.slice(Math.max(0, nearIdx - 2), nearIdx + 5).join('\n')
+    ? `\n\nContext sekitar baris ${nearIdx + 1}:\n${fileLines.slice(Math.max(0, nearIdx - 2), nearIdx + 5).join('\n')}`
     : '';
   return {
     ok: false,
-    data: '⚠ old_str tidak ditemukan di ' + filePath + '. Pastikan exact match (case-sensitive, spasi, baris baru).' + ctx,
+    data: `⚠ old_str tidak ditemukan di ${filePath}. Pastikan exact match (case-sensitive, spasi, baris baru).${ctx}`,
   };
 }
 
@@ -585,7 +585,7 @@ if (WebSocketServer) {
       if (msg.type === 'watch') {
         const watchPath = resolvePath(msg.path);
         if (!fs.existsSync(watchPath)) {
-          ws.send(JSON.stringify({ event: 'error', data: 'Path tidak ada: ' + msg.path }));
+          ws.send(JSON.stringify({ event: 'error', data: `Path tidak ada: ${msg.path}` }));
           return;
         }
         if (clientWatcher) { try { clientWatcher.close(); } catch {} }
