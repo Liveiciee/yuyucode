@@ -22,7 +22,13 @@ vi.mock('@capacitor/preferences', () => ({
 import { callServer } from './api.js';
 import { Preferences } from '@capacitor/preferences';
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Restore defaults after clear — vi.clearAllMocks() may reset implementations in CI
+  callServer.mockResolvedValue({ ok: false, data: '' });
+  Preferences.get.mockResolvedValue({ value: null });
+  Preferences.set.mockResolvedValue(undefined);
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // saveSession / loadSessions
