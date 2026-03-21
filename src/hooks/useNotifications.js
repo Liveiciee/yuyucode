@@ -20,7 +20,7 @@ export function useNotifications() {
   }
 
   function speakText(text) {
-    if (!('speechSynthesis' in window)) return;
+    if (typeof window.speechSynthesis === 'undefined' || typeof window.SpeechSynthesisUtterance !== 'function') return;
     window.speechSynthesis.cancel();
     const clean = text
       .replace(/```[\s\S]*?```/g, '')
@@ -30,7 +30,7 @@ export function useNotifications() {
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 500);
-    const utt = new SpeechSynthesisUtterance(clean);
+    const utt = new window.SpeechSynthesisUtterance(clean);
     utt.lang = 'id-ID'; utt.rate = 1.05; utt.pitch = 1.1;
     const voices = window.speechSynthesis.getVoices();
     const preferred =
