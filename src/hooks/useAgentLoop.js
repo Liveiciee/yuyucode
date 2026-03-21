@@ -1,8 +1,8 @@
 import { useRef } from 'react';
 import { askCerebrasStream, callServer } from '../api.js';
-import { parseActions, executeAction, resolvePath } from '../utils.js';
+import { parseActions, executeAction, resolvePath, generateDiff } from '../utils.js';
 import { runHooksV2, checkPermission, tokenTracker, parseElicitation, tfidfRank, selectSkills } from '../features.js';
-import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL, CONTEXT_WARN_CHARS } from '../constants.js';
+import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL } from '../constants.js';
 
 export function useAgentLoop({
   project, chat, file, ui,
@@ -79,21 +79,25 @@ ${outB.slice(0, 1500)}
   }
 
   // ── compactContext ──
-  async function compactContext() {
+  // inlineCall=true → dipanggil dari dalam sendMsg, jangan overwrite abortRef atau set loading
+  async function compactContext(inlineCall = false) {
     const currentMsgs = chat.messages;
     if (currentMsgs.length < 10) {
       chat.setMessages(m => [...m, { role: 'assistant', content: 'Context masih kecil, belum perlu compact~', actions: [] }]);
       return;
     }
-    chat.setLoading(true);
+    if (!inlineCall) chat.setLoading(true);
+    // Bug #2 fix: jangan overwrite abortRef saat inline — buat local ctrl
     const ctrl = new AbortController();
-    abortRef.current = ctrl;
+    if (!inlineCall) abortRef.current = ctrl;
+    // Gunakan signal dari abortRef.current supaya outer abort juga bisa stop compact
+    const signal = inlineCall ? abortRef.current?.signal : ctrl.signal;
     try {
       const toCompact = currentMsgs.slice(1, -6);
       const summary   = await askCerebrasStream([
         { role: 'system', content: 'Buat ringkasan singkat percakapan coding ini. Fokus: keputusan teknis, files diubah, bug fix, status project. Maks 300 kata. Bahasa Indonesia.' },
         { role: 'user',   content: toCompact.map(m => m.role + ': ' + (m.content || '').slice(0, 300)).join('\n\n') },
-      ], 'llama3.1-8b', () => {}, ctrl.signal, { maxTokens: 512 });
+      ], 'llama3.1-8b', () => {}, signal, { maxTokens: 512 });
       const compacted = [
         currentMsgs[0],
         { role: 'assistant', content: '📦 **Context dicompact** (' + toCompact.length + ' pesan):\n\n' + summary, actions: [] },
@@ -105,7 +109,8 @@ ${outB.slice(0, 1500)}
         chat.setMessages(m => [...m, { role: 'assistant', content: '❌ Compact gagal: ' + e.message, actions: [] }]);
       }
     }
-    chat.setLoading(false);
+    // Bug #3 fix: jangan reset loading jika inline (sendMsg yang akan reset di akhir)
+    if (!inlineCall) chat.setLoading(false);
   }
 
   // ── executeWithPermission ──
@@ -129,6 +134,14 @@ ${outB.slice(0, 1500)}
     // 1. Session handoff — highest priority (previous session context)
     const handoffR = await callServer({ type: 'read', path: project.folder + '/.yuyu/handoff.md' });
     if (handoffR.ok && handoffR.data) ctx['__handoff__'] = handoffR.data;
+
+    // 1c. YUYU.md — persistent project rules (reload fresh setiap sesi)
+    const yuyuMdR = await callServer({ type: 'read', path: project.folder + '/YUYU.md' });
+    if (yuyuMdR.ok && yuyuMdR.data) {
+      ctx['__yuyu_rules__'] = yuyuMdR.data;
+      // Sync ke project state supaya buildSystemPrompt selalu pakai versi terbaru
+      project.setYuyuMd(yuyuMdR.data);
+    }
 
     // 1b. Pinned files — always inject into context
     const pinned = project.pinnedFiles || [];
@@ -208,6 +221,9 @@ ${outB.slice(0, 1500)}
     const agentsMdCtx = project.agentsMd
       ? '\n\n## AGENTS.md (kontrak project — WAJIB diikuti):\n' + project.agentsMd.slice(0, 3000)
       : '';
+    const yuyuMdCtx = project.yuyuMd
+      ? '\n\n## YUYU.md (project rules — ikuti selalu):\n' + project.yuyuMd.slice(0, 2000)
+      : '';
     const selectedSkills = selectSkills((project.skills || []).filter(s => s.active !== false), txt);
     const skillCtx    = selectedSkills.length
       ? '\n\nSkill context:\n' + selectedSkills.map(s => '## ' + s.name + '\n' + stripFrontmatter(s.content || '')).join('\n\n---\n\n')
@@ -234,7 +250,7 @@ ${outB.slice(0, 1500)}
     return BASE_SYSTEM + cfg.systemSuffix + thinkNote + styleCtx +
       '\n\nFolder aktif: ' + project.folder +
       '\nBranch: ' + project.branch +
-      agentsMdCtx + notesCtx + skillCtx + pinnedCtx + fileCtx + memCtx + agentMemCtx + visionCtx;
+      agentsMdCtx + yuyuMdCtx + notesCtx + skillCtx + pinnedCtx + fileCtx + memCtx + agentMemCtx + visionCtx;
   }
 
     // ── sendMsg — agent loop ──
@@ -274,7 +290,7 @@ ${outB.slice(0, 1500)}
         content: '📦 Auto-compact — context ~' + Math.round(totalChars / 1000) + 'K chars...',
         actions: [],
       }]);
-      await compactContext();
+      await compactContext(true); // inline — jangan reset abortRef atau loading
       // compactContext sudah update chat.messages — tapi kita gunakan history lama
       // untuk allMessages awal (messages baru akan terpakai di iter berikutnya via getState)
     }
@@ -400,8 +416,30 @@ ${outB.slice(0, 1500)}
           a.result = await executeWithPermission(a, project.folder);
         }
 
-        // ── AUTO-EXECUTE patch_file ──
+        // ── AUTO-EXECUTE / DIFF REVIEW: patch_file ──
         if (patchActions.length > 0) {
+          if (project.diffReview) {
+            // ── Diff Review mode — pre-compute diff, pause loop, tunggu user ──
+            await runHooksV2(project.hooks.preWrite, patchActions.map(a => a.path).join(','), project.folder);
+            for (const a of patchActions) {
+              // Baca file asli untuk diff preview
+              const orig = await callServer({ type: 'read', path: resolvePath(project.folder, a.path) });
+              if (orig.ok && orig.data && a.old_str) {
+                const patched = orig.data.replace(a.old_str, a.new_str ?? '');
+                a.diffPreview = generateDiff(orig.data, patched, 60);
+                a.original = orig.data;
+              }
+              a.executed = false; // pending — belum dieksekusi
+            }
+            // Push message dengan actions pending, break loop — tunggu approval
+            finalContent = reply;
+            finalActions  = [...allActs];
+            chat.setMessages(m => [...m, { role: 'assistant', content: finalContent, actions: finalActions }]);
+            chat.setLoading(false);
+            chat.setAgentRunning(false);
+            return; // loop pause — resume via /continue setelah user approve
+          }
+
           await runHooksV2(project.hooks.preWrite, patchActions.map(a => a.path).join(','), project.folder);
           const patchResults = await Promise.all(patchActions.map(a => executeAction(a, project.folder)));
           patchActions.forEach((a, i) => {
@@ -431,8 +469,32 @@ ${outB.slice(0, 1500)}
           }
         }
 
-        // ── AUTO-EXECUTE write_file (Claude Code style: backup → write → continue) ──
+        // ── AUTO-EXECUTE / DIFF REVIEW: write_file ──
         if (fullWriteActions.length > 0) {
+          if (project.diffReview) {
+            // ── Diff Review mode — pre-compute diff, pause loop ──
+            await runHooksV2(project.hooks.preWrite, fullWriteActions.map(a => a.path).join(','), project.folder);
+            for (const a of fullWriteActions) {
+              const orig = await callServer({ type: 'read', path: resolvePath(project.folder, a.path) });
+              if (orig.ok && orig.data) {
+                a.diffPreview = generateDiff(orig.data, a.content || '', 60);
+                a.original = orig.data;
+              } else {
+                // File baru — tidak ada diff, tunjukkan sebagai full add
+                const lines = (a.content || '').split('\n');
+                a.diffPreview = lines.slice(0, 30).map((l, i) => '+ L' + (i+1) + ': ' + l).join('\n') +
+                  (lines.length > 30 ? '\n... (+' + (lines.length - 30) + ' baris lagi)' : '');
+              }
+              a.executed = false;
+            }
+            finalContent = reply;
+            finalActions  = [...allActs];
+            chat.setMessages(m => [...m, { role: 'assistant', content: finalContent, actions: finalActions }]);
+            chat.setLoading(false);
+            chat.setAgentRunning(false);
+            return;
+          }
+
           await runHooksV2(project.hooks.preWrite, fullWriteActions.map(a => a.path).join(','), project.folder);
           const writeResults = await Promise.all(fullWriteActions.map(async a => {
             // Backup dulu untuk undo
@@ -628,10 +690,10 @@ ${outB.slice(0, 1500)}
 
     } catch (e) {
       chat.setAgentRunning(false);
-    // Tambah XP per sesi dan pelajari style
-    growth?.addXP('message_sent');
-    growth?.learnFromSession(chat.messages, project.folder);
       if (e.name !== 'AbortError') {
+        // Tambah XP per sesi dan pelajari style — hanya jika bukan cancel
+        growth?.addXP('message_sent');
+        growth?.learnFromSession(chat.messages, project.folder);
         await runHooksV2(project.hooks.onError, e.message, project.folder).catch(() => {});
         if (e.message.startsWith('RATE_LIMIT:')) {
           const secs = parseInt(e.message.split(':')[1]);
@@ -653,9 +715,7 @@ ${outB.slice(0, 1500)}
     chat.setLoading(false);
     chat.setStreaming('');
     chat.setAgentRunning(false);
-    // Tambah XP per sesi dan pelajari style
-    growth?.addXP('message_sent');
-    growth?.learnFromSession(chat.messages, project.folder);
+    // XP & learnFromSession tidak di sini — ditangani di catch sendMsg (hanya jika bukan AbortError)
   }
 
   async function continueMsg() {

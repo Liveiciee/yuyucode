@@ -249,6 +249,58 @@ export function MsgContent({ text, T }) {
   );
 }
 
+// ── DiffReviewCard — per-file diff preview dengan accept/reject ───────────────
+function DiffReviewCard({ action: a, onApprove, T, approveBtn, rejectBtn, border, bg3, textMute, textSec }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasDiff = !!a.diffPreview;
+  const accent  = T?.accent || '#a78bfa';
+  const addColor   = T?.success || '#4ade80';
+  const removeColor = T?.error  || '#f87171';
+
+  const renderDiffLine = (line) => {
+    if (line.startsWith('+')) return { color: addColor,    bg: 'rgba(74,222,128,.07)' };
+    if (line.startsWith('-')) return { color: removeColor, bg: 'rgba(248,113,113,.07)' };
+    return { color: textMute, bg: 'transparent' };
+  };
+
+  return (
+    <div style={{background:bg3,border:'1px solid '+border,borderRadius:'12px',overflow:'hidden'}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 14px',cursor:hasDiff?'pointer':'default'}}
+        onClick={()=>hasDiff&&setExpanded(v=>!v)}>
+        <FileDiff size={12} style={{color:accent,flexShrink:0}}/>
+        <span style={{fontSize:'12px',color:textSec,fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.path}</span>
+        {hasDiff&&(
+          <span style={{fontSize:'11px',color:textMute,display:'flex',alignItems:'center',gap:'4px'}}>
+            {expanded ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+            {expanded ? 'sembunyikan' : 'lihat diff'}
+          </span>
+        )}
+      </div>
+      {/* Diff preview */}
+      {hasDiff&&expanded&&(
+        <div style={{padding:'0 14px 10px',overflowX:'auto'}}>
+          <div style={{fontFamily:'monospace',fontSize:'11.5px',lineHeight:'1.6',borderRadius:'6px',overflow:'hidden',border:'1px solid '+border}}>
+            {a.diffPreview.split('\n').map((line,i)=>{
+              const s = renderDiffLine(line);
+              return (
+                <div key={i} style={{background:s.bg,color:s.color,padding:'1px 10px',whiteSpace:'pre',minWidth:0}}>
+                  {line}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {/* Actions */}
+      <div style={{display:'flex',gap:'8px',padding:'8px 14px',borderTop:'1px solid '+border}}>
+        <button onClick={()=>onApprove(true,a.path)} style={approveBtn}><Check size={13}/> Apply</button>
+        <button onClick={()=>onApprove(false,a.path)} style={rejectBtn}><X size={13}/></button>
+      </div>
+    </div>
+  );
+}
+
 // ── ActionChip ────────────────────────────────────────────────────────────────
 export function ActionChip({ action, T }) {
   const [expanded, setExpanded] = useState(false);
@@ -412,30 +464,30 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
         ))}
 
         {pendingWrites.length>0&&onApprove&&(
-          <div style={{margin:'8px 0',display:'flex',flexDirection:'column',gap:'6px'}}>
-            <div style={{fontSize:'11px',color:textMute,fontFamily:'monospace',marginBottom:'2px'}}>{pendingWrites.length} file menunggu approval:</div>
-            {pendingWrites.map((a,i)=>(
-              <div key={i} style={{background:bg3,border:'1px solid '+border,borderRadius:'8px',padding:'8px 14px',fontSize:'12px',fontFamily:'monospace',color:textSec,display:'flex',alignItems:'center',gap:'8px'}}>
-                <Pencil size={12} style={{opacity:.5,flexShrink:0}}/><span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.path}</span>
-              </div>
-            ))}
-            <div style={{display:'flex',gap:'8px',marginTop:'2px'}}>
-              <button onClick={()=>onApprove(true,'__all__')} style={approveBtn}><Check size={13}/> Apply All ({pendingWrites.length})</button>
-              <button onClick={()=>onApprove(false,'__all__')} style={rejectBtn}><X size={13}/></button>
+          <div style={{margin:'8px 0',display:'flex',flexDirection:'column',gap:'8px'}}>
+            <div style={{fontSize:'11px',color:textMute,fontFamily:'monospace',marginBottom:'2px'}}>
+              {pendingWrites.length} file menunggu approval:
             </div>
+            {pendingWrites.map((a,i)=>(
+              <DiffReviewCard key={i} action={a} onApprove={onApprove} T={T}
+                approveBtn={approveBtn} rejectBtn={rejectBtn}
+                border={border} bg3={bg3} textMute={textMute} textSec={textSec}/>
+            ))}
+            {pendingWrites.length>1&&(
+              <div style={{display:'flex',gap:'8px'}}>
+                <button onClick={()=>onApprove(true,'__all__')} style={approveBtn}><Check size={13}/> Apply All ({pendingWrites.length})</button>
+                <button onClick={()=>onApprove(false,'__all__')} style={rejectBtn}><X size={13}/></button>
+              </div>
+            )}
           </div>
         )}
 
         {actions.filter(a=>a.type==='patch_file'&&!a.executed).length>0&&onApprove&&(
-          <div style={{margin:'8px 0',display:'flex',flexDirection:'column',gap:'6px'}}>
+          <div style={{margin:'8px 0',display:'flex',flexDirection:'column',gap:'8px'}}>
             {actions.filter(a=>a.type==='patch_file'&&!a.executed).map((a,i)=>(
-              <div key={i} style={{background:bg3,border:'1px solid '+border,borderRadius:'12px',overflow:'hidden',...(T?.fx?.glowBorder?.(border)||{})}}>
-                <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 14px'}}><FileDiff size={12} style={{color:textMute}}/><span style={{fontSize:'12px',color:textSec,fontFamily:'monospace',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.path}</span></div>
-                <div style={{display:'flex',gap:'8px',padding:'8px 14px',borderTop:'1px solid '+border}}>
-                  <button onClick={()=>onApprove(true,a.path)} style={approveBtn}><Check size={13}/> Apply</button>
-                  <button onClick={()=>onApprove(false,a.path)} style={rejectBtn}><X size={13}/></button>
-                </div>
-              </div>
+              <DiffReviewCard key={i} action={a} onApprove={onApprove} T={T}
+                approveBtn={approveBtn} rejectBtn={rejectBtn}
+                border={border} bg3={bg3} textMute={textMute} textSec={textSec}/>
             ))}
           </div>
         )}

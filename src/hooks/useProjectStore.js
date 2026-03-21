@@ -16,6 +16,8 @@ export function useProjectStore() {
   const [notes, setNotesRaw]       = useState('');
   const [skills, setSkills]        = useState([]);
   const [agentsMd, setAgentsMd]    = useState('');
+  const [yuyuMd, setYuyuMd]        = useState('');
+  const [diffReview, setDiffReviewRaw] = useState(false);
 
   // ── Server / Network ──
   const [serverOk, setServerOk]         = useState(true);
@@ -109,7 +111,10 @@ export function useProjectStore() {
     Preferences.set({ key: 'yc_plugins', value: JSON.stringify(p) });
   }
 
-  // ── addHistory ──
+  function setDiffReview(v) {
+    setDiffReviewRaw(v);
+    Preferences.set({ key: 'yc_diff_review', value: v ? '1' : '0' });
+  }
   function addHistory(cmd) {
     const next = [cmd, ...cmdHistory.filter(c => c !== cmd)].slice(0, 50);
     setCmdHistory(next);
@@ -128,7 +133,7 @@ export function useProjectStore() {
   function loadProjectPrefs({
     folder: f, cmdHistory: ch, model: mo, pinned: _pinned, recent: _recent,
     memories: _memories, checkpoints: _checkpoints, hooks: hk, githubToken: ght, githubRepo: ghr,
-    sessionColor: sc, plugins, effort: ef, thinkingEnabled: th, permissions: perm,
+    sessionColor: sc, plugins, effort: ef, thinkingEnabled: th, permissions: perm, diffReview: dr,
   }) {
     if (f)  { setFolderRaw(f); setFolderInput(f); }
     if (ch) { try { setCmdHistory(JSON.parse(ch)); } catch (_e) { } }
@@ -140,19 +145,22 @@ export function useProjectStore() {
     if (plugins) { try { setActivePluginsRaw(JSON.parse(plugins)); } catch (_e) { } }
     if (ef)  setEffortRaw(ef);
     if (th)  setThinkingEnabled(th === '1');
+    if (dr)  setDiffReviewRaw(dr === '1');
     if (perm) { try { setPermissionsRaw(JSON.parse(perm)); } catch (_e) { } }
   }
 
   // ── Load folder-specific prefs ──
   async function loadFolderPrefs(f) {
-    const [notesR, branchR, agentsR] = await Promise.all([
+    const [notesR, branchR, agentsR, yuyuMdR] = await Promise.all([
       Preferences.get({ key: 'yc_notes_' + f }),
       callServer({ type: 'exec', path: f, command: 'git branch --show-current' }),
       callServer({ type: 'read', path: f + '/AGENTS.md' }),
+      callServer({ type: 'read', path: f + '/YUYU.md' }),
     ]);
     setNotesRaw(notesR.value || '');
     if (branchR.ok) setBranch(branchR.data.trim());
     setAgentsMd(agentsR.ok && agentsR.data ? agentsR.data : '');
+    setYuyuMd(yuyuMdR.ok && yuyuMdR.data ? yuyuMdR.data : '');
     // Auto-load skills dari .yuyu/skills/, respect saved active map
     (async () => {
       let activeMap = {};
@@ -193,6 +201,8 @@ export function useProjectStore() {
     notes, setNotes,
     skills, setSkills, toggleSkill, uploadSkill, removeSkill,
     agentsMd, setAgentsMd,
+    yuyuMd, setYuyuMd,
+    diffReview, setDiffReview,
     serverOk, setServerOk,
     netOnline, setNetOnline,
     reconnectTimer, setReconnectTimer,

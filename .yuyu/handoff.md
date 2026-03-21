@@ -20,4 +20,3 @@
 
 ## Hot files touched recently
 - (fill in)
-# v2.6

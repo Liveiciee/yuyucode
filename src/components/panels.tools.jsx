@@ -474,6 +474,8 @@ export function ConfigPanel({
   multiCursor, onMultiCursor,
   stickyScroll, onStickyScroll,
   collabEnabled, onCollab,
+  // Visual Diff Review
+  diffReview, onDiffReview,
   onClose, T,
 }) {
   const bg3          = T?.bg3          || 'rgba(255,255,255,.04)';
@@ -510,6 +512,7 @@ export function ConfigPanel({
     makeToggle('Multi-Cursor',   'Ctrl+D select next, Ctrl+Shift+L',  multiCursor,   onMultiCursor, success,   successBg,             success+'44'),
     makeToggle('Sticky Scroll',  'scope header stays at top',         stickyScroll,  onStickyScroll,accent,    accentBg,              accentBorder),
     makeToggle('Realtime Collab','sync edits across devices via WS',  collabEnabled, onCollab,      '#f59e0b', 'rgba(245,158,11,.1)', '#f59e0b44'),
+    makeToggle('Diff Review',    'lihat diff sebelum agent apply patch/write', diffReview, onDiffReview, '#a78bfa', 'rgba(167,139,250,.1)', '#a78bfa44'),
   ];
 
   function ToggleRow({ t }) {

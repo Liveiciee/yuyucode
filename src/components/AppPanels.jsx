@@ -231,6 +231,7 @@ export function AppPanels({
           multiCursor={ui.multiCursor} onMultiCursor={v=>ui.setMultiCursor(v)}
           stickyScroll={ui.stickyScroll} onStickyScroll={v=>ui.setStickyScroll(v)}
           collabEnabled={ui.collabEnabled} onCollab={v=>ui.setCollabEnabled(v)}
+          diffReview={project.diffReview} onDiffReview={v=>project.setDiffReview(v)}
           onClose={()=>ui.setShowConfig(false)}/>)}
       </Activity>
 

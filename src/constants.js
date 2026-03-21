@@ -202,6 +202,7 @@ export const FOLLOW_UPS = [
 ];
 
 export const SLASH_COMMANDS = [
+  { cmd:'/rules',      desc:'Manage YUYU.md — persistent project rules' },
   { cmd:'/model',      desc:'Ganti model AI' },
   { cmd:'/compact',    desc:'Kompres context sekarang' },
   { cmd:'/checkpoint', desc:'Simpan checkpoint sesi ini' },

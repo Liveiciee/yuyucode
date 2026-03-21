@@ -16,6 +16,7 @@ export function useSlashCommands({
   setThinkingEnabled, setEffort, setLoopActive, setLoopIntervalRef,
   setSplitView, setPushToTalk, setSessionName, setSessionColor,
   setSkills: _setSkills, setFileWatcherActive, setFileWatcherInterval, setFileSnapshots,
+  setYuyuMd: _setYuyuMd,
   setPlanSteps, setPlanTask, setAgentMemory, setSessionList,
   setShowCheckpoints, setShowMemory: _setShowMemory, setShowMCP, setShowGitHub, setShowDeploy,
   setShowSessions, setShowPermissions, setShowPlugins, setShowConfig,
@@ -658,6 +659,77 @@ ${recentMsgs.map(m=>m.role+': '+(m.content||'').slice(0,400)).join('\n\n')}` }
         setMessages(m=>[...m,{role:'assistant',content:'❌ Search gagal: '+(r.data||'unknown error'),actions:[]}]);
       }
       setLoading(false);
+
+    } else if (base==='/rules') {
+      // /rules            → tampilkan isi YUYU.md
+      // /rules add "..."  → append rule baru
+      // /rules clear      → hapus semua rules
+      // /rules edit       → buka YUYU.md di editor
+      const subCmd = parts[1];
+      if (!subCmd || subCmd === 'show') {
+        // Tampilkan YUYU.md
+        setLoading(true);
+        const r = await callServer({ type: 'read', path: folder + '/YUYU.md' });
+        if (r.ok && r.data) {
+          setMessages(m=>[...m,{role:'assistant',content:'📋 **YUYU.md** — Project rules aktif:\n\n```markdown\n'+r.data+'\n```\n\n*Edit: `/rules add "..."` atau `/rules edit`*',actions:[]}]);
+        } else {
+          setMessages(m=>[...m,{role:'assistant',content:'📋 **YUYU.md belum ada.**\n\nBuat dengan `/rules add "rule pertama kamu"` atau `/rules init` untuk template lengkap.',actions:[]}]);
+        }
+        setLoading(false);
+
+      } else if (subCmd === 'add') {
+        const ruleText = parts.slice(2).join(' ').replace(/^["']|["']$/g, '');
+        if (!ruleText) {
+          setMessages(m=>[...m,{role:'assistant',content:'Usage: `/rules add "selalu pakai TypeScript strict mode"`',actions:[]}]);
+          return;
+        }
+        setLoading(true);
+        // Baca existing dulu
+        const existing = await callServer({ type: 'read', path: folder + '/YUYU.md' });
+        const currentContent = (existing.ok && existing.data) ? existing.data : '# YUYU.md — Project Rules\n\n## Rules\n';
+        // Append rule baru ke section ## Rules, atau buat baru jika belum ada
+        let newContent;
+        if (currentContent.includes('## Rules')) {
+          newContent = currentContent.replace(/## Rules\n/, '## Rules\n- ' + ruleText + '\n');
+        } else {
+          newContent = currentContent.trimEnd() + '\n\n## Rules\n- ' + ruleText + '\n';
+        }
+        const wr = await callServer({ type: 'write', path: folder + '/YUYU.md', content: newContent });
+        if (wr.ok) {
+          setMessages(m=>[...m,{role:'assistant',content:'✅ Rule ditambahkan ke YUYU.md:\n> `' + ruleText + '`\n\nAktif di sesi berikutnya dan setiap agent loop.',actions:[]}]);
+        } else {
+          setMessages(m=>[...m,{role:'assistant',content:'❌ Gagal tulis YUYU.md: ' + (wr.data || '?'),actions:[]}]);
+        }
+        setLoading(false);
+
+      } else if (subCmd === 'clear') {
+        setLoading(true);
+        const wr = await callServer({ type: 'write', path: folder + '/YUYU.md', content: '# YUYU.md — Project Rules\n\n## Rules\n' });
+        if (wr.ok) {
+          setMessages(m=>[...m,{role:'assistant',content:'🗑 YUYU.md di-reset. Rules lama dihapus.',actions:[]}]);
+        } else {
+          setMessages(m=>[...m,{role:'assistant',content:'❌ Gagal reset: ' + (wr.data || '?'),actions:[]}]);
+        }
+        setLoading(false);
+
+      } else if (subCmd === 'init') {
+        // Generate template YUYU.md dari project context
+        setLoading(true);
+        const existR = await callServer({ type: 'read', path: folder + '/YUYU.md' });
+        if (existR.ok && existR.data && parts[2] !== 'overwrite') {
+          setMessages(m=>[...m,{role:'assistant',content:'⚠️ YUYU.md sudah ada. Ketik `/rules init overwrite` untuk timpa.',actions:[]}]);
+          setLoading(false); return;
+        }
+        await sendMsg('Buat YUYU.md di root project ini. Analisis codebase sebentar (tree + package.json), lalu tulis YUYU.md berisi:\n\n## Coding Standards\n(naming convention, strict TS, dll)\n\n## Architecture Decisions\n(state management, file structure, dll)\n\n## Forbidden Patterns\n(anti-patterns yang harus dihindari)\n\n## Preferred Libraries\n(library yang sudah dipilih untuk tiap kategori)\n\n## Commands\n(dev, build, test, deploy)\n\nSingkat, padat, max 60 baris. Tulis dengan write_file ke YUYU.md.');
+        setLoading(false);
+
+      } else if (subCmd === 'edit') {
+        // Delegasi ke sendMsg untuk buka dan edit YUYU.md
+        await sendMsg('Baca YUYU.md lalu bantu aku edit. Tampilkan isinya dulu.');
+
+      } else {
+        setMessages(m=>[...m,{role:'assistant',content:'**`/rules`** — Manage project rules (YUYU.md)\n\n- `/rules` — lihat rules aktif\n- `/rules add "..."` — tambah rule\n- `/rules clear` — hapus semua\n- `/rules init` — generate dari project\n- `/rules edit` — edit via AI',actions:[]}]);
+      }
 
     } else if (base==='/init') {
       setLoading(true);

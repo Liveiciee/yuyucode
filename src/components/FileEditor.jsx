@@ -123,57 +123,104 @@ function buildTheme(T) {
 // ── Ghost text ────────────────────────────────────────────────────────────────
 const setGhostEffect   = StateEffect.define();
 const clearGhostEffect = StateEffect.define();
+const setGhostL2Effect = StateEffect.define();
 
 const ghostField = StateField.define({
+  create: () => ({ text: '', pos: 0, level: 1 }),
+  update(val, tr) {
+    if (tr.docChanged) return { text: '', pos: 0, level: 1 };
+    for (const e of tr.effects) {
+      if (e.is(setGhostEffect))   return e.value;
+      if (e.is(clearGhostEffect)) return { text: '', pos: 0, level: 1 };
+    }
+    return val;
+  },
+});
+
+// L2 ghost text — deeper preview (dimmer, different color)
+const ghostL2Field = StateField.define({
   create: () => ({ text: '', pos: 0 }),
   update(val, tr) {
     if (tr.docChanged) return { text: '', pos: 0 };
     for (const e of tr.effects) {
-      if (e.is(setGhostEffect))   return e.value;
-      if (e.is(clearGhostEffect)) return { text: '', pos: 0 };
+      if (e.is(setGhostL2Effect))   return e.value;
+      if (e.is(clearGhostEffect))   return { text: '', pos: 0 };
+      if (e.is(setGhostEffect))     return { text: '', pos: 0 }; // clear L2 saat L1 datang
     }
     return val;
   },
 });
 
 class GhostWidget extends WidgetType {
-  constructor(text) { super(); this.text = text; }
+  constructor(text, level) { super(); this.text = text; this.level = level; }
   toDOM() {
     const span = document.createElement('span');
     span.textContent = this.text;
-    span.style.cssText = 'opacity:0.38;color:inherit;pointer-events:none;';
+    // L1: putih-biru transparan (sudah ada). L2: lebih gelap, multi-line preview
+    span.style.cssText = this.level === 2
+      ? 'opacity:0.22;color:#79b8ff;pointer-events:none;white-space:pre;'
+      : 'opacity:0.38;color:inherit;pointer-events:none;';
     return span;
   }
-  eq(other) { return this.text === other.text; }
+  eq(other) { return this.text === other.text && this.level === other.level; }
   ignoreEvent() { return true; }
 }
 
 const ghostDecorations = EditorView.decorations.compute([ghostField], state => {
   const { text, pos } = state.field(ghostField);
   if (!text || pos > state.doc.length) return Decoration.none;
-  return Decoration.set([Decoration.widget({ widget: new GhostWidget(text), side: 1 }).range(pos)]);
+  return Decoration.set([Decoration.widget({ widget: new GhostWidget(text, 1), side: 1 }).range(pos)]);
+});
+
+const ghostL2Decorations = EditorView.decorations.compute([ghostL2Field, ghostField], state => {
+  const l1 = state.field(ghostField);
+  const { text, pos } = state.field(ghostL2Field);
+  // Hanya tampilkan L2 kalau tidak ada L1 aktif
+  if (!text || pos > state.doc.length || l1.text) return Decoration.none;
+  return Decoration.set([Decoration.widget({ widget: new GhostWidget(text, 2), side: 1 }).range(pos)]);
 });
 
 const ghostAcceptKeymap = keymap.of([{
   key: 'Tab',
   run(view) {
-    const { text, pos } = view.state.field(ghostField);
-    if (!text) return false;
-    view.dispatch({ changes: { from: pos, insert: text },
-      effects: clearGhostEffect.of(null), selection: { anchor: pos + text.length } });
-    return true;
+    const l1 = view.state.field(ghostField);
+    const l2 = view.state.field(ghostL2Field);
+    // Tab+Tab: cek double-tab via timestamp
+    const now = Date.now();
+    if (!l1.text && l2.text) {
+      // accept L2
+      view.dispatch({ changes: { from: l2.pos, insert: l2.text },
+        effects: clearGhostEffect.of(null), selection: { anchor: l2.pos + l2.text.length } });
+      return true;
+    }
+    if (l1.text) {
+      view._lastTabTime = view._lastTabTime || 0;
+      if (now - view._lastTabTime < 400 && l2.text) {
+        // double-tap Tab → accept L2
+        view.dispatch({ changes: { from: l1.pos, insert: l1.text + l2.text },
+          effects: clearGhostEffect.of(null), selection: { anchor: l1.pos + l1.text.length + l2.text.length } });
+      } else {
+        view.dispatch({ changes: { from: l1.pos, insert: l1.text },
+          effects: clearGhostEffect.of(null), selection: { anchor: l1.pos + l1.text.length } });
+      }
+      view._lastTabTime = now;
+      return true;
+    }
+    return false;
   },
 }, {
   key: 'Escape',
   run(view) {
     const { text } = view.state.field(ghostField);
-    if (!text) return false;
+    const l2 = view.state.field(ghostL2Field);
+    if (!text && !l2.text) return false;
     view.dispatch({ effects: clearGhostEffect.of(null) });
     return true;
   },
 }]);
 
-async function fetchAISuggestion(prefix) {
+// ── L1: fast, Llama 8B, 300ms debounce — next line ──
+async function fetchL1Suggestion(prefix) {
   const key = import.meta?.env?.VITE_CEREBRAS_API_KEY || '';
   if (!key) return null;
   try {
@@ -181,12 +228,35 @@ async function fetchAISuggestion(prefix) {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama3.1-8b', max_tokens: 60, temperature: 0.15,
+        model: 'llama3.1-8b', max_tokens: 40, temperature: 0.1,
         messages: [
-          { role: 'system', content: 'You complete code. Reply ONLY with the completion text, nothing else. No markdown, no backticks.' },
-          { role: 'user', content: 'Complete this code from where it ends:\n' + prefix.slice(-600) },
+          { role: 'system', content: 'Complete next line of code only. Reply with the completion text ONLY. No markdown, no backticks, no explanation.' },
+          { role: 'user', content: prefix.slice(-400) },
         ],
-        stop: ['\n\n', '```', '// ---', '/* ---'],
+        stop: ['\n\n', '```', '\n// ', '\n/*'],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content?.trim() || null;
+  } catch (_) { return null; }
+}
+
+// ── L2: deeper, Llama 8B dengan max_tokens lebih besar, 900ms debounce — next function body ──
+async function fetchL2Suggestion(prefix) {
+  const key = import.meta?.env?.VITE_CEREBRAS_API_KEY || '';
+  if (!key) return null;
+  try {
+    const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama3.1-8b', max_tokens: 120, temperature: 0.2,
+        messages: [
+          { role: 'system', content: 'Complete the next 2-3 lines of code. Reply with completion text ONLY. No markdown, no backticks.' },
+          { role: 'user', content: prefix.slice(-800) },
+        ],
+        stop: ['\n\n\n', '```', '// ---'],
       }),
     });
     if (!res.ok) return null;
@@ -197,26 +267,43 @@ async function fetchAISuggestion(prefix) {
 
 function makeGhostPlugin() {
   return ViewPlugin.fromClass(class {
-    timer = null;
+    timerL1 = null;
+    timerL2 = null;
     update(upd) {
       if (!upd.docChanged) return;
-      clearTimeout(this.timer);
+      clearTimeout(this.timerL1);
+      clearTimeout(this.timerL2);
       const { text } = upd.view.state.field(ghostField);
       if (text) upd.view.dispatch({ effects: clearGhostEffect.of(null) });
-      this.timer = setTimeout(() => {
-        const view = upd.view;
+      const view = upd.view;
+
+      // L1: 300ms debounce — immediate next line
+      this.timerL1 = setTimeout(() => {
         if (view.isDestroyed) return;
         const pos    = view.state.selection.main.head;
         const prefix = view.state.doc.sliceString(0, pos);
         if ((prefix.split('\n').pop() || '').trim().length < 3) return;
-        fetchAISuggestion(prefix).then(text => {
+        fetchL1Suggestion(prefix).then(text => {
           if (!text || view.isDestroyed) return;
           if (view.state.selection.main.head !== pos) return;
-          view.dispatch({ effects: setGhostEffect.of({ text, pos }) });
+          view.dispatch({ effects: setGhostEffect.of({ text, pos, level: 1 }) });
+        });
+      }, 300);
+
+      // L2: 900ms debounce — deeper multi-line preview
+      this.timerL2 = setTimeout(() => {
+        if (view.isDestroyed) return;
+        const pos    = view.state.selection.main.head;
+        const prefix = view.state.doc.sliceString(0, pos);
+        if ((prefix.split('\n').pop() || '').trim().length < 6) return;
+        fetchL2Suggestion(prefix).then(text => {
+          if (!text || view.isDestroyed) return;
+          if (view.state.selection.main.head !== pos) return;
+          view.dispatch({ effects: setGhostL2Effect.of({ text, pos }) });
         });
       }, 900);
     }
-    destroy() { clearTimeout(this.timer); }
+    destroy() { clearTimeout(this.timerL1); clearTimeout(this.timerL2); }
   });
 }
 
@@ -474,7 +561,7 @@ function buildOptionalExtensions(cfg, path, _folder, collabWsRef) {
     exts.push(abbreviationTracker());
     exts.push(keymap.of([{ key: 'Ctrl-e', run: expandAbbreviation }]));
   }
-  if (cfg?.ghostText) exts.push(ghostField, ghostDecorations, ghostAcceptKeymap, makeGhostPlugin());
+  if (cfg?.ghostText) exts.push(ghostField, ghostL2Field, ghostDecorations, ghostL2Decorations, ghostAcceptKeymap, makeGhostPlugin());
   if (cfg?.lint) {
     const linterExt = makeSyntaxLinter(path, _folder);
     if (linterExt) exts.push(linterExt, lintGutter());
