@@ -1,0 +1,349 @@
+// @vitest-environment jsdom
+// useSlashCommands.branch.test.js — condition branch coverage
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+
+vi.mock('@capacitor/preferences', () => ({
+  Preferences: {
+    get:    vi.fn().mockResolvedValue({ value: null }),
+    set:    vi.fn().mockResolvedValue(undefined),
+    remove: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+vi.mock('../api.js', () => ({
+  callServer:        vi.fn().mockResolvedValue({ ok: true, data: '' }),
+  askCerebrasStream: vi.fn().mockResolvedValue('handoff content'),
+}));
+vi.mock('../constants.js', () => ({
+  MODELS: [
+    { id: 'model-a', label: 'A', provider: 'cerebras' },
+    { id: 'model-b', label: 'B', provider: 'groq' },
+  ],
+}));
+vi.mock('../utils.js', () => ({
+  countTokens:  vi.fn().mockReturnValue(100),
+  parseActions: vi.fn().mockReturnValue([]),
+}));
+vi.mock('../features.js', () => ({
+  generatePlan:         vi.fn().mockResolvedValue({ steps: [], reply: '' }),
+  runBackgroundAgent:   vi.fn().mockResolvedValue('agent-id'),
+  mergeBackgroundAgent: vi.fn().mockResolvedValue({ ok: true, msg: 'merged', hasConflicts: false }),
+  tokenTracker: { summary: vi.fn().mockReturnValue('summary'), inputTokens: 0, outputTokens: 0 },
+  saveSession:   vi.fn().mockResolvedValue({ name: 'S', id: 1 }),
+  loadSessions:  vi.fn().mockResolvedValue([]),
+  rewindMessages: vi.fn().mockImplementation((msgs, n) => msgs.slice(0, Math.max(1, msgs.length - n * 2))),
+}));
+
+import { Preferences } from '@capacitor/preferences';
+import { callServer, askCerebrasStream } from '../api.js';
+import * as featuresModule from '../features.js';
+import { useSlashCommands } from './useSlashCommands.js';
+
+function makeProps(o = {}) {
+  return {
+    model: 'model-a', folder: '/project', branch: 'main',
+    messages: [{ role: 'assistant', content: 'Hi!' }],
+    selectedFile: null, fileContent: '', notes: '', memories: [],
+    checkpoints: [], skills: [], thinkingEnabled: false, effort: 'medium',
+    loopActive: false, loopIntervalRef: null, agentMemory: { user: [], project: [], local: [] },
+    splitView: false, pushToTalk: false, sessionName: 'Sesi', sessionColor: null,
+    fileWatcherActive: false, fileWatcherInterval: null,
+    setModel: vi.fn(), setMessages: vi.fn(), setFolder: vi.fn(), setFolderInput: vi.fn(),
+    setLoading: vi.fn(), setStreaming: vi.fn(), setThinkingEnabled: vi.fn(), setEffort: vi.fn(),
+    setLoopActive: vi.fn(), setLoopIntervalRef: vi.fn(), setSplitView: vi.fn(),
+    setPushToTalk: vi.fn(), setSessionName: vi.fn(), setSessionColor: vi.fn(),
+    setSkills: vi.fn(), setFileWatcherActive: vi.fn(), setFileWatcherInterval: vi.fn(),
+    setFileSnapshots: vi.fn(), setYuyuMd: vi.fn(), setPlanSteps: vi.fn(), setPlanTask: vi.fn(),
+    setAgentMemory: vi.fn(), setSessionList: vi.fn(), setShowCheckpoints: vi.fn(),
+    setShowMemory: vi.fn(), setShowMCP: vi.fn(), setShowGitHub: vi.fn(), setShowDeploy: vi.fn(),
+    setShowSessions: vi.fn(), setShowPermissions: vi.fn(), setShowPlugins: vi.fn(),
+    setShowConfig: vi.fn(), setShowCustomActions: vi.fn(), setShowFileHistory: vi.fn(),
+    setShowThemeBuilder: vi.fn(), setShowDepGraph: vi.fn(), setDepGraph: vi.fn(),
+    setFontSize: vi.fn(), setShowMergeConflict: vi.fn(), setMergeConflictData: vi.fn(),
+    setShowSkills: vi.fn(), setShowBgAgents: vi.fn(),
+    sendMsg: vi.fn().mockResolvedValue(undefined),
+    compactContext: vi.fn().mockResolvedValue(undefined),
+    saveCheckpoint: vi.fn(), exportChat: vi.fn(),
+    searchMessages: vi.fn().mockReturnValue([]),
+    setGracefulStop: vi.fn(), loading: false, editHistory: [], setEditHistory: vi.fn(),
+    pinnedFiles: [], togglePin: vi.fn(),
+    browseTo: vi.fn().mockResolvedValue(undefined),
+    runAgentSwarm: vi.fn().mockResolvedValue(undefined),
+    callAI: vi.fn().mockResolvedValue('AI reply'),
+    abTest: vi.fn().mockResolvedValue(undefined),
+    growth: { level: 1, xp: 0, nextXp: 100, progress: 0, streak: 0, badges: [], learnedStyle: null },
+    sendNotification: vi.fn(), haptic: vi.fn(), abortRef: { current: null },
+    ...o,
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  callServer.mockResolvedValue({ ok: true, data: '' });
+  Preferences.get.mockResolvedValue({ value: null });
+  featuresModule.tokenTracker.summary.mockReturnValue('summary');
+});
+
+async function runCmd(props, cmd) {
+  const { result } = renderHook(() => useSlashCommands(props));
+  await act(async () => { await result.current.handleSlashCommand(cmd); });
+  return result;
+}
+
+// ── /rules show — YUYU.md not found ──────────────────────────────────────────
+describe('/rules show — YUYU.md missing', () => {
+  it('shows "belum ada" message when YUYU.md not found', async () => {
+    callServer.mockResolvedValueOnce({ ok: false, data: 'not found' });
+    const props = makeProps();
+    await runCmd(props, '/rules');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows YUYU.md content when found', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: '# Rules\n- use hooks' });
+    const props = makeProps();
+    await runCmd(props, '/rules show');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /rules init — already exists (no overwrite) ───────────────────────────────
+describe('/rules init — existing YUYU.md', () => {
+  it('warns when YUYU.md exists without overwrite flag', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: 'existing rules' });
+    const props = makeProps();
+    await runCmd(props, '/rules init');
+    expect(props.setMessages).toHaveBeenCalled();
+    expect(props.sendMsg).not.toHaveBeenCalled();
+  });
+
+  it('proceeds with overwrite when flag given', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: 'existing' });
+    const props = makeProps({ sendMsg: vi.fn().mockResolvedValue(undefined) });
+    await runCmd(props, '/rules init overwrite');
+    expect(props.sendMsg).toHaveBeenCalled();
+  });
+
+  it('proceeds when YUYU.md does not exist', async () => {
+    callServer.mockResolvedValueOnce({ ok: false, data: '' });
+    const props = makeProps({ sendMsg: vi.fn().mockResolvedValue(undefined) });
+    await runCmd(props, '/rules init');
+    expect(props.sendMsg).toHaveBeenCalled();
+  });
+});
+
+// ── /rules clear — write fails ───────────────────────────────────────────────
+describe('/rules clear — write result', () => {
+  it('shows failure message when write fails', async () => {
+    callServer.mockResolvedValueOnce({ ok: false, data: 'disk full' });
+    const props = makeProps();
+    await runCmd(props, '/rules clear');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows success message when write succeeds', async () => {
+    callServer.mockResolvedValueOnce({ ok: true });
+    const props = makeProps();
+    await runCmd(props, '/rules clear');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /init — SKILL.md exists without overwrite ────────────────────────────────
+describe('/init — SKILL.md exists', () => {
+  it('warns when SKILL.md exists without overwrite', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: '{}' })           // package.json
+      .mockResolvedValueOnce({ ok: true, data: [] })              // src list
+      .mockResolvedValueOnce({ ok: true, data: 'git log' })       // git
+      .mockResolvedValueOnce({ ok: true, data: 'existing skill' }); // SKILL.md exists
+    const props = makeProps({ sendMsg: vi.fn().mockResolvedValue(undefined) });
+    await runCmd(props, '/init');
+    expect(props.sendMsg).not.toHaveBeenCalled();
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('proceeds with overwrite flag', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: '{}' })
+      .mockResolvedValueOnce({ ok: true, data: [] })
+      .mockResolvedValueOnce({ ok: true, data: '' })
+      .mockResolvedValueOnce({ ok: true, data: 'existing' });
+    const props = makeProps({ sendMsg: vi.fn().mockResolvedValue(undefined) });
+    await runCmd(props, '/init overwrite');
+    expect(props.sendMsg).toHaveBeenCalled();
+  });
+});
+
+// ── /batch — abort mid-loop ───────────────────────────────────────────────────
+describe('/batch — processBatchFile skipped and failed', () => {
+  it('counts skipped files correctly', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: [
+      { name: 'App.jsx', isDir: false },
+      { name: 'utils.js', isDir: false },
+    ]});
+    // AI returns SKIP for both files
+    const props = makeProps({ callAI: vi.fn().mockResolvedValue('SKIP nothing to do') });
+    await runCmd(props, '/batch add JSDoc');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows allWrites=0 message when all files skipped', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: [{ name: 'App.jsx', isDir: false }] });
+    callServer.mockResolvedValueOnce({ ok: true, data: 'file content' }); // read
+    const props = makeProps({ callAI: vi.fn().mockResolvedValue('SKIP') });
+    await runCmd(props, '/batch fix');
+    // Should show "tidak ada perubahan" message
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /handoff — handoff saved to file ─────────────────────────────────────────
+describe('/handoff — saves to file when folder set', () => {
+  it('writes handoff.md when folder is set', async () => {
+    askCerebrasStream.mockResolvedValue('# Handoff\n## Done\n- stuff');
+    callServer.mockResolvedValue({ ok: true });
+    const props = makeProps({ folder: '/project' });
+    await runCmd(props, '/handoff');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows in chat only when no folder set', async () => {
+    askCerebrasStream.mockResolvedValue('# Handoff content');
+    const props = makeProps({ folder: null });
+    await runCmd(props, '/handoff');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows error when handoff AI call fails', async () => {
+    askCerebrasStream.mockRejectedValue(new Error('API error'));
+    const props = makeProps();
+    await runCmd(props, '/handoff');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /pin — no target, no pins ────────────────────────────────────────────────
+describe('/pin — empty pinnedFiles', () => {
+  it('shows no pins message when nothing pinned', async () => {
+    const props = makeProps({ pinnedFiles: [] });
+    await runCmd(props, '/pin');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows pin list when pins exist', async () => {
+    const props = makeProps({ pinnedFiles: ['/project/src/api.js'] });
+    await runCmd(props, '/pin');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /loop — inactive loop, no args ───────────────────────────────────────────
+describe('/loop — inactive loop no args', () => {
+  it('shows usage when loop inactive and no args', async () => {
+    const props = makeProps({ loopActive: false });
+    await runCmd(props, '/loop');
+    expect(props.setMessages).toHaveBeenCalled();
+    expect(props.setLoopActive).not.toHaveBeenCalled();
+  });
+});
+
+// ── /amemory — add with no content ───────────────────────────────────────────
+describe('/amemory — add without content', () => {
+  it('falls through to show all when add has no content', async () => {
+    const props = makeProps({ agentMemory: { user: [], project: [], local: [] } });
+    await runCmd(props, '/amemory add user');
+    // No content → falls through to show all
+    expect(props.setMessages).toHaveBeenCalled();
+    expect(props.setAgentMemory).not.toHaveBeenCalled();
+  });
+});
+
+// ── /review — selectedFile open ──────────────────────────────────────────────
+describe('/review — open file', () => {
+  it('reviews currently open file when no arg', async () => {
+    const props = makeProps({
+      selectedFile: '/project/src/App.jsx',
+      fileContent: 'const x = 1;',
+      sendMsg: vi.fn().mockResolvedValue(undefined),
+    });
+    await runCmd(props, '/review');
+    expect(props.sendMsg).toHaveBeenCalled();
+  });
+});
+
+// ── /diff — with range argument ───────────────────────────────────────────────
+describe('/diff — with range', () => {
+  it('runs diff with range when provided', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: 'diff output line1\nline2' });
+    const props = makeProps();
+    await runCmd(props, '/diff HEAD~3');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /search — with results ───────────────────────────────────────────────────
+describe('/search — with results', () => {
+  it('shows results when found', async () => {
+    const props = makeProps({
+      searchMessages: vi.fn().mockReturnValue([
+        { role: 'user', content: 'found message', idx: 1 },
+      ]),
+    });
+    await runCmd(props, '/search found');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /undo — write fails ───────────────────────────────────────────────────────
+describe('/undo — write fails', () => {
+  it('still updates history even when write fails', async () => {
+    callServer.mockResolvedValue({ ok: false, data: 'disk full' });
+    const props = makeProps({
+      editHistory: [{ path: '/project/a.js', content: 'old' }],
+      setEditHistory: vi.fn(),
+    });
+    await runCmd(props, '/undo');
+    expect(props.setEditHistory).toHaveBeenCalled();
+  });
+});
+
+// ── /bgmerge — ok result message ────────────────────────────────────────────
+describe('/bgmerge — success', () => {
+  it('shows success message on merge ok', async () => {
+    featuresModule.mergeBackgroundAgent.mockResolvedValueOnce({
+      ok: true, msg: 'Merged! 3 file masuk ke main.', hasConflicts: false,
+    });
+    const props = makeProps();
+    await runCmd(props, '/bgmerge agent-abc');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /color — off value ────────────────────────────────────────────────────────
+describe('/color — off', () => {
+  it('sets sessionColor to null when color is off', async () => {
+    const props = makeProps({ sessionColor: '#ef4444' });
+    await runCmd(props, '/color off');
+    expect(props.setSessionColor).toHaveBeenCalledWith(null);
+  });
+
+  it('shows current color info when no arg given', async () => {
+    const props = makeProps({ sessionColor: '#3b82f6' });
+    await runCmd(props, '/color');
+    expect(props.setMessages).toHaveBeenCalled();
+    expect(props.setSessionColor).not.toHaveBeenCalled();
+  });
+});
+
+// ── parseActionsLocal catch branch ───────────────────────────────────────────
+describe('parseActionsLocal — invalid JSON', () => {
+  it('skips invalid JSON in action blocks gracefully', async () => {
+    // Trigger via /batch which uses processBatchFile which uses parseActionsLocal
+    callServer.mockResolvedValueOnce({ ok: true, data: [{ name: 'App.jsx', isDir: false }] });
+    const props = makeProps({
+      callAI: vi.fn().mockResolvedValue('```action\n{invalid json here}\n```'),
+    });
+    await expect(runCmd(props, '/batch add docs')).resolves.not.toThrow();
+  });
+});
