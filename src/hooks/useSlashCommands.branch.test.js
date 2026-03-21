@@ -347,3 +347,184 @@ describe('parseActionsLocal — invalid JSON', () => {
     await expect(runCmd(props, '/batch add docs')).resolves.not.toThrow();
   });
 });
+
+// ── /batch — listR.ok fails ───────────────────────────────────────────────────
+describe('/batch — list src fails', () => {
+  it('shows error and returns when list fails', async () => {
+    callServer.mockResolvedValueOnce({ ok: false, data: 'permission denied' });
+    const props = makeProps();
+    await runCmd(props, '/batch add JSDoc');
+    expect(props.setMessages).toHaveBeenCalled();
+    expect(props.setLoading).toHaveBeenCalledWith(false);
+  });
+});
+
+// ── /batch — signal aborted mid-loop ─────────────────────────────────────────
+describe('/batch — aborted signal mid-loop', () => {
+  it('breaks loop when signal aborted (AbortError)', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: [{ name: 'App.jsx', isDir: false }] });
+    callServer.mockResolvedValueOnce({ ok: true, data: 'file content' });
+    const props = makeProps({
+      callAI: vi.fn().mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+    });
+    await runCmd(props, '/batch fix');
+    expect(props.setLoading).toHaveBeenCalledWith(false);
+  });
+});
+
+// ── /batch — result === 'failed' (read fails) ─────────────────────────────────
+describe('/batch — processBatchFile read fails', () => {
+  it('increments failed count when file read fails', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: [{ name: 'broken.js', isDir: false }] });
+    callServer.mockResolvedValueOnce({ ok: false, data: 'not found' }); // read fails
+    const props = makeProps();
+    await runCmd(props, '/batch add docs');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /batch — allWrites > 0 (actual changes) ──────────────────────────────────
+describe('/batch — produces actual writes', () => {
+  it('shows approval message when writes produced', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: [{ name: 'App.jsx', isDir: false }] });
+    callServer.mockResolvedValueOnce({ ok: true, data: 'file content' });
+    const props = makeProps({
+      callAI: vi.fn().mockResolvedValue('```action\n{"type":"write_file","path":"src/App.jsx","content":"new"}\n```'),
+    });
+    await runCmd(props, '/batch add JSDoc');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /bgmerge — result.ok = false ─────────────────────────────────────────────
+describe('/bgmerge — merge fails', () => {
+  it('shows failure message when result.ok is false', async () => {
+    featuresModule.mergeBackgroundAgent.mockResolvedValueOnce({
+      ok: false, msg: 'Merge gagal: conflict unresolved', hasConflicts: false,
+    });
+    const props = makeProps();
+    await runCmd(props, '/bgmerge agent-xyz');
+    const calls = props.setMessages.mock.calls;
+    const lastCall = calls[calls.length - 1][0];
+    const msg = typeof lastCall === 'function' ? lastCall([]) : lastCall;
+    const content = Array.isArray(msg) ? msg[msg.length - 1]?.content : '';
+    expect(content).toContain('❌');
+  });
+});
+
+// ── /review --all — changedFiles empty ───────────────────────────────────────
+describe('/review --all — no changed files', () => {
+  it('shows no changes message when git diff is empty', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: '' }); // git diff returns empty
+    const props = makeProps({ folder: '/project' });
+    await runCmd(props, '/review --all');
+    expect(props.setMessages).toHaveBeenCalled();
+    expect(props.sendMsg).not.toHaveBeenCalled();
+  });
+});
+
+// ── /review <path> — file not found ──────────────────────────────────────────
+describe('/review <path> — file not found', () => {
+  it('shows error when file not found', async () => {
+    callServer.mockResolvedValueOnce({ ok: false, data: 'not found' });
+    const props = makeProps({ folder: '/project', sendMsg: vi.fn() });
+    await runCmd(props, '/review src/missing.js');
+    expect(props.setMessages).toHaveBeenCalled();
+    expect(props.sendMsg).not.toHaveBeenCalled();
+  });
+});
+
+// ── /loop — active loop stop ──────────────────────────────────────────────────
+describe('/loop — stops active loop', () => {
+  it('clears interval and stops loop when loopActive and no args', async () => {
+    const props = makeProps({ loopActive: true, loopIntervalRef: 123 });
+    await runCmd(props, '/loop');
+    expect(props.setLoopActive).toHaveBeenCalledWith(false);
+    expect(props.setLoopIntervalRef).toHaveBeenCalledWith(null);
+  });
+});
+
+// ── /loop — invalid format ────────────────────────────────────────────────────
+describe('/loop — invalid format', () => {
+  it('shows format error for invalid interval string', async () => {
+    const props = makeProps({ loopActive: false });
+    await runCmd(props, '/loop badformat');
+    expect(props.setMessages).toHaveBeenCalled();
+    expect(props.setLoopActive).not.toHaveBeenCalled();
+  });
+});
+
+// ── /loop — valid format with hours ──────────────────────────────────────────
+describe('/loop — valid format hours', () => {
+  it('starts loop with hour interval', async () => {
+    vi.useFakeTimers();
+    const props = makeProps({ loopActive: false });
+    await runCmd(props, '/loop 1h git status');
+    expect(props.setLoopActive).toHaveBeenCalledWith(true);
+    vi.useRealTimers();
+  });
+});
+
+// ── /db — dbFiles.length === 1 auto-select ───────────────────────────────────
+describe('/db — single db file auto-select', () => {
+  it('auto-selects db when only one db file found', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: [{ name: 'app.db', isDir: false }] });
+    callServer.mockResolvedValueOnce({ ok: true, data: 'result rows' }); // query result
+    const props = makeProps({ folder: '/project' });
+    await runCmd(props, '/db SELECT * FROM users');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /db — multiple db files ───────────────────────────────────────────────────
+describe('/db — multiple db files', () => {
+  it('shows db picker when multiple dbs found', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: [
+      { name: 'app.db', isDir: false },
+      { name: 'cache.db', isDir: false },
+    ]});
+    callServer.mockResolvedValueOnce({ ok: true, data: 'rows' });
+    const props = makeProps({ folder: '/project' });
+    await runCmd(props, '/db SELECT 1');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── /deps — external imports (not starting with '.') ─────────────────────────
+describe('/deps — external import branch', () => {
+  it('adds external node when import does not start with dot', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: "import React from 'react';\nimport { x } from 'lodash';" })
+      .mockResolvedValue({ ok: false }); // no local files found
+    const props = makeProps({ selectedFile: '/project/src/App.jsx' });
+    await runCmd(props, '/deps');
+    expect(props.setDepGraph).toHaveBeenCalled();
+  });
+});
+
+// ── /deps — resolveLocalImport nodesMap already exists ───────────────────────
+describe('/deps — skip already-parsed local import', () => {
+  it('does not re-parse file already in nodesMap', async () => {
+    // First read: App.jsx imports ./utils, second read: utils.jsx imports ./utils again (cycle)
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: "import { x } from './utils';" }) // App.jsx
+      .mockResolvedValueOnce({ ok: true, data: "import { y } from './utils';" }) // utils.js
+      .mockResolvedValue({ ok: false });
+    const props = makeProps({ selectedFile: '/project/src/App.jsx' });
+    await runCmd(props, '/deps');
+    expect(props.setDepGraph).toHaveBeenCalled();
+  });
+});
+
+// ── /amemory — clear sub ─────────────────────────────────────────────────────
+describe('/amemory — clear sub', () => {
+  it('clears memory for given scope', async () => {
+    const props = makeProps({
+      agentMemory: { user: [{ text: 'old', ts: '1/1', id: 1 }], project: [], local: [] },
+    });
+    await runCmd(props, '/amemory clear user');
+    expect(props.setAgentMemory).toHaveBeenCalledWith(
+      expect.objectContaining({ user: [] })
+    );
+  });
+});
