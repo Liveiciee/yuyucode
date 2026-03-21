@@ -67,7 +67,7 @@ async function _cerebrasOnce(messages, model, onChunk, signal, options) {
     }),
   });
   if (resp.status === 429) {
-    const retry = parseInt(resp.headers.get('retry-after') || '60', 10);
+    const retry = Number.parseInt(resp.headers.get('retry-after') || '60', 10);
     throw new Error(`RATE_LIMIT:${retry}`);
   }
   if (resp.status >= 500) throw new Error(`CEREBRAS_SERVER:${resp.status}`);
@@ -89,7 +89,7 @@ async function _groqOnce(messages, model, onChunk, signal, options) {
     }),
   });
   if (resp.status === 429) {
-    const retry = parseInt(resp.headers.get('retry-after') || '30', 10);
+    const retry = Number.parseInt(resp.headers.get('retry-after') || '30', 10);
     throw new Error(`RATE_LIMIT:${retry}`);
   }
   if (resp.status >= 500) throw new Error(`GROQ_SERVER:${resp.status}`);

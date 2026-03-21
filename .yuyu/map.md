@@ -1,6 +1,6 @@
 # YuyuCode — Codebase Map
-> Generated: 2026-03-21T09:35:28.116Z
-> Files: 67 | Symbols: 114
+> Generated: 2026-03-21T21:01:34.161Z
+> Files: 77 | Symbols: 112
 
 ---
 
@@ -9,8 +9,6 @@
 ## 🔥 `src/plugins/brightness.js` _(16L, salience:63)_
 
 ## 🔥 `src/components/panels.jsx` _(19L, salience:53)_
-
-## 🔥 `vitest.config.js` _(21L, salience:48)_
 
 ## 🔥 `src/themes/index.js` _(25L, salience:43)_
 - ◆ `THEMES_MAP`
@@ -23,6 +21,8 @@
 - 🪝 `useBrightness(setBrightnessLevel)`
 
 ## 🔥 `vite.config.js` _(29L, salience:34)_
+
+## 🔥 `vitest.config.js` _(33L, salience:30)_
 
 ## 🔥 `src/components/AppSidebar.jsx` _(38L, salience:27)_
 - ⚛ `AppSidebar({ T, ui, project, file, onSidebarDragStart })`
@@ -51,7 +51,7 @@
 - ◆ `SLASH_COMMANDS`
 - ◆ `TEMPLATES`
 
-## 🔥 `src/features.js` _(420L, salience:24)_
+## 🔥 `src/features.js` _(427L, salience:24)_
 - ƒ `parsePlanSteps(reply)`
 - ƒ `generatePlan(task, folder, callAI, signal)`
 - ƒ `executePlanStep(step, folder, callAI, signal, onChunk)`
@@ -113,7 +113,9 @@
   sendNotification, haptic, abortRef,
 })`
 
-## ⭐ `src/utils.js` _(239L, salience:11)_
+## ⭐ `src/hooks/useAgentSwarm.test.js` _(78L, salience:13)_
+
+## ⭐ `src/utils.js` _(221L, salience:12)_
 - ƒ `countTokens(msgs)`
 - ƒ `getFileIcon(name)`
 - ƒ `hl(code, lang = '')`
@@ -143,17 +145,10 @@
 
 ## · `src/themes/obsidian.js` _(127L, salience:8)_
 
-## · `src/components/MsgBubble.jsx` _(533L, salience:7)_
-- ⚛ `ThinkingBlock({ text, T, live = false })`
-- ⚛ `StreamingBubble({ text, T })`
-- ⚛ `MsgContent({ text, T })`
-- ⚛ `ActionChip({ action, T })`
-- ƒ `MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix, onDelete, onEdit, T })`
-
 ## · `src/components/ThemeEffects.jsx` _(168L, salience:7)_
 - ⚛ `ThemeEffects({ T })`
 
-## · `src/components/panels.agent.jsx` _(317L, salience:7)_
+## · `src/components/panels.agent.jsx` _(316L, salience:7)_
 - ⚛ `ElicitationPanel({ data, onSubmit, onDismiss, T })`
 - ⚛ `ElapsedTime({ startedAt })`
 - ⚛ `BgAgentPanel({ agents, onMerge, onAbort, onClose, T })`
@@ -171,10 +166,10 @@
 
 ## · `src/globalfind.test.js` _(150L, salience:7)_
 
-## · `src/hooks/useApprovalFlow.js` _(136L, salience:7)_
-
 ## · `src/hooks/useGrowth.js` _(162L, salience:7)_
 - 🪝 `useGrowth`
+
+## · `src/hooks/useNotifications.test.js` _(152L, salience:7)_
 
 ## · `src/themes/aurora.js` _(142L, salience:7)_
 
@@ -184,13 +179,20 @@
 
 ## · `src/utils.test.js` _(149L, salience:7)_
 
-## · `src/components/LivePreview.jsx` _(208L, salience:6)_
+## · `src/components/LivePreview.jsx` _(211L, salience:6)_
 - ⚛ `LivePreview({ tabs, T, onClose })`
+
+## · `src/components/MsgBubble.jsx` _(287L, salience:6)_
+- ⚛ `ThinkingBlock({ text, T, live = false })`
+- ⚛ `StreamingBubble({ text, T })`
+- ƒ `MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix, onDelete, onEdit, T })`
 
 ## · `src/editor.bench.js` _(332L, salience:6)_
 - 🪝 `useAgentLoop(opts = {})`
 - ƒ `buildSystemPrompt(config)`
 - ◆ `EFFORT_CONFIG`
+
+## · `src/hooks/useApprovalFlow.js` _(164L, salience:6)_
 
 ## · `src/hooks/useChatStore.js` _(217L, salience:6)_
 - 🪝 `useChatStore`
@@ -198,7 +200,7 @@
 ## · `src/hooks/useUIStore.js` _(208L, salience:6)_
 - 🪝 `useUIStore`
 
-## · `src/components/FileTree.jsx` _(293L, salience:5)_
+## · `src/components/FileTree.jsx` _(295L, salience:5)_
 - ⚛ `FileIcon({ name, size=13 })`
 - ⚛ `FileTree({ folder, onSelectFile, selectedFile, T })`
 
@@ -213,13 +215,17 @@
 
 ## · `src/features.test.js` _(215L, salience:5)_
 
-## · `src/hooks/useFileStore.js` _(246L, salience:5)_
+## · `src/hooks/useApprovalFlow.test.js` _(211L, salience:5)_
+
+## · `src/hooks/useDevTools.test.js` _(201L, salience:5)_
+
+## · `src/hooks/useFileStore.js` _(260L, salience:5)_
 - 🪝 `useFileStore`
 
-## · `src/hooks/useProjectStore.js` _(236L, salience:5)_
-- 🪝 `useProjectStore`
+## · `src/hooks/useMediaHandlers.test.js` _(201L, salience:5)_
 
-## · `src/multitab.test.js` _(209L, salience:5)_
+## · `src/hooks/useProjectStore.js` _(238L, salience:5)_
+- 🪝 `useProjectStore`
 
 ## · `src/uistore.test.js` _(193L, salience:5)_
 
@@ -230,24 +236,32 @@
 
 ## · `src/components/AppPanels.jsx` _(272L, salience:4)_
 
-## · `src/components/FileEditor.jsx` _(866L, salience:4)_
+## · `src/components/FileEditor.jsx` _(867L, salience:4)_
 - ⚛ `Minimap({ viewRef, T })`
 - ⚛ `Breadcrumb({ viewRef, T })`
 - ◆ `FileEditor`
 
-## · `src/features.extra.test.js` _(228L, salience:4)_
+## · `src/features.extra.test.js` _(272L, salience:4)_
+
+## · `src/hooks/useProjectStore.test.js` _(237L, salience:4)_
 
 ## · `src/themes.test.js` _(225L, salience:4)_
 
 ## · `src/features.extended.test.js` _(390L, salience:3)_
 
+## · `src/hooks/useChatStore.test.js` _(341L, salience:3)_
+
+## · `src/hooks/useGrowth.test.js` _(286L, salience:3)_
+
+## · `src/multitab.test.js` _(327L, salience:3)_
+
 ## · `src/utils.extended.test.js` _(389L, salience:3)_
 
 ## · `src/utils.integration.test.js` _(344L, salience:3)_
 
-## · `src/components/AppChat.jsx` _(525L, salience:2)_
+## · `src/components/AppChat.jsx` _(527L, salience:2)_
 
-## · `src/hooks/useAgentLoop.js` _(737L, salience:2)_
+## · `src/hooks/useAgentLoop.js` _(725L, salience:2)_
 - 🪝 `useAgentLoop({
   project, chat, file, ui,
   sendNotification, haptic, speakText,
@@ -255,6 +269,10 @@
   growth,
 })`
 
-## · `src/hooks/useSlashCommands.js` _(928L, salience:1)_
+## · `src/hooks/useAgentLoop.test.js` _(525L, salience:2)_
 
-## · `yuyu-server.js` _(718L, salience:1)_
+## · `src/hooks/useSlashCommands.js` _(776L, salience:1)_
+
+## · `src/hooks/useSlashCommands.test.js` _(1112L, salience:1)_
+
+## · `yuyu-server.js` _(722L, salience:1)_

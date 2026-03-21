@@ -457,7 +457,7 @@ export function AppChat({
                 if (e.key === 'ArrowDown' && project.histIdx > -1) { const i = project.histIdx - 1; project.setHistIdx(i); chat.setInput(i >= 0 ? project.cmdHistory[i] : ''); }
               }}
               placeholder="Tanya Yuyu, atau / untuk commands"
-              disabled={chat.loading} rows={searchQ !== null && searchQ !== '' ? 1 : 1}
+              disabled={chat.loading} rows={searchQ !== null && searchQ !== '' ? 1 : 3}
               style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none',
                 resize: 'none', padding: '12px 16px 4px', color: chat.loading ? T.textMute : T.text,
                 fontSize: '14px', fontFamily: 'inherit', lineHeight: '1.6', display: 'block',

@@ -206,3 +206,121 @@ describe('useFileStore — undoLastEdit', () => {
     expect(onMsg).not.toHaveBeenCalled();
   });
 });
+
+// ── undoLastEdit with history ─────────────────────────────────────────────────
+describe('useFileStore — undoLastEdit with history', () => {
+  it('restores last edit and removes it from history', async () => {
+    callServer.mockResolvedValue({ ok: true, data: 'code' });
+    const { result } = renderHook(() => useFileStore());
+
+    await act(async () => { await result.current.openFile('/project/A.js'); });
+    act(() => { result.current.setEditHistory([{ path: '/project/A.js', content: 'old content' }]); });
+
+    const onMsg = vi.fn();
+    await act(async () => { await result.current.undoLastEdit(onMsg); });
+
+    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'write', path: '/project/A.js', content: 'old content',
+    }));
+    expect(onMsg).toHaveBeenCalledWith(expect.stringContaining('Undo'));
+    expect(result.current.editHistory).toHaveLength(0);
+  });
+});
+
+// ── readFilesParallel ─────────────────────────────────────────────────────────
+describe('useFileStore — readFilesParallel', () => {
+  it('reads multiple files in parallel and returns keyed results', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: 'content A' })
+      .mockResolvedValueOnce({ ok: true, data: 'content B' });
+
+    const { result } = renderHook(() => useFileStore());
+    let out;
+    await act(async () => {
+      out = await result.current.readFilesParallel(['/src/A.js', '/src/B.js'], '/project');
+    });
+
+    expect(out['/src/A.js'].data).toBe('content A');
+    expect(out['/src/B.js'].data).toBe('content B');
+  });
+});
+
+// ── loadFilePrefs ─────────────────────────────────────────────────────────────
+describe('useFileStore — loadFilePrefs', () => {
+  it('loads pinned and recent from JSON strings', () => {
+    const { result } = renderHook(() => useFileStore());
+    act(() => {
+      result.current.loadFilePrefs({
+        pinned: JSON.stringify(['/project/App.jsx']),
+        recent: JSON.stringify(['/project/utils.js']),
+      });
+    });
+    expect(result.current.pinnedFiles).toContain('/project/App.jsx');
+    expect(result.current.recentFiles).toContain('/project/utils.js');
+  });
+
+  it('silently ignores invalid JSON', () => {
+    const { result } = renderHook(() => useFileStore());
+    expect(() => {
+      act(() => { result.current.loadFilePrefs({ pinned: 'bad json', recent: null }); });
+    }).not.toThrow();
+  });
+});
+
+// ── setSelectedFile ───────────────────────────────────────────────────────────
+describe('useFileStore — setSelectedFile', () => {
+  it('calls openFile when given a path', async () => {
+    callServer.mockResolvedValue({ ok: true, data: 'code' });
+    const { result } = renderHook(() => useFileStore());
+    await act(async () => { await result.current.setSelectedFile('/project/App.jsx'); });
+    expect(result.current.openTabs).toHaveLength(1);
+  });
+
+  it('closes active tab when called with null/falsy', async () => {
+    callServer.mockResolvedValue({ ok: true, data: 'code' });
+    const { result } = renderHook(() => useFileStore());
+    await act(async () => { await result.current.openFile('/project/A.js'); });
+    act(() => { result.current.setSelectedFile(null); });
+    expect(result.current.openTabs).toHaveLength(0);
+    expect(result.current.activeTab).toBe('chat');
+  });
+});
+
+// ── setFileContent ────────────────────────────────────────────────────────────
+describe('useFileStore — setFileContent', () => {
+  it('updates content of active tab', async () => {
+    callServer.mockResolvedValue({ ok: true, data: 'original' });
+    const { result } = renderHook(() => useFileStore());
+    await act(async () => { await result.current.openFile('/project/A.js'); });
+    act(() => { result.current.setFileContent('updated'); });
+    expect(result.current.openTabs[0].content).toBe('updated');
+    expect(result.current.openTabs[0].dirty).toBe(true);
+  });
+
+  it('does nothing when no tabs open', () => {
+    const { result } = renderHook(() => useFileStore());
+    expect(() => {
+      act(() => { result.current.setFileContent('anything'); });
+    }).not.toThrow();
+  });
+});
+
+// ── saveFile edge cases ───────────────────────────────────────────────────────
+describe('useFileStore — saveFile edge cases', () => {
+  it('does nothing when no tab is open', async () => {
+    const { result } = renderHook(() => useFileStore());
+    await act(async () => { await result.current.saveFile('content'); });
+    expect(callServer).not.toHaveBeenCalled();
+  });
+
+  it('calls onMsg callback after successful save', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: 'code' })
+      .mockResolvedValueOnce({ ok: true });
+    const { result } = renderHook(() => useFileStore());
+    await act(async () => { await result.current.openFile('/project/A.js'); });
+    const onMsg = vi.fn();
+    await act(async () => { await result.current.saveFile('new content', onMsg); });
+    expect(onMsg).toHaveBeenCalledWith(expect.stringContaining('Saved'));
+  });
+});

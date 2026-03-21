@@ -90,6 +90,9 @@ function makeChat(overrides = {}) {
     gracefulStop: false,
     trimHistory: vi.fn(msgs => msgs),
     getRelevantMemories: vi.fn().mockReturnValue([]),
+    extractMemories: vi.fn(),
+    startRateLimitTimer: vi.fn(),
+    ttsEnabled: false,
     memories: [],
     ...overrides,
   };
@@ -412,5 +415,110 @@ describe('useAgentLoop — diffReview mode', () => {
     // diffReview = true → should return early (not execute the write)
     expect(mockExecuteAction).not.toHaveBeenCalled();
     expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
+  });
+});
+
+// ── sendMsg — RATE_LIMIT error ────────────────────────────────────────────────
+describe('useAgentLoop — RATE_LIMIT error handling', () => {
+  it('calls startRateLimitTimer and shows message on RATE_LIMIT error', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream.mockRejectedValue(new Error('RATE_LIMIT:30'));
+
+    const ctx = makeCtx({
+      chat: makeChat({
+        messages: [{ role: 'assistant', content: 'hi' }],
+        startRateLimitTimer: vi.fn(),
+      }),
+    });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('do something'); });
+
+    expect(ctx.chat.startRateLimitTimer).toHaveBeenCalledWith(30);
+    expect(ctx.chat.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── sendMsg — PROJECT_NOTE extraction ─────────────────────────────────────────
+describe('useAgentLoop — PROJECT_NOTE extraction', () => {
+  it('extracts PROJECT_NOTE from final reply and calls setNotes', async () => {
+    mockAskCerebrasStream.mockResolvedValue('Done! PROJECT_NOTE: pakai React 19');
+    mockParseActions.mockReturnValue([]);
+
+    const setNotes = vi.fn();
+    const ctx = makeCtx({
+      project: makeProject({ notes: 'existing', setNotes }),
+      chat: makeChat({ messages: [{ role: 'assistant', content: 'hi' }] }),
+    });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('do something'); });
+
+    expect(setNotes).toHaveBeenCalledWith(expect.stringContaining('pakai React 19'), expect.anything());
+  });
+});
+
+// ── sendMsg — TTS ─────────────────────────────────────────────────────────────
+describe('useAgentLoop — TTS enabled', () => {
+  it('calls speakText when ttsEnabled is true', async () => {
+    mockAskCerebrasStream.mockResolvedValue('Response untuk TTS');
+    mockParseActions.mockReturnValue([]);
+
+    const speakText = vi.fn();
+    const ctx = makeCtx({
+      chat: makeChat({
+        messages: [{ role: 'assistant', content: 'hi' }],
+        ttsEnabled: true,
+      }),
+      speakText,
+    });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('say something'); });
+
+    expect(speakText).toHaveBeenCalledWith('Response untuk TTS');
+  });
+});
+
+// ── sendMsg — gracefulStop ────────────────────────────────────────────────────
+describe('useAgentLoop — gracefulStop', () => {
+  it('resets gracefulStop flag at start of iteration', async () => {
+    mockAskCerebrasStream.mockResolvedValue('done');
+    mockParseActions.mockReturnValue([]);
+
+    const ctx = makeCtx({
+      chat: makeChat({
+        messages: [{ role: 'assistant', content: 'hi' }],
+        gracefulStop: true,
+      }),
+    });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('run'); });
+
+    expect(ctx.chat.setGracefulStop).toHaveBeenCalledWith(false);
+  });
+});
+
+// ── sendMsg — patch_file self-correct ─────────────────────────────────────────
+describe('useAgentLoop — patch_file failure triggers self-correct', () => {
+  it('continues loop with error feedback when patch fails', async () => {
+    const patchAction = { type: 'patch_file', path: 'src/App.jsx', old_str: 'x', new_str: 'y' };
+
+    mockParseActions
+      .mockReturnValueOnce([patchAction])
+      .mockReturnValue([]);
+    mockAskCerebrasStream
+      .mockResolvedValueOnce('patching')
+      .mockResolvedValue('fixed');
+    mockExecuteAction.mockResolvedValueOnce({ ok: false, data: 'old_str not found' });
+
+    const ctx = makeCtx({
+      project: makeProject({ diffReview: false }),
+      chat: makeChat({ messages: [{ role: 'assistant', content: 'hi' }] }),
+    });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('fix bug'); });
+
+    // Should have called AI more than once due to self-correct
+    expect(mockAskCerebrasStream.mock.calls.length).toBeGreaterThan(1);
   });
 });

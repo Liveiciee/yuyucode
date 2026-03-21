@@ -23,44 +23,54 @@ Runs entirely on a phone (Oppo A77s, Snapdragon 680) via Termux. No laptop. No d
 - `src/theme.js` — 
 - `src/plugins/brightness.js` — 
 - `src/components/panels.jsx` — 
-- `vitest.config.js` — 
 - `src/themes/index.js` — THEMES_MAP, THEME_KEYS, DEFAULT_THEME
 - `src/main.jsx` — 
 - `src/hooks/useBrightness.js` — useBrightness
 - `vite.config.js` — 
+- `vitest.config.js` — 
 - `src/components/AppSidebar.jsx` — AppSidebar
 
 ## Hooks
 - `src/hooks/useAgentLoop.js` — useAgentLoop
+- `src/hooks/useAgentLoop.test.js` — 
 - `src/hooks/useAgentSwarm.js` — useAgentSwarm
+- `src/hooks/useAgentSwarm.test.js` — 
 - `src/hooks/useApprovalFlow.js` — 
+- `src/hooks/useApprovalFlow.test.js` — 
 - `src/hooks/useBrightness.js` — useBrightness
 - `src/hooks/useChatStore.js` — useChatStore
+- `src/hooks/useChatStore.test.js` — 
 - `src/hooks/useDevTools.js` — 
+- `src/hooks/useDevTools.test.js` — 
 - `src/hooks/useFileStore.js` — useFileStore
 - `src/hooks/useGrowth.js` — useGrowth
+- `src/hooks/useGrowth.test.js` — 
 - `src/hooks/useMediaHandlers.js` — useMediaHandlers
+- `src/hooks/useMediaHandlers.test.js` — 
 - `src/hooks/useNotifications.js` — useNotifications
+- `src/hooks/useNotifications.test.js` — 
 - `src/hooks/useProjectStore.js` — useProjectStore
+- `src/hooks/useProjectStore.test.js` — 
 - `src/hooks/useSlashCommands.js` — 
+- `src/hooks/useSlashCommands.test.js` — 
 - `src/hooks/useUIStore.js` — useUIStore
 
 ## Components
-- `src/components/AppChat.jsx` (525L)
+- `src/components/AppChat.jsx` (527L)
 - `src/components/AppHeader.jsx` (78L)
 - `src/components/AppPanels.jsx` (272L)
 - `src/components/AppSidebar.jsx` (38L)
-- `src/components/FileEditor.jsx` (866L)
-- `src/components/FileTree.jsx` (293L)
+- `src/components/FileEditor.jsx` (867L)
+- `src/components/FileTree.jsx` (295L)
 - `src/components/GlobalFindReplace.jsx` (248L)
 - `src/components/KeyboardRow.jsx` (73L)
-- `src/components/LivePreview.jsx` (208L)
-- `src/components/MsgBubble.jsx` (533L)
+- `src/components/LivePreview.jsx` (211L)
+- `src/components/MsgBubble.jsx` (287L)
 - `src/components/SearchBar.jsx` (68L)
 - `src/components/Terminal.jsx` (342L)
 - `src/components/ThemeEffects.jsx` (168L)
 - `src/components/VoiceBtn.jsx` (135L)
-- `src/components/panels.agent.jsx` (317L)
+- `src/components/panels.agent.jsx` (316L)
 - `src/components/panels.base.jsx` (167L)
 - `src/components/panels.git.jsx` (537L)
 - `src/components/panels.jsx` (19L)

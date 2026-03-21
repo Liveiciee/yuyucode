@@ -391,12 +391,14 @@ ${outB.slice(0, 1500)}
         return;
       }
 
+      let gracefulStopPending = false;
       while (iter < MAX_ITER) {
         iter++;
         // Graceful stop — finish this iteration then stop
         if (chat.gracefulStop) {
           chat.setGracefulStop(false);
           chat.setAgentStatus('Menyelesaikan iterasi terakhir...');
+          gracefulStopPending = true;
         }
         if (iter > 1) chat.setAgentRunning(true);
         chat.setAgentStatus(`Iter ${iter}/${MAX_ITER}`);
@@ -638,6 +640,13 @@ ${outB.slice(0, 1500)}
           { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
           { role: 'user',      content: 'Hasil aksi:\n' + combinedData + '\n\nLanjutkan.' + agentNote },
         ];
+
+        // Graceful stop — selesaikan iterasi ini lalu berhenti
+        if (gracefulStopPending) {
+          finalContent = reply;
+          finalActions  = allInlineActions;
+          break;
+        }
       }
 
       chat.setAgentRunning(false);
