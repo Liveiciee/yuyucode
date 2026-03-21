@@ -25,3 +25,18 @@ dist-ssr
 .env.local
 *.zip
 commit-history.txt
+🚀 YuyuGit v2 starting...
+
+📝 Changed files:
+M .gitignore
+
+📊 Staged changes:
+.gitignore | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+✅ Committed: [main 388fbe5] coverage/
+📡 Pushing...
+
+💡 Fix: remote punya commit yang belum ada di local.
+   Coba: git pull --rebase && node yugit.cjs "coverage/"
+coverage/
