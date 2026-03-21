@@ -246,6 +246,8 @@ export function AppChat({
             </div>
             <pre style={{ margin: 0, padding: '8px 12px', whiteSpace: 'pre-wrap',
               wordBreak: 'break-word', color: T.textSec, flex: 1 }}
+              // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
+              // safe: hl() escapes &, <, > before any processing
               dangerouslySetInnerHTML={{ __html: hl(activeTab.content || '', activeTab.path?.split('.').pop() || '') }}/>
           </div>
         </div>
