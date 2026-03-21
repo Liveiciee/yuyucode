@@ -1,5 +1,5 @@
 # YuyuCode — LLM Context Brief
-> Version: 2.5.0 | Generated: 2026-03-20
+> Version: 4.1.0 | Generated: 2026-03-21
 
 ## What is this project?
 YuyuCode is a Claude Code / Cursor-style agentic coding assistant built natively for Android.
@@ -20,10 +20,10 @@ Runs entirely on a phone (Oppo A77s, Snapdragon 680) via Termux. No laptop. No d
 
 ## Hot files (highest salience)
 - `src/setupTest.js` — 
-- `vitest.config.js` — 
 - `src/theme.js` — 
 - `src/plugins/brightness.js` — 
 - `src/components/panels.jsx` — 
+- `vitest.config.js` — 
 - `src/themes/index.js` — THEMES_MAP, THEME_KEYS, DEFAULT_THEME
 - `src/main.jsx` — 
 - `src/hooks/useBrightness.js` — useBrightness
@@ -46,16 +46,16 @@ Runs entirely on a phone (Oppo A77s, Snapdragon 680) via Termux. No laptop. No d
 - `src/hooks/useUIStore.js` — useUIStore
 
 ## Components
-- `src/components/AppChat.jsx` (485L)
+- `src/components/AppChat.jsx` (525L)
 - `src/components/AppHeader.jsx` (78L)
-- `src/components/AppPanels.jsx` (271L)
+- `src/components/AppPanels.jsx` (272L)
 - `src/components/AppSidebar.jsx` (38L)
-- `src/components/FileEditor.jsx` (779L)
+- `src/components/FileEditor.jsx` (866L)
 - `src/components/FileTree.jsx` (293L)
 - `src/components/GlobalFindReplace.jsx` (248L)
 - `src/components/KeyboardRow.jsx` (73L)
 - `src/components/LivePreview.jsx` (208L)
-- `src/components/MsgBubble.jsx` (481L)
+- `src/components/MsgBubble.jsx` (533L)
 - `src/components/SearchBar.jsx` (68L)
 - `src/components/Terminal.jsx` (342L)
 - `src/components/ThemeEffects.jsx` (168L)
@@ -64,7 +64,7 @@ Runs entirely on a phone (Oppo A77s, Snapdragon 680) via Termux. No laptop. No d
 - `src/components/panels.base.jsx` (167L)
 - `src/components/panels.git.jsx` (537L)
 - `src/components/panels.jsx` (19L)
-- `src/components/panels.tools.jsx` (605L)
+- `src/components/panels.tools.jsx` (608L)
 
 ## Agent loop flow
 1. User sends message → `useAgentLoop.sendMsg()`
@@ -81,7 +81,7 @@ Runs entirely on a phone (Oppo A77s, Snapdragon 680) via Termux. No laptop. No d
 - Slash commands in `useSlashCommands.js` (~60 commands)
 - /compact is deprecated — use /handoff instead
 - Theme tokens: never hardcode colors — use `T.colorName` from active theme
-- Tests: `npx vitest run` must pass 546/546. `npm run lint` must be 0 errors.
+- Tests: `npx vitest run` must pass 404/404. `npm run lint` must be 0 errors.
 
 ## Context quantization files (auto-loaded by gatherProjectContext)
 - `.yuyu/handoff.md` — session handoff (run /handoff to update)
