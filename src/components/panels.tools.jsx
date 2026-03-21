@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { Zap, Bookmark, Check, X, Save, Upload, Shield, List, GitMerge, Plug, Key, Settings, Power } from 'lucide-react';
+import { Zap, Bookmark, Check, X, Save, Shield, List, GitMerge, Plug, Key, Settings } from 'lucide-react';
 import { BottomSheet } from './panels.base.jsx';
 
 // ─── CUSTOM ACTIONS PANEL ─────────────────────────────────────────────────────

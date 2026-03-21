@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Search, Plug, Github, Key, Puzzle, Brain, MapPin, Scissors, Bookmark, Zap, Save, Upload, Settings, List, History, GitCompare, Plus, Palette, MessageSquare, Play, Package, X, Eye } from 'lucide-react';
+import { Search, Plug, Github, Key, Puzzle, Brain, MapPin, Scissors, Zap, Save, Upload, Settings, List, History, GitCompare, Plus, Palette, MessageSquare, Play, Package, X, Eye } from 'lucide-react';
 import { MODELS } from '../constants.js';
 
 export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=false, T }) {

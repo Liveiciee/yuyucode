@@ -63,7 +63,6 @@ let currentWinner = null;
 
 for (const line of lines) {
   // Winner line: "  name - file > suite" OR "  name  " (no file)
-  const winnerMatch = line.match(/^\s{1,4}(\S.+?)\s+-\s+\S.*?>\s+\S|^\s{1,4}(.+?)\s{3,}/);
   // Simpler: winner lines start with 2 spaces, ratio lines start with 4 spaces
   const isRatio  = /^\s{4,}([\d.]+)x faster than/.test(line);
   const isWinner = /^\s{2,3}\S/.test(line) && !isRatio && line.trim().length > 0;

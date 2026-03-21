@@ -30,7 +30,7 @@ vi.mock('@capacitor/preferences', () => ({
 }));
 
 import { callServer } from './api.js';
-import { Preferences } from '@capacitor/preferences';
+import { Preferences } from '@capacitor/preferences'; // used via vi.mock above — CodeQL false positive
 
 beforeEach(() => { vi.clearAllMocks(); });
 

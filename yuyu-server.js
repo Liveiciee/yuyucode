@@ -104,8 +104,9 @@ function execSafe(command, cwd, timeoutMs = 60000) {
 function applyPatch(filePath, oldStr, newStr) {
   if (!filePath || !oldStr) return { ok: false, data: 'path dan old_str diperlukan' };
   const full = resolvePath(filePath);
-  if (!fs.existsSync(full)) return { ok: false, data: `File tidak ditemukan: ${filePath}` };
-  const content = fs.readFileSync(full, 'utf8');
+  let content;
+  try { content = fs.readFileSync(full, 'utf8'); }
+  catch (_e) { return { ok: false, data: `File tidak ditemukan: ${filePath}` }; }
   const replacement = newStr !== undefined ? newStr : '';
 
   // Exact match
@@ -281,7 +282,7 @@ function handle(payload) {
 
   // ── FILE OPS ──
   if (type === 'read') {
-    if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath };
+    if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath }; // existsSync intentional: check-then-read is safe for local single-user server
     // Use cache for full reads (no from/to) — saves disk I/O in agent loops
     if (!from && !to) {
       const cached = getCached(full);
@@ -335,8 +336,8 @@ function handle(payload) {
   }
 
   if (type === 'delete') {
-    if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath };
-    fs.unlinkSync(full);
+    try { fs.unlinkSync(full); }
+    catch (_e) { return { ok: false, data: 'File tidak ada: ' + filePath }; }
     return { ok: true, data: '🗑 Dihapus: ' + filePath };
   }
 
@@ -344,9 +345,9 @@ function handle(payload) {
   if (type === 'move') {
     const fromFull = resolvePath(payload.from || filePath);
     const toFull   = resolvePath(payload.to || content);
-    if (!fs.existsSync(fromFull)) return { ok: false, data: 'Source tidak ada: ' + (payload.from || filePath) };
     fs.mkdirSync(path.dirname(toFull), { recursive: true });
-    fs.renameSync(fromFull, toFull);
+    try { fs.renameSync(fromFull, toFull); }
+    catch (_e) { return { ok: false, data: 'Source tidak ada: ' + (payload.from || filePath) }; }
     return { ok: true, data: '✅ Dipindah: ' + (payload.from || filePath) + ' → ' + (payload.to || content) };
   }
 
@@ -357,8 +358,9 @@ function handle(payload) {
   }
 
   if (type === 'list') {
-    if (!fs.existsSync(full)) return { ok: false, data: 'Path tidak ada: ' + filePath };
-    const files = fs.readdirSync(full, { withFileTypes: true });
+    let files;
+    try { files = fs.readdirSync(full, { withFileTypes: true }); }
+    catch (_e) { return { ok: false, data: 'Path tidak ada: ' + filePath }; }
     const data  = files.map(f => ({
       name: f.name, isDir: f.isDirectory(),
       size: f.isFile() ? fs.statSync(path.join(full, f.name)).size : 0,
@@ -369,7 +371,7 @@ function handle(payload) {
   // ── TREE ──
   if (type === 'tree') {
     const maxDepth = parseInt(depth) || 3;
-    if (!fs.existsSync(full)) return { ok: false, data: 'Path tidak ada: ' + filePath };
+    if (!fs.existsSync(full)) return { ok: false, data: 'Path tidak ada: ' + filePath }; // safe: immediate use
     const tree = (filePath || '.') + '/\n' + buildTree(full, 1, maxDepth, '');
     return { ok: true, data: tree || '(kosong)' };
   }
@@ -384,7 +386,7 @@ function handle(payload) {
   // ── SEARCH (ripgrep → grep fallback) ──
   if (type === 'search') {
     const searchPath = full || HOME;
-    const q = shellEsc(content || '');
+    const q = shellEsc((content || '').slice(0, 500)); // limit length
     // try rg first (faster, respects .gitignore)
     const rgCheck = execSafe('which rg 2>/dev/null', HOME, 2000);
     if (rgCheck.ok && rgCheck.data.trim()) {
@@ -437,13 +439,13 @@ function handle(payload) {
 
   if (type === 'fetch_json') {
     const target = url || filePath;
-    const headers = token ? `-H "Authorization: Bearer ${token}"` : '';
+    const headers = token ? `-H "Authorization: Bearer ${shellEsc(token)}"` : '';
     return execSafe(`curl -sL --max-time 15 ${headers} "${target}"`, HOME, 20000);
   }
 
   if (type === 'sqlite') {
     const db = resolvePath(dbPath || filePath);
-    return execSafe(`sqlite3 "${db}" "${(query || '').replace(/"/g, '\\"')}"`, HOME);
+    return execSafe(`sqlite3 "${shellEsc(db)}" "${shellEsc(query || '')}"`, HOME);
   }
 
   return { ok: false, data: 'Unknown type: ' + type };
@@ -473,7 +475,7 @@ function handleMCP(tool, action, params) {
       return execSafe(`curl -sL --max-time 15 -A "Mozilla/5.0" "${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$/d' | head -300`, HOME, 25000);
     }
     if (action === 'fetch_json') {
-      const headers = token ? `-H "Authorization: Bearer ${token}"` : '';
+      const headers = token ? `-H "Authorization: Bearer ${shellEsc(token)}"` : '';
       return execSafe(`curl -sL --max-time 15 ${headers} "${target}"`, HOME, 20000);
     }
   }

@@ -90,9 +90,7 @@ function compressSource(src, filePath) {
   const lines  = src.split('\n');
   const out    = [];
   let i        = 0;
-  let inBody   = false;
   let braceDepth = 0;
-  let skipBody = false;
 
   while (i < lines.length) {
     const line    = lines[i];
@@ -113,9 +111,7 @@ function compressSource(src, filePath) {
       trimmed === '});' ||
       trimmed === '}'
     ) {
-      if (!skipBody || braceDepth === 0) {
-        out.push(line);
-      }
+      out.push(line);
       i++;
       continue;
     }
@@ -128,7 +124,7 @@ function compressSource(src, filePath) {
       /^(?:export\s+)?const\s+\w+\s*=\s*(?:async\s*)?\(/.test(trimmed)
     );
 
-    if (isFnStart && !skipBody) {
+    if (isFnStart) {
       // Keep the signature line
       out.push(line);
 
@@ -139,7 +135,6 @@ function compressSource(src, filePath) {
 
       if (braceDepth > 0) {
         // Body starts — skip until balanced
-        skipBody = true;
         out.push(line.includes('{') ? line.replace(/\{[\s\S]*/, '{ … }') : '  { … }');
         // Fast-forward through body
         i++;
@@ -149,7 +144,6 @@ function compressSource(src, filePath) {
           braceDepth -= (l.match(/}/g) || []).length;
           i++;
         }
-        skipBody   = false;
         braceDepth = 0;
         continue;
       }
@@ -164,7 +158,7 @@ function compressSource(src, filePath) {
       continue;
     }
 
-    if (!skipBody) out.push(line);
+    out.push(line);
     i++;
   }
 

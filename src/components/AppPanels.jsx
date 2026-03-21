@@ -251,14 +251,14 @@ export function AppPanels({
             <div style={{fontSize:'11px',color:T.textMute,marginBottom:'14px'}}>node yugit.cjs "..."</div>
             <input autoFocus value={ui.commitMsg} onChange={e=>ui.setCommitMsg(e.target.value)}
               onKeyDown={e=>{
-                if(e.key==='Enter'&&ui.commitMsg.trim()){ui.setCommitModal(false);runShortcut('node yugit.cjs "'+ui.commitMsg.trim().replace(/"/g,'\\"')+'"');}
+                if(e.key==='Enter'&&ui.commitMsg.trim()){ui.setCommitModal(false);const cm=ui.commitMsg.trim().replace(/\\/g,'\\\\').replace(/"/g,'\\"');runShortcut('node yugit.cjs "'+cm+'"');}
                 if(e.key==='Escape') ui.setCommitModal(false);
               }}
               placeholder="commit message..."
               style={{width:'100%',background:T.bg3,border:'1px solid '+T.borderMed,borderRadius:'8px',padding:'10px 12px',color:T.text,fontSize:'13px',outline:'none',fontFamily:'monospace',marginBottom:'12px',boxSizing:'border-box'}}/>
             <div style={{display:'flex',gap:'8px'}}>
               <button onClick={()=>ui.setCommitModal(false)} style={{flex:1,background:T.bg3,border:'1px solid '+T.border,borderRadius:'8px',padding:'9px',color:T.textMute,fontSize:'12px',cursor:'pointer'}}><X size={13}/> Batal</button>
-              <button disabled={!ui.commitMsg.trim()} onClick={()=>{ui.setCommitModal(false);runShortcut('node yugit.cjs "'+ui.commitMsg.trim().replace(/"/g,'\\"')+'"');}}
+              <button disabled={!ui.commitMsg.trim()} onClick={()=>{ui.setCommitModal(false);const cm=ui.commitMsg.trim().replace(/\\/g,'\\\\').replace(/"/g,'\\"');runShortcut('node yugit.cjs "'+cm+'"');}}
                 style={{flex:2,background:ui.commitMsg.trim()?T.accent:'rgba(255,255,255,.05)',border:'none',borderRadius:'8px',padding:'9px',color:'white',fontSize:'12px',cursor:ui.commitMsg.trim()?'pointer':'default',fontWeight:'600',opacity:ui.commitMsg.trim()?1:.4}}>
                 ↑ Push
               </button>

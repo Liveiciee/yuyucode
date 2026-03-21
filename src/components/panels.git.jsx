@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { callServer } from '../api.js';
-import { AlertTriangle, Eye, ScrollText, X, Network, GitMerge } from 'lucide-react';
+import { AlertTriangle, Eye, ScrollText, X, Network } from 'lucide-react';
 import { BottomSheet } from './panels.base.jsx';
 
 export function GitComparePanel({ folder, onClose, T }) {

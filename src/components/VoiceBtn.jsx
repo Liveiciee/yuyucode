@@ -1,4 +1,4 @@
-import { Mic, MicOff, Square, Circle } from 'lucide-react';
+import { Mic, Square, Circle } from 'lucide-react';
 import React, { useState } from "react";
 
 export function VoiceBtn({ onResult, disabled, T }) {

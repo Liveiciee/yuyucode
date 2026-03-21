@@ -141,7 +141,7 @@ export function useProjectStore() {
     if (hk) { try { setHooksRaw(JSON.parse(hk)); } catch (_e) { } }
     if (ght) setGithubTokenRaw(ght);
     if (ghr) setGithubRepo(ghr);
-    if (sc)  setSessionColorRaw(sc || null);
+    if (sc)  setSessionColorRaw(sc);
     if (plugins) { try { setActivePluginsRaw(JSON.parse(plugins)); } catch (_e) { } }
     if (ef)  setEffortRaw(ef);
     if (th)  setThinkingEnabled(th === '1');

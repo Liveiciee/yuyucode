@@ -21,7 +21,7 @@ const REQUIRED_INPUT   = ['focusBorder', 'focusShadow', 'caret', 'sendGrad', 'se
 const REQUIRED_SLASH   = ['cmdColor', 'descColor'];
 const REQUIRED_CHIP    = ['border', 'bg', 'color', 'check'];
 const REQUIRED_CODE    = ['bg', 'border', 'color'];
-const REQUIRED_HEADER  = ['bg', 'logoGrad', 'titleColor', 'accentColor', 'statusDot', 'metaColor'];
+const _REQUIRED_HEADER = ['bg', 'logoGrad', 'titleColor', 'accentColor', 'statusDot', 'metaColor']; // reserved for future header tests
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Registry

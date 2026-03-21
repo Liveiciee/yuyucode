@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Preferences } from "@capacitor/preferences";
-import { Puzzle, AlertTriangle, X, Plus, Upload, Zap } from 'lucide-react';
+import { Puzzle, X, Plus, Upload } from 'lucide-react';
 import { BottomSheet } from './panels.base.jsx';
 
 export function ElicitationPanel({ data, onSubmit, onDismiss, T }) {

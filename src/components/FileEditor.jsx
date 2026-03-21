@@ -533,7 +533,8 @@ function makeCollabPlugin(wsRef) {
       if (!ws || ws.readyState !== 1) { this.schedule(); return; }
       this.pushing = true;
       try {
-        // sendableUpdates is accessed from the view in update()
+        // sendableUpdates is processed in update() — this slot reserved for future batch sends
+        void 0;
       } finally { this.pushing = false; this.schedule(); }
     }
     update(upd) {

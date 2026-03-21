@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Pin, Eye, ScrollText, Camera, Paperclip, Volume2, VolumeX, Loader, Play } from 'lucide-react';
 import { hl } from '../utils.js';
-import { MsgBubble, MsgContent, StreamingBubble } from './MsgBubble.jsx';
+import { MsgBubble, StreamingBubble } from './MsgBubble.jsx';
 import { FileEditor } from './FileEditor.jsx';
 import { Terminal } from './Terminal.jsx';
 import { LivePreview } from './LivePreview.jsx';
@@ -248,7 +248,7 @@ export function AppChat({
               wordBreak: 'break-word', color: T.textSec, flex: 1 }}
               // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
               // safe: hl() escapes &, <, > before any processing
-              dangerouslySetInnerHTML={{ __html: hl(activeTab.content || '', activeTab.path?.split('.').pop() || '') }}/>
+              dangerouslySetInnerHTML={{ __html: hl(activeTab.content || '', activeTab.path?.split('.').pop() || '') }}/* hl() sanitizes input: escapes &<> before adding only <span> tags *//>
           </div>
         </div>
       )}

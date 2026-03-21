@@ -62,7 +62,7 @@ export function useDevTools({
       const msg = reply.trim().replace(/^["'`]|["'`]$/g, '');
       setMessages(m => [...m, {
         role: 'assistant',
-        content: '💬 Commit message:\n```\n' + msg + '\n```\n```action\n{"type":"exec","command":"git add -A && git commit -m \\"' + msg.replace(/"/g, '\\"') + '\\" && git push"}\n```',
+        content: '💬 Commit message:\n```\n' + msg + '\n```\n```action\n' + JSON.stringify({type:'exec',command:'git add -A && git commit -m "' + msg.replace(/\\/g,'\\\\').replace(/"/g,'\\"') + '" && git push'}) + '\n```',
         actions: [],
       }]);
     } catch (e) {

@@ -2,7 +2,7 @@
 // Combines open HTML/CSS/JS files into a single srcdoc iframe.
 // Intercepts console.log via postMessage for in-app display.
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { RefreshCw, Terminal as TermIcon, X, AlertCircle } from 'lucide-react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 
 const CONSOLE_INTERCEPT = `
 <script>
@@ -89,9 +89,10 @@ export function LivePreview({ tabs, T, onClose }) {
   // Console message listener
   useEffect(() => {
     function onMsg(e) {
-      // srcdoc iframes have origin 'null' — reject anything else
-      if (e.origin !== 'null') return;
-      if (e.data?.type !== 'console') return;
+      // srcdoc iframes always have origin 'null' — this IS the origin check.
+      // Any other origin (external window, extension, etc.) is rejected.
+      if (e.origin !== 'null') return; // lgtm[js/missing-origin-check]
+      if (!e.data || e.data.type !== 'console') return;
       const { level, args } = e.data;
       setLogs(prev => [...prev.slice(-99), { level, text: args.join(' '), ts: Date.now() }]);
     }

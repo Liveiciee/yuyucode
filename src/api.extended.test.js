@@ -34,7 +34,7 @@ function mockJsonResponse(data, status = 200) {
 }
 
 function makeSseResponse(...chunks) {
-  const OrigDec = globalThis.TextDecoder;
+  const _OrigDec = globalThis.TextDecoder; // saved for potential restore
   const enc = new TextEncoder();
   const calls = chunks.map(c => ({ done: false, value: enc.encode(c) }));
   calls.push({ done: true });

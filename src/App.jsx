@@ -1,7 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Activity } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { MAX_HISTORY } from './constants.js';
 import { callServer } from './api.js';
 import { ThemeEffects } from './components/ThemeEffects.jsx';
 import { AppHeader }  from './components/AppHeader.jsx';
@@ -206,7 +204,9 @@ export default function App() {
         try {
           const {event,filename} = JSON.parse(e.data);
           if (event==='watching'||!filename) return;
-          const absPath = project.folder+(filename.startsWith('/')?filename:'/'+filename);
+          // Sanitize filename from server — strip null bytes and path traversal
+          const safeFilename = String(filename).split('\u0000').join('').replace(/\.\.\//g,'');
+          const absPath = project.folder+(safeFilename.startsWith('/')?safeFilename:'/'+safeFilename);
           const prev    = fileSnapshotsRef.current[absPath];
           const r       = await callServer({type:'read',path:absPath});
           if (!r.ok) { chat.setMessages(m=>[...m,{role:'assistant',content:'👁 **File berubah:** `'+filename+'`',actions:[]}]); sendNotification('YuyuCode 👁',filename+' berubah'); return; }

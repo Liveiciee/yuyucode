@@ -181,7 +181,7 @@ if (SQUASH !== null) {
   process.exit(0);
 }
 
-const { type: commitType, scope, breaking } = parseCommitType(msg);
+const { type: _commitType, scope, breaking } = parseCommitType(msg);
 const isRelease = msg.trim().toLowerCase().startsWith('release:');
 const isRevert  = msg.trim().toLowerCase().startsWith('revert:');
 

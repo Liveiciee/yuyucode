@@ -5,43 +5,6 @@ import { MODELS } from '../constants.js';
 import { countTokens } from '../utils.js';
 import { generatePlan, runBackgroundAgent, mergeBackgroundAgent, tokenTracker, saveSession, loadSessions, rewindMessages } from '../features.js';
 
-// ── buildDepGraph — parse import graph up to 2 levels deep ──────────────────
-// eslint-disable-next-line no-unused-vars
-async function buildDepGraph(rootFile) {
-  const importRegex = /(?:import|require)\s+[^'"]*['"]([^'"]+)['"]/g;
-  const nodesMap = {};
-  const edges = [];
-
-  async function parseFile(path, depth) {
-    if (depth > 2 || nodesMap[path]) return;
-    const r = await callServer({ type: 'read', path });
-    if (!r.ok) return;
-    const label = path.split('/').pop().replace(/\.(jsx?|tsx?)$/, '');
-    nodesMap[path] = { id: path, label, type: depth === 0 ? 'root' : 'local' };
-    const src = r.data || '';
-    let m2;
-    const re = new RegExp(importRegex.source, 'g');
-    while ((m2 = re.exec(src)) !== null) {
-      const imp = m2[1];
-      if (!imp.startsWith('.')) {
-        if (!nodesMap[imp]) nodesMap[imp] = { id: imp, label: imp.split('/').pop(), type: 'external' };
-        edges.push({ source: path, target: imp });
-      } else {
-        const base2 = path.split('/').slice(0, -1).join('/');
-        const candidates = [imp, imp + '.jsx', imp + '.js', imp + '.ts', imp + '.tsx']
-          .map(s => base2 + '/' + s.replace('./', '/').replace('//', '/'))
-          .concat([base2 + '/' + imp.replace('./', '').replace('//', '/')]);
-        for (const cand of candidates) {
-          const cr = await callServer({ type: 'read', path: cand });
-          if (cr.ok) { if (!nodesMap[cand]) await parseFile(cand, depth + 1); edges.push({ source: path, target: cand }); break; }
-        }
-      }
-    }
-  }
-
-  await parseFile(rootFile, 0);
-  return { nodes: Object.values(nodesMap), edges };
-}
 
 
 // ── parseActionsLocal — extract action blocks from AI reply ─────────────────
