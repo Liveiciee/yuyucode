@@ -7,15 +7,15 @@ import {
   generatePlan, executePlanStep,
 } from './features.js';
 
-vi.mock('./api.js', () => ({ callServer: vi.fn() }));
+vi.mock('./api.js', () => ({ callServer: vi.fn().mockImplementation(() => Promise.resolve({ ok: false, data: '' })) }));
 vi.mock('./utils.js', () => ({
   parseActions:  vi.fn().mockReturnValue([]),
   executeAction: vi.fn().mockResolvedValue({ ok: true, data: '' }),
 }));
 vi.mock('@capacitor/preferences', () => ({
   Preferences: {
-    get: vi.fn().mockResolvedValue({ value: null }),
-    set: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockImplementation(() => Promise.resolve({ value: null })),
+    set: vi.fn().mockImplementation(() => Promise.resolve(undefined)),
   },
 }));
 
@@ -24,10 +24,10 @@ import { Preferences } from '@capacitor/preferences';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Restore defaults after clear — vi.clearAllMocks() may reset implementations in CI
-  callServer.mockResolvedValue({ ok: false, data: '' });
-  Preferences.get.mockResolvedValue({ value: null });
-  Preferences.set.mockResolvedValue(undefined);
+  // Use mockImplementation — more resilient than mockResolvedValue in isolate:false CI
+  callServer.mockImplementation(() => Promise.resolve({ ok: false, data: '' }));
+  Preferences.get.mockImplementation(() => Promise.resolve({ value: null }));
+  Preferences.set.mockImplementation(() => Promise.resolve(undefined));
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
