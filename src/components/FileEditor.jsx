@@ -341,7 +341,7 @@ async function fetchBlame(folder, filePath) {
   const map = new Map();
   (r.data || '').split('\n').forEach((line, idx) => {
     // git blame --abbrev=7 format: "^abc1234 (Author   2024-01-01 1) code"
-    const m = line.match(/^[\^]?([0-9a-f]{4,})\s+\((.+?)\s+(\d{4}-\d{2}-\d{2})\s+\d+\)/);
+    const m = line.match(/^[\^]?([0-9a-f]{4,})\s+\(([^)]+?)\s+(\d{4}-\d{2}-\d{2})\s+\d+\)/);
     if (!m) return;
     const hash   = m[1].slice(0, 7);
     const author = m[2].trim().split(/\s+/)[0].slice(0, 8).padEnd(8);

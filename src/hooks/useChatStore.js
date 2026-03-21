@@ -94,7 +94,7 @@ export function useChatStore() {
       ], 'llama3.1-8b', () => {}, ctrl.signal, { maxTokens: 256 });
       if (reply.trim() === 'none' || !reply.includes('•')) return;
       const newMems = reply.split('\n').filter(l => l.startsWith('•'))
-        .map(l => ({ id: Date.now() + Math.random(), text: l.slice(1).trim(), folder, ts: new Date().toLocaleDateString('id') }));
+        .map(l => ({ id: crypto.randomUUID(), text: l.slice(1).trim(), folder, ts: new Date().toLocaleDateString('id') }));
       if (!newMems.length) return;
       setMemories([...newMems, ...memories].slice(0, 50));
     } catch (_e) { }
