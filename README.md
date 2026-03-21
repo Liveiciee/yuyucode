@@ -10,6 +10,9 @@
 <br/>
 
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
+[![Quality Gate](https://github.com/liveiciee/yuyucode/actions/workflows/quality.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
+[![CodeQL](https://github.com/liveiciee/yuyucode/actions/workflows/codeql.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
+[![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=alert_status)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![Version](https://img.shields.io/badge/version-4.1.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-546%20passing-brightgreen)](#testing--benchmarks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
@@ -23,6 +26,24 @@
 > *No laptop. No desktop. Ever.*
 
 </div>
+
+---
+
+## Table of Contents
+
+- [Status](#status)
+- [What is this?](#what-is-this)
+- [Demo](#demo)
+- [Features that don't exist anywhere else](#features-that-dont-exist-anywhere-else)
+- [Technically interesting things](#technically-interesting-things)
+- [Testing & Benchmarks](#testing--benchmarks)
+- [Stack](#stack)
+- [Why Cerebras + Groq instead of Claude?](#why-cerebras--groq-instead-of-claude)
+- [Getting started](#getting-started)
+- [Known limitations](#known-limitations)
+- [Project origin](#project-origin)
+- [Acknowledgements](#acknowledgements)
+- [Developer Documentation](#developer-documentation-internal--ai-context)
 
 ---
 
@@ -145,6 +166,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 - **Breadcrumb from syntax tree** — `syntaxTree(state).resolveInner(pos)` walks AST upward collecting `FunctionDeclaration`, `ClassDeclaration`, etc.
 - **Collab via `@codemirror/collab`** — OT-based update sync over yuyu-server WebSocket; `collabRooms` Map tracks version + update log per room
 - **Minimap as canvas** — 64px `<canvas>` with `requestAnimationFrame`; colors code semantically (imports=purple, comments=green, strings=yellow)
+- **D3 dependency graph** — `DepGraphPanel` renders a force-directed graph of inter-file imports using d3 v7; supports both `{nodes, edges}` and legacy `{file, imports}` format
 - **Parallel action execution** — `read_file`, `web_search`, `list_files`, `tree`, `search`, `mkdir` run in parallel; `exec` and `mcp` serial
 - **TF-IDF + age decay memory ranking** — memories scored by relevance + recency (14-day linear decay). Mini-RAG pipeline, fully client-side, no vector DB.
 - **`protect()` pattern in syntax highlighter** — prevents regex passes from matching inside already-highlighted `<span>` tags
@@ -153,7 +175,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 - **Batch server action** — `{ type: 'batch', actions: [...] }` runs multiple ops in one HTTP request; reduces agent loop roundtrips
 - **Incremental codebase map** — `yuyu-map.cjs` runs `git diff --name-only HEAD` before scanning; only changed files re-analyzed
 - **Benchmark regression detector** — `yuyu-bench.cjs` stores results in `.yuyu/bench-history.json`; flags 2× regressions vs baseline
-- **Property-based test coverage** — `parseActions` and `resolvePath` fuzz-tested with 100 random inputs each; inline fast-check-style runner, zero extra deps
+- **Property-based test coverage** — `parseActions` and `resolvePath` fuzz-tested with 100 random inputs each via `fast-check`
 - **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits, sets `package.json` version, triggers CI APK build. Supports `--no-push`, `--amend`, `--hash` revert, scopes, breaking changes, `--push`, `--squash N`, `--status`.
 
 ---
@@ -162,7 +184,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 
 ```
 546 tests passing. 0 lint warnings. Runs on Termux ARM64.
-50 of which are property-based (inline fast-check-style, 100 random inputs each).
+50 of which are property-based (fast-check, 100 random inputs each).
 ```
 
 | File | Type | Tests |
@@ -171,7 +193,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 | `api.extended.test.js` | Unit + Retry/Fallback | 15 |
 | `utils.test.js` | Unit | 22 |
 | `utils.extended.test.js` | Unit — all action types | 42 |
-| `utils.integration.test.js` | Integration + Fuzz | 18 |
+| `utils.integration.test.js` | Integration + Fuzz | 38 |
 | `utils.snapshot.test.js` | Snapshot | 7 |
 | `features.test.js` | Unit | 29 |
 | `features.extended.test.js` | Unit + Edge cases | 48 |
@@ -182,7 +204,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 | `multitab.test.js` | Unit — useFileStore multi-tab | 18 |
 | `uistore.test.js` | Unit — useUIStore | 25 |
 | `globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
-| `yuyu-map.test.cjs` | Unit — map, symbols, compress, handoff, llms.txt | 80 |
+| `yuyu-map.test.cjs` | Unit — map, symbols, compress, handoff, llms.txt | 92 |
 | `yuyu-server.test.cjs` | Integration — HTTP, read/write/patch/batch/exec | 30 |
 
 ### Benchmarks (Termux ARM64)
@@ -217,6 +239,7 @@ parseActions       84.22x  faster than mixed valid/invalid blocks (agent loop ho
 | Terminal | xterm.js |
 | File Search | Fuse.js |
 | Diff | diff library (Myers algorithm) |
+| Graph Visualization | D3 v7 (dependency graph) |
 | Build | GitHub Actions → signed APK |
 | ARM64 compat | `@rollup/wasm-node` override |
 | AI Providers | Cerebras (default) + Groq (fallback + vision) |
@@ -251,6 +274,7 @@ npm run dev
 Get free API keys:
 - [Cerebras](https://cloud.cerebras.ai) — main AI
 - [Groq](https://console.groq.com) — fallback + vision
+- [Tavily](https://tavily.com) — web search (optional)
 
 **Option A — Termux `.bashrc` (recommended):** See full setup template in the Developer Documentation section below.
 
@@ -258,6 +282,7 @@ Get free API keys:
 ```
 VITE_CEREBRAS_API_KEY=your_key
 VITE_GROQ_API_KEY=your_key
+VITE_TAVILY_API_KEY=your_key
 ```
 
 > **Note:** `npm run build` works on ARM64 (Termux) via the `@rollup/wasm-node` override — takes ~1-2 minutes. The signed APK is produced by CI. Do NOT remove that override.
