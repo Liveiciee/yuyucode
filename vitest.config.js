@@ -2,10 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import os from 'os'
 
-// vmThreads is potentially 4x faster but unstable on ARM64 (Termux).
-// Auto-detect: use vmThreads on x64, fallback to threads on ARM64.
+// vmThreads is potentially 4x faster but unstable on ARM64 (Termux) and CI.
+// ARM64 atau CI (GITHUB_ACTIONS) → threads; x64 local → vmThreads
 const isArm64 = os.arch() === 'arm64' || os.arch() === 'arm';
-const pool    = isArm64 ? 'threads' : 'vmThreads';
+const isCI    = process.env.GITHUB_ACTIONS === 'true';
+const pool    = (isArm64 || isCI) ? 'threads' : 'vmThreads';
 
 export default defineConfig({
   plugins: [react()],
