@@ -135,18 +135,20 @@ export function useProjectStore() {
     memories: _memories, checkpoints: _checkpoints, hooks: hk, githubToken: ght, githubRepo: ghr,
     sessionColor: sc, plugins, effort: ef, thinkingEnabled: th, permissions: perm, diffReview: dr,
   }) {
-    if (f)  { setFolderRaw(f); setFolderInput(f); }
-    if (ch) { try { setCmdHistory(JSON.parse(ch)); } catch (_e) { } }
-    if (mo) setModelRaw(mo);
-    if (hk) { try { setHooksRaw(JSON.parse(hk)); } catch (_e) { } }
-    if (ght) setGithubTokenRaw(ght);
-    if (ghr) setGithubRepo(ghr);
-    if (sc)  setSessionColorRaw(sc);
-    if (plugins) { try { setActivePluginsRaw(JSON.parse(plugins)); } catch (_e) { } }
-    if (ef)  setEffortRaw(ef);
-    if (th)  setThinkingEnabled(th === '1');
-    if (dr)  setDiffReviewRaw(dr === '1');
-    if (perm) { try { setPermissionsRaw(JSON.parse(perm)); } catch (_e) { } }
+    const tryJSON = (val, setter) => { try { setter(JSON.parse(val)); } catch (_e) {} };
+
+    if (f)       { setFolderRaw(f); setFolderInput(f); }
+    if (ch)      tryJSON(ch, setCmdHistory);
+    if (mo)      setModelRaw(mo);
+    if (hk)      tryJSON(hk, setHooksRaw);
+    if (ght)     setGithubTokenRaw(ght);
+    if (ghr)     setGithubRepo(ghr);
+    if (sc)      setSessionColorRaw(sc);
+    if (plugins) tryJSON(plugins, setActivePluginsRaw);
+    if (ef)      setEffortRaw(ef);
+    if (th)      setThinkingEnabled(th === '1');
+    if (dr)      setDiffReviewRaw(dr === '1');
+    if (perm)    tryJSON(perm, setPermissionsRaw);
   }
 
   // ── Load folder-specific prefs ──

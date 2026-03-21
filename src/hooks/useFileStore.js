@@ -3,6 +3,39 @@ import { Preferences } from '@capacitor/preferences';
 import { callServer } from '../api.js';
 import { executeAction, resolvePath } from '../utils.js';
 
+// ── Module-level helpers for handleApprove ───────────────────────────────────
+async function _backupFiles(targets, folder) {
+  const backups = [];
+  for (const a of targets) {
+    const backup = await callServer({ type: 'read', path: resolvePath(folder, a.path) });
+    if (backup.ok) { backups.push({ path: resolvePath(folder, a.path), content: backup.data }); a.original = backup.data; }
+  }
+  return backups;
+}
+
+function _getSyntaxCmd(ext, absPath) {
+  if (['js', 'cjs', 'mjs'].includes(ext)) return `node --check "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  if (ext === 'json') return `python3 -m json.tool "${absPath}" > /dev/null 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  if (ext === 'sh')   return `bash -n "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  return null;
+}
+
+async function _verifySyntaxBatch(targets, folder, setMessages) {
+  for (const wr of targets) {
+    const ext  = (wr.path || '').split('.').pop().toLowerCase();
+    const cmd  = _getSyntaxCmd(ext, resolvePath(folder, wr.path));
+    if (!cmd) continue;
+    const vr   = await callServer({ type: 'exec', path: folder, command: cmd });
+    const vOut = (vr.data || '').trim();
+    if (!vOut) continue;
+    const hasErr = vOut.includes('SYNTAX_ERR') || (vOut.toLowerCase().includes('error') && !vOut.includes('SYNTAX_OK'));
+    if (hasErr) {
+      const fname = (wr.path || '').split('/').pop();
+      setMessages(m => [...m, { role: 'assistant', content: 'Syntax error di ' + fname + ':\n```\n' + vOut.slice(0, 300) + '\n```', actions: [] }]);
+    }
+  }
+}
+
 export function useFileStore() {
   // ── Multi-tab state ──
   const [openTabs, setOpenTabs]       = useState([]);   // [{path, content, dirty}]
@@ -164,27 +197,25 @@ export function useFileStore() {
 
   // ── handleApprove (write file batch with backup + rollback) ──
   async function handleApprove(idx, ok, targetPath, messages, setMessages, folder, hooks, runHooksV2, permissions) {
-    const msg = messages[idx];
+    const msg     = messages[idx];
     const targets = targetPath === '__all__'
       ? (msg.actions || []).filter(a => a.type === 'write_file' && !a.executed)
-      : (msg.actions || []).filter(a => a.type === 'write_file' && !a.executed && (targetPath ? a.path === targetPath : true));
+      : (msg.actions || []).filter(a => a.type === 'write_file' && !a.executed && (!targetPath || a.path === targetPath));
 
     if (!ok) {
       setMessages(m => m.map((x, i) => i === idx
-        ? { ...x, actions: x.actions?.map(a => targets.includes(a) ? { ...a, executed: true, result: { ok: false, data: 'Dibatalkan.' } } : a) }
+        ? { ...x, actions: x.actions?.map(a => targets.includes(a)
+            ? { ...a, executed: true, result: { ok: false, data: 'Dibatalkan.' } } : a) }
         : x));
       return;
     }
 
-    const backups = [];
-    for (const a of targets) {
-      const backup = await callServer({ type: 'read', path: resolvePath(folder, a.path) });
-      if (backup.ok) { backups.push({ path: resolvePath(folder, a.path), content: backup.data }); a.original = backup.data; }
-    }
+    const backups = await _backupFiles(targets, folder);
     if (backups.length) setEditHistory(h => [...h.slice(-(10 - backups.length)), ...backups]);
 
     const results = await Promise.all(targets.map(a => executeAction(a, folder)));
-    const failed = results.filter(r => !r.ok);
+    const failed  = results.filter(r => !r.ok);
+
     if (failed.length > 0 && targets.length > 1) {
       await Promise.all(backups.map(b => callServer({ type: 'write', path: b.path, content: b.content })));
       setMessages(m => [...m, { role: 'assistant', content: '❌ Atomic write gagal (' + failed.length + ' file). Rollback.' }]);
@@ -193,28 +224,11 @@ export function useFileStore() {
 
     results.forEach((r, i) => { targets[i].result = r; targets[i].executed = true; });
     setMessages(m => m.map((x, i) => i === idx ? { ...x } : x));
-    if (targets.length > 1) setMessages(m => [...m, { role: 'assistant', content: '✅ ' + targets.length + ' file berhasil ditulis~', actions: [] }]);
+    if (targets.length > 1)
+      setMessages(m => [...m, { role: 'assistant', content: '✅ ' + targets.length + ' file berhasil ditulis~', actions: [] }]);
     await runHooksV2(hooks?.postWrite || [], targets.map(a => a.path).join(','), folder);
 
-    // Syntax verify
-    if (permissions?.exec) {
-      for (const wr of targets) {
-        const ext = (wr.path || '').split('.').pop().toLowerCase();
-        let verifyCmd = null;
-        const absPath = resolvePath(folder, wr.path);
-        if (['js', 'cjs', 'mjs'].includes(ext)) verifyCmd = `node --check "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
-        else if (ext === 'json') verifyCmd = `python3 -m json.tool "${absPath}" > /dev/null 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
-        else if (ext === 'sh') verifyCmd = `bash -n "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
-        if (!verifyCmd) continue;
-        const vr = await callServer({ type: 'exec', path: folder, command: verifyCmd });
-        const vOut = (vr.data || '').trim();
-        if (!vOut) continue;
-        if (vOut.includes('SYNTAX_ERR') || (vOut.toLowerCase().includes('error') && !vOut.includes('SYNTAX_OK'))) {
-          const fname = (wr.path || '').split('/').pop();
-          setMessages(m => [...m, { role: 'assistant', content: 'Syntax error di ' + fname + ':\n```\n' + vOut.slice(0, 300) + '\n```', actions: [] }]);
-        }
-      }
-    }
+    if (permissions?.exec) await _verifySyntaxBatch(targets, folder, setMessages);
   }
 
   return {

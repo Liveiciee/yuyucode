@@ -48,6 +48,111 @@ async function execGit(folder, cmd) {
   return r.data || '';
 }
 
+
+// ── Background agent helpers ──────────────────────────────────────────────────
+
+async function _setupBgWorktree(agent, folder, wtPath, branch) {
+  agent.log.push('Setup worktree: ' + branch);
+  const wtResult = await execGit(folder, 'git worktree add ' + wtPath + ' -b ' + branch + ' 2>&1');
+  if (wtResult.includes('fatal') || (wtResult.toLowerCase().includes('error:') && !wtResult.includes('HEAD is now'))) {
+    throw new Error('Worktree gagal: ' + wtResult.slice(0, 100));
+  }
+  agent.status = 'running';
+  agent.log.push('Worktree siap: ' + wtPath);
+}
+
+async function _executeBgActions(agent, actions, wtPath) {
+  const writes  = actions.filter(a => a.type === 'write_file');
+  const patches = actions.filter(a => a.type === 'patch_file');
+  const others  = actions.filter(a => !['write_file', 'patch_file'].includes(a.type));
+  const allWrites = [];
+  let totalPatches = 0;
+
+  for (const a of others) {
+    const r = await executeAction(a, wtPath);
+    a.result = r;
+    agent.log.push((r.ok ? '✅' : '❌') + ' ' + a.type + ': ' + (a.path || a.command || '').slice(0, 50));
+  }
+  for (const a of patches) {
+    const p = a.path.startsWith(wtPath) ? a.path : wtPath + '/' + a.path.replace(/^\//, '');
+    const r = await callServer({ type: 'patch', path: p, old_str: a.old_str, new_str: a.new_str || '' });
+    a.result = r;
+    if (r.ok) { totalPatches++; agent.log.push('✅ patch: ' + p.split('/').pop()); }
+    else       agent.log.push('❌ patch GAGAL: ' + (r.data || '').slice(0, 100));
+  }
+  for (const a of writes) {
+    const p = a.path.startsWith(wtPath) ? a.path : wtPath + '/' + a.path.replace(/^\//, '');
+    const r = await callServer({ type: 'write', path: p, content: a.content });
+    a.result = r;
+    if (r.ok) { allWrites.push({ path: p, content: a.content }); agent.log.push('✅ write: ' + p.split('/').pop()); }
+  }
+  return { allWrites, totalPatches };
+}
+
+async function _runBgAgentLoop(agent, task, wtPath, branch, callAI, signal) {
+  const MAX_BG_ITER = 8;
+  const sysPrompt = [
+    'Kamu adalah isolated background coding agent.',
+    'Working dir: ' + wtPath, 'Branch: ' + branch, 'Task: ' + task, '',
+    'ATURAN:',
+    '- Gunakan read_file dengan path relatif terhadap ' + wtPath,
+    '- patch_file untuk edit file yang ada',
+    '- write_file untuk file baru (path wajib absolute: ' + wtPath + '/filename)',
+    '- exec untuk jalankan command di ' + wtPath,
+    '- Setelah selesai tulis DONE di akhir response',
+  ].join('\n');
+
+  let bgMessages = [{ role: 'user', content: task }];
+  let allWrites = [], totalPatches = 0;
+
+  for (let iter = 0; iter < MAX_BG_ITER; iter++) {
+    agent.log.push(`Iter ${iter + 1}/${MAX_BG_ITER}`);
+    const msgs = [{ role: 'system', content: sysPrompt }, ...bgMessages];
+
+    let reply;
+    try {
+      reply = await callAI(msgs, () => {}, signal);
+    } catch(e) {
+      if (e.name === 'AbortError') throw e;
+      agent.log.push('AI error: ' + e.message);
+      break;
+    }
+
+    const actions = parseActions(reply);
+    const res = await _executeBgActions(agent, actions, wtPath);
+    allWrites = [...allWrites, ...res.allWrites];
+    totalPatches += res.totalPatches;
+
+    if (reply.includes('DONE') || (!actions.length && iter > 0)) {
+      agent.log.push('Task selesai!');
+      break;
+    }
+
+    const resultText = actions
+      .filter(a => a.result)
+      .map(a => (a.result.ok ? '✅' : '❌') + ' ' + a.type + ': ' + (a.result.data || '').slice(0, 200))
+      .join('\n');
+    bgMessages = [
+      ...bgMessages,
+      { role: 'assistant', content: reply.replace(/```action.*?```/gs, '').trim() },
+      { role: 'user', content: resultText ? 'Hasil:\n' + resultText + '\n\nLanjutkan.' : 'Lanjutkan atau tulis DONE jika sudah selesai.' },
+    ];
+  }
+  return { allWrites, totalPatches };
+}
+
+async function _commitBgChanges(agent, id, task, wtPath, branch, allWrites, totalPatches) {
+  if (allWrites.length > 0 || totalPatches > 0) {
+    await execGit(wtPath, 'git add -A');
+    const commitMsg = 'agent(' + id.slice(-6) + '): ' + task.slice(0, 50);
+    await execGit(wtPath, 'git commit -m "' + commitMsg + '"');
+    agent.log.push('Committed ke ' + branch);
+  }
+  agent.result = { allWrites, branch, wtPath };
+  agent.status = 'done';
+  agent.log.push('Selesai. ' + allWrites.length + ' file. Gunakan /bgmerge ' + id + ' untuk merge.');
+}
+
 // Background agent dengan REAL agentic loop (tidak hanya satu call)
 export async function runBackgroundAgent(task, folder, callAI, onDone) {
   const id     = 'bg_' + Date.now();
@@ -65,108 +170,10 @@ export async function runBackgroundAgent(task, folder, callAI, onDone) {
   // Async agent loop in background
   (async () => {
     try {
-      // 1. Setup worktree
-      agent.log.push('Setup worktree: ' + branch);
-      const wtResult = await execGit(folder, 'git worktree add ' + wtPath + ' -b ' + branch + ' 2>&1');
-      if (wtResult.includes('fatal') || (wtResult.toLowerCase().includes('error:') && !wtResult.includes('HEAD is now'))) {
-        throw new Error('Worktree gagal: ' + wtResult.slice(0, 100));
-      }
-      agent.status = 'running';
-      agent.log.push('Worktree siap: ' + wtPath);
-
-      // 2. Real agentic loop (up to 8 iterations)
-      const MAX_BG_ITER = 8;
-      const allWrites = [];
-      const sysPrompt = [
-        'Kamu adalah isolated background coding agent.',
-        'Working dir: ' + wtPath,
-        'Branch: ' + branch,
-        'Task: ' + task,
-        '',
-        'ATURAN:',
-        '- Gunakan read_file dengan path relatif terhadap ' + wtPath,
-        '- patch_file untuk edit file yang ada',
-        '- write_file untuk file baru (path wajib absolute: ' + wtPath + '/filename)',
-        '- exec untuk jalankan command di ' + wtPath,
-        '- Setelah selesai tulis DONE di akhir response',
-      ].join('\n');
-
-      let bgMessages = [{ role: 'user', content: task }];
-      let totalPatches = 0;
-
-      for (let iter = 0; iter < MAX_BG_ITER; iter++) {
-        agent.log.push(`Iter ${iter + 1}/${MAX_BG_ITER}`);
-        const msgs = [{ role: 'system', content: sysPrompt }, ...bgMessages];
-
-        let reply;
-        try {
-          reply = await callAI(msgs, () => {}, ctrl.signal);
-        } catch(e) {
-          if (e.name === 'AbortError') throw e;
-          agent.log.push('AI error: ' + e.message);
-          break;
-        }
-
-        const actions = parseActions(reply);
-        const writes  = actions.filter(a => a.type === 'write_file');
-        const patches  = actions.filter(a => a.type === 'patch_file');
-        const others   = actions.filter(a => !['write_file', 'patch_file'].includes(a.type));
-
-        const results = [];
-        for (const a of others) {
-          const r = await executeAction(a, wtPath);
-          a.result = r;
-          results.push(r);
-          if (r.ok) agent.log.push('✅ ' + a.type + ': ' + (a.path || a.command || '').slice(0, 50));
-          else       agent.log.push('❌ ' + a.type + ': ' + (r.data || '').slice(0, 80));
-        }
-
-        // Auto-execute patches in bg agent
-        for (const a of patches) {
-          const p = a.path.startsWith(wtPath) ? a.path : wtPath + '/' + a.path.replace(/^\//, '');
-          const r = await callServer({ type: 'patch', path: p, old_str: a.old_str, new_str: a.new_str || '' });
-          a.result = r;
-          if (r.ok) { totalPatches++; agent.log.push('✅ patch: ' + p.split('/').pop()); }
-          else       agent.log.push('❌ patch GAGAL: ' + (r.data || '').slice(0, 100));
-        }
-
-        // Write new files
-        for (const a of writes) {
-          const p = a.path.startsWith(wtPath) ? a.path : wtPath + '/' + a.path.replace(/^\//, '');
-          const r = await callServer({ type: 'write', path: p, content: a.content });
-          a.result = r;
-          if (r.ok) { allWrites.push({ path: p, content: a.content }); agent.log.push('✅ write: ' + p.split('/').pop()); }
-        }
-
-        // Break if done
-        const isDone = reply.includes('DONE') || (!actions.length && iter > 0);
-        if (isDone) { agent.log.push('Task selesai!'); break; }
-
-        // Feed results back
-        const resultText = [...others, ...patches, ...writes]
-          .filter(a => a.result)
-          .map(a => (a.result.ok ? '✅' : '❌') + ' ' + a.type + ': ' + (a.result.data || '').slice(0, 200))
-          .join('\n');
-        bgMessages = [
-          ...bgMessages,
-          { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
-          { role: 'user',      content: resultText ? 'Hasil:\n' + resultText + '\n\nLanjutkan.' : 'Lanjutkan atau tulis DONE jika sudah selesai.' },
-        ];
-      }
-
-      // 3. Commit semua perubahan
-      if (allWrites.length > 0 || totalPatches > 0) {
-        await execGit(wtPath, 'git add -A');
-        const commitMsg = 'agent(' + id.slice(-6) + '): ' + task.slice(0, 50);
-        await execGit(wtPath, 'git commit -m "' + commitMsg + '"');
-        agent.log.push('Committed ke ' + branch);
-      }
-
-      agent.result = { allWrites, branch, wtPath };
-      agent.status = 'done';
-      agent.log.push('Selesai. ' + allWrites.length + ' file. Gunakan /bgmerge ' + id + ' untuk merge.');
+      await _setupBgWorktree(agent, folder, wtPath, branch);
+      const { allWrites, totalPatches } = await _runBgAgentLoop(agent, task, wtPath, branch, callAI, ctrl.signal);
+      await _commitBgChanges(agent, id, task, wtPath, branch, allWrites, totalPatches);
       if (typeof onDone === 'function') onDone(id, agent);
-
     } catch (e) {
       agent.status = 'error';
       agent.log.push('Error: ' + (e.message || String(e)));

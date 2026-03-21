@@ -4,6 +4,100 @@ import { parseActions, executeAction, resolvePath, generateDiff } from '../utils
 import { runHooksV2, checkPermission, tokenTracker, parseElicitation, tfidfRank, selectSkills } from '../features.js';
 import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL } from '../constants.js';
 
+// ── Module-level helpers for sendMsg ─────────────────────────────────────────
+
+async function checkServerHealth() {
+  try {
+    const ping = await callServer({ type: 'ping' });
+    return ping.ok;
+  } catch (_e) { return false; }
+}
+
+function isExecError(a) {
+  if (a.type !== 'exec') return false;
+  const out = (a.result?.data || '').toLowerCase();
+  if (!out.trim()) return false;
+  const hasErr = out.includes('error') || out.includes('exception') || out.includes('traceback') ||
+    out.includes('cannot find module') || out.includes('command not found') ||
+    out.includes('exit code 1') || out.includes('failed to compile') ||
+    out.includes('syntaxerror') || out.includes('typeerror') || out.includes('referenceerror');
+  const isFP = out.includes('no error') || out.includes('0 errors') ||
+    out.includes('syntax ok') || out.includes('passed') || out.includes('✅');
+  return hasErr && !isFP;
+}
+
+function buildFeedback(readActions, safeActions, webSearchActions, patchActions, fullWriteActions, execActions) {
+  const fileData = [...readActions, ...safeActions]
+    .filter(a => a.result?.ok && !['exec','web_search','patch_file'].includes(a.type))
+    .map(a => '=== ' + (a.path || a.type) + ' ===\n' + (a.result?.data || ''))
+    .join('\n\n');
+  const webData = webSearchActions
+    .filter(a => a.result?.ok)
+    .map(a => '🌐 ' + (a.query || '') + '\n' + (a.result?.data || ''))
+    .join('\n\n');
+  const patchData = patchActions.length
+    ? patchActions.map(a => (a.result?.ok ? '✅ patch ' : '❌ patch ') + a.path).join('\n') : '';
+  const writeData = fullWriteActions.length
+    ? fullWriteActions.map(a => (a.result?.ok ? '✅ written ' : '❌ write failed ') + a.path).join('\n') : '';
+  const execData = execActions
+    .filter(a => a.type === 'exec' && a.result?.data)
+    .map(a => '$ ' + a.command + '\n' + (a.result?.data || '').slice(0, 800))
+    .join('\n\n');
+  return [fileData, webData, patchData, writeData, execData].filter(Boolean).join('\n\n');
+}
+
+async function autoLoadImports(readActions, autoContext, projectFolder) {
+  const importRegex = /(?:import|require)\s+[^'"]*['"]([^'"]+)['"]/g;
+  for (const a of readActions) {
+    if (!a.result?.ok || !a.path) continue;
+    let im;
+    const re = new RegExp(importRegex.source, 'g');
+    while ((im = re.exec(a.result.data || '')) !== null) {
+      const imp = im[1];
+      if (!imp.startsWith('.')) continue;
+      const base = a.path.split('/').slice(0, -1).join('/');
+      const candidates = [imp, imp + '.jsx', imp + '.js', imp + '.ts', imp + '.tsx']
+        .map(s => base + '/' + s.replace('./', '/').replace('//', '/'));
+      for (const cand of candidates) {
+        if (autoContext[cand]) continue;
+        const r = await callServer({ type: 'read', path: resolvePath(projectFolder, cand) });
+        if (r.ok) { autoContext[cand] = r.data; break; }
+      }
+    }
+  }
+}
+
+function getRunCmd(wr, projectFolder) {
+  const ext = (wr.path || '').split('.').pop().toLowerCase();
+  const abs = resolvePath(projectFolder, wr.path);
+  if (['js','mjs','cjs'].includes(ext))  return `node "${abs}" 2>&1 | head -30`;
+  if (ext === 'py')                       return `python3 "${abs}" 2>&1 | head -30`;
+  if (ext === 'sh')                       return `bash "${abs}" 2>&1 | head -30`;
+  if (wr.path?.includes('.test.'))        return `cd "${projectFolder}" && npx vitest run "${abs}" 2>&1 | tail -20`;
+  return null;
+}
+
+// Returns updated allMessages if error found (to trigger continue), or null
+async function autoVerifyWrites(fullWriteActions, projectFolder, allMessages, reply, iter, MAX_ITER) {
+  for (const wr of fullWriteActions.filter(a => a.result?.ok)) {
+    const runCmd = getRunCmd(wr, projectFolder);
+    if (!runCmd) continue;
+    const vr  = await callServer({ type: 'exec', path: projectFolder, command: runCmd });
+    const out = (vr.data || '').trim();
+    if (!out) continue;
+    const hasErr = /error|exception|traceback|syntaxerror|typeerror|referenceerror|cannot find/i.test(out)
+      && !/syntax ok|passed|✅|0 error/i.test(out);
+    if (hasErr && iter < MAX_ITER) {
+      return [
+        ...allMessages,
+        { role: 'assistant', content: reply.replace(/```action.*?```/gs, '').trim() },
+        { role: 'user', content: '⚡ Auto-verify: run **' + wr.path.split('/').pop() + '**\n```\n' + out.slice(0, 600) + '\n```\nAda error — fix langsung.' },
+      ];
+    }
+  }
+  return null;
+}
+
 export function useAgentLoop({
   project, chat, file, ui,
   sendNotification, haptic, speakText,
@@ -126,90 +220,59 @@ ${outB.slice(0, 1500)}
 
 
   // ── gatherProjectContext — "read before act" ─────────────────────────────────
-  // Priority: handoff.md → map.md → llms.txt → tree → keyword heuristic files
   async function gatherProjectContext(txt, _signal) {
     if (!project.folder) return {};
     const ctx = {};
+    const folder = project.folder;
 
-    // 1. Session handoff — highest priority (previous session context)
-    const handoffR = await callServer({ type: 'read', path: project.folder + '/.yuyu/handoff.md' });
+    // 1. Handoff + YUYU.md
+    const [handoffR, yuyuMdR, llmsR, mapR, treeR] = await Promise.all([
+      callServer({ type: 'read', path: folder + '/.yuyu/handoff.md' }),
+      callServer({ type: 'read', path: folder + '/YUYU.md' }),
+      callServer({ type: 'read', path: folder + '/llms.txt', from: 1, to: 80 }),
+      callServer({ type: 'read', path: folder + '/.yuyu/map.md', from: 1, to: 120 }),
+      callServer({ type: 'tree', path: folder, depth: 2 }),
+    ]);
     if (handoffR.ok && handoffR.data) ctx['__handoff__'] = handoffR.data;
+    if (yuyuMdR.ok && yuyuMdR.data) { ctx['__yuyu_rules__'] = yuyuMdR.data; project.setYuyuMd(yuyuMdR.data); }
+    if (llmsR.ok && llmsR.data)      ctx['__llms__'] = llmsR.data;
+    if (mapR.ok && mapR.data)         ctx['__map__'] = mapR.data;
+    if (treeR.ok)                     ctx['__tree__'] = treeR.data;
 
-    // 1c. YUYU.md — persistent project rules (reload fresh setiap sesi)
-    const yuyuMdR = await callServer({ type: 'read', path: project.folder + '/YUYU.md' });
-    if (yuyuMdR.ok && yuyuMdR.data) {
-      ctx['__yuyu_rules__'] = yuyuMdR.data;
-      // Sync ke project state supaya buildSystemPrompt selalu pakai versi terbaru
-      project.setYuyuMd(yuyuMdR.data);
+    // 2. Pinned files (parallel)
+    const pinned = (project.pinnedFiles || []).slice(0, 5);
+    if (pinned.length) {
+      const pinnedReads = await Promise.all(pinned.map(p => callServer({ type: 'read', path: p, to: 80 })));
+      pinnedReads.forEach((r, i) => { if (r.ok) ctx['📌 ' + pinned[i].split('/').pop()] = r.data; });
     }
 
-    // 1b. Pinned files — always inject into context
-    const pinned = project.pinnedFiles || [];
-    if (pinned.length > 0) {
-      const pinnedReads = await Promise.all(
-        pinned.slice(0, 5).map(p => callServer({ type: 'read', path: p, to: 80 }))
-      );
-      pinnedReads.forEach((r, i) => {
-        if (r.ok) ctx['📌 ' + pinned[i].split('/').pop()] = r.data;
-      });
-    }
-
-    // 2. Codebase map — symbol index (signatures only, low token cost)
-    const mapR = await callServer({ type: 'read', path: project.folder + '/.yuyu/map.md', from: 1, to: 120 });
-    if (mapR.ok && mapR.data) ctx['__map__'] = mapR.data;
-
-    // 2b. Compressed source — repomix-style, bodies stripped (~70% reduction)
-    // Only load if task is complex (mentions multiple files or refactor keywords)
-    const needsCompressed = /refactor|overhaul|all files|semuanya|codebase|arsitektur/i.test(txt);
-    if (needsCompressed) {
-      const compR = await callServer({ type: 'read', path: project.folder + '/.yuyu/compressed.md', from: 1, to: 200 });
+    // 3. Compressed source — only for complex refactor tasks
+    if (/refactor|overhaul|all files|semuanya|codebase|arsitektur/i.test(txt)) {
+      const compR = await callServer({ type: 'read', path: folder + '/.yuyu/compressed.md', from: 1, to: 200 });
       if (compR.ok && compR.data) ctx['__compressed__'] = compR.data;
     }
 
-    // 3. llms.txt — project brief (architecture, constraints, patterns)
-    const llmsR = await callServer({ type: 'read', path: project.folder + '/llms.txt', from: 1, to: 80 });
-    if (llmsR.ok && llmsR.data) ctx['__llms__'] = llmsR.data;
-
-    // 4. Tree struktur (always — untuk spatial awareness)
-    const treeR = await callServer({ type: 'tree', path: project.folder, depth: 2 });
-    if (treeR.ok) ctx['__tree__'] = treeR.data;
-
-    // 5. Keyword heuristic — file yang spesifik relevan dengan task
-    const keywords = txt.toLowerCase();
+    // 4. Keyword heuristic — map keywords to relevant files
+    const kw = txt.toLowerCase();
+    const KEYWORD_FILES = [
+      [['api','fetch','cerebras','groq'],         '/src/api.js'],
+      [['agent','loop','sendmsg'],                 '/src/hooks/useAgentLoop.js'],
+      [['panel','ui','modal'],                     '/src/components/panels.jsx'],
+      [['constant','model','theme'],               '/src/constants.js'],
+      [['server','yuyu-server','exec'],            '/yuyu-server.js'],
+      [['feature','skill','plan'],                 '/src/features.js'],
+      [['brightness','gamma','color'],             '/src/hooks/useBrightness.js'],
+      [['slash','command'],                        '/src/hooks/useSlashCommands.js'],
+      [['editor','codemirror','tab'],              '/src/components/FileEditor.jsx'],
+    ];
     const keyFiles = [];
-
-    // Task mentions file name directly
     const fileMatch = txt.match(/\b([\w/-]+\.(?:js|jsx|ts|tsx|json|md|css|py|sh))\b/g);
-    if (fileMatch) fileMatch.forEach(f => keyFiles.push(
-      f.startsWith('/') ? f : project.folder + '/src/' + f
-    ));
+    if (fileMatch) fileMatch.forEach(f => keyFiles.push(f.startsWith('/') ? f : folder + '/src/' + f));
+    KEYWORD_FILES.forEach(([keys, file]) => { if (keys.some(k => kw.includes(k))) keyFiles.push(folder + file); });
 
-    // Keyword → relevant file
-    if (keywords.includes('api') || keywords.includes('fetch') || keywords.includes('cerebras') || keywords.includes('groq'))
-      keyFiles.push(project.folder + '/src/api.js');
-    if (keywords.includes('agent') || keywords.includes('loop') || keywords.includes('sendmsg'))
-      keyFiles.push(project.folder + '/src/hooks/useAgentLoop.js');
-    if (keywords.includes('panel') || keywords.includes('ui') || keywords.includes('modal'))
-      keyFiles.push(project.folder + '/src/components/panels.jsx');
-    if (keywords.includes('constant') || keywords.includes('model') || keywords.includes('theme'))
-      keyFiles.push(project.folder + '/src/constants.js');
-    if (keywords.includes('server') || keywords.includes('yuyu-server') || keywords.includes('exec'))
-      keyFiles.push(project.folder + '/yuyu-server.js');
-    if (keywords.includes('feature') || keywords.includes('skill') || keywords.includes('plan'))
-      keyFiles.push(project.folder + '/src/features.js');
-    if (keywords.includes('brightness') || keywords.includes('gamma') || keywords.includes('color'))
-      keyFiles.push(project.folder + '/src/hooks/useBrightness.js');
-    if (keywords.includes('slash') || keywords.includes('command'))
-      keyFiles.push(project.folder + '/src/hooks/useSlashCommands.js');
-    if (keywords.includes('editor') || keywords.includes('codemirror') || keywords.includes('tab'))
-      keyFiles.push(project.folder + '/src/components/FileEditor.jsx');
-
-    // 6. Baca paralel — max 5 additional files
     const unique = [...new Set(keyFiles)].slice(0, 5);
     const reads  = await Promise.all(unique.map(p => callServer({ type: 'read', path: p, from: 1, to: 50 })));
-    unique.forEach((p, i) => {
-      if (reads[i].ok && reads[i].data) ctx[p.split('/').pop()] = reads[i].data;
-    });
+    unique.forEach((p, i) => { if (reads[i].ok && reads[i].data) ctx[p.split('/').pop()] = reads[i].data; });
 
     return ctx;
   }
@@ -321,18 +384,10 @@ ${outB.slice(0, 1500)}
 
       // ── MAIN AGENT LOOP ──
       // ── Server health check before first iter ──
-      try {
-        const ping = await callServer({ type: 'ping' });
-        if (!ping.ok) throw new Error('server not ok');
-      } catch (_pingErr) {
-        chat.setLoading(false);
-        chat.setStreaming('');
-        chat.setAgentStatus(null);
-        chat.setMessages(m => [...m, {
-          role: 'assistant',
-          content: '❌ **yuyu-server tidak dapat dijangkau!**\n\nPastikan server berjalan di Termux:\n```bash\nyuyu-server-start\n# atau\nnode ~/yuyu-server.js &\n```\n\nLalu coba lagi.',
-          actions: []
-        }]);
+      const serverOk = await checkServerHealth();
+      if (!serverOk) {
+        chat.setLoading(false); chat.setStreaming(''); chat.setAgentStatus(null);
+        chat.setMessages(m => [...m, { role: 'assistant', content: '❌ **yuyu-server tidak dapat dijangkau!**\n\nPastikan server berjalan di Termux:\n```bash\nyuyu-server-start\n# atau\nnode ~/yuyu-server.js &\n```\n\nLalu coba lagi.', actions: [] }]);
         return;
       }
 
@@ -539,64 +594,16 @@ ${outB.slice(0, 1500)}
 
           // ── Auto-verify after write — run file, feed error back ──
           if (project.permissions?.exec) {
-            for (const wr of fullWriteActions.filter(a => a.result?.ok)) {
-              const ext  = (wr.path || '').split('.').pop().toLowerCase();
-              const abs  = resolvePath(project.folder, wr.path);
-              let runCmd = null;
-              if (['js','mjs','cjs'].includes(ext))  runCmd = `node "${abs}" 2>&1 | head -30`;
-              else if (ext === 'py')                  runCmd = `python3 "${abs}" 2>&1 | head -30`;
-              else if (ext === 'sh')                  runCmd = `bash "${abs}" 2>&1 | head -30`;
-              else if (wr.path?.includes('.test.'))   runCmd = `cd "${project.folder}" && npx vitest run "${abs}" 2>&1 | tail -20`;
-              if (!runCmd) continue;
-              const vr  = await callServer({ type: 'exec', path: project.folder, command: runCmd });
-              const out = (vr.data || '').trim();
-              if (!out) continue;
-              const hasErr = /error|exception|traceback|syntaxerror|typeerror|referenceerror|cannot find/i.test(out)
-                && !/syntax ok|passed|✅|0 error/i.test(out);
-              if (hasErr && iter < MAX_ITER) {
-                allMessages = [
-                  ...allMessages,
-                  { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
-                  { role: 'user', content: '⚡ Auto-verify: run **' + wr.path.split('/').pop() + '**\n```\n' + out.slice(0, 600) + '\n```\nAda error — fix langsung.' },
-                ];
-                break; // re-enter loop with error context
-              }
-            }
+            const verifyBreak = await autoVerifyWrites(fullWriteActions, project.folder, allMessages, reply, iter, MAX_ITER);
+            if (verifyBreak) { allMessages = verifyBreak; continue; }
           }
         }
 
         // ── Auto-load imports dari file yang dibaca ──
-        for (const a of readActions) {
-          if (!a.result?.ok || !a.path) continue;
-          const importRegex = /(?:import|require)\s+.*?['"](.+?)['"]/g;
-          let im;
-          while ((im = importRegex.exec(a.result.data || '')) !== null) {
-            const imp = im[1];
-            if (!imp.startsWith('.')) continue;
-            const base = a.path.split('/').slice(0, -1).join('/');
-            const candidates = [imp, imp + '.jsx', imp + '.js', imp + '.ts', imp + '.tsx']
-              .map(s => base + '/' + s.replace('./', '/').replace('//', '/'));
-            for (const cand of candidates) {
-              if (autoContext[cand]) continue;
-              const r = await callServer({ type: 'read', path: resolvePath(project.folder, cand) });
-              if (r.ok) { autoContext[cand] = r.data; break; }
-            }
-          }
-        }
+        await autoLoadImports(readActions, autoContext, project.folder);
 
         // ── Exec error → auto-fix loop ──
-        const execErrors = execActions.filter(a => {
-          if (a.type !== 'exec') return false;
-          const out = (a.result?.data || '').toLowerCase();
-          if (!out.trim()) return false;
-          const hasErr = out.includes('error') || out.includes('exception') || out.includes('traceback') ||
-            out.includes('cannot find module') || out.includes('command not found') ||
-            out.includes('exit code 1') || out.includes('failed to compile') ||
-            out.includes('syntaxerror') || out.includes('typeerror') || out.includes('referenceerror');
-          const isFP = out.includes('no error') || out.includes('0 errors') ||
-            out.includes('syntax ok') || out.includes('passed') || out.includes('✅');
-          return hasErr && !isFP;
-        });
+        const execErrors = execActions.filter(isExecError);
 
         if (execErrors.length > 0 && iter < MAX_ITER) {
           const errSummary = execErrors.map(a =>
@@ -615,35 +622,7 @@ ${outB.slice(0, 1500)}
           ...readActions, ...webSearchActions, ...safeActions,
           ...execActions, ...patchActions, ...fullWriteActions,
         ];
-
-        const fileData = [...readActions, ...safeActions]
-          .filter(a => a.result?.ok && !['exec', 'web_search', 'patch_file'].includes(a.type))
-          .map(a => '=== ' + (a.path || a.type) + ' ===\n' + (a.result?.data || ''))
-          .join('\n\n');
-
-        const webData = webSearchActions
-          .filter(a => a.result?.ok)
-          .map(a => '🌐 ' + (a.query || '') + '\n' + (a.result?.data || ''))
-          .join('\n\n');
-
-        const patchData = patchActions.length
-          ? patchActions.map(a =>
-              (a.result?.ok ? '✅ patch ' : '❌ patch ') + a.path
-            ).join('\n')
-          : '';
-
-        const writeData = fullWriteActions.length
-          ? fullWriteActions.map(a =>
-              (a.result?.ok ? '✅ written ' : '❌ write failed ') + a.path
-            ).join('\n')
-          : '';
-
-        const execData = execActions
-          .filter(a => a.type === 'exec' && a.result?.data)
-          .map(a => '$ ' + a.command + '\n' + (a.result?.data || '').slice(0, 800))
-          .join('\n\n');
-
-        const combinedData = [fileData, webData, patchData, writeData, execData].filter(Boolean).join('\n\n');
+        const combinedData = buildFeedback(readActions, safeActions, webSearchActions, patchActions, fullWriteActions, execActions);
 
         // ── Tidak ada data baru → done ──
         if (!combinedData) {

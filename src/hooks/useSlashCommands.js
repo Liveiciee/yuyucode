@@ -203,27 +203,34 @@ export function useSlashCommands({
       if (!r.ok) return;
       const label = path.split('/').pop().replace(/\.(jsx?|tsx?)$/, '');
       nodesMap[path] = { id: path, label, type: depth === 0 ? 'root' : 'local' };
-      const src = r.data || '';
-      let m2;
+      await parseImports(r.data || '', path, depth);
+    }
+
+    async function parseImports(src, fromPath, depth) {
       const re = new RegExp(importRegex.source, 'g');
+      let m2;
       while ((m2 = re.exec(src)) !== null) {
         const imp = m2[1];
         if (!imp.startsWith('.')) {
           if (!nodesMap[imp]) nodesMap[imp] = { id: imp, label: imp.split('/').pop(), type: 'external' };
-          edges.push({ source: path, target: imp });
+          edges.push({ source: fromPath, target: imp });
         } else {
-          const base2 = path.split('/').slice(0, -1).join('/');
-          const candidates = [imp, imp + '.jsx', imp + '.js', imp + '.ts', imp + '.tsx']
-            .map(s => base2 + '/' + s.replace('./', '/').replace('//', '/'))
-            .concat([base2 + '/' + imp.replace('./', '').replace('//', '/')]);
-          for (const cand of candidates) {
-            const cr = await callServer({ type: 'read', path: cand });
-            if (cr.ok) {
-              if (!nodesMap[cand]) await parseFile(cand, depth + 1);
-              edges.push({ source: path, target: cand });
-              break;
-            }
-          }
+          await resolveLocalImport(imp, fromPath, depth);
+        }
+      }
+    }
+
+    async function resolveLocalImport(imp, fromPath, depth) {
+      const base2 = fromPath.split('/').slice(0, -1).join('/');
+      const candidates = [imp, imp + '.jsx', imp + '.js', imp + '.ts', imp + '.tsx']
+        .map(s => base2 + '/' + s.replace('./', '/').replace('//', '/'))
+        .concat([base2 + '/' + imp.replace('./', '').replace('//', '/')]);
+      for (const cand of candidates) {
+        const cr = await callServer({ type: 'read', path: cand });
+        if (cr.ok) {
+          if (!nodesMap[cand]) await parseFile(cand, depth + 1);
+          edges.push({ source: fromPath, target: cand });
+          break;
         }
       }
     }
