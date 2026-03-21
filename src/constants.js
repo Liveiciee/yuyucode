@@ -208,7 +208,7 @@ export const SLASH_COMMANDS = [
   { cmd:'/checkpoint', desc:'Simpan checkpoint sesi ini' },
   { cmd:'/restore',    desc:'Restore checkpoint terakhir' },
   { cmd:'/cost',       desc:'Estimasi token terpakai + savings vs GPT-4' },
-  { cmd:'/review',     desc:'Code review file aktif' },
+  { cmd:'/review',     desc:'Code review — file aktif, spesifik, atau --all changed files' },
   { cmd:'/clear',      desc:'Clear chat history' },
   { cmd:'/export',     desc:'Export chat ke .md' },
   { cmd:'/history',    desc:'Lihat file history (git log)' },

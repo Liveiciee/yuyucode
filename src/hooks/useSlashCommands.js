@@ -124,7 +124,36 @@ ${recentMsgs.map(m=>m.role+': '+(m.content||'').slice(0,400)).join('\n\n')}` }
 
     } else if (base==='/review') {
       const targetPath = parts.slice(1).join(' ').trim();
-      if (targetPath) {
+
+      if (targetPath === '--all' || targetPath === '-a') {
+        // /review --all — review semua changed files vs HEAD
+        setLoading(true);
+        setMessages(m=>[...m,{role:'assistant',content:'🔍 Menganalisis semua file yang berubah vs HEAD...',actions:[]}]);
+        const diffR = await callServer({type:'exec', path:folder, command:'git diff --name-only HEAD 2>/dev/null'});
+        const changedFiles = (diffR.ok ? diffR.data : '')
+          .trim().split('\n').filter(f => f && /\.(js|jsx|ts|tsx|css|json)$/.test(f));
+        if (changedFiles.length === 0) {
+          setMessages(m=>[...m,{role:'assistant',content:'✅ Tidak ada file yang berubah vs HEAD.',actions:[]}]);
+          setLoading(false); return;
+        }
+        // Baca semua file changed (max 8)
+        const toReview = changedFiles.slice(0, 8);
+        const reads = await Promise.all(toReview.map(f => callServer({type:'read', path:folder+'/'+f})));
+        const fileBlocks = toReview.map((f, i) => {
+          const content = reads[i]?.ok ? reads[i].data.slice(0, 2500) : '[tidak bisa dibaca]';
+          const ext = f.split('.').pop();
+          return '### ' + f + '\n```' + ext + '\n' + content + '\n```';
+        }).join('\n\n');
+        setLoading(false);
+        await sendMsg(
+          '🔍 **Code Review — ' + toReview.length + ' file changed vs HEAD**\n\n' +
+          'Review setiap file di bawah. Untuk setiap file cari:\n' +
+          '1. 🐛 Bugs potensial\n2. ⚡ Performance issues\n3. 🔒 Security issues\n4. 🧪 Missing error handling\n5. 💡 Saran improvement\n\n' +
+          'Format output: per-file dengan severity (🔴 High / 🟡 Medium / 🟢 Low).\n\n' +
+          fileBlocks
+        );
+
+      } else if (targetPath) {
         // /review src/api.js — load file directly
         setLoading(true);
         const r = await callServer({type:'read', path: folder+'/'+targetPath.replace(/^\//,'')});
@@ -135,7 +164,7 @@ ${recentMsgs.map(m=>m.role+': '+(m.content||'').slice(0,400)).join('\n\n')}` }
         const reviewContent = fileContent ? '\n\n```\n'+fileContent.slice(0,5000)+'\n```' : '';
         await sendMsg('Lakukan code review menyeluruh pada file '+selectedFile+'. Cari: bugs potensial, performance issues, security issues, dan saran improvement.'+reviewContent);
       } else {
-        setMessages(m=>[...m,{role:'assistant',content:'Usage: /review atau /review src/file.js',actions:[]}]);
+        setMessages(m=>[...m,{role:'assistant',content:'**`/review`** — Code review\n\n- `/review` — review file yang terbuka\n- `/review src/api.js` — review file spesifik\n- `/review --all` — review semua file changed vs HEAD',actions:[]}]);
       }
 
     } else if (base==='/stop') {

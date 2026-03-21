@@ -421,8 +421,34 @@ export function AppChat({
                 chat.setInput(e.target.value);
                 e.target.style.height = 'auto';
                 e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
-                if (e.target.value.startsWith('/')) chat.setSlashSuggestions(SLASH_COMMANDS.filter(s => s.cmd.startsWith(e.target.value)));
-                else chat.setSlashSuggestions([]);
+                if (e.target.value.startsWith('/')) {
+                  const typed = e.target.value.toLowerCase();
+                  // Fuzzy prefix + substring match
+                  const matched = SLASH_COMMANDS.filter(s =>
+                    s.cmd.startsWith(typed) || s.cmd.includes(typed.slice(1))
+                  );
+                  // Context boost: periksa pesan terakhir untuk saran relevan
+                  const lastMsg = chat.messages[chat.messages.length - 1];
+                  const lastContent = (lastMsg?.content || '').toLowerCase();
+                  const contextBoost = [];
+                  if (typed === '/') {
+                    if (lastContent.includes('error') || lastContent.includes('❌') || lastContent.includes('failed'))
+                      contextBoost.push('/fix', '/review', '/lint');
+                    if (lastContent.includes('function') || lastContent.includes('const') || lastContent.includes('def'))
+                      contextBoost.push('/test', '/review');
+                    if (lastContent.includes('file terbuka') || lastContent.includes('opened'))
+                      contextBoost.push('/test', '/review', '/simplify');
+                    if (lastContent.includes('selesai') || lastContent.includes('done') || lastContent.includes('✅'))
+                      contextBoost.push('/review --all', '/lint', '/test');
+                  }
+                  // Sort: context boost dulu, lalu alphabetical
+                  const sorted = [...matched].sort((a, b) => {
+                    const aBoost = contextBoost.includes(a.cmd) ? -1 : 0;
+                    const bBoost = contextBoost.includes(b.cmd) ? -1 : 0;
+                    return aBoost - bBoost;
+                  });
+                  chat.setSlashSuggestions(sorted.slice(0, 8));
+                } else chat.setSlashSuggestions([]);
               }}
               onKeyDown={e => {
                 if (e.key === 'ArrowUp' && !chat.input) { const i = Math.min(project.histIdx + 1, project.cmdHistory.length - 1); project.setHistIdx(i); chat.setInput(project.cmdHistory[i] || ''); }

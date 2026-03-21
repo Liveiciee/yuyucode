@@ -17,9 +17,16 @@ export function useApprovalFlow({
       : (msg.actions || []).filter(a => isWrite(a) && (targetPath ? a.path === targetPath : true));
 
     if (!ok) {
+      // Mark rejected
       setMessages(m => m.map((x, i) => i === idx
-        ? { ...x, actions: x.actions?.map(a => targets.includes(a) ? { ...a, executed: true, result: { ok: false, data: 'Dibatalkan.' } } : a) }
+        ? { ...x, actions: x.actions?.map(a => targets.includes(a) ? { ...a, executed: true, result: { ok: false, data: 'Ditolak.' } } : a) }
         : x));
+      // Feedback ke AI — resume loop dengan info rejection
+      const rejectedPaths = targets.map(a => a.path).join(', ');
+      setTimeout(() => sendMsgRef.current?.(
+        '❌ User menolak perubahan ke: **' + rejectedPaths + '**\n\n' +
+        'Coba pendekatan lain atau tanya dulu apa yang diinginkan sebelum menulis ulang.'
+      ), 300);
       return;
     }
 
@@ -46,6 +53,19 @@ export function useApprovalFlow({
     if (targets.length > 1)
       setMessages(m => [...m, { role: 'assistant', content: '✅ ' + targets.length + ' file berhasil ditulis~', actions: [] }]);
     await runHooksV2(hooks?.postWrite || [], targets.map(a => a.path).join(','), folder);
+
+    // Auto-resume agent loop jika semua pending writes di message ini sudah selesai
+    const allDone = (msg.actions || [])
+      .filter(a => a.type === 'write_file' || a.type === 'patch_file')
+      .every(a => a.executed);
+    if (allDone) {
+      const writtenPaths = targets.filter(a => a.result?.ok).map(a => a.path).join(', ');
+      if (writtenPaths) {
+        setTimeout(() => sendMsgRef.current?.(
+          '✅ Semua perubahan disetujui dan berhasil ditulis: **' + writtenPaths + '**\n\nLanjutkan task.'
+        ), 400);
+      }
+    }
 
     // Syntax verify (jika exec permission aktif)
     if (permissions?.exec) {
