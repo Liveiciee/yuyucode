@@ -10,6 +10,7 @@
 <br/>
 
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
+[![Version](https://img.shields.io/badge/version-4.1.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-546%20passing-brightgreen)](#testing--benchmarks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
@@ -27,7 +28,7 @@
 
 ## Status
 
-> **Personal tool. Works on one phone — mine.** Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). No contributions expected, though issues are welcome. Use at your own risk.
+> **v4.1.0** — Personal tool. Works on one phone — mine. Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). No contributions expected, though issues are welcome. Use at your own risk.
 
 ---
 
@@ -80,7 +81,7 @@ CodeMirror 6 with a complete extension suite:
 |---|---|
 | **Vim mode** | normal/insert/visual, full `hjkl`, `:wq` saves |
 | **Emmet** | `div.container>ul>li*3` → HTML via Ctrl+E |
-| **AI Ghost Text** | Copilot-style inline suggestion, 900ms debounce, Tab to accept |
+| **AI Ghost Text L1+L2** | L1: next line 300ms (Tab accept) · L2: 2-3 baris 900ms (Tab+Tab accept), warna berbeda |
 | **Minimap** | 64px canvas overview, semantic colors, click to jump |
 | **Inline Lint** | Syntax error gutter markers (JSON + JS) |
 | **Code Folding** | Fold all / unfold all |
@@ -129,6 +130,15 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 ### 🔎 Fuse.js Fuzzy File Search
 `cmpt` finds `components/`, `astst` finds `useAgentStore`. Full fuzzy match on filename + path.
 
+### 📋 YUYU.md — Persistent Project Rules
+Drop a `YUYU.md` in your project root — Yuyu reads it every session, before every agent loop. Coding standards, architecture decisions, forbidden patterns. `/rules add "..."` to append from chat. `/rules init` to generate one from your codebase.
+
+### 🔍 Visual Diff Review
+Toggle **Diff Review** in `/config` — agent pauses before applying any `patch_file` or `write_file`. Each file shows a colour-coded diff (green adds, red removes) before you approve. Reject sends feedback back to the agent with your reason. Accept resumes the loop automatically.
+
+### 📝 /review --all
+`/review --all` reads all files changed vs HEAD (up to 8), runs a structured PR-level review across all of them — bugs, security issues, missing error handling, performance flags — with severity per finding.
+
 ---
 
 ## Technically interesting things
@@ -152,6 +162,9 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 - **Benchmark regression detector** — `yuyu-bench.cjs` stores results in `.yuyu/bench-history.json`; flags any function that regresses 2× vs baseline (`npm run bench`)
 - **Property-based test coverage** — `parseActions` and `resolvePath` are fuzz-tested with 100 random inputs per property; inline fc-style runner, zero extra deps
 - **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits and sets `package.json` version before pushing; CI uses that version for the GitHub Release tag. Supports `--no-push`, `--amend`, `--hash` revert, scope `feat(x):`, breaking change `feat!:`, body/footer multi-line commits, `--push` (push-only), `--squash N` (squash last N commits), and `--status` (quick git overview).
+- **Two-level ghost text** — L1 (`StateField` + 300ms debounce, Llama 8B) for next-line; L2 (`ghostL2Field` + 900ms, separate `Decoration`) for 2–3 line lookahead. Tab accepts L1; double-Tab accepts L2 via timestamp delta < 400ms.
+- **Diff review intercept** — when `diffReview` is ON, agent loop pre-computes `generateDiff()` on patch/write actions, marks them `pending`, pushes to UI, and `return`s — loop pauses. `useApprovalFlow.handleApprove()` resumes via `sendMsgRef` with approve/reject context. Reject triggers AI self-correction without re-entering loop from scratch.
+- **YUYU.md context injection** — loaded in `gatherProjectContext()` at the start of every session, re-read fresh each time, injected into `buildSystemPrompt()` after AGENTS.md. Higher priority than notes, lower than system prompt.
 
 ---
 
@@ -494,7 +507,7 @@ node yugit.cjs --squash 3                         # squash 3 commit terakhir
 node yugit.cjs --status                           # lihat branch + dirty + recent commits
 
 # Release — auto set version + trigger CI APK build
-node yugit.cjs "release: v2.x — deskripsi"
+node yugit.cjs "release: v4.x — deskripsi"
 
 npx vitest bench --run  # benchmark hot paths (opsional)
 npm run bench           # benchmark + compare ke history (regresi detection)
