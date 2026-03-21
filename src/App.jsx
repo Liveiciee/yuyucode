@@ -88,6 +88,7 @@ export default function App() {
     notes: project.notes, memories: chat.memories, checkpoints: chat.checkpoints,
     skills: project.skills, thinkingEnabled: project.thinkingEnabled, effort: project.effort,
     loopActive: project.loopActive, loopIntervalRef: project.loopIntervalRef,
+    searchMessages: chat.searchMessages, setGracefulStop: chat.setGracefulStop, loading: chat.loading,
     agentMemory: project.agentMemory, splitView: file.splitView,
     pushToTalk: project.pushToTalk, sessionName: project.sessionName,
     sessionColor: project.sessionColor, fileWatcherActive: project.fileWatcherActive,

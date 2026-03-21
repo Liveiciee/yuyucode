@@ -99,6 +99,21 @@ Split view with a live `<iframe srcdoc>` that rebuilds 300ms after any edit. Aut
 ### 🔍 Global Find & Replace
 Grep across all project files — grouped by file, expandable, match highlighted. Regex mode, case-sensitive toggle. Replace all: reads, patches, re-searches automatically.
 
+### 📌 Pinned Context Files
+`/pin src/api.js` — file di-pin ke context permanent. Selalu masuk ke setiap agent loop tanpa perlu buka manual. `/unpin` untuk lepas.
+
+### 🔍 Chat Search
+Tombol 🔍 di input area atau `/search <query>` untuk cari di history chat. Klik hasil → scroll ke message.
+
+### ⏸ Graceful Stop
+Tombol ⏸ muncul saat agent loop berjalan — selesaikan iterasi ini dulu baru berhenti. Berbeda dengan ■ hard abort.
+
+### ↩ Global Undo
+`/undo` atau `/undo 3` — batalkan N file edit terakhir dari agent, kembalikan ke versi sebelumnya.
+
+### 🤖 One-shot Model Override
+`/ask kimi review kode ini` — tanya model tertentu sekali tanpa ganti default. Alias: `kimi`, `llama`, `llama8b`, `qwen`, `scout`, `qwen235`.
+
 ### 🤝 Realtime Collaboration
 `/collab <room>` connects two devices to the same editing session via WebSocket. OT-based sync using `@codemirror/collab`. No third-party service needed.
 

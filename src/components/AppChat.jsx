@@ -1,7 +1,7 @@
 // ── AppChat ───────────────────────────────────────────────────────────────────
 // Center area: multi-tab bar, chat, file viewer, file editor, terminal,
 // live preview, keyboard row, follow-up chips, quick bar, and composer.
-import React, { useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Pin, Eye, ScrollText, Camera, Paperclip, Volume2, VolumeX, Loader, Play } from 'lucide-react';
 import { hl } from '../utils.js';
 import { MsgBubble, MsgContent, StreamingBubble } from './MsgBubble.jsx';
@@ -23,6 +23,7 @@ export function AppChat({
 }) {
   const chatRef       = useRef(null);
   const bottomRef     = useRef(null);
+  const [searchQ, setSearchQ] = useState(null); // null=hidden, ''=open
   const inputRef      = useRef(null);
   const fileEditorRef = useRef(null);
 
@@ -428,7 +429,7 @@ export function AppChat({
                 if (e.key === 'ArrowDown' && project.histIdx > -1) { const i = project.histIdx - 1; project.setHistIdx(i); chat.setInput(i >= 0 ? project.cmdHistory[i] : ''); }
               }}
               placeholder="Tanya Yuyu, atau / untuk commands"
-              disabled={chat.loading} rows={1}
+              disabled={chat.loading} rows={searchQ !== null && searchQ !== '' ? 1 : 1}
               style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none',
                 resize: 'none', padding: '12px 16px 4px', color: chat.loading ? T.textMute : T.text,
                 fontSize: '14px', fontFamily: 'inherit', lineHeight: '1.6', display: 'block',
@@ -452,6 +453,10 @@ export function AppChat({
                 <Paperclip size={16}/>
               </button>
               <div style={{ flex: 1 }}/>
+              <button onClick={() => setSearchQ(q => q === null ? '' : null)}
+                title="Cari di chat" style={{background:'none',border:'none',color:searchQ!==null?T.accent:T.textMute,cursor:'pointer',padding:'6px',borderRadius:'8px',display:'flex',alignItems:'center'}}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </button>
               <VoiceBtn disabled={chat.loading} T={T} onResult={txt => { chat.setInput(i => i ? i + ' ' + txt : txt); inputRef.current?.focus(); }}/>
               {project.pushToTalk && <PushToTalkBtn onResult={v => { if (v?.trim()) { chat.setInput(''); sendMsg(v.trim()); } else { chat.setInput(v); } }} disabled={chat.loading} T={T}/>}
               <button
@@ -463,10 +468,19 @@ export function AppChat({
                 {chat.ttsEnabled ? <Volume2 size={15}/> : <VolumeX size={15}/>}
               </button>
               {chat.loading
-                ? <button onClick={cancelMsg} title="Batalkan"
+                ? <>
+                    {chat.agentRunning && !chat.gracefulStop && (
+                      <button onClick={() => chat.setGracefulStop(true)}
+                        title="Selesaikan iterasi ini lalu stop"
+                        style={{background:T.warningBg,border:'1px solid '+T.warning+'66',color:T.warning,borderRadius:'8px',padding:'8px 10px',cursor:'pointer',fontSize:'11px',marginRight:'4px'}}>
+                        ⏸
+                      </button>
+                    )}
+                    <button onClick={cancelMsg} title="Batalkan"
                     style={{ background: T.errorBg, border: 'none', borderRadius: '12px', color: T.error,
                       cursor: 'pointer', flexShrink: 0, width: '36px', height: '36px', display: 'flex',
                       alignItems: 'center', justifyContent: 'center', fontSize: '14px', marginLeft: '4px' }}>■</button>
+                  </>
                 : <button onClick={() => sendMsg()} title="Kirim"
                     style={{ background: chat.input.trim() ? T.accent : 'rgba(255,255,255,.08)', border: 'none',
                       borderRadius: '12px', color: chat.input.trim() ? 'white' : T.textMute,

@@ -11,6 +11,7 @@ export function useChatStore() {
   const [loading, setLoading]     = useState(false);
   const [streaming, setStreaming] = useState('');
   const [agentRunning, setAgentRunning] = useState(false);
+  const [gracefulStop, setGracefulStop]   = useState(false); // finish iter then stop
   const [agentStatus, setAgentStatus]   = useState(''); // e.g. 'Iter 2/10 · exec'
   const [showFollowUp, setShowFollowUp] = useState(false);
 
@@ -181,10 +182,18 @@ export function useChatStore() {
     messages, setMessages,
     deleteMessage: (idx) => setMessages(m => m.filter((_, i) => i !== idx)),
     editMessage:   (idx, newContent) => setMessages(m => m.map((msg, i) => i === idx ? { ...msg, content: newContent } : msg)),
+    searchMessages: (q) => {
+      if (!q.trim()) return [];
+      const lq = q.toLowerCase();
+      return messages
+        .map((m, i) => ({ ...m, idx: i }))
+        .filter(m => (m.content || '').toLowerCase().includes(lq));
+    },
     input, setInput,
     loading, setLoading,
     streaming, setStreaming,
     agentRunning, setAgentRunning,
+    gracefulStop, setGracefulStop,
     agentStatus, setAgentStatus,
     showFollowUp, setShowFollowUp,
     rateLimitTimer, setRateLimitTimer,

@@ -1,77 +1,68 @@
 # YuyuCode — Master Plan Sesi Berikutnya
-> Dibuat: 2026-03-21 | Status saat ini: v3.0 released ✅
+> Dibuat: 2026-03-21 | Status saat ini: v3.1 released ✅
 > Pesan dari owner: "Berat, Lama, Susah Bukan Hambatan. All in selama sesuai ekspektasi."
 
 ---
 
-## ✅ SELESAI SESI INI (v2.9.2 → v3.0)
+## ✅ SELESAI SESI INI (v3.0.3 → v3.1)
 
-### ✅ yuyu-server.test.cjs — DONE (0 → 30 tests)
-File baru di root. 30 tests, 10 describe groups:
-- REST endpoints: GET /, /health, /status, OPTIONS CORS
-- ping
-- read/write/delete: content, from/to slice, missing file errors, nested dirs
-- append
-- patch: exact match, not found error, delete by empty string
-- mkdir/list/info/move
-- read_many: multiple files, null for missing
-- batch: multi-action, partial failure, empty array error, continues after failure
-- exec: simple command, failing command
-- unknown type + invalid JSON body
+### ✅ Context window bar visual
+- Progress bar `chars/80K` realtime, kuning (50K) → merah (68K)
+- `CONTEXT_WARN_CHARS = 50_000` di constants.js
 
-### ✅ CI/CD — Lint + Test sebelum build — DONE
-`build-apk.yml` sekarang punya 2 step baru sebelum `Build Vite`:
-```yaml
-- name: Lint
-  run: npm run lint
-- name: Test
-  run: npx vitest run
-  env: CI: true
-```
-Build APK tidak akan jalan kalau lint atau test gagal.
+### ✅ Graceful stop
+- Tombol ⏸ di samping ■ cancel saat agent running
+- `/stop` slash command
+- `chat.gracefulStop` flag — selesaikan iter dulu baru berhenti
 
-### ✅ vitest.config.js — include root .cjs — DONE
-```js
-include: ['src/**/*.test.{js,cjs}', '*.test.cjs']
-```
-yuyu-server.test.cjs dan yuyu-map.test.cjs otomatis di-pick up.
+### ✅ Chat search
+- Tombol 🔍 di input area + search bar inline
+- `chat.searchMessages(q)` — filter messages
+- `/search <query>` command
+
+### ✅ Read cache di yuyu-server
+- TTL 10s, max 50 entries, auto-invalidate on write/patch/delete
+
+### ✅ /clear smarter
+- Tanya simpan dulu kalau ada messages, `/clear force` untuk langsung
+
+### ✅ /undo global
+- `/undo N` — batalkan N file edit terakhir dari agent
+
+### ✅ /cost enhanced
+- Tambah estimasi savings vs GPT-4o
+
+### ✅ /pin + /unpin
+- Pin file ke context permanent — selalu masuk agent loop
+- Inject ke gatherProjectContext otomatis
+
+### ✅ /diff
+- `/diff` → git diff working tree
+- `/diff v3.0..v3.1` → diff antara commits
+
+### ✅ /ask — one-shot model override
+- `/ask kimi review ini` — tanya model tertentu sekali
+- Alias: kimi, llama, llama8b, qwen, scout, qwen235
+- `sendMsg(txt, { overrideModel })` pattern
+
+### ✅ Server offline detection
+- Health check sebelum loop mulai
+- Friendly error + instruksi restart kalau server mati
 
 ---
 
 ## 📋 CONTEXT PENTING UNTUK SESI BARU
 
 ### State saat ini:
-- Version: 3.0.0
-- Tests: 516 → **546+** ✅ (+ 30 yuyu-server)
-- Test files: 17 (tambah 1)
-- Lint: 0 errors ✅
-- CI: lint + test + build ✅
+- Version: 3.1.0
+- Tests: 546 ✅
+- Slash commands: ~66
+- CI: green ✅
 
-### File-file kunci:
-- `yuyu-server.test.cjs` — NEW, 30 tests, HTTP integration
-- `.github/workflows/build-apk.yml` — lint + test gate
-- `vitest.config.js` — include root .cjs files
-
-### Command release:
-```bash
-npm run lint && npx vitest run
-node yugit.cjs "release: v3.0 — server test suite, CI lint+test gate, full coverage"
-```
-
----
-
-## 🔴 PRIORITAS TERSISA (minor)
-
-### P1 — yuyu-server improvements lanjutan
-- **WebSocket streaming batch** — parallel exec_stream via WS
-- **in-memory cache** untuk `read` requests (TTL 30s)
-
-### P2 — app features
-- Pakai app, catat bugs/UX issues, gas fix
-
-### P3 — test improvements
-- `yuyu-server.test.cjs` — tambah rate limit test (429 response)
-- Property-based test untuk patch handler (random old_str patterns)
+### Yang belum dikerjain:
+- Keyboard shortcut row customizable per project
+- Multi-file /undo (undo semua file dari satu agent iteration sekaligus)
+- Token cost per model yang lebih akurat (rate Cerebras/Groq API)
 
 ---
 
@@ -79,7 +70,7 @@ node yugit.cjs "release: v3.0 — server test suite, CI lint+test gate, full cov
 
 1. Baca file ini
 2. Kirim zip fresh
-3. Pakai app — catat semua yang annoying/broken
-4. Gas fix satu per satu
+3. Pakai app — catat yang masih annoying
+4. Gas fix atau fitur baru
 
 > "Berat, Lama, Susah Bukan Hambatan" 🚀

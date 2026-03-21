@@ -9,6 +9,23 @@ const { execSync, spawn } = require('child_process');
 const VERBOSE    = process.argv.includes('--verbose');
 const START_TIME = Date.now();
 
+// ── Simple read cache — TTL 10s ──────────────────────────────────────────────
+// Prevents duplicate reads of same file in same agent loop iteration.
+const _readCache = new Map(); // path → { data, meta, ts }
+const READ_CACHE_TTL = 10_000; // 10 seconds
+
+function getCached(path) {
+  const e = _readCache.get(path);
+  if (!e) return null;
+  if (Date.now() - e.ts > READ_CACHE_TTL) { _readCache.delete(path); return null; }
+  return e;
+}
+function setCache(path, data, meta) {
+  _readCache.set(path, { data, meta, ts: Date.now() });
+  // Limit cache size to 50 entries
+  if (_readCache.size > 50) _readCache.delete(_readCache.keys().next().value);
+}
+
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 // Prevents runaway agent loops from hammering the server.
 // Default: 120 requests/minute per IP (generous for normal use).
@@ -241,9 +258,15 @@ function handle(payload) {
   // ── FILE OPS ──
   if (type === 'read') {
     if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath };
+    // Use cache for full reads (no from/to) — saves disk I/O in agent loops
+    if (!from && !to) {
+      const cached = getCached(full);
+      if (cached) return { ok: true, data: cached.data, meta: cached.meta, cached: true };
+    }
     let data = fs.readFileSync(full, 'utf8');
     const totalLines = data.split('\n').length;
     const totalChars = data.length;
+    if (!from && !to) setCache(full, data, { totalLines, totalChars });
     if (from || to) {
       const lines = data.split('\n');
       const f = (from || 1) - 1;
@@ -273,6 +296,7 @@ function handle(payload) {
   if (type === 'write') {
     fs.mkdirSync(path.dirname(full), { recursive: true });
     fs.writeFileSync(full, content, 'utf8');
+    _readCache.delete(full); // invalidate cache
     return { ok: true, data: '✅ Tersimpan: ' + filePath };
   }
 

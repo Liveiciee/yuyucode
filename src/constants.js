@@ -10,6 +10,7 @@ export const MAX_HISTORY  = 60;
 
 // ── Agent loop limits ─────────────────────────────────────────────────────────
 export const AUTO_COMPACT_CHARS   = 80_000;  // trigger auto-compact
+export const CONTEXT_WARN_CHARS    = 50_000;  // show yellow context bar warning
 export const AUTO_COMPACT_MIN_MSG = 12;      // min messages before auto-compact
 export const MAX_FILE_PREVIEW     = 2_000;   // chars of open file injected to context
 export const MAX_SKILL_PREVIEW    = 6_000;   // max chars per skill in context
@@ -205,7 +206,7 @@ export const SLASH_COMMANDS = [
   { cmd:'/compact',    desc:'Kompres context sekarang' },
   { cmd:'/checkpoint', desc:'Simpan checkpoint sesi ini' },
   { cmd:'/restore',    desc:'Restore checkpoint terakhir' },
-  { cmd:'/cost',       desc:'Estimasi token terpakai' },
+  { cmd:'/cost',       desc:'Estimasi token terpakai + savings vs GPT-4' },
   { cmd:'/review',     desc:'Code review file aktif' },
   { cmd:'/clear',      desc:'Clear chat history' },
   { cmd:'/export',     desc:'Export chat ke .md' },

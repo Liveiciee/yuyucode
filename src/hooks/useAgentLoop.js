@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { askCerebrasStream, callServer } from '../api.js';
 import { parseActions, executeAction, resolvePath } from '../utils.js';
 import { runHooksV2, checkPermission, tokenTracker, parseElicitation, tfidfRank, selectSkills } from '../features.js';
-import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL } from '../constants.js';
+import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL, CONTEXT_WARN_CHARS } from '../constants.js';
 
 export function useAgentLoop({
   project, chat, file, ui,
@@ -130,6 +130,17 @@ ${outB.slice(0, 1500)}
     const handoffR = await callServer({ type: 'read', path: project.folder + '/.yuyu/handoff.md' });
     if (handoffR.ok && handoffR.data) ctx['__handoff__'] = handoffR.data;
 
+    // 1b. Pinned files — always inject into context
+    const pinned = project.pinnedFiles || [];
+    if (pinned.length > 0) {
+      const pinnedReads = await Promise.all(
+        pinned.slice(0, 5).map(p => callServer({ type: 'read', path: p, to: 80 }))
+      );
+      pinnedReads.forEach((r, i) => {
+        if (r.ok) ctx['📌 ' + pinned[i].split('/').pop()] = r.data;
+      });
+    }
+
     // 2. Codebase map — symbol index (signatures only, low token cost)
     const mapR = await callServer({ type: 'read', path: project.folder + '/.yuyu/map.md', from: 1, to: 120 });
     if (mapR.ok && mapR.data) ctx['__map__'] = mapR.data;
@@ -227,8 +238,8 @@ ${outB.slice(0, 1500)}
   }
 
     // ── sendMsg — agent loop ──
-  async function sendMsg(override) {
-    const txt = (override || chat.input).trim();
+  async function sendMsg(override, _opts = {}) {
+    const txt = (typeof override === 'string' ? override : chat.input).trim();
     if (!txt || chat.loading) return;
 
     // Slash command
@@ -293,8 +304,29 @@ ${outB.slice(0, 1500)}
       let autoContext = { ...(autoContextRef.current || {}) };
 
       // ── MAIN AGENT LOOP ──
+      // ── Server health check before first iter ──
+      try {
+        const ping = await callServer({ type: 'ping' });
+        if (!ping.ok) throw new Error('server not ok');
+      } catch (_pingErr) {
+        chat.setLoading(false);
+        chat.setStreaming('');
+        chat.setAgentStatus(null);
+        chat.setMessages(m => [...m, {
+          role: 'assistant',
+          content: '❌ **yuyu-server tidak dapat dijangkau!**\n\nPastikan server berjalan di Termux:\n```bash\nyuyu-server-start\n# atau\nnode ~/yuyu-server.js &\n```\n\nLalu coba lagi.',
+          actions: []
+        }]);
+        return;
+      }
+
       while (iter < MAX_ITER) {
         iter++;
+        // Graceful stop — finish this iteration then stop
+        if (chat.gracefulStop) {
+          chat.setGracefulStop(false);
+          chat.setAgentStatus('Menyelesaikan iterasi terakhir...');
+        }
         if (iter > 1) chat.setAgentRunning(true);
         chat.setAgentStatus(`Iter ${iter}/${MAX_ITER}`);
 

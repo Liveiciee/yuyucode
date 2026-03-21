@@ -25,7 +25,9 @@ export function useSlashCommands({
   setShowMergeConflict, setMergeConflictData,
   setShowSkills, setShowBgAgents,
   // functions
-  sendMsg, compactContext, saveCheckpoint, exportChat,
+  sendMsg, compactContext, saveCheckpoint, exportChat, searchMessages,
+  setGracefulStop, loading,
+  editHistory, setEditHistory, pinnedFiles, togglePin,
   browseTo, runAgentSwarm, callAI, abTest,
   growth,
   sendNotification, haptic,
@@ -113,7 +115,11 @@ ${recentMsgs.map(m=>m.role+': '+(m.content||'').slice(0,400)).join('\n\n')}` }
       setShowCheckpoints(true);
 
     } else if (base==='/cost') {
-      setMessages(m=>[...m,{role:'assistant',content:tokenTracker.summary(),actions:[]}]);
+      const summary = tokenTracker.summary();
+      // Add estimated savings vs OpenAI GPT-4
+      const gpt4Cost = ((tokenTracker.inputTokens / 1000) * 0.03 + (tokenTracker.outputTokens / 1000) * 0.06).toFixed(3);
+      const savings = `\n\n💰 **Estimasi vs GPT-4o:** ~$${gpt4Cost} (kamu pakai gratis 🎉)`;
+      setMessages(m=>[...m,{role:'assistant',content:summary+savings,actions:[]}]);
 
     } else if (base==='/review') {
       const targetPath = parts.slice(1).join(' ').trim();
@@ -131,13 +137,44 @@ ${recentMsgs.map(m=>m.role+': '+(m.content||'').slice(0,400)).join('\n\n')}` }
         setMessages(m=>[...m,{role:'assistant',content:'Usage: /review atau /review src/file.js',actions:[]}]);
       }
 
+    } else if (base==='/stop') {
+      if (loading) {
+        setGracefulStop(true);
+        setMessages(m=>[...m,{role:'assistant',content:'⏸ **Graceful stop** — Yuyu akan menyelesaikan iterasi ini lalu berhenti.',actions:[]}]);
+      } else {
+        setMessages(m=>[...m,{role:'assistant',content:'✅ Tidak ada yang berjalan sekarang.',actions:[]}]);
+      }
     } else if (base==='/clear') {
-      setMessages([{role:'assistant',content:'Chat dibersihkan. Mau ngerjain apa Papa? 🌸'}]);
-      Preferences.remove({key:'yc_history'});
+      const force = parts[1] === 'force';
+      if (!force && messages.length > 3) {
+        setMessages(m=>[...m,{role:'assistant',content:
+          '🗑 **Mau clear chat?**\n\n'+
+          '- `/save` dulu untuk simpan sesi ini\n'+
+          '- `/clear force` untuk langsung hapus tanpa simpan\n\n'+
+          '_Ketik salah satu atau lanjut ngobrol._',actions:[]}]);
+      } else {
+        setMessages([{role:'assistant',content:'Chat dibersihkan. Mau ngerjain apa Papa? 🌸'}]);
+        Preferences.remove({key:'yc_history'});
+      }
 
     } else if (base==='/export') {
       exportChat();
 
+    } else if (base==='/search') {
+      const q = parts.slice(1).join(' ');
+      if (!q) {
+        setMessages(m=>[...m,{role:'assistant',content:'🔍 Usage: /search <query>\n\nContoh: /search "useAgentLoop"',actions:[]}]);
+      } else {
+        const results = searchMessages(q);
+        if (!results || results.length === 0) {
+          setMessages(m=>[...m,{role:'assistant',content:'🔍 Tidak ada hasil untuk "'+q+'"',actions:[]}]);
+        } else {
+          const preview = results.slice(0,5).map((r,_i) =>
+            `**[${r.idx+1}]** ${r.role==='user'?'👤 Kamu':'🌸 Yuyu'}: ${(r.content||'').slice(0,100)}${r.content?.length>100?'...':''}`
+          ).join('\n\n');
+          setMessages(m=>[...m,{role:'assistant',content:`🔍 **${results.length} hasil** untuk "${q}":\n\n${preview}`,actions:[]}]);
+        }
+      }
     } else if (base==='/history') {
       if (!selectedFile) { setMessages(m=>[...m,{role:'assistant',content:'Buka file dulu Papa~',actions:[]}]); return; }
       setShowFileHistory(true);
@@ -149,6 +186,26 @@ ${recentMsgs.map(m=>m.role+': '+(m.content||'').slice(0,400)).join('\n\n')}` }
       setSplitView(s=>!s);
       setMessages(m=>[...m,{role:'assistant',content:'Split view '+(splitView?'dimatikan':'diaktifkan')+'~',actions:[]}]);
 
+    } else if (base==='/diff') {
+      const range = parts.slice(1).join(' ').trim();
+      setLoading(true);
+      const cmd = range
+        ? `git diff ${range} --stat`
+        : 'git diff HEAD --stat';
+      const r = await callServer({ type: 'exec', path: folder, command: cmd });
+      setLoading(false);
+      if (!r.ok || !r.data?.trim()) {
+        setMessages(m=>[...m,{role:'assistant',content:'±  Tidak ada diff.\n\nUsage: `/diff` (working tree) atau `/diff v3.0..v3.1`',actions:[]}]);
+      } else {
+        // Also get full diff if small
+        const lines = (r.data||'').split('\n').length;
+        let full = '';
+        if (lines < 30) {
+          const rd = await callServer({ type: 'exec', path: folder, command: range ? `git diff ${range}` : 'git diff HEAD' });
+          if (rd.ok) full = '\n```diff\n' + rd.data.slice(0, 3000) + '\n```';
+        }
+        setMessages(m=>[...m,{role:'assistant',content:'± **Git diff** '+(range||'HEAD')+':\n```\n'+r.data+'\n```'+full,actions:[]}]);
+      }
     } else if (base==='/deps') {
       if (!selectedFile) { setMessages(m=>[...m,{role:'assistant',content:'Buka file dulu Papa~',actions:[]}]); return; }
       setLoading(true);
@@ -263,6 +320,26 @@ ${recentMsgs.map(m=>m.role+': '+(m.content||'').slice(0,400)).join('\n\n')}` }
       setMessages(prev=>[...prev,{role:'assistant',content:
         '📓 **Token breakdown (10 pesan terakhir)**\n```\n'+breakdown+'\n```\n**Total:** ~'+countTokens(messages)+'tk | Cerebras gratis 🎉',actions:[]}]);
 
+    } else if (base==='/pin') {
+      const target = parts.slice(1).join(' ').trim();
+      if (!target) {
+        const pins = (pinnedFiles||[]);
+        if (pins.length === 0) {
+          setMessages(m=>[...m,{role:'assistant',content:'📌 Belum ada file yang di-pin.\n\nUsage: `/pin src/api.js` — file ini akan selalu masuk context.',actions:[]}]);
+        } else {
+          setMessages(m=>[...m,{role:'assistant',content:'📌 **Pinned files** (selalu masuk context):\n'+pins.map(p=>'- `'+p+'`').join('\n')+'\n\n`/pin <file>` untuk tambah, `/unpin <file>` untuk hapus.',actions:[]}]);
+        }
+      } else {
+        togglePin(folder+'/'+target.replace(/^\//,''));
+        const isNowPinned = !(pinnedFiles||[]).includes(folder+'/'+target.replace(/^\//,''));
+        setMessages(m=>[...m,{role:'assistant',content:(isNowPinned?'📌 Pinned':'📌 Unpinned')+': `'+target+'`\n'+(isNowPinned?'File ini akan selalu masuk context agent loop.':'File dikeluarkan dari pinned context.'),actions:[]}]);
+      }
+    } else if (base==='/unpin') {
+      const target = parts.slice(1).join(' ').trim() || selectedFile;
+      if (target) {
+        togglePin(target.startsWith('/')?target:folder+'/'+target);
+        setMessages(m=>[...m,{role:'assistant',content:'📌 Unpinned: `'+target+'`',actions:[]}]);
+      }
     } else if (base==='/index') {
       // Real-time symbol index via yuyu-server — all function signatures, no bodies
       setLoading(true);
@@ -343,6 +420,23 @@ ${recentMsgs.map(m=>m.role+': '+(m.content||'').slice(0,400)).join('\n\n')}` }
       Preferences.set({key:'yc_effort',value:lvl});
       setMessages(m=>[...m,{role:'assistant',content:'⚡ Effort: **'+lvl+'**',actions:[]}]);
 
+    } else if (base==='/undo') {
+      const n = parseInt(parts[1]) || 1;
+      // undo N file edits from editHistory
+      const history = editHistory || [];
+      if (history.length === 0) {
+        setMessages(m=>[...m,{role:'assistant',content:'⏪ Tidak ada edit yang bisa di-undo.',actions:[]}]);
+      } else {
+        const toUndo = history.slice(-n);
+        let undone = [];
+        for (const item of toUndo) {
+          const r = await callServer({ type: 'write', path: item.path, content: item.content });
+          if (r.ok) undone.push(item.path.split('/').pop());
+        }
+        setEditHistory(h => h.slice(0, -n));
+        setMessages(m=>[...m,{role:'assistant',content:
+          `⏪ **Undo ${undone.length} edit:** ${undone.join(', ')}\n\nFile dikembalikan ke versi sebelumnya.`,actions:[]}]);
+      }
     } else if (base==='/rewind') {
       const turns = parseInt(parts[1])||1;
       const rewound = rewindMessages(messages, turns);
@@ -552,9 +646,9 @@ ${recentMsgs.map(m=>m.role+': '+(m.content||'').slice(0,400)).join('\n\n')}` }
       setLoading(false);
       await sendMsg(`MODE: SELF-EDIT\n\nTask: ${task}\n\nBaca src/App.jsx secara bertahap dengan read_file (from/to 100 baris per request). Setelah baca bagian yang relevan, gunakan write_file untuk patch minimal. Jangan tulis ulang seluruh file.`);
 
-    } else if (base==='/search') {
+    } else if (base==='/websearch') {
       const query = parts.slice(1).join(' ').trim();
-      if (!query) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /search <query>\nContoh: /search react useEffect cleanup',actions:[]}]); return; }
+      if (!query) { setMessages(m=>[...m,{role:'assistant',content:'Usage: /websearch <query>\nContoh: /websearch react useEffect cleanup',actions:[]}]); return; }
       setLoading(true);
       setMessages(m=>[...m,{role:'assistant',content:'🔍 Searching: **'+query+'**...',actions:[]}]);
       const r = await callServer({type:'web_search', query});
@@ -637,6 +731,27 @@ Tulis ke SKILL.md menggunakan write_file. Format singkat, padat, max 50 baris.`)
       await sendMsg('Scaffold project '+tpl+' di folder '+folder+'. Buat struktur file lengkap dengan write_file: package.json, file utama, README.md singkat. Pakai dependencies terbaru 2025. Langsung buat tanpa tanya.');
       setLoading(false);
 
+    } else if (base==='/ask') {
+      // /ask <model> <prompt> — tanya model tertentu sekali tanpa ganti default
+      // contoh: /ask kimi "review kode ini" atau /ask llama8b "explain this"
+      const modelAlias = {
+        'kimi': 'moonshotai/kimi-k2-instruct-0905',
+        'llama': 'llama-3.3-70b-versatile',
+        'llama8b': 'llama-3.1-8b-instant',
+        'qwen': 'qwen/qwen3-32b',
+        'scout': 'meta-llama/llama-4-scout-17b-16e-instruct',
+        'qwen235': 'qwen-3-235b-a22b-instruct-2507',
+      };
+      const alias = parts[1]?.toLowerCase();
+      const targetModel = modelAlias[alias] || parts[1];
+      const prompt = parts.slice(2).join(' ').trim();
+      if (!targetModel || !prompt) {
+        setMessages(m=>[...m,{role:'assistant',content:
+          '🤖 Usage: `/ask <model> <prompt>`\n\nAlias: `kimi` `llama` `llama8b` `qwen` `scout` `qwen235`\n\nContoh: `/ask kimi review kode ini`',actions:[]}]);
+      } else {
+        setMessages(m=>[...m,{role:'assistant',content:'🤖 Asking **'+alias+'** ('+targetModel.split('/').pop()+')...',actions:[]}]);
+        sendMsg(prompt, { overrideModel: targetModel });
+      }
     } else if (base==='/ab') {
       const task = parts.slice(1).join(' ').trim();
       if (!task) {
