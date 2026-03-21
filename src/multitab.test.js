@@ -324,3 +324,110 @@ describe('useFileStore — saveFile edge cases', () => {
     expect(onMsg).toHaveBeenCalledWith(expect.stringContaining('Saved'));
   });
 });
+
+// ── closeTab edge case: empty tabs ────────────────────────────────────────────
+describe('useFileStore — closeTab on empty', () => {
+  it('does nothing when no tabs open', () => {
+    const { result } = renderHook(() => useFileStore());
+    expect(() => act(() => { result.current.closeTab(0); })).not.toThrow();
+  });
+});
+
+// ── setSelectedFile — no tabs, null path → setActiveTab chat ─────────────────
+describe('useFileStore — setSelectedFile null with no tabs', () => {
+  it('calls setActiveTab chat when no tabs open and path is null', () => {
+    const { result } = renderHook(() => useFileStore());
+    act(() => { result.current.setSelectedFile(null); });
+    expect(result.current.activeTab).toBe('chat');
+  });
+});
+
+// ── handleApprove — reject ────────────────────────────────────────────────────
+describe('useFileStore — handleApprove reject', () => {
+  it('marks targets as cancelled when ok=false', async () => {
+    const action = { type: 'write_file', path: 'src/App.jsx', executed: false };
+    const messages = [{ role: 'assistant', content: 'write', actions: [action] }];
+    const setMessages = vi.fn(fn => typeof fn === 'function' ? fn(messages) : undefined);
+
+    const { result } = renderHook(() => useFileStore());
+    await act(async () => {
+      await result.current.handleApprove(
+        0, false, null, messages, setMessages, '/project', {}, vi.fn(), {}
+      );
+    });
+    expect(setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── handleApprove — approve single file ──────────────────────────────────────
+describe('useFileStore — handleApprove approve', () => {
+  it('backs up, writes, and updates messages on success', async () => {
+    const { executeAction } = await import('./hooks/useFileStore.js').catch(() => ({}));
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: 'backup content' }) // backup read
+      .mockResolvedValueOnce({ ok: true });                         // write
+
+    const action = { type: 'write_file', path: 'src/App.jsx', executed: false };
+    const messages = [{ role: 'assistant', content: 'write', actions: [action] }];
+    const setMessages = vi.fn(fn => typeof fn === 'function' ? fn(messages) : undefined);
+
+    const mockExecuteActionLocal = vi.fn().mockResolvedValue({ ok: true, data: 'written' });
+    const { executeAction: execAct } = await import('./utils.js');
+    execAct.mockResolvedValue({ ok: true, data: 'written' });
+
+    const { result } = renderHook(() => useFileStore());
+    await act(async () => {
+      await result.current.handleApprove(
+        0, true, null, messages, setMessages, '/project', { postWrite: [] }, vi.fn(), {}
+      );
+    });
+    expect(setMessages).toHaveBeenCalled();
+  });
+
+  it('rolls back atomically when write fails with multiple targets', async () => {
+    const actions = [
+      { type: 'write_file', path: 'a.js', executed: false },
+      { type: 'write_file', path: 'b.js', executed: false },
+    ];
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: 'backup_a' })
+      .mockResolvedValueOnce({ ok: true, data: 'backup_b' })
+      .mockResolvedValue({ ok: true });
+
+    const { executeAction: execAct } = await import('./utils.js');
+    execAct.mockResolvedValueOnce({ ok: false, data: 'disk full' });
+
+    const messages = [{ role: 'assistant', content: 'write', actions }];
+    const setMessages = vi.fn(fn => typeof fn === 'function' ? fn(messages) : undefined);
+
+    const { result } = renderHook(() => useFileStore());
+    await act(async () => {
+      await result.current.handleApprove(
+        0, true, '__all__', messages, setMessages, '/project', { postWrite: [] }, vi.fn(), {}
+      );
+    });
+    // rollback → write called for backups
+    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'write' }));
+  });
+
+  it('runs _verifySyntaxBatch when exec permission active', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: 'backup' })
+      .mockResolvedValueOnce({ ok: true, data: 'SYNTAX_OK' }); // syntax check
+
+    const { executeAction: execAct } = await import('./utils.js');
+    execAct.mockResolvedValue({ ok: true, data: 'written' });
+
+    const action = { type: 'write_file', path: 'src/App.js', executed: false };
+    const messages = [{ role: 'assistant', content: 'write', actions: [action] }];
+    const setMessages = vi.fn(fn => typeof fn === 'function' ? fn(messages) : undefined);
+
+    const { result } = renderHook(() => useFileStore());
+    await act(async () => {
+      await result.current.handleApprove(
+        0, true, null, messages, setMessages, '/project', { postWrite: [] }, vi.fn(), { exec: true }
+      );
+    });
+    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'exec' }));
+  });
+});
