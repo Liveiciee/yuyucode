@@ -1109,3 +1109,253 @@ describe('unknown command', () => {
     await expect(runCmd(props, '/doesnotexist')).resolves.not.toThrow();
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /batch
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/batch', () => {
+  it('shows usage when no command given', async () => {
+    const props = makeProps();
+    await runCmd(props, '/batch');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('lists src files and processes them', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: [
+        { name: 'App.jsx', isDir: false },
+        { name: 'utils.js', isDir: false },
+      ]})
+      .mockResolvedValueOnce({ ok: true, data: 'file content' })
+      .mockResolvedValueOnce({ ok: true, data: 'file content' });
+    const props = makeProps({ callAI: vi.fn().mockResolvedValue('SKIP') });
+    await runCmd(props, '/batch tambah JSDoc');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows error when list src fails', async () => {
+    callServer.mockResolvedValueOnce({ ok: false, data: 'permission denied' });
+    const props = makeProps();
+    await runCmd(props, '/batch tambah JSDoc');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /handoff
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/handoff', () => {
+  it('generates and saves handoff when folder is set', async () => {
+    callServer.mockResolvedValue({ ok: true, data: '' });
+    const props = makeProps({
+      folder: '/project',
+      askCerebrasStream: vi.fn().mockResolvedValue('# Handoff content'),
+    });
+    // askCerebrasStream is called directly — mock via api module
+    const { askCerebrasStream: ask } = await import('../api.js');
+    ask.mockResolvedValue('# Handoff content');
+    await runCmd(props, '/handoff');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows handoff in chat when no folder', async () => {
+    const { askCerebrasStream: ask } = await import('../api.js');
+    ask.mockResolvedValue('# Handoff content');
+    const props = makeProps({ folder: null });
+    await runCmd(props, '/handoff');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /deps
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/deps', () => {
+  it('shows error when no file selected', async () => {
+    const props = makeProps({ selectedFile: null });
+    await runCmd(props, '/deps');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('builds dep graph when file selected', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: "import React from 'react';\nimport { useState } from 'react';" })
+      .mockResolvedValue({ ok: false, data: '' });
+    const props = makeProps({ selectedFile: '/project/src/App.jsx' });
+    await runCmd(props, '/deps');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /refactor
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/refactor', () => {
+  it('shows usage when args missing', async () => {
+    const props = makeProps();
+    await runCmd(props, '/refactor');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('sends refactor message when args provided', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: '/project/src/App.jsx:10: OldName' });
+    const props = makeProps({ sendMsg: vi.fn().mockResolvedValue(undefined) });
+    await runCmd(props, '/refactor OldName NewName');
+    expect(props.sendMsg).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /loop edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/loop edge cases', () => {
+  it('shows usage when format is invalid', async () => {
+    const props = makeProps();
+    await runCmd(props, '/loop badformat');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('stops active loop when no args', async () => {
+    const props = makeProps({ loopActive: true, loopIntervalRef: { current: setInterval(() => {}, 9999) } });
+    await runCmd(props, '/loop');
+    expect(props.setLoopActive).toHaveBeenCalledWith(false);
+  });
+
+  it('starts loop with hour unit', async () => {
+    callServer.mockResolvedValue({ ok: true, data: 'ok' });
+    const props = makeProps({ loopActive: false });
+    await runCmd(props, '/loop 1h git status');
+    expect(props.setLoopActive).toHaveBeenCalledWith(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /search edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/search edge cases', () => {
+  it('shows usage when no query', async () => {
+    const props = makeProps();
+    await runCmd(props, '/search');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows no results message when empty', async () => {
+    const props = makeProps({ searchMessages: vi.fn().mockReturnValue([]) });
+    await runCmd(props, '/search nonexistent');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /undo edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/undo edge cases', () => {
+  it('shows message when history is empty', async () => {
+    const props = makeProps({ editHistory: [] });
+    await runCmd(props, '/undo');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('undoes N edits from history', async () => {
+    callServer.mockResolvedValue({ ok: true, data: '' });
+    const props = makeProps({
+      editHistory: [
+        { path: '/project/a.js', content: 'old a' },
+        { path: '/project/b.js', content: 'old b' },
+      ],
+    });
+    await runCmd(props, '/undo 2');
+    expect(callServer).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /amemory edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/amemory edge cases', () => {
+  it('shows all memories when sub is show', async () => {
+    const props = makeProps({
+      agentMemory: { user: [{ text: 'mem1', ts: '2024' }], project: [], local: [] },
+    });
+    await runCmd(props, '/amemory show');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('clears scope memory', async () => {
+    const props = makeProps({
+      agentMemory: { user: [{ text: 'mem1', ts: '2024' }], project: [], local: [] },
+    });
+    await runCmd(props, '/amemory clear user');
+    expect(props.setAgentMemory).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /rules edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/rules edge cases', () => {
+  it('clear command resets YUYU.md', async () => {
+    callServer.mockResolvedValue({ ok: true, data: '' });
+    const props = makeProps({ folder: '/project' });
+    await runCmd(props, '/rules clear');
+    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'write' }));
+  });
+
+  it('edit command sends msg to read YUYU.md', async () => {
+    const props = makeProps({ sendMsg: vi.fn().mockResolvedValue(undefined) });
+    await runCmd(props, '/rules edit');
+    expect(props.sendMsg).toHaveBeenCalled();
+  });
+
+  it('unknown subcommand shows help', async () => {
+    const props = makeProps();
+    await runCmd(props, '/rules unknown');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /bgmerge edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/bgmerge edge cases', () => {
+  it('shows usage when no id', async () => {
+    const props = makeProps();
+    await runCmd(props, '/bgmerge');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows conflict info on conflict result', async () => {
+    featuresModule.mergeBackgroundAgent.mockResolvedValueOnce({
+      ok: false,
+      hasConflicts: true,
+      conflicts: ['src/App.jsx'],
+      previews: [],
+      msg: 'Konflik di 1 file.',
+    });
+    const props = makeProps();
+    await runCmd(props, '/bgmerge agent-123');
+    expect(props.setShowMergeConflict).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /diff edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/diff edge cases', () => {
+  it('shows no diff message when output is empty', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: '' });
+    const props = makeProps();
+    await runCmd(props, '/diff');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows large diff with full read', async () => {
+    const manyLines = Array.from({ length: 35 }, (_, i) => `line${i}`).join('\n');
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: manyLines })
+      .mockResolvedValueOnce({ ok: true, data: 'full diff output' });
+    const props = makeProps();
+    await runCmd(props, '/diff HEAD~1');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
