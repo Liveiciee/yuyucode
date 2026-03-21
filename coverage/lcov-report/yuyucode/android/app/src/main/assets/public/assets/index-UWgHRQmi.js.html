@@ -1,0 +1,88 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for yuyucode/android/app/src/main/assets/public/assets/index-UWgHRQmi.js</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../../../../../../../prettify.css" />
+    <link rel="stylesheet" href="../../../../../../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../../../../../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../../../../../../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../../../../../../../index.html">All files</a> / <a href="index.html">yuyucode/android/app/src/main/assets/public/assets</a> index-UWgHRQmi.js</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import{W as f,C as m,r as b}from"./index-BnGFCUeH.js";import"./vendor-CFe7b2kb.js";var d;(function(s){s.Prompt="PROMPT",s.Camera="CAMERA",s.Photos="PHOTOS"})(d||(d={}));var p;(function(s){s.Rear="REAR",s.Front="FRONT"})(p||(p={}));var u;(function(s){s.Uri="uri",s.Base64="base64",s.DataUrl="dataUrl"})(u||(u={}));class y extends f{async getPhoto(a){return new Promise(async(i,t)=&gt;{if(a.webUseInput||a.source===d.Photos)this.fileInputExperience(a,i,t);else if(a.source===d.Prompt){let e=document.querySelector("pwa-action-sheet");e||(e=document.createElement("pwa-action-sheet"),document.body.appendChild(e)),e.header=a.promptLabelHeader||"Photo",e.cancelable=!0,e.options=[{title:a.promptLabelPhoto||"From Photos"},{title:a.promptLabelPicture||"Take Picture"}],e.addEventListener("onSelection",async n=&gt;{n.detail===0?this.fileInputExperience(a,i,t):this.cameraExperience(a,i,t)}),e.addEventListener("onCanceled",async()=&gt;{t(new m("User cancelled photos app"))})}else this.cameraExperience(a,i,t)})}async pickImages(a){return new Promise(async(i,t)=&gt;{this.multipleFileInputExperience(i,t)})}async cameraExperience(a,i,t){if(customElements.get("pwa-camera-modal")){const e=document.createElement("pwa-camera-modal");e.facingMode=a.direction===p.Front?"user":"environment",document.body.appendChild(e);try{await e.componentOnReady(),e.addEventListener("onPhoto",async n=&gt;{const r=n.detail;r===null?t(new m("User cancelled photos app")):r instanceof Error?t(r):i(await this._getCameraPhoto(r,a)),e.dismiss(),document.body.removeChild(e)}),e.present()}catch{this.fileInputExperience(a,i,t)}}else console.error("Unable to load PWA Element 'pwa-camera-modal'. See the docs: https://capacitorjs.com/docs/web/pwa-elements."),this.fileInputExperience(a,i,t)}fileInputExperience(a,i,t){let e=document.querySelector("#_capacitor-camera-input");const n=()=&gt;{var r;(r=e.parentNode)===null||r===void 0||r.removeChild(e)};e||(e=document.createElement("input"),e.id="_capacitor-camera-input",e.type="file",e.hidden=!0,document.body.appendChild(e),e.addEventListener("change",r=&gt;{const c=e.files[0];let o="jpeg";if(c.type==="image/png"?o="png":c.type==="image/gif"&amp;&amp;(o="gif"),a.resultType==="dataUrl"||a.resultType==="base64"){const l=new FileReader;l.addEventListener("load",()=&gt;{if(a.resultType==="dataUrl")i({dataUrl:l.result,format:o});else if(a.resultType==="base64"){const h=l.result.split(",")[1];i({base64String:h,format:o})}n()}),l.readAsDataURL(c)}else i({webPath:URL.createObjectURL(c),format:o}),n()}),e.addEventListener("cancel",r=&gt;{t(new m("User cancelled photos app")),n()})),e.accept="image/*",e.capture=!0,a.source===d.Photos||a.source===d.Prompt?e.removeAttribute("capture"):a.direction===p.Front?e.capture="user":a.direction===p.Rear&amp;&amp;(e.capture="environment"),e.click()}multipleFileInputExperience(a,i){let t=document.querySelector("#_capacitor-camera-input-multiple");const e=()=&gt;{var n;(n=t.parentNode)===null||n===void 0||n.removeChild(t)};t||(t=document.createElement("input"),t.id="_capacitor-camera-input-multiple",t.type="file",t.hidden=!0,t.multiple=!0,document.body.appendChild(t),t.addEventListener("change",n=&gt;{const r=[];for(let c=0;c&lt;t.files.length;c++){const o=t.files[c];let l="jpeg";o.type==="image/png"?l="png":o.type==="image/gif"&amp;&amp;(l="gif"),r.push({webPath:URL.createObjectURL(o),format:l})}a({photos:r}),e()}),t.addEventListener("cancel",n=&gt;{i(new m("User cancelled photos app")),e()})),t.accept="image/*",t.click()}_getCameraPhoto(a,i){return new Promise((t,e)=&gt;{const n=new FileReader,r=a.type.split("/")[1];i.resultType==="uri"?t({webPath:URL.createObjectURL(a),format:r,saved:!1}):(n.readAsDataURL(a),n.onloadend=()=&gt;{const c=n.result;i.resultType==="dataUrl"?t({dataUrl:c,format:r,saved:!1}):t({base64String:c.split(",")[1],format:r,saved:!1})},n.onerror=c=&gt;{e(c)})})}async checkPermissions(){if(typeof navigator&gt;"u"||!navigator.permissions)throw this.unavailable("Permissions API not available in this browser");try{return{camera:(await window.navigator.permissions.query({name:"camera"})).state,photos:"granted"}}catch{throw this.unavailable("Camera permissions are not available in this browser")}}async requestPermissions(){throw this.unimplemented("Not implemented on web.")}async pickLimitedLibraryPhotos(){throw this.unavailable</span></span>("Not implemented on web.")}async getLimitedLibraryPhotos(){throw this.unavailable("Not implemented on web.")}}const P=b("Camera",{web:()=&gt;new y});export{P as Camera,p as CameraDirection,u as CameraResultType,d as CameraSource};</span>
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-03-21T13:10:42.648Z
+            </div>
+        <script src="../../../../../../../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../../../../../../../sorter.js"></script>
+        <script src="../../../../../../../../block-navigation.js"></script>
+    </body>
+</html>
+    

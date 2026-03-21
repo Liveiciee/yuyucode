@@ -1,5 +1,46 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// ── vi.hoisted: create stable mock fn references BEFORE any import is resolved ──
+// This is the canonical fix for "spy not called" / "undefined.ok" in CI with
+// --coverage (V8 instrumentation), because the factory runs in a hoisted context
+// where inline vi.fn() can produce a different instance than what the test sees.
+const mockCallServer = vi.hoisted(() =>
+  vi.fn().mockImplementation(() => Promise.resolve({ ok: false, data: '' }))
+);
+
+const mockPreferencesGet = vi.hoisted(() =>
+  vi.fn().mockImplementation(() => Promise.resolve({ value: null }))
+);
+
+const mockPreferencesSet = vi.hoisted(() =>
+  vi.fn().mockImplementation(() => Promise.resolve(undefined))
+);
+
+const mockParseActions = vi.hoisted(() =>
+  vi.fn().mockReturnValue([])
+);
+
+const mockExecuteAction = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ ok: true, data: '' })
+);
+
+// ── Module mocks — reference the hoisted fns, not inline vi.fn() ──────────────
+vi.mock('./api.js', () => ({ callServer: mockCallServer }));
+
+vi.mock('./utils.js', () => ({
+  parseActions:  mockParseActions,
+  executeAction: mockExecuteAction,
+}));
+
+vi.mock('@capacitor/preferences', () => ({
+  Preferences: {
+    get: mockPreferencesGet,
+    set: mockPreferencesSet,
+  },
+}));
+
+// ── Imports AFTER mock declarations (vi.mock is hoisted anyway, but explicit) ──
 import {
   saveSession, loadSessions,
   loadSkills, saveSkillFile, deleteSkillFile,
@@ -7,27 +48,16 @@ import {
   generatePlan, executePlanStep,
 } from './features.js';
 
-vi.mock('./api.js', () => ({ callServer: vi.fn().mockImplementation(() => Promise.resolve({ ok: false, data: '' })) }));
-vi.mock('./utils.js', () => ({
-  parseActions:  vi.fn().mockReturnValue([]),
-  executeAction: vi.fn().mockResolvedValue({ ok: true, data: '' }),
-}));
-vi.mock('@capacitor/preferences', () => ({
-  Preferences: {
-    get: vi.fn().mockImplementation(() => Promise.resolve({ value: null })),
-    set: vi.fn().mockImplementation(() => Promise.resolve(undefined)),
-  },
-}));
-
-import { callServer } from './api.js';
-import { Preferences } from '@capacitor/preferences';
-
+// ── Reset call history only; mockImplementation survives vi.clearAllMocks() ───
 beforeEach(() => {
   vi.clearAllMocks();
-  // Use mockImplementation — more resilient than mockResolvedValue in isolate:false CI
-  callServer.mockImplementation(() => Promise.resolve({ ok: false, data: '' }));
-  Preferences.get.mockImplementation(() => Promise.resolve({ value: null }));
-  Preferences.set.mockImplementation(() => Promise.resolve(undefined));
+  // Re-apply default implementations after clearAllMocks resets call history.
+  // Using mockImplementation (not mockResolvedValue) for maximum CI stability.
+  mockCallServer.mockImplementation(() => Promise.resolve({ ok: false, data: '' }));
+  mockPreferencesGet.mockImplementation(() => Promise.resolve({ value: null }));
+  mockPreferencesSet.mockImplementation(() => Promise.resolve(undefined));
+  mockParseActions.mockReturnValue([]);
+  mockExecuteAction.mockResolvedValue({ ok: true, data: '' });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -35,7 +65,7 @@ beforeEach(() => {
 // ═══════════════════════════════════════════════════════════════════════════════
 describe('saveSession', () => {
   it('saves session with correct shape', async () => {
-    Preferences.get.mockResolvedValue({ value: null });
+    mockPreferencesGet.mockImplementation(() => Promise.resolve({ value: null }));
     const msgs = Array.from({ length: 5 }, (_, i) => ({ role: 'user', content: `msg ${i}` }));
     const s = await saveSession('Test Session', msgs, '/project', 'main');
     expect(s).toHaveProperty('id');
@@ -43,18 +73,18 @@ describe('saveSession', () => {
     expect(s.folder).toBe('/project');
     expect(s.branch).toBe('main');
     expect(Array.isArray(s.messages)).toBe(true);
-    expect(Preferences.set).toHaveBeenCalled();
+    expect(mockPreferencesSet).toHaveBeenCalled();
   });
 
   it('truncates messages to last 50', async () => {
-    Preferences.get.mockResolvedValue({ value: null });
+    mockPreferencesGet.mockImplementation(() => Promise.resolve({ value: null }));
     const msgs = Array.from({ length: 100 }, (_, i) => ({ role: 'user', content: `${i}` }));
     const s = await saveSession('Big', msgs, '/p', 'main');
     expect(s.messages.length).toBeLessThanOrEqual(50);
   });
 
   it('uses default name when name is empty', async () => {
-    Preferences.get.mockResolvedValue({ value: null });
+    mockPreferencesGet.mockImplementation(() => Promise.resolve({ value: null }));
     const s = await saveSession('', [], '/p', 'main');
     expect(typeof s.name).toBe('string');
     expect(s.name.length).toBeGreaterThan(0);
@@ -62,9 +92,11 @@ describe('saveSession', () => {
 
   it('merges with existing sessions (dedupes by name)', async () => {
     const existing = [{ id: 1, name: 'Existing', messages: [], folder: '/', savedAt: new Date().toISOString() }];
-    Preferences.get.mockResolvedValue({ value: JSON.stringify(existing) });
+    mockPreferencesGet.mockImplementation(() =>
+      Promise.resolve({ value: JSON.stringify(existing) })
+    );
     await saveSession('Existing', [{ role: 'user', content: 'hi' }], '/', 'main');
-    const saved = JSON.parse(Preferences.set.mock.calls[0][0].value);
+    const saved = JSON.parse(mockPreferencesSet.mock.calls[0][0].value);
     const withName = saved.filter(s => s.name === 'Existing');
     expect(withName).toHaveLength(1); // deduped
   });
@@ -72,20 +104,22 @@ describe('saveSession', () => {
 
 describe('loadSessions', () => {
   it('returns empty array when no sessions stored', async () => {
-    Preferences.get.mockResolvedValue({ value: null });
+    mockPreferencesGet.mockImplementation(() => Promise.resolve({ value: null }));
     expect(await loadSessions()).toEqual([]);
   });
 
   it('returns parsed sessions array', async () => {
     const data = [{ id: 1, name: 'S1' }, { id: 2, name: 'S2' }];
-    Preferences.get.mockResolvedValue({ value: JSON.stringify(data) });
+    mockPreferencesGet.mockImplementation(() =>
+      Promise.resolve({ value: JSON.stringify(data) })
+    );
     const result = await loadSessions();
     expect(result).toHaveLength(2);
     expect(result[0].name).toBe('S1');
   });
 
   it('returns empty array on malformed JSON', async () => {
-    Preferences.get.mockResolvedValue({ value: 'NOT JSON' });
+    mockPreferencesGet.mockImplementation(() => Promise.resolve({ value: 'NOT JSON' }));
     const result = await loadSessions();
     expect(result).toEqual([]);
   });
@@ -96,20 +130,20 @@ describe('loadSessions', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 describe('loadSkills', () => {
   it('returns empty array when server returns no files', async () => {
-    callServer.mockResolvedValue({ ok: false });
+    mockCallServer.mockImplementation(() => Promise.resolve({ ok: false, data: '' }));
     const skills = await loadSkills('/project');
     expect(skills).toEqual([]);
   });
 
   it('returns empty array when directory is empty', async () => {
-    callServer.mockResolvedValue({ ok: true, data: [] });
+    mockCallServer.mockImplementation(() => Promise.resolve({ ok: true, data: [] }));
     expect(await loadSkills('/project')).toEqual([]);
   });
 
   it('loads and shapes skill files correctly', async () => {
-    callServer
-      .mockResolvedValueOnce({ ok: true, data: [{ name: 'react.md', isDir: false }] })
-      .mockResolvedValueOnce({ ok: true, data: '# React skill content' });
+    mockCallServer
+      .mockImplementationOnce(() => Promise.resolve({ ok: true, data: [{ name: 'react.md', isDir: false }] }))
+      .mockImplementationOnce(() => Promise.resolve({ ok: true, data: '# React skill content' }));
     const skills = await loadSkills('/project');
     expect(skills).toHaveLength(1);
     expect(skills[0].name).toBe('react.md');
@@ -119,34 +153,38 @@ describe('loadSkills', () => {
   });
 
   it('respects activeMap — marks inactive when set to false', async () => {
-    callServer
-      .mockResolvedValueOnce({ ok: true, data: [{ name: 'react.md', isDir: false }] })
-      .mockResolvedValueOnce({ ok: true, data: '# React' });
+    mockCallServer
+      .mockImplementationOnce(() => Promise.resolve({ ok: true, data: [{ name: 'react.md', isDir: false }] }))
+      .mockImplementationOnce(() => Promise.resolve({ ok: true, data: '# React' }));
     const skills = await loadSkills('/project', { 'react.md': false });
     expect(skills[0].active).toBe(false);
   });
 
   it('ignores directories in skill folder', async () => {
-    callServer.mockResolvedValueOnce({
-      ok: true,
-      data: [
-        { name: 'subfolder', isDir: true },
-        { name: 'skill.md',  isDir: false },
-      ],
-    }).mockResolvedValueOnce({ ok: true, data: '# content' });
+    mockCallServer
+      .mockImplementationOnce(() => Promise.resolve({
+        ok: true,
+        data: [
+          { name: 'subfolder', isDir: true },
+          { name: 'skill.md',  isDir: false },
+        ],
+      }))
+      .mockImplementationOnce(() => Promise.resolve({ ok: true, data: '# content' }));
     const skills = await loadSkills('/project');
     expect(skills).toHaveLength(1);
     expect(skills[0].name).toBe('skill.md');
   });
 
   it('ignores non-.md files', async () => {
-    callServer.mockResolvedValueOnce({
-      ok: true,
-      data: [
-        { name: 'script.sh', isDir: false },
-        { name: 'skill.md',  isDir: false },
-      ],
-    }).mockResolvedValueOnce({ ok: true, data: '# content' });
+    mockCallServer
+      .mockImplementationOnce(() => Promise.resolve({
+        ok: true,
+        data: [
+          { name: 'script.sh', isDir: false },
+          { name: 'skill.md',  isDir: false },
+        ],
+      }))
+      .mockImplementationOnce(() => Promise.resolve({ ok: true, data: '# content' }));
     const skills = await loadSkills('/project');
     expect(skills).toHaveLength(1);
   });
@@ -154,18 +192,18 @@ describe('loadSkills', () => {
 
 describe('saveSkillFile', () => {
   it('calls mkdir then write with sanitized filename', async () => {
-    callServer.mockResolvedValue({ ok: true });
+    mockCallServer.mockImplementation(() => Promise.resolve({ ok: true }));
     await saveSkillFile('/project', 'My React Skill!!!', '# content');
-    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'mkdir' }));
-    const writeCall = callServer.mock.calls.find(c => c[0].type === 'write');
+    expect(mockCallServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'mkdir' }));
+    const writeCall = mockCallServer.mock.calls.find(c => c[0].type === 'write');
     expect(writeCall[0].path).toMatch(/\.md$/);
     expect(writeCall[0].content).toBe('# content');
   });
 
   it('sanitizes special chars but dots are preserved (document actual behavior)', async () => {
-    callServer.mockResolvedValue({ ok: true });
+    mockCallServer.mockImplementation(() => Promise.resolve({ ok: true }));
     await saveSkillFile('/project', 'my skill #1!', '# content');
-    const writeCall = callServer.mock.calls.find(c => c[0].type === 'write');
+    const writeCall = mockCallServer.mock.calls.find(c => c[0].type === 'write');
     // spaces and ! are replaced with -; alphanumeric, dots, hyphens preserved
     expect(writeCall[0].path).not.toContain(' ');
     expect(writeCall[0].path).not.toContain('!');
@@ -175,9 +213,9 @@ describe('saveSkillFile', () => {
 
 describe('deleteSkillFile', () => {
   it('calls server with type:delete and correct path', async () => {
-    callServer.mockResolvedValue({ ok: true });
+    mockCallServer.mockImplementation(() => Promise.resolve({ ok: true }));
     await deleteSkillFile('/project', 'react.md');
-    expect(callServer).toHaveBeenCalledWith({
+    expect(mockCallServer).toHaveBeenCalledWith({
       type: 'delete',
       path: '/project/.yuyu/skills/react.md',
     });
