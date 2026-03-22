@@ -1,26 +1,23 @@
 <div align="center">
 
-<img src="public/icon.svg" width="96" alt="YuyuCode icon" />
+<img src="public/banner.svg" width="880" alt="YuyuCode — A full agentic coding assistant, built entirely on an Android phone." />
 
-# YuyuCode 🌸
-
-### A full agentic coding assistant.
-### Built entirely on an Android phone.
-
+<br/>
 <br/>
 
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
 [![Quality Gate](https://github.com/liveiciee/yuyucode/actions/workflows/quality.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
-[![CodeQL](https://github.com/liveiciee/yuyucode/actions/workflows/codeql.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
+[![CodeQL · SAST](https://github.com/liveiciee/yuyucode/actions/workflows/codeql.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
 [![Benchmark](https://github.com/liveiciee/yuyucode/actions/workflows/bench.yml/badge.svg)](https://liveiciee.github.io/yuyucode/dev/bench/)
 [![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=alert_status)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
-[![SonarCloud Coverage](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=coverage)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
-[![Version](https://img.shields.io/badge/version-4.2.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-1031%20passing-brightgreen)](#testing--benchmarks)
-[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
-![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
-![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?logo=react&logoColor=61DAFB)
-![Editor](https://img.shields.io/badge/CodeMirror%206-full%20extension%20suite-orange)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=coverage)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
+
+[![Version](https://img.shields.io/badge/version-4.2.0-c026d3?style=flat-square)](#)
+[![Tests](https://img.shields.io/badge/tests-1031%20passing-22c55e?style=flat-square)](#testing--benchmarks)
+[![License: MIT](https://img.shields.io/badge/License-MIT-a855f7?style=flat-square)](LICENSE)
+![Platform](https://img.shields.io/badge/Android%20(Termux)-3DDC84?style=flat-square&logo=android&logoColor=white)
+![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![Editor](https://img.shields.io/badge/CodeMirror%206-full%20extension%20suite-f97316?style=flat-square)
 
 <br/>
 
@@ -345,7 +342,7 @@ It's not a polished product. It's proof that the constraints were never the hard
 ---
 
 <details>
-<summary>Developer Documentation (internal / AI context)</summary>
+<summary><b>🛠 Developer Documentation</b> (internal / AI context)</summary>
 
 ---
 
@@ -526,5 +523,8 @@ WebSocket :8766 — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`
 ---
 
 <div align="center">
-  <sub>built on a phone · for a phone · with love 🌸</sub>
+  <sub>
+    <img src="public/icon.svg" width="14" alt="🌸" />
+    &nbsp;built on a phone · for a phone · with love
+  </sub>
 </div>
