@@ -696,7 +696,6 @@ if (WebSocketServer) {
           if (client === ws || client.readyState !== 1) return;
           try { client.send(JSON.stringify({ type: 'collab_updates', updates: newUpdates, version: r.version })); } catch {}
         });
-        return;
       }
     });
 
