@@ -200,8 +200,7 @@ function extractSigs(src, _filePath) {
   for (const re of [re1, re2, re3]) {
     let m;
     while ((m = re.exec(src)) !== null) {
-      // deepsource-disable-next-line JS-0073
-      if (!sigs.find(s => s.name === m[1])) {
+      if (!sigs.find(s => s.name === m[1])) { // skipcq: JS-0073
         const icon = /^use[A-Z]/.test(m[1]) ? '🪝' : /^[A-Z]/.test(m[1]) ? '⚛' : 'ƒ';
         sigs.push({ name: m[1], sig: '(' + m[2].trim() + ')', icon });
       }
@@ -529,8 +528,7 @@ const server = http.createServer((req, res) => {
   if (VERBOSE) {
     const safeMethod = ['GET','POST','PUT','DELETE','PATCH','OPTIONS','HEAD'].includes(req.method) ? req.method : 'UNKNOWN';
     const safeUrl = req.url ? req.url.replace(/[\r\n]/g, '') : '/';
-    // deepsource-disable-next-line JS-0002
-    console.log(`[${new Date().toISOString()}] ${safeMethod} ${safeUrl}`);
+    console.log(`[${new Date().toISOString()}] ${safeMethod} ${safeUrl}`); // skipcq: JS-0002
   }
 
   // Rate limit — only applies to POST (action requests)
@@ -539,8 +537,7 @@ const server = http.createServer((req, res) => {
     if (!checkRateLimit(ip)) {
       res.writeHead(429, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, data: 'Rate limit exceeded. Max ' + RATE_LIMIT + ' req/min.' }));
-      // deepsource-disable-next-line JS-0002
-      if (VERBOSE) console.log(`  ⚠ Rate limit hit: ${ip}`);
+      if (VERBOSE) console.log(`  ⚠ Rate limit hit: ${ip}`); // skipcq: JS-0002
       return;
     }
   }
@@ -585,12 +582,9 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  // deepsource-disable-next-line JS-0002
-  console.log(`🌸 YuyuServer ${VERSION} — HTTP :${PORT}`);
-  // deepsource-disable-next-line JS-0002
-  console.log(`   HOME: ${HOME}`);
-  // deepsource-disable-next-line JS-0002
-  console.log(`   Tools: ${Object.keys(MCP_TOOLS).join(', ')}`);
+  console.log(`🌸 YuyuServer ${VERSION} — HTTP :${PORT}`); // skipcq: JS-0002
+  console.log(`   HOME: ${HOME}`); // skipcq: JS-0002
+  console.log(`   Tools: ${Object.keys(MCP_TOOLS).join(', ')}`); // skipcq: JS-0002
 });
 
 // ── WEBSOCKET SERVER (port 8766) ──────────────────────────────────────────────
@@ -719,8 +713,7 @@ if (WebSocketServer) {
     });
   });
 
-  // deepsource-disable-next-line JS-0002
-  console.log(`🔌 YuyuServer WebSocket — WS :${WS_PORT} (file watch + streaming exec)`);
+  console.log(`🔌 YuyuServer WebSocket — WS :${WS_PORT} (file watch + streaming exec)`); // skipcq: JS-0002
 }
 
 // ── ERROR GUARDS ──────────────────────────────────────────────────────────────
