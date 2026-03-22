@@ -1,9 +1,103 @@
 version = 1
 
+# ══════════════════════════════════════════════════════════════════════════════
+# YuyuCode — DeepSource Configuration
+# v4.2.0 | React 19 + Capacitor 8 | Termux/Android
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Exclude patterns ──────────────────────────────────────────────────────────
+exclude_patterns = [
+  "dist/**",
+  "build/**",
+  "node_modules/**",
+  "android/**",
+  "ios/**",
+  "patch/**",
+  "public/**",
+  "**/*.apk",
+  "yugit.cjs",
+  "yuyu-bench.cjs",
+]
+
+# ── Test patterns ─────────────────────────────────────────────────────────────
+test_patterns = [
+  "**/*.test.js",
+  "**/*.test.jsx",
+  "**/*.test.cjs",
+  "**/*.branch.test.js",
+  "**/*.extended.test.js",
+  "**/*.extra.test.js",
+  "**/*.bench.js",
+  "**/*.bench.cjs",
+  "src/__snapshots__/**",
+  "src/setupTest.js",
+]
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ANALYZER: JavaScript
+# ══════════════════════════════════════════════════════════════════════════════
 [[analyzers]]
-name = "javascript"
+name    = "javascript"
 enabled = true
 
   [analyzers.meta]
+  # Hybrid: browser (React 19 + Capacitor WebView) + node (yuyu-server.js Termux)
   environment = ["browser", "node"]
-  module_system = "esm"
+
+  # ES Modules (type: "module" di package.json)
+  # Nilai valid: "es-modules" bukan "esm"
+  module_system = "es-modules"
+
+  # React JSX support — pakai plugins, bukan dialect
+  # dialect hanya support "typescript" | "flow"
+  plugins = ["react"]
+
+  # ES2022: class fields, top-level await, Array.at(), error.cause
+  ecma_version = "2022"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ANALYZER: Test Coverage
+# ══════════════════════════════════════════════════════════════════════════════
+# Threshold (70%) diset di DeepSource dashboard, bukan di sini.
+# Untuk melaporkan coverage ke DeepSource, tambahkan step ini di quality.yml
+# setelah `vitest run --coverage`:
+#
+#   - name: Report coverage to DeepSource
+#     run: |
+#       curl https://deepsource.io/cli | sh
+#       ./bin/deepsource report \
+#         --analyzer test-coverage \
+#         --key javascript \
+#         --value-file ./coverage/lcov.info
+#     env:
+#       DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
+#
+[[analyzers]]
+name    = "test-coverage"
+enabled = true
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CATATAN SUPPRESSION (inline comment di source file)
+# ══════════════════════════════════════════════════════════════════════════════
+#
+#  JS-C1002 (short variable names) — loop dense: t, m, r, e
+#    → // deepsource-disable-next-line JS-C1002
+#    File: useAgentLoop.js, features.js
+#
+#  JS-R1005 (cyclomatic complexity) — state machine async + command parsing
+#    → // deepsource-disable-next-line JS-R1005
+#    File: useAgentLoop.js, useSlashCommands.js, useApprovalFlow.js
+#
+#  JS-0067 (singleton) — tokenTracker & bgAgents adalah intentional module-level state
+#    → // deepsource-disable-next-line JS-0067
+#    File: src/features.js, yuyu-server.js
+#
+#  JS-0002 (no-console) — yuyu-server.js di Termux: terminal IS the UI
+#    → // deepsource-disable-next-line JS-0002
+#    File: yuyu-server.js, src/hooks/useDevTools.js
+#
+#  JS-D007 (function length) — slash command context locality
+#    → // deepsource-disable-next-line JS-D007
+#    File: src/hooks/useSlashCommands.js
+#
+# ══════════════════════════════════════════════════════════════════════════════

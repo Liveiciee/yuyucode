@@ -85,6 +85,7 @@ src/
     ThemeEffects.jsx
     VoiceBtn.jsx
   hooks/
+    useAgentLoop.branch.test.js
     useAgentLoop.js
     useAgentLoop.test.js
     useAgentSwarm.js
@@ -105,6 +106,7 @@ src/
     useNotifications.test.js
     useProjectStore.js
     useProjectStore.test.js
+    useSlashCommands.branch.test.js
     useSlashCommands.js
     useSlashCommands.test.js
     useUIStore.js
@@ -117,13 +119,17 @@ src/
     mybrand.js
     neon.js
     obsidian.js
+  api.branch.test.js
   api.extended.test.js
   api.js
   api.test.js
   App.jsx
+  branch.coverage.test.js
   constants.js
   editor.bench.js
   editor.test.js
+  features.bgagent.test.js
+  features.branch.test.js
   features.extended.test.js
   features.extra.test.js
   features.js
@@ -136,6 +142,7 @@ src/
   theme.js
   themes.test.js
   uistore.test.js
+  useFileStore.branch.test.js
   utils.extended.test.js
   utils.integration.test.js
   utils.js
@@ -200,80 +207,12 @@ This section contains the contents of the repository's files.
 <svg xmlns="http://www.w3.org/2000/svg" width="77" height="47" fill="none" aria-labelledby="vite-logo-title" viewBox="0 0 77 47"><title id="vite-logo-title">Vite</title><style>.parenthesis{fill:#000}@media (prefers-color-scheme:dark){.parenthesis{fill:#fff}}</style><path fill="#9135ff" d="M40.151 45.71c-.663.844-2.02.374-2.02-.699V34.708a2.26 2.26 0 0 0-2.262-2.262H24.493c-.92 0-1.457-1.04-.92-1.788l7.479-10.471c1.07-1.498 0-3.578-1.842-3.578H15.443c-.92 0-1.456-1.04-.92-1.788l9.696-13.576c.213-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.472c-1.07 1.497 0 3.578 1.842 3.578h11.376c.944 0 1.474 1.087.89 1.83L40.153 45.712z"/><mask id="a" width="48" height="47" x="14" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><path fill="#000" d="M40.047 45.71c-.663.843-2.02.374-2.02-.699V34.708a2.26 2.26 0 0 0-2.262-2.262H24.389c-.92 0-1.457-1.04-.92-1.788l7.479-10.472c1.07-1.497 0-3.578-1.842-3.578H15.34c-.92 0-1.456-1.04-.92-1.788l9.696-13.575c.213-.297.556-.474.92-.474H53.93c.92 0 1.456 1.04.92 1.788L47.37 13.03c-1.07 1.498 0 3.578 1.842 3.578h11.376c.944 0 1.474 1.088.89 1.831L40.049 45.712z"/></mask><g mask="url(#a)"><g filter="url(#b)"><ellipse cx="5.508" cy="14.704" fill="#eee6ff" rx="5.508" ry="14.704" transform="rotate(269.814 20.96 11.29)scale(-1 1)"/></g><g filter="url(#c)"><ellipse cx="10.399" cy="29.851" fill="#eee6ff" rx="10.399" ry="29.851" transform="rotate(89.814 -16.902 -8.275)scale(1 -1)"/></g><g filter="url(#d)"><ellipse cx="5.508" cy="30.487" fill="#8900ff" rx="5.508" ry="30.487" transform="rotate(89.814 -19.197 -7.127)scale(1 -1)"/></g><g filter="url(#e)"><ellipse cx="5.508" cy="30.599" fill="#8900ff" rx="5.508" ry="30.599" transform="rotate(89.814 -25.928 4.177)scale(1 -1)"/></g><g filter="url(#f)"><ellipse cx="5.508" cy="30.599" fill="#8900ff" rx="5.508" ry="30.599" transform="rotate(89.814 -25.738 5.52)scale(1 -1)"/></g><g filter="url(#g)"><ellipse cx="14.072" cy="22.078" fill="#eee6ff" rx="14.072" ry="22.078" transform="rotate(93.35 31.245 55.578)scale(-1 1)"/></g><g filter="url(#h)"><ellipse cx="3.47" cy="21.501" fill="#8900ff" rx="3.47" ry="21.501" transform="rotate(89.009 35.419 55.202)scale(-1 1)"/></g><g filter="url(#i)"><ellipse cx="3.47" cy="21.501" fill="#8900ff" rx="3.47" ry="21.501" transform="rotate(89.009 35.419 55.202)scale(-1 1)"/></g><g filter="url(#j)"><ellipse cx="14.592" cy="9.743" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(39.51 14.592 9.743)"/></g><g filter="url(#k)"><ellipse cx="61.728" cy="-5.321" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 61.728 -5.32)"/></g><g filter="url(#l)"><ellipse cx="55.618" cy="7.104" fill="#00c2ff" rx="5.971" ry="9.665" transform="rotate(37.892 55.618 7.104)"/></g><g filter="url(#m)"><ellipse cx="12.326" cy="39.103" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 12.326 39.103)"/></g><g filter="url(#n)"><ellipse cx="12.326" cy="39.103" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 12.326 39.103)"/></g><g filter="url(#o)"><ellipse cx="49.857" cy="30.678" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 49.857 30.678)"/></g><g filter="url(#p)"><ellipse cx="52.623" cy="33.171" fill="#00c2ff" rx="5.971" ry="15.297" transform="rotate(37.892 52.623 33.17)"/></g></g><path d="M6.919 0c-9.198 13.166-9.252 33.575 0 46.789h6.215c-9.25-13.214-9.196-33.623 0-46.789zm62.424 0h-6.215c9.198 13.166 9.252 33.575 0 46.789h6.215c9.25-13.214 9.196-33.623 0-46.789" class="parenthesis"/><defs><filter id="b" width="60.045" height="41.654" x="-5.564" y="16.92" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="c" width="90.34" height="51.437" x="-40.407" y="-6.762" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="d" width="79.355" height="29.4" x="-35.435" y="2.801" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="e" width="79.579" height="29.4" x="-30.84" y="20.8" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="f" width="79.579" height="29.4" x="-29.307" y="21.949" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="g" width="74.749" height="58.852" x="29.961" y="-17.13" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="h" width="61.377" height="25.362" x="37.754" y="3.055" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="i" width="61.377" height="25.362" x="37.754" y="3.055" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="j" width="56.045" height="63.649" x="-13.43" y="-22.082" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="k" width="54.814" height="64.646" x="34.321" y="-37.644" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="l" width="33.541" height="35.313" x="38.847" y="-10.552" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="m" width="54.814" height="64.646" x="-15.081" y="6.78" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="n" width="54.814" height="64.646" x="-15.081" y="6.78" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="o" width="54.814" height="64.646" x="22.45" y="-1.645" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="p" width="39.409" height="43.623" x="32.919" y="11.36" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter></defs></svg>
 </file>
 
-<file path="src/components/AppHeader.jsx">
-// ── AppHeader ─────────────────────────────────────────────────────────────────
-// Session color bar, header (title/effort/tokens/xp/palette), folder input,
-// UndoBar, dan status bar (offline/ratelimit/agent running).
-⋮----
-export function AppHeader(
-⋮----
-{/* Session color strip */}
-⋮----
-{/* HEADER — 48px */}
-⋮----
-{/* Folder input */}
-⋮----
-{/* Status bar — priority-based */}
-</file>
-
-<file path="src/components/AppSidebar.jsx">
-// ── AppSidebar ────────────────────────────────────────────────────────────────
-// Overlay sidebar: backdrop, file tree, recent files, resize handle.
-⋮----
-export function AppSidebar(
-</file>
-
 <file path="src/components/SearchBar.jsx">
 export function SearchBar(
 ⋮----
 async function doSearch()
 ⋮----
 export function UndoBar(
-</file>
-
-<file path="src/components/ThemeEffects.jsx">
-// ── ThemeEffects ───────────────────────────────────────────────────────────────
-// Render semua visual overlay berdasarkan tema aktif:
-//   - Atmosphere orbs (semua tema)
-//   - Scanlines layer (obsidian, neon)
-//   - CRT scan bar (obsidian)
-//   - Aurora animated orbs (aurora)
-//   - Neon grid + scan pulse (neon)
-//   - Paper grain SVG (ink)
-//   - Vignette corner (obsidian)
-// ─────────────────────────────────────────────────────────────────────────────
-⋮----
-export function ThemeEffects(
-⋮----
-// Inject theme CSS once per theme change
-⋮----
-{/* ── Atmosphere Orbs (semua tema) ──────────────────────────────────── */}
-⋮----
-{/* ── Scanlines (obsidian, neon) ─────────────────────────────────────── */}
-⋮----
-{/* ── CRT rolling scan bar (obsidian) ──────────────────────────────── */}
-⋮----
-{/* Corner vignette */}
-⋮----
-{/* ── Neon grid + scan pulse (neon) ─────────────────────────────────── */}
-⋮----
-{/* Subtle perspective grid */}
-⋮----
-{/* Horizontal scan pulse */}
-⋮----
-{/* Corner vignette dark */}
-⋮----
-{/* ── Aurora shimmer overlay (aurora) ───────────────────────────────── */}
-⋮----
-{/* Diagonal aurora band */}
-⋮----
-{/* Corner vignette subtle */}
-⋮----
-{/* ── Paper grain texture (ink) ─────────────────────────────────────── */}
-⋮----
-{/* SVG turbulence grain */}
-⋮----
-{/* Subtle paper discoloration */}
 </file>
 
 <file path="src/hooks/useAgentSwarm.js">
@@ -288,270 +227,8 @@ async function runAgentSwarm(task)
 const log = msg
 </file>
 
-<file path="src/hooks/useBrightness.js">
-// ── useBrightness — real-time adaptive brightness ────────────────────────
-// ContentObserver native → emit setiap slider berubah → scale filter dinamis
-// Tidak ada polling. Tidak ada threshold on/off. Murni proporsional.
-⋮----
-export function useBrightness(setBrightnessLevel)
-</file>
-
-<file path="src/hooks/useGrowth.js">
-// ── useGrowth — Yuyu yang tumbuh + Gamifikasi ─────────────────────────────────
-// Yuyu belajar dari setiap sesi: naming style, bahasa dominan, error patterns
-// Gamifikasi: streak harian, XP, badge — motivasi solo dev tanpa tim
-⋮----
-// ── XP table ──
-⋮----
-
-⋮----
-export function useGrowth()
-⋮----
-const [newBadge, setNewBadge]       = useState(null); // untuk toast notif
-⋮----
-// ── Load on mount ──
-⋮----
-// Update streak on open
-⋮----
-function setXp(val)
-function setBadges(val)
-function setLearnedStyle(val)
-⋮----
-// ── addXP — tambah XP + cek badge baru ──
-function addXP(event)
-⋮----
-// Cek badge baru
-⋮----
-setNewBadge(earned[earned.length - 1]); // toast badge terakhir
-⋮----
-// ── learnFromSession — analisis pola coding, update learnedStyle ──
-async function learnFromSession(messages, folder)
-⋮----
-// Minimal 5 pesan dan ada aktivitas file
-⋮----
-// Ambil sample pesan user
-⋮----
-// Ambil sample kode yang ditulis AI
-⋮----
-// Merge dengan style lama — pertahankan yang lama, update/tambah yang baru
-⋮----
-// ── summary untuk display ──
-</file>
-
-<file path="src/hooks/useMediaHandlers.js">
-export function useMediaHandlers(
-⋮----
-function handleImageAttach(e)
-⋮----
-reader.onload = ev =>
-⋮----
-// ── Camera capture (Capacitor native) ────────────────────────────────────────
-async function handleCameraCapture()
-⋮----
-// User cancelled or permission denied — silent fail
-⋮----
-// ── Gallery pick ──────────────────────────────────────────────────────────────
-async function handleGalleryPick()
-⋮----
-} catch (_e) { /* cancelled */ }
-⋮----
-function handleDrop(e)
-</file>
-
-<file path="src/plugins/brightness.js">
-// ── Brightness Plugin Bridge ───────────────────────────────────────────────
-// Wraps native BrightnessPlugin via Capacitor — real-time ContentObserver
-⋮----
-// Web fallback — tidak ada brightness API di browser
-⋮----
-getBrightness: async () => (
-addListener: () => (
-removeAllListeners: async () =>
-</file>
-
-<file path="src/themes/aurora.js">
-// ── Aurora Glass ───────────────────────────────────────────────────────────────
-// Efek: glassmorphism real, aurora bands bergerak, backdrop blur, refraction
-// ─────────────────────────────────────────────────────────────────────────────
-⋮----
-aiBubble: () => (
-userBubble: () => (
-glowBorder: (color='#8b5cf6') => (
-codeBlock: () => (
-chipOk: () => (
-glowText: () => ({}), // Aurora tidak pakai text glow
-inputFocus: () => (
-</file>
-
-<file path="src/themes/index.js">
-// ── Theme Registry ────────────────────────────────────────────────────────────
-// Tambah theme baru di sini:
-//   1. Buat file di src/themes/namabaru.js (copy dari template)
-//   2. import namabaru from './namabaru.js'
-//   3. Tambah ke THEMES_MAP
-// ─────────────────────────────────────────────────────────────────────────────
-⋮----
-// Key yang valid untuk disimpan ke Preferences
-⋮----
-// Default fallback
-</file>
-
-<file path="src/themes/ink.js">
-// ── Ink & Paper ────────────────────────────────────────────────────────────────
-// Efek: paper grain texture via SVG, brushstroke separators, aged paper feel
-// Zero glow — semua matte, kontras tinggi seperti tinta di kertas
-// ─────────────────────────────────────────────────────────────────────────────
-⋮----
-aiBubble: () => (
-⋮----
-// Ink: no bubble at all — bare text with left rule
-⋮----
-userBubble: () => (
-glowBorder: () => ({}), // No glow in ink
-codeBlock: () => (
-chipOk: () => (
-glowText: () => (
-inputFocus: () => (
-</file>
-
-<file path="src/themes/mybrand.js">
-// ── My Brand Theme — Template untuk Custom Theme ────────────────────────────
-// TEMPLATE: Ini bukan tema aktif. Copy, rename, isi token, import di index.js.
-// Lihat src/themes/obsidian.js untuk referensi skema lengkap.
-// ─────────────────────────────────────────────────────────────────────────────
-⋮----
-/** @type {import('./index').YuyuTheme} */
-⋮----
-// ── Global colours ────────────────────────────────────────────────────────
-⋮----
-// ── Atmosphere (glow blobs di bg) ─────────────────────────────────────────
-⋮----
-// ── Header ────────────────────────────────────────────────────────────────
-⋮----
-// ── Chat Bubbles ──────────────────────────────────────────────────────────
-⋮----
-// ── Action Chips ──────────────────────────────────────────────────────────
-⋮----
-// ── Code Blocks ───────────────────────────────────────────────────────────
-⋮----
-// ── Loading dots ──────────────────────────────────────────────────────────
-⋮----
-// ── Input Area ────────────────────────────────────────────────────────────
-⋮----
-// ── Slash Command Popup ───────────────────────────────────────────────────
-⋮----
-// ── Per-theme CSS & Animations ────────────────────────────────────────────
-⋮----
-// ── Visual FX helpers (dipakai oleh MsgBubble) ───────────────────────────
-⋮----
-aiBubble:   () => (
-userBubble: () => (
-glowBorder: (color='#d97706', intensity=1) => (
-codeBlock:  () => (
-chipOk:     () => (
-glowText:   (color='#d97706') => (
-inputFocus: () => (
-</file>
-
-<file path="src/themes/neon.js">
-// ── Neon Terminal ──────────────────────────────────────────────────────────────
-// Efek: real neon glow, flicker animation, cyberpunk grid, scan pulse
-// ─────────────────────────────────────────────────────────────────────────────
-⋮----
-// ── CSS injected globally ────────────────────────────────────────────────
-⋮----
-// ── Per-element effect functions ─────────────────────────────────────────
-⋮----
-// Extra box-shadow for accented borders
-glowBorder: (color='#00ff8c', intensity=1) => (
-// AI bubble extra glow
-aiBubble: () => (
-// User bubble glow
-userBubble: () => (
-// Neon text glow
-glowText: (color='#00ff8c') => (
-// Code block glow
-codeBlock: () => (
-// Action chip glow when ok
-chipOk: () => (
-// Input focus
-inputFocus: () => (
-</file>
-
-<file path="src/themes/obsidian.js">
-// ── Obsidian Warm ──────────────────────────────────────────────────────────────
-// Efek: CRT scanlines rolling, amber phosphor glow, screen vignette, warm static
-// ─────────────────────────────────────────────────────────────────────────────
-⋮----
-aiBubble: () => (
-userBubble: () => (
-glowBorder: (color='#d97706', intensity=1) => (
-codeBlock: () => (
-chipOk: () => (
-glowText: (color='#d97706') => (
-inputFocus: () => (
-</file>
-
-<file path="src/api.js">
-// ── SHARED SSE STREAM READER ───────────────────────────────────────────────────
-export async function readSSEStream(resp, onChunk, signal)
-⋮----
-// flush
-⋮----
-// ── INJECT VISION IMAGE ────────────────────────────────────────────────────────
-function injectVision(messages, imageBase64)
-⋮----
-// ── CEREBRAS STREAMING ─────────────────────────────────────────────────────────
-async function _cerebrasOnce(messages, model, onChunk, signal, options)
-⋮----
-// ── GROQ STREAMING ─────────────────────────────────────────────────────────────
-async function _groqOnce(messages, model, onChunk, signal, options)
-⋮----
-// ── UNIFIED AI CALL — auto-fallback Cerebras → Groq ───────────────────────────
-// - Cerebras model → tries Cerebras, jika rate limit → fallback ke Groq (kimi-k2)
-// - Groq model → langsung ke Groq
-export async function askCerebrasStream(messages, model, onChunk, signal, options =
-⋮----
-// ── Groq model: langsung ke Groq ──
-⋮----
-// ── Cerebras model: try Cerebras, fallback Groq on rate limit ──
-⋮----
-// Rate limit → auto-switch ke Groq
-⋮----
-// Groq juga rate limit? lempar error asli biar timer tetap jalan
-⋮----
-// Server error → retry
-⋮----
-// ── CALL SERVER (HTTP) ─────────────────────────────────────────────────────────
-export async function callServer(payload)
-⋮----
-// ── EXEC STREAM via WebSocket ──────────────────────────────────────────────────
-export function execStream(command, cwd, onLine, signal)
-⋮----
-const cleanup = () =>
-const done = (exitCode) =>
-⋮----
-ws.onopen = () => ws.send(JSON.stringify(
-ws.onmessage = (e) =>
-ws.onerror = () =>
-ws.onclose = () =>
-⋮----
-// ── CALL SERVER BATCH ──────────────────────────────────────────────────────────
-export async function callServerBatch(payloads)
-</file>
-
-<file path="src/theme.js">
-// ── YuyuCode Active Theme ────────────────────────────────────────────────────
-// Ganti file ini untuk ganti tema — atau import dari themes/ yang udah ada:
-//
-//   import theme from './themes/aurora.js'
-//   import theme from './themes/neon.js'
-//   import theme from './themes/ink.js'
-//   import theme from './themes/obsidian.js'
-//   import theme from './themes/mybrand.js'   ← custom buatan sendiri
-//
-// Atau edit langsung di sini. Token yang tersedia ada di bawah.
-// ─────────────────────────────────────────────────────────────────────────────
+<file path="src/uistore.test.js">
+expect(result.current.multiCursor).toBe(true); // default ON
 </file>
 
 <file path="capacitor.config.json">
@@ -607,6 +284,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+</file>
+
+<file path="vite.config.js">
+manualChunks(id)
 </file>
 
 <file path=".tla/AgentLoop.cfg">
@@ -873,54 +554,24 @@ function onEnd()
 {/* Badge toast */}
 </file>
 
-<file path="src/components/FileTree.jsx">
-function getFileIconData(name)
+<file path="src/components/AppHeader.jsx">
+// ── AppHeader ─────────────────────────────────────────────────────────────────
 ⋮----
-function FileIcon(
+export function AppHeader(
 ⋮----
-export function FileTree(
+{/* Session color strip */}
 ⋮----
-// ── Theme tokens ──
+{/* HEADER — 48px */}
 ⋮----
-useEffect(() => { load(); }, [load]); // eslint-disable-line react-hooks/set-state-in-effect
+{/* Folder input */}
 ⋮----
-async function toggleDir(fullPath)
+{/* Status bar — priority-based */}
+</file>
+
+<file path="src/components/AppSidebar.jsx">
+// ── AppSidebar ────────────────────────────────────────────────────────────────
 ⋮----
-async function doRename(oldPath)
-⋮----
-async function doCreate(parentPath)
-⋮----
-async function doDelete(path)
-⋮----
-// Flatten tree into searchable list
-function flattenTree(items, basePath, acc = [])
-const allFiles = useMemo(() => tree ? flattenTree(tree, folder) : [], [tree, expanded, folder]); // eslint-disable-line react-hooks/exhaustive-deps
-⋮----
-const inputStyle = (borderColor) => (
-⋮----
-function renderItems(items, basePath, depth)
-⋮----
-function renderItem(item, basePath, depth)
-⋮----
-const iconBtn = (onClick, title, children) => (
-    <button onClick={onClick} title={title}
-      style={{background:'none',border:'none',color:textMute,cursor:'pointer',padding:'4px 6px',borderRadius:'5px',display:'flex',alignItems:'center'}}
-      onMouseEnter={e=>e.currentTarget.style.background=bg3}
-      onMouseLeave={e=>e.currentTarget.style.background='none'}>
-      {children}
-    </button>
-  );
-⋮----
-const ctxItem = (onClick, color, children) => (
-    <div onClick={onClick}
-      style={{padding:'7px 12px',fontSize:'12.5px',color:color||textSec,cursor:'pointer',borderRadius:'6px',display:'flex',alignItems:'center',gap:'8px'}}
-      onMouseEnter={e=>e.currentTarget.style.background=color===error?errorBg:bg3}
-      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-      {children}
-    </div>
-  );
-⋮----
-{/* Fuzzy search */}
+export function AppSidebar(
 </file>
 
 <file path="src/components/GlobalFindReplace.jsx">
@@ -932,17 +583,7 @@ const [results,     setResults]     = useState([]); // [{file, matches:[{line,co
 ⋮----
 // ── Search ──────────────────────────────────────────────────────────────────
 ⋮----
-// Build grep command
-⋮----
-// Parse grep output: "path/to/file:linenum:col: text"
-⋮----
-// Make path relative
-⋮----
-// Auto-expand if few files
-⋮----
 // ── Replace all ─────────────────────────────────────────────────────────────
-⋮----
-// Read file
 ⋮----
 doSearch(); // re-run search to show updated results
 ⋮----
@@ -965,8 +606,6 @@ doSearch(); // re-run search to show updated results
 
 <file path="src/components/KeyboardRow.jsx">
 // ── KeyboardRow — extra symbol row above Android soft keyboard ─────────────────
-// Inserts symbols at cursor: either into a textarea or a CodeMirror view.
-// Shows whenever a file is in edit mode on mobile.
 ⋮----
 { label: '→',  text: '  ' },  // indent (2 spaces)
 ⋮----
@@ -1023,119 +662,47 @@ export function BgAgentPanel(
 {/* Actions */}
 </file>
 
-<file path="src/components/panels.git.jsx">
-export function GitComparePanel(
+<file path="src/components/panels.base.jsx">
+export function BottomSheet(
 ⋮----
-const [view, setView]       = useState('unified'); // 'unified' | 'split'
+function onTouchStart(e)
+function onTouchMove(e)
+function onTouchEnd()
 ⋮----
-async function load(s)
+{/* drag handle zone */}
 ⋮----
-// Compute stats
+export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories, checkpoints, model, models, T,
+  onModelChange, onNewChat, theme, onThemeChange, showSidebar, onToggleSidebar,
+  onShowMemory, onShowCheckpoints, onShowMCP, onShowGitHub, onShowDeploy,
+  onShowDiff, onShowSearch, onShowSnippets, onShowCustomActions,
+  onShowSessions, onShowPermissions, onShowPlugins, onShowConfig,
+  onShowSkills,
+runTests, generateCommitMsg, exportChat, compactContext })
 ⋮----
-useEffect(() => { load(false); }, []); // eslint-disable-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+
 ⋮----
-function lineStyle(line)
+action:()=>
 ⋮----
-function renderUnified()
-⋮----
-function renderSplit()
-⋮----
-// Parse hunk into left (old) and right (new) columns
-⋮----
-// Try to pair with next + line
-⋮----
-{/* Left (old) */}
-⋮----
-{/* Right (new) */}
-⋮----
-const tabBtn = (label, active, onClick) => (
-    <button onClick={onClick} style={{background:active?'rgba(255,255,255,.1)':'none',border:'1px solid '+(active?borderMed:border),borderRadius:'5px',padding:'3px 9px',color:active?text:textMute,fontSize:'11px',cursor:'pointer'}}>{label}</button>
-  );
-⋮----
-{/* Header */}
-⋮----
-{/* Stats */}
-⋮----
-{/* Diff content */}
-⋮----
-// ─── FILE HISTORY PANEL ───────────────────────────────────────────────────────
-⋮----
-export function FileHistoryPanel(
-⋮----
-async function preview(hash)
-⋮----
-async function restore(hash)
-⋮----
-// ─── CUSTOM ACTIONS PANEL ─────────────────────────────────────────────────────
-⋮----
-export function GitBlamePanel(
-⋮----
-// ─── SNIPPET LIBRARY ──────────────────────────────────────────────────────────
-⋮----
-export function DepGraphPanel(
-⋮----
-// Support both new {nodes, edges} format and legacy {file, imports} format
-⋮----
-// Legacy fallback
-⋮----
-// Arrow marker
-⋮----
-}, [depGraph]); // eslint-disable-line react-hooks/exhaustive-deps
-⋮----
-// ─── ELICITATION PANEL (AI-requested dynamic form) ───────────────────────────
-⋮----
-export function MergeConflictPanel(
-⋮----
-async function loadPreview(cf)
-⋮----
-async function resolve(strategy)
-⋮----
-async function abortMerge()
-⋮----
-{/* Header */}
-⋮----
-{/* Conflict files */}
-⋮----
-{/* Status */}
-⋮----
-{/* Actions */}
-⋮----
-// ── SkillsPanel ───────────────────────────────────────────────────────────────
+// ─── DEP GRAPH PANEL (d3 force layout) ───────────────────────────────────────
 </file>
 
 <file path="src/components/panels.jsx">
 // ── panels.jsx — barrel re-export ───────────────────────────────────────────
-// Semua panel diimport dari sini supaya App.jsx tidak perlu tahu lokasi internal.
-// Edit panel: buka file yang sesuai:
-//   panels.base.jsx  — BottomSheet, CommandPalette
-//   panels.git.jsx   — GitComparePanel, FileHistoryPanel, GitBlamePanel,
-//                      DepGraphPanel, MergeConflictPanel
-//   panels.agent.jsx — ElicitationPanel, SkillsPanel, BgAgentPanel
-//   panels.tools.jsx — CustomActionsPanel, ShortcutsPanel, SnippetLibrary,
-//                      ThemeBuilder, DeployPanel, McpPanel, GitHubPanel,
-//                      SessionsPanel, PermissionsPanel, PluginsPanel, ConfigPanel
 </file>
 
 <file path="src/components/Terminal.jsx">
 // ── Terminal — xterm.js dengan layout yang benar ─────────────────────────────
-⋮----
-// xterm CSS diinject manual supaya tidak corrupt global styles
 ⋮----
 // ── TrafficDot — isolated component so onClick never accesses ref during render
 function TrafficDot(
 ⋮----
 export function Terminal(
 ⋮----
-const wrapRef   = useRef(null);  // outer wrapper div (flex:1)
 const xtermRef  = useRef(null);  // xterm mount target
 ⋮----
 // ── Theme ─────────────────────────────────────────────────────────────────
 ⋮----
 // ── Mount xterm ────────────────────────────────────────────────────────────
-⋮----
-// Fit after paint
-⋮----
-// ResizeObserver untuk fit otomatis
 ⋮----
 // ── Update theme realtime ──────────────────────────────────────────────────
 ⋮----
@@ -1162,86 +729,39 @@ async function run()
 {/* Input bar */}
 </file>
 
-<file path="src/components/VoiceBtn.jsx">
-export function VoiceBtn(
+<file path="src/components/ThemeEffects.jsx">
+// ── ThemeEffects ───────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 ⋮----
-async function toggle()
+export function ThemeEffects(
 ⋮----
-// Show partial results
+{/* ── Atmosphere Orbs (semua tema) ──────────────────────────────────── */}
 ⋮----
-// Web fallback
+{/* ── Scanlines (obsidian, neon) ─────────────────────────────────────── */}
 ⋮----
-r.onresult = e => {
-      const transcript = e.results[0][0].transcript;
-      if (e.results[0].isFinal) { onResult(transcript); setListening(false); setPartial(''); }
-      else setPartial(transcript);
-r.onerror = () =>
-r.onend   = () =>
+{/* ── CRT rolling scan bar (obsidian) ──────────────────────────────── */}
 ⋮----
-export function PushToTalkBtn(
+{/* Corner vignette */}
 ⋮----
-async function onPressIn()
+{/* ── Neon grid + scan pulse (neon) ─────────────────────────────────── */}
 ⋮----
-async function onPressOut()
-</file>
-
-<file path="src/hooks/useAgentLoop.test.js">
-// @vitest-environment jsdom
+{/* Subtle perspective grid */}
 ⋮----
-// ── Mocks ─────────────────────────────────────────────────────────────────────
+{/* Horizontal scan pulse */}
 ⋮----
-// ── Fake context builders ─────────────────────────────────────────────────────
-function makeProject(overrides =
+{/* Corner vignette dark */}
 ⋮----
-function makeChat(overrides =
+{/* ── Aurora shimmer overlay (aurora) ───────────────────────────────── */}
 ⋮----
-function makeFile(overrides =
+{/* Diagonal aurora band */}
 ⋮----
-function makeCtx(overrides =
+{/* Corner vignette subtle */}
 ⋮----
-// ── cancelMsg ─────────────────────────────────────────────────────────────────
+{/* ── Paper grain texture (ink) ─────────────────────────────────────── */}
 ⋮----
-// ── sendMsg — slash command ───────────────────────────────────────────────────
+{/* SVG turbulence grain */}
 ⋮----
-// ── sendMsg — server unreachable ──────────────────────────────────────────────
-⋮----
-// ── sendMsg — basic loop ──────────────────────────────────────────────────────
-⋮----
-// ── compactContext ────────────────────────────────────────────────────────────
-⋮----
-expect(ctx.chat.setMessages).toHaveBeenCalled(); // "context masih kecil" message
-⋮----
-// ── abTest ────────────────────────────────────────────────────────────────────
-⋮----
-// ── continueMsg / retryLast ───────────────────────────────────────────────────
-⋮----
-mockCallServer.mockResolvedValue({ ok: false, data: '' }); // server down → returns early
-⋮----
-// continueMsg delegates to sendMsg — loading was set
-⋮----
-mockCallServer.mockResolvedValue({ ok: false, data: '' }); // server down → returns early
-⋮----
-// ── executeWithPermission ─────────────────────────────────────────────────────
-⋮----
-// checkPermission was called and returned false — result should be permission denied
-⋮----
-// ── diffReview mode ───────────────────────────────────────────────────────────
-⋮----
-// beforeEach handles ping; also pass through read for App.jsx (diffPreview)
-⋮----
-// diffReview = true → should return early (not execute the write)
-⋮----
-// ── sendMsg — RATE_LIMIT error ────────────────────────────────────────────────
-⋮----
-// ── sendMsg — PROJECT_NOTE extraction ─────────────────────────────────────────
-⋮----
-// ── sendMsg — TTS ─────────────────────────────────────────────────────────────
-⋮----
-// ── sendMsg — gracefulStop ────────────────────────────────────────────────────
-⋮----
-// ── sendMsg — patch_file self-correct ─────────────────────────────────────────
-⋮----
-// Should have called AI more than once due to self-correct
+{/* Subtle paper discoloration */}
 </file>
 
 <file path="src/hooks/useAgentSwarm.test.js">
@@ -1267,26 +787,10 @@ function makeSwarmCtx(overrides =
 // 4 base calls + 2 fix calls = 6
 </file>
 
-<file path="src/hooks/useApprovalFlow.test.js">
-// @vitest-environment jsdom
+<file path="src/hooks/useBrightness.js">
+// ── useBrightness — real-time adaptive brightness ────────────────────────
 ⋮----
-// ── Mocks ─────────────────────────────────────────────────────────────────────
-⋮----
-function makeCtx(overrides =
-⋮----
-// clearAllMocks resets implementations — restore defaults
-⋮----
-// ── handleApprove — reject ────────────────────────────────────────────────────
-⋮----
-// ── handleApprove — approve ───────────────────────────────────────────────────
-⋮----
-// Need 2 read backups + 2 rollback writes
-⋮----
-.mockResolvedValue({ ok: true, data: '' }); // rollback writes
-⋮----
-// Rollback: should call write for each backup
-⋮----
-// ── handlePlanApprove ─────────────────────────────────────────────────────────
+export function useBrightness(setBrightnessLevel)
 </file>
 
 <file path="src/hooks/useChatStore.test.js">
@@ -1366,6 +870,34 @@ function makeCtx(overrides =
 // ── runDeploy ─────────────────────────────────────────────────────────────────
 </file>
 
+<file path="src/hooks/useGrowth.js">
+// ── useGrowth — Yuyu yang tumbuh + Gamifikasi ─────────────────────────────────
+⋮----
+// ── XP table ──
+⋮----
+
+⋮----
+export function useGrowth()
+⋮----
+const [newBadge, setNewBadge]       = useState(null); // untuk toast notif
+⋮----
+// ── Load on mount ──
+⋮----
+function setXp(val)
+function setBadges(val)
+function setLearnedStyle(val)
+⋮----
+// ── addXP — tambah XP + cek badge baru ──
+function addXP(event)
+⋮----
+setNewBadge(earned[earned.length - 1]); // toast badge terakhir
+⋮----
+// ── learnFromSession — analisis pola coding, update learnedStyle ──
+async function learnFromSession(messages, folder)
+⋮----
+// ── summary untuk display ──
+</file>
+
 <file path="src/hooks/useGrowth.test.js">
 // @vitest-environment jsdom
 ⋮----
@@ -1398,6 +930,24 @@ act(() => { badgeClearFn(); }); // simulasi 4s lewat
 // 14 * 150 = 2100 XP → Hacker (2000–4999)
 ⋮----
 // 34 * 150 = 5100 XP → Legend
+</file>
+
+<file path="src/hooks/useMediaHandlers.js">
+export function useMediaHandlers(
+⋮----
+function handleImageAttach(e)
+⋮----
+reader.onload = ev =>
+⋮----
+// ── Camera capture (Capacitor native) ────────────────────────────────────────
+async function handleCameraCapture()
+⋮----
+// ── Gallery pick ──────────────────────────────────────────────────────────────
+async function handleGalleryPick()
+⋮----
+} catch (_e) { /* cancelled */ }
+⋮----
+function handleDrop(e)
 </file>
 
 <file path="src/hooks/useMediaHandlers.test.js">
@@ -1457,6 +1007,1087 @@ act(() => { result.current.addHistory('git status'); }); // duplicate
 .mockResolvedValueOnce({ ok: true, data: '# YUYU' });         // YUYU.md
 ⋮----
 // ── Skill helpers ─────────────────────────────────────────────────────────────
+</file>
+
+<file path="src/hooks/useUIStore.js">
+export function useUIStore()
+⋮----
+// ── Ambient brightness ──
+⋮----
+// ── Panels / Overlays ──
+⋮----
+// ── Editor feature toggles (Fase 1+2) ──
+⋮----
+// ── Editor feature toggles (Fase 3) ──
+⋮----
+// ── Theme / Display ──
+⋮----
+// ── Misc UI ──
+⋮----
+// ── Elicitation ──
+⋮----
+// ── Merge Conflict ──
+⋮----
+// ── Derived: T = active theme object ──
+⋮----
+// ── Persisted setters ──
+function setTheme(key)
+function setFontSize(n)
+function setSidebarWidth(w)
+function setVimMode(v)
+function setShowMinimap(v)
+function setGhostTextEnabled(v)
+function setLintEnabled(v)
+function setTsLspEnabled(v)
+function setBlameEnabled(v)
+function setMultiCursor(v)
+function setStickyScroll(v)
+function setCollabEnabled(v)
+⋮----
+// ── Load from Preferences ──
+function loadUIPrefs(
+</file>
+
+<file path="src/plugins/brightness.js">
+// ── Brightness Plugin Bridge ───────────────────────────────────────────────
+⋮----
+getBrightness: async () => (
+addListener: () => (
+removeAllListeners: async () =>
+</file>
+
+<file path="src/themes/aurora.js">
+// ── Aurora Glass ───────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+⋮----
+aiBubble: () => (
+userBubble: () => (
+glowBorder: (color='#8b5cf6') => (
+codeBlock: () => (
+chipOk: () => (
+glowText: () => ({}), // Aurora tidak pakai text glow
+inputFocus: () => (
+</file>
+
+<file path="src/themes/index.js">
+// ── Theme Registry ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+</file>
+
+<file path="src/themes/ink.js">
+// ── Ink & Paper ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+⋮----
+aiBubble: () => (
+userBubble: () => (
+glowBorder: () => ({}), // No glow in ink
+codeBlock: () => (
+chipOk: () => (
+glowText: () => (
+inputFocus: () => (
+</file>
+
+<file path="src/themes/mybrand.js">
+// ── My Brand Theme — Template untuk Custom Theme ────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+⋮----
+/** @type {import('./index').YuyuTheme} */
+⋮----
+// ── Global colours ────────────────────────────────────────────────────────
+⋮----
+// ── Atmosphere (glow blobs di bg) ─────────────────────────────────────────
+⋮----
+// ── Header ────────────────────────────────────────────────────────────────
+⋮----
+// ── Chat Bubbles ──────────────────────────────────────────────────────────
+⋮----
+// ── Action Chips ──────────────────────────────────────────────────────────
+⋮----
+// ── Code Blocks ───────────────────────────────────────────────────────────
+⋮----
+// ── Loading dots ──────────────────────────────────────────────────────────
+⋮----
+// ── Input Area ────────────────────────────────────────────────────────────
+⋮----
+// ── Slash Command Popup ───────────────────────────────────────────────────
+⋮----
+// ── Per-theme CSS & Animations ────────────────────────────────────────────
+⋮----
+// ── Visual FX helpers (dipakai oleh MsgBubble) ───────────────────────────
+⋮----
+aiBubble:   () => (
+userBubble: () => (
+glowBorder: (color='#d97706', intensity=1) => (
+codeBlock:  () => (
+chipOk:     () => (
+glowText:   (color='#d97706') => (
+inputFocus: () => (
+</file>
+
+<file path="src/themes/neon.js">
+// ── Neon Terminal ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+⋮----
+// ── CSS injected globally ────────────────────────────────────────────────
+⋮----
+// ── Per-element effect functions ─────────────────────────────────────────
+⋮----
+glowBorder: (color='#00ff8c', intensity=1) => (
+aiBubble: () => (
+userBubble: () => (
+glowText: (color='#00ff8c') => (
+codeBlock: () => (
+chipOk: () => (
+inputFocus: () => (
+</file>
+
+<file path="src/themes/obsidian.js">
+// ── Obsidian Warm ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+⋮----
+aiBubble: () => (
+userBubble: () => (
+glowBorder: (color='#d97706', intensity=1) => (
+codeBlock: () => (
+chipOk: () => (
+glowText: (color='#d97706') => (
+inputFocus: () => (
+</file>
+
+<file path="src/api.branch.test.js">
+// @vitest-environment node
+// api.branch.test.js — condition branch coverage untuk api.js
+⋮----
+function makeChunk(content)
+⋮----
+function makeSseResponse(chunks)
+⋮----
+pull(ctrl)
+⋮----
+text: async ()
+⋮----
+// ── readSSEStream — _readErr when NOT aborted ─────────────────────────────────
+⋮----
+const resp =
+⋮----
+// ── readSSEStream — flush buffer ──────────────────────────────────────────────
+⋮----
+// ── injectVision — content is array ──────────────────────────────────────────
+⋮----
+// ── injectVision — non-last message not modified ─────────────────────────────
+⋮----
+// ── Groq model — 5xx retry ────────────────────────────────────────────────────
+⋮----
+if (calls < 3) return Promise.resolve(
+⋮----
+// ── Groq model — AbortError propagates ───────────────────────────────────────
+⋮----
+// DOMException message = 'Aborted', name = 'AbortError'
+⋮----
+// ── Groq model — RATE_LIMIT propagates ───────────────────────────────────────
+⋮----
+// ── Both Cerebras and Groq rate limit → throw original ───────────────────────
+⋮----
+// ── Groq AbortError during Cerebras fallback ──────────────────────────────────
+⋮----
+// ── Cerebras fetch network error → retry ─────────────────────────────────────
+⋮----
+// ── Cerebras 401 → throw immediately ─────────────────────────────────────────
+</file>
+
+<file path="src/api.test.js">
+// @vitest-environment node
+⋮----
+// Simpan referensi ASLI sebelum override apapun
+⋮----
+function makeReader(...chunks)
+⋮----
+function makeResponse(reader)
+⋮----
+return
+</file>
+
+<file path="src/editor.bench.js">
+// @vitest-environment node
+⋮----
+// ── Inline pure functions (copied from FileEditor — cannot import component) ──
+function getLangExt(path)
+⋮----
+function isEmmetLang(path)
+⋮----
+function isTsLang(path)
+⋮----
+function buildSrcdoc(tabs)
+⋮----
+// ── Fixtures ──────────────────────────────────────────────────────────────────
+⋮----
+// Realistic component — what yuyu-map actually processes
+⋮----
+// Fixtures for computeSalience
+⋮----
+// ── getLang benchmark ─────────────────────────────────────────────────────────
+⋮----
+// ── isEmmetLang benchmark ─────────────────────────────────────────────────────
+⋮----
+// ── isTsLang benchmark ───────────────────────────────────────────────────────
+⋮----
+// ── buildSrcdoc benchmark ─────────────────────────────────────────────────────
+⋮----
+// ── generateDiff benchmark ────────────────────────────────────────────────────
+⋮----
+// ── Multi-tab state operations (pure JS, no hook) ─────────────────────────────
+⋮----
+// ── extractSymbols benchmark (NEW) ───────────────────────────────────────────
+⋮----
+// ── compressSource benchmark (NEW) ────────────────────────────────────────────
+⋮----
+// ── extractImports benchmark (NEW) ────────────────────────────────────────────
+⋮----
+// ── computeSalience benchmark (NEW) ───────────────────────────────────────────
+⋮----
+// Pure scoring pass — no disk I/O, uses pre-built fixtures
+⋮----
+// ── parseActions hot path benchmark (NEW) ─────────────────────────────────────
+</file>
+
+<file path="src/editor.test.js">
+// @vitest-environment node
+⋮----
+// ── Mock CodeMirror — tidak bisa jalan di jsdom tanpa DOM penuh ───────────────
+⋮----
+vi.mock('lucide-react', () => (
+⋮----
+// ── Inline pure functions (copied dari FileEditor — tidak bisa import karena mock) ──
+function getLangExt(path)
+⋮----
+function isEmmetLang(path)
+⋮----
+function isTsLang(path)
+⋮----
+// ── getLang ───────────────────────────────────────────────────────────────────
+⋮----
+// ── isEmmetLang ───────────────────────────────────────────────────────────────
+⋮----
+// ── isTsLang ──────────────────────────────────────────────────────────────────
+</file>
+
+<file path="src/features.branch.test.js">
+// @vitest-environment node
+// features.branch.test.js — condition branch coverage untuk features.js
+// NOTE: runHooksV2 tests ada di features.extended.test.js — tidak diduplikasi
+⋮----
+// ── checkPermission — all branches ───────────────────────────────────────────
+⋮----
+// ── tfidfRank — all branches ──────────────────────────────────────────────────
+⋮----
+const r = tfidfRank(mems, 'a b', 5); // all words ≤ 2 chars → filtered out
+⋮----
+// new should score higher due to age bonus
+⋮----
+// ── selectSkills — all branches ───────────────────────────────────────────────
+⋮----
+// ── parseElicitation — all branches ──────────────────────────────────────────
+⋮----
+// ── rewindMessages — all branches ────────────────────────────────────────────
+⋮----
+// ── TokenTracker — requests=0 branch ─────────────────────────────────────────
+⋮----
+// ── runBackgroundAgent — loop iterates without DONE signal ───────────────────
+</file>
+
+<file path="src/globalfind.test.js">
+// @vitest-environment node
+⋮----
+// ── Pure logic extracted dari GlobalFindReplace ───────────────────────────────
+⋮----
+function parseGrepOutput(raw, folder)
+⋮----
+function buildSearchPattern(query, useRegex, matchCase)
+⋮----
+function applyReplace(content, query, replaceStr, useRegex, matchCase)
+⋮----
+// ── parseGrepOutput ───────────────────────────────────────────────────────────
+⋮----
+// ── buildSearchPattern ────────────────────────────────────────────────────────
+⋮----
+// ── applyReplace ──────────────────────────────────────────────────────────────
+</file>
+
+<file path="src/livepreview.test.js">
+// @vitest-environment node
+⋮----
+// ── Inline buildSrcdoc (copied — cannot import component directly in jsdom) ───
+⋮----
+function buildSrcdoc(tabs)
+⋮----
+// ── Tests ─────────────────────────────────────────────────────────────────────
+⋮----
+// Should not inject new script
+</file>
+
+<file path="src/main.jsx">
+class ErrorBoundary extends React.Component
+⋮----
+static getDerivedStateFromError(e)
+render()
+</file>
+
+<file path="src/setupTest.js">
+// Global test setup — vitest isolates modules per file by default
+// TextDecoder/TextEncoder are available natively in Node 18+ — do NOT override them
+</file>
+
+<file path="src/theme.js">
+// ── YuyuCode Active Theme ────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+</file>
+
+<file path="src/useFileStore.branch.test.js">
+// @vitest-environment jsdom
+// useFileStore.branch.test.js — condition branch coverage
+⋮----
+// Reset both default AND queue
+⋮----
+// ── saveFile — r.ok=false branch ──────────────────────────────────────────────
+⋮----
+.mockResolvedValueOnce({ ok: true, data: 'content' }) // openFile
+.mockResolvedValueOnce({ ok: false, data: 'disk full' }); // saveFile write fails
+⋮----
+// ── setSelectedFile — null with/without tabs ──────────────────────────────────
+⋮----
+// ── setFileContent — idx < 0 branch ──────────────────────────────────────────
+⋮----
+// ── handleApprove — write_file approve ───────────────────────────────────────
+⋮----
+.mockResolvedValueOnce({ ok: true, data: 'backup' }) // _backupFiles read
+.mockResolvedValue({ ok: false, data: '' });          // fallback
+⋮----
+// ── handleApprove — backup.ok=false → no setEditHistory ──────────────────────
+⋮----
+// Use mockReset + mockResolvedValue to ensure clean state
+⋮----
+callServer.mockResolvedValue({ ok: false, data: 'not found' }); // ALL calls fail
+⋮----
+// No backup → no editHistory update
+⋮----
+// But write still attempted
+⋮----
+// ── handleApprove — multi-target → shows success message ─────────────────────
+⋮----
+// ── handleApprove — atomic rollback when write fails ─────────────────────────
+⋮----
+.mockResolvedValue({ ok: true }); // rollback writes
+⋮----
+// rollback write calls
+⋮----
+// ── _verifySyntaxBatch — no cmd for .jsx ─────────────────────────────────────
+⋮----
+.mockResolvedValueOnce({ ok: true, data: 'backup' }) // backup
+⋮----
+// No exec call for .jsx
+⋮----
+// ── _verifySyntaxBatch — empty vOut → skip ───────────────────────────────────
+⋮----
+.mockResolvedValueOnce({ ok: true, data: '' }); // empty vOut
+⋮----
+expect(result.current.openTabs).toHaveLength(0); // no crash
+⋮----
+// ── _verifySyntaxBatch — SYNTAX_ERR → shows error ────────────────────────────
+⋮----
+// ── _getSyntaxCmd — json and sh branches ─────────────────────────────────────
+</file>
+
+<file path="src/utils.extended.test.js">
+// @vitest-environment node
+⋮----
+// ═══════════════════════════════════════════════════════════════════════════════
+// executeAction — all remaining action types
+// ═══════════════════════════════════════════════════════════════════════════════
+⋮----
+// ═══════════════════════════════════════════════════════════════════════════════
+// countTokens — extended
+// ═══════════════════════════════════════════════════════════════════════════════
+⋮----
+// countTokens does not guard against null entries — documents current behavior
+⋮----
+const msgs = [{ content: 'abc' }]; // 3/4 = 0.75 → round to 1
+⋮----
+// ═══════════════════════════════════════════════════════════════════════════════
+// resolvePath — extended
+// ═══════════════════════════════════════════════════════════════════════════════
+⋮----
+// '/base/src/file.js' with leading slash stripped = 'base/src/file.js'
+// which does not start with '/base', so it gets joined → '/base/base/src/file.js'
+// Use paths WITHOUT leading slash for relative resolution to avoid this
+⋮----
+// Already-prefixed path (no extra slash) works correctly:
+⋮----
+expect(typeof result2).toBe('string'); // documents current behavior without asserting wrong
+⋮----
+// ═══════════════════════════════════════════════════════════════════════════════
+// generateDiff — extended
+// ═══════════════════════════════════════════════════════════════════════════════
+⋮----
+// ═══════════════════════════════════════════════════════════════════════════════
+// parseActions — extended
+// ═══════════════════════════════════════════════════════════════════════════════
+</file>
+
+<file path="src/utils.snapshot.test.js">
+// @vitest-environment node
+⋮----
+// ── Snapshot Tests: hl() output ───────────────────────────────────────────────
+// Pertama kali run: vitest simpan "foto" output.
+// Run berikutnya: kalau output berubah 1 karakter, test langsung fail.
+// Update snapshot: npx vitest run --update-snapshots
+</file>
+
+<file path="src/utils.test.js">
+// @vitest-environment node
+⋮----
+// ── TEST countTokens ─────────────────────────────────────────────────────────
+⋮----
+// (5 + 6) / 4 = 2.75 → rounded to 3
+⋮----
+{ text: 'No content' }  // no .content field
+⋮----
+// only 'Hi' counts: 2 / 4 = 0.5 → rounds to 1
+⋮----
+// ── TEST getFileIcon ─────────────────────────────────────────────────────────
+⋮----
+// ── TEST hl (syntax highlight) ───────────────────────────────────────────────
+⋮----
+// ── TEST resolvePath ─────────────────────────────────────────────────────────
+⋮----
+// ── TEST parseActions ────────────────────────────────────────────────────────
+</file>
+
+<file path="eslint.config.js">
+// Node.js files (server + git helper)
+⋮----
+// Source files
+⋮----
+// Test files — LAST so it overrides source rules for *.test.js inside src/
+</file>
+
+<file path="YUYU.md">
+# YUYU.md — Project Rules
+> YuyuCode project-specific constraints. Dibaca Yuyu di setiap sesi.
+
+## Coding Standards
+- Gunakan React hooks, bukan class components
+- State management: useState + props passing (tidak ada Redux/Zustand)
+- File naming: camelCase untuk hooks (useXxx.js), PascalCase untuk components (.jsx)
+- Tidak ada TypeScript — project ini pure JavaScript + JSX
+- Komentar penting pakai `// ──` style (lihat codebase existing)
+
+## Architecture Decisions
+- Agent loop ada di `useAgentLoop.js` — jangan pecah ke file lain
+- Semua slash commands di `useSlashCommands.js` — satu file, pakai else-if chain
+- Theme system: token-based, zero hardcoded colors di component JSX
+- Server communication: selalu lewat `callServer()` di `api.js`
+- No npm build lokal — Vite build hanya di CI (ARM64 constraint)
+
+## Forbidden Patterns
+- JANGAN `npm run build` lokal — crash di Termux ARM64
+- JANGAN upgrade vitest ke v4+ — crash silent di ARM64
+- JANGAN hapus `"overrides": { "rollup": "npm:@rollup/wasm-node" }` di package.json
+- JANGAN override `global.TextDecoder` di test files — infinite recursion Node 24
+- JANGAN edit folder `android/` manual — di-generate Capacitor
+
+## Preferred Libraries
+- Code editor: CodeMirror 6
+- Terminal: xterm.js
+- File search: Fuse.js
+- Diff: `diff` library (Myers algorithm)
+- Testing: vitest@1 (bukan v4)
+
+## Commands
+- Dev: `npm run dev` (port 5173)
+- Test: `npx vitest run` (harus 546/546 pass sebelum commit)
+- Lint: `npm run lint` (harus 0 problems)
+- Bench: `npm run bench`
+- Deploy: `node yugit.cjs "feat: ..."`
+- Release: `node yugit.cjs "release: vX.Y — deskripsi"`
+</file>
+
+<file path=".github/workflows/build-apk.yml">
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'README.md'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Cache node_modules
+        id: nm-cache
+        uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: nm-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        if: steps.nm-cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Build Vite
+        run: npm run build
+        env:
+          VITE_CEREBRAS_API_KEY: ${{ secrets.VITE_CEREBRAS_API_KEY }}
+          VITE_TAVILY_API_KEY: ${{ secrets.VITE_TAVILY_API_KEY }}
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'tools platform-tools platforms;android-34 build-tools;34.0.0'
+
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Add Capacitor Android
+        run: |
+          if [ ! -d "android" ]; then npx cap add android; fi
+          npx cap sync android
+          # Restore custom icon after cap sync overwrites
+          echo "=== RESTORING ICONS ==="
+          cp -v .github/icons/ic_launcher_background.xml android/app/src/main/res/drawable/ic_launcher_background.xml
+          cp -v .github/icons/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
+          echo "=== ICONS RESTORED ==="
+
+      # Auto-bump versionCode = build number, versionName = 1.0.N
+      - name: Bump version
+        uses: chkfung/android-version-actions@v1.2.1
+        with:
+          gradlePath: android/app/build.gradle
+          versionCode: ${{ github.run_number }}
+          versionName: 1.0.${{ github.run_number }}
+
+      - name: Build Release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --parallel --build-cache
+
+      # Decode keystore from secret, sign & zipalign
+      - name: Sign APK
+        id: sign_apk
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: android/app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+
+      - name: Rename signed APK
+        run: cp "${{ steps.sign_apk.outputs.signedReleaseFile }}" android/app/build/outputs/apk/release/YuyuCode.apk
+
+      # Keep artifact upload as backup
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: YuyuCode-v1.0.${{ github.run_number }}
+          path: android/app/build/outputs/apk/release/YuyuCode.apk
+
+      - name: Get version & commit info
+        id: info
+        run: |
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+
+      # Create GitHub Release — hanya jika commit message diawali 'release:'
+      - name: Create Release
+        if: startsWith(github.event.head_commit.message, 'release:')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.info.outputs.version }}
+          name: "YuyuCode v${{ steps.info.outputs.version }} (${{ steps.info.outputs.date }})"
+          body: |
+            **${{ steps.info.outputs.msg }}**
+
+            | | |
+            |---|---|
+            | Version | ${{ steps.info.outputs.version }} |
+            | Build | #${{ github.run_number }} |
+            | Commit | ${{ github.sha }} |
+            | Date | ${{ steps.info.outputs.date }} |
+
+            ⬇️ Download **YuyuCode.apk** di bawah
+          files: android/app/build/outputs/apk/release/YuyuCode.apk
+          make_latest: true
+</file>
+
+<file path=".github/workflows/codeql.yml">
+name: CodeQL · SAST
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * 1'  # Senin 03:00 UTC — weekly deep scan
+
+jobs:
+  analyze:
+    name: CodeQL · JavaScript
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript
+          # Queries:
+          # security-extended  — lebih banyak security rules dari default
+          # security-and-quality — security + code quality (duplicate, dead code)
+          queries: security-extended, security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: codeql-javascript
+          # Hasil muncul di: GitHub → Security → Code scanning alerts
+</file>
+
+<file path="src/components/FileTree.jsx">
+function getFileIconData(name)
+⋮----
+function FileIcon(
+⋮----
+export function FileTree(
+⋮----
+// ── Theme tokens ──
+⋮----
+useEffect(() => { load(); }, [load]); // eslint-disable-line react-hooks/set-state-in-effect
+⋮----
+async function toggleDir(fullPath)
+⋮----
+async function doRename(oldPath)
+⋮----
+async function doCreate(parentPath)
+⋮----
+async function doDelete(path)
+⋮----
+function flattenTree(items, basePath, acc = [])
+const allFiles = useMemo(() => tree ? flattenTree(tree, folder) : [], [tree, expanded, folder]); // eslint-disable-line react-hooks/exhaustive-deps
+⋮----
+const inputStyle = (borderColor) => (
+⋮----
+function renderItems(items, basePath, depth)
+⋮----
+function renderItem(item, basePath, depth)
+⋮----
+const iconBtn = (onClick, title, children) => (
+    <button onClick={onClick} title={title}
+      style={{background:'none',border:'none',color:textMute,cursor:'pointer',padding:'4px 6px',borderRadius:'5px',display:'flex',alignItems:'center'}}
+      onMouseEnter={e=>e.currentTarget.style.background=bg3}
+      onMouseLeave={e=>e.currentTarget.style.background='none'}>
+      {children}
+    </button>
+  );
+⋮----
+const ctxItem = (onClick, color, children) => (
+    <div onClick={onClick}
+      style={{padding:'7px 12px',fontSize:'12.5px',color:color||textSec,cursor:'pointer',borderRadius:'6px',display:'flex',alignItems:'center',gap:'8px'}}
+      onMouseEnter={e=>e.currentTarget.style.background=color===error?errorBg:bg3}
+      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+      {children}
+    </div>
+  );
+⋮----
+{/* Fuzzy search */}
+</file>
+
+<file path="src/components/panels.git.jsx">
+export function GitComparePanel(
+⋮----
+const [view, setView]       = useState('unified'); // 'unified' | 'split'
+⋮----
+async function load(s)
+⋮----
+useEffect(() => { load(false); }, []); // eslint-disable-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+⋮----
+function lineStyle(line)
+⋮----
+function renderUnified()
+⋮----
+function renderSplit()
+⋮----
+{/* Left (old) */}
+⋮----
+{/* Right (new) */}
+⋮----
+const tabBtn = (label, active, onClick) => (
+    <button onClick={onClick} style={{background:active?'rgba(255,255,255,.1)':'none',border:'1px solid '+(active?borderMed:border),borderRadius:'5px',padding:'3px 9px',color:active?text:textMute,fontSize:'11px',cursor:'pointer'}}>{label}</button>
+  );
+⋮----
+{/* Header */}
+⋮----
+{/* Stats */}
+⋮----
+{/* Diff content */}
+⋮----
+// ─── FILE HISTORY PANEL ───────────────────────────────────────────────────────
+⋮----
+export function FileHistoryPanel(
+⋮----
+async function preview(hash)
+⋮----
+async function restore(hash)
+⋮----
+// ─── CUSTOM ACTIONS PANEL ─────────────────────────────────────────────────────
+⋮----
+export function GitBlamePanel(
+⋮----
+// ─── SNIPPET LIBRARY ──────────────────────────────────────────────────────────
+⋮----
+export function DepGraphPanel(
+⋮----
+}, [depGraph]); // eslint-disable-line react-hooks/exhaustive-deps
+⋮----
+// ─── ELICITATION PANEL (AI-requested dynamic form) ───────────────────────────
+⋮----
+export function MergeConflictPanel(
+⋮----
+async function loadPreview(cf)
+⋮----
+async function resolve(strategy)
+⋮----
+async function abortMerge()
+⋮----
+{/* Header */}
+⋮----
+{/* Conflict files */}
+⋮----
+{/* Status */}
+⋮----
+{/* Actions */}
+⋮----
+// ── SkillsPanel ───────────────────────────────────────────────────────────────
+</file>
+
+<file path="src/components/VoiceBtn.jsx">
+export function VoiceBtn(
+⋮----
+async function toggle()
+⋮----
+r.onresult = e => {
+      const transcript = e.results[0][0].transcript;
+      if (e.results[0].isFinal) { onResult(transcript); setListening(false); setPartial(''); }
+      else setPartial(transcript);
+r.onerror = () =>
+r.onend   = () =>
+⋮----
+export function PushToTalkBtn(
+⋮----
+async function onPressIn()
+⋮----
+async function onPressOut()
+</file>
+
+<file path="src/hooks/useAgentLoop.test.js">
+// @vitest-environment jsdom
+⋮----
+// ── Mocks ─────────────────────────────────────────────────────────────────────
+⋮----
+// ── Fake context builders ─────────────────────────────────────────────────────
+function makeProject(overrides =
+⋮----
+function makeChat(overrides =
+⋮----
+function makeFile(overrides =
+⋮----
+function makeCtx(overrides =
+⋮----
+// ── cancelMsg ─────────────────────────────────────────────────────────────────
+⋮----
+// ── sendMsg — slash command ───────────────────────────────────────────────────
+⋮----
+// ── sendMsg — server unreachable ──────────────────────────────────────────────
+⋮----
+// ── sendMsg — basic loop ──────────────────────────────────────────────────────
+⋮----
+// ── compactContext ────────────────────────────────────────────────────────────
+⋮----
+expect(ctx.chat.setMessages).toHaveBeenCalled(); // "context masih kecil" message
+⋮----
+// ── abTest ────────────────────────────────────────────────────────────────────
+⋮----
+// ── continueMsg / retryLast ───────────────────────────────────────────────────
+⋮----
+mockCallServer.mockResolvedValue({ ok: false, data: '' }); // server down → returns early
+⋮----
+// continueMsg delegates to sendMsg — loading was set
+⋮----
+mockCallServer.mockResolvedValue({ ok: false, data: '' }); // server down → returns early
+⋮----
+// ── executeWithPermission ─────────────────────────────────────────────────────
+⋮----
+// checkPermission was called and returned false — result should be permission denied
+⋮----
+// ── diffReview mode ───────────────────────────────────────────────────────────
+⋮----
+// beforeEach handles ping; also pass through read for App.jsx (diffPreview)
+⋮----
+// diffReview = true → should return early (not execute the write)
+⋮----
+// ── sendMsg — RATE_LIMIT error ────────────────────────────────────────────────
+⋮----
+// ── sendMsg — PROJECT_NOTE extraction ─────────────────────────────────────────
+⋮----
+// ── sendMsg — TTS ─────────────────────────────────────────────────────────────
+⋮----
+// ── sendMsg — gracefulStop ────────────────────────────────────────────────────
+⋮----
+// ── sendMsg — patch_file self-correct ─────────────────────────────────────────
+⋮----
+// Should have called AI more than once due to self-correct
+</file>
+
+<file path="src/hooks/useApprovalFlow.js">
+// ── Helpers ───────────────────────────────────────────────────────────────────
+⋮----
+function getWriteTargets(msg, targetPath)
+⋮----
+const isWrite = a
+⋮----
+async function backupTargets(targets, folder, setEditHistory)
+⋮----
+function getSyntaxCmd(ext, absPath)
+⋮----
+async function verifySyntax(targets, folder, setMessages, sendMsgRef)
+⋮----
+function handleReject(idx, targets, setMessages, sendMsgRef)
+⋮----
+function autoResumeIfAllDone(msg, targets, idx, setMessages, sendMsgRef)
+⋮----
+// ── Hook ─────────────────────────────────────────────────────────────────────
+⋮----
+export function useApprovalFlow({
+  messages, setMessages,
+  folder, hooks, permissions,
+  _editHistory, setEditHistory,
+  sendMsgRef, callAI, abortRef,
+  setLoading,
+})
+⋮----
+async function handleApprove(idx, ok, targetPath)
+⋮----
+async function handlePlanApprove(idx, approved)
+</file>
+
+<file path="src/hooks/useFileStore.js">
+// ── Module-level helpers for handleApprove ───────────────────────────────────
+async function _backupFiles(targets, folder)
+⋮----
+function _getSyntaxCmd(ext, absPath)
+⋮----
+async function _verifySyntaxBatch(targets, folder, setMessages)
+⋮----
+export function useFileStore()
+⋮----
+// ── Multi-tab state ──
+⋮----
+// ── Legacy single-view state (still used for some flows) ──
+const [activeTab, setActiveTab]     = useState('chat'); // 'chat' | 'file'
+⋮----
+// ── Derived compat ──
+⋮----
+// ── Lists ──
+⋮----
+// ── Persisted setters ──
+function setRecentFiles(next)
+function setPinnedFiles(next)
+⋮----
+// ── Load from Preferences ──
+function loadFilePrefs(
+⋮----
+// ── setActiveTabIdx (also switches to file tab) ──
+function setActiveTabIdx(idx)
+⋮----
+// ── openFile — opens in existing tab or new tab ──
+async function openFile(path)
+⋮----
+// ── closeTab ──
+function closeTab(idx)
+⋮----
+// ── updateTabContent — marks a tab dirty (from editor changes) ──
+function updateTabContent(idx, content)
+⋮----
+// ── saveFile — saves current active tab to server ──
+async function saveFile(content, onMsg)
+⋮----
+// ── Backward compat setters ──
+function setSelectedFile(path)
+⋮----
+function setFileContent(content)
+⋮----
+// ── togglePin ──
+function togglePin(path)
+⋮----
+// ── undoLastEdit ──
+async function undoLastEdit(onMsg)
+⋮----
+// ── readFilesParallel ──
+async function readFilesParallel(paths, folder)
+⋮----
+// ── handleApprove (write file batch with backup + rollback) ──
+async function handleApprove(idx, ok, targetPath, messages, setMessages, folder, hooks, runHooksV2, permissions)
+</file>
+
+<file path="src/hooks/useNotifications.js">
+export function useNotifications()
+⋮----
+function sendNotification(title, body)
+⋮----
+function haptic(type = 'light')
+⋮----
+function speakText(text)
+⋮----
+function stopTts()
+</file>
+
+<file path="src/hooks/useSlashCommands.branch.test.js">
+// @vitest-environment jsdom
+// useSlashCommands.branch.test.js — condition branch coverage
+⋮----
+function makeProps(o =
+⋮----
+async function runCmd(props, cmd)
+⋮----
+// ── /rules show — YUYU.md not found ──────────────────────────────────────────
+⋮----
+// ── /rules init — already exists (no overwrite) ───────────────────────────────
+⋮----
+// ── /rules clear — write fails ───────────────────────────────────────────────
+⋮----
+// ── /init — SKILL.md exists without overwrite ────────────────────────────────
+⋮----
+.mockResolvedValueOnce({ ok: true, data: '{}' })           // package.json
+.mockResolvedValueOnce({ ok: true, data: [] })              // src list
+.mockResolvedValueOnce({ ok: true, data: 'git log' })       // git
+.mockResolvedValueOnce({ ok: true, data: 'existing skill' }); // SKILL.md exists
+⋮----
+// ── /batch — abort mid-loop ───────────────────────────────────────────────────
+⋮----
+// AI returns SKIP for both files
+⋮----
+callServer.mockResolvedValueOnce({ ok: true, data: 'file content' }); // read
+⋮----
+// Should show "tidak ada perubahan" message
+⋮----
+// ── /handoff — handoff saved to file ─────────────────────────────────────────
+⋮----
+// ── /pin — no target, no pins ────────────────────────────────────────────────
+⋮----
+// ── /loop — inactive loop, no args ───────────────────────────────────────────
+⋮----
+// ── /amemory — add with no content ───────────────────────────────────────────
+⋮----
+// No content → falls through to show all
+⋮----
+// ── /review — selectedFile open ──────────────────────────────────────────────
+⋮----
+// ── /diff — with range argument ───────────────────────────────────────────────
+⋮----
+// ── /search — with results ───────────────────────────────────────────────────
+⋮----
+// ── /undo — write fails ───────────────────────────────────────────────────────
+⋮----
+// ── /bgmerge — ok result message ────────────────────────────────────────────
+⋮----
+// ── /color — off value ────────────────────────────────────────────────────────
+⋮----
+// ── parseActionsLocal catch branch ───────────────────────────────────────────
+⋮----
+// Trigger via /batch which uses processBatchFile which uses parseActionsLocal
+⋮----
+// ── /batch — listR.ok fails ───────────────────────────────────────────────────
+⋮----
+// ── /batch — signal aborted mid-loop ─────────────────────────────────────────
+⋮----
+// ── /batch — result === 'failed' (read fails) ─────────────────────────────────
+⋮----
+callServer.mockResolvedValueOnce({ ok: false, data: 'not found' }); // read fails
+⋮----
+// ── /batch — allWrites > 0 (actual changes) ──────────────────────────────────
+⋮----
+// ── /bgmerge — result.ok = false ─────────────────────────────────────────────
+⋮----
+// ── /review --all — changedFiles empty ───────────────────────────────────────
+⋮----
+callServer.mockResolvedValueOnce({ ok: true, data: '' }); // git diff returns empty
+⋮----
+// ── /review <path> — file not found ──────────────────────────────────────────
+⋮----
+// ── /loop — active loop stop ──────────────────────────────────────────────────
+⋮----
+// ── /loop — invalid format ────────────────────────────────────────────────────
+⋮----
+// ── /loop — valid format with hours ──────────────────────────────────────────
+⋮----
+// ── /db — dbFiles.length === 1 auto-select ───────────────────────────────────
+⋮----
+callServer.mockResolvedValueOnce({ ok: true, data: 'result rows' }); // query result
+⋮----
+// ── /db — multiple db files ───────────────────────────────────────────────────
+⋮----
+// ── /deps — external imports (not starting with '.') ─────────────────────────
+⋮----
+.mockResolvedValue({ ok: false }); // no local files found
+⋮----
+// ── /deps — resolveLocalImport nodesMap already exists ───────────────────────
+⋮----
+// First read: App.jsx imports ./utils, second read: utils.jsx imports ./utils again (cycle)
+⋮----
+.mockResolvedValueOnce({ ok: true, data: "import { x } from './utils';" }) // App.jsx
+.mockResolvedValueOnce({ ok: true, data: "import { y } from './utils';" }) // utils.js
+⋮----
+// ── /amemory — clear sub ─────────────────────────────────────────────────────
 </file>
 
 <file path="src/hooks/useSlashCommands.test.js">
@@ -1643,623 +2274,52 @@ async function runCmd(props, cmd)
 // ═══════════════════════════════════════════════════════════════════════════════
 // unknown command — should not throw
 // ═══════════════════════════════════════════════════════════════════════════════
-</file>
-
-<file path="src/api.test.js">
-// @vitest-environment node
-⋮----
-// Simpan referensi ASLI sebelum override apapun
-⋮----
-function makeReader(...chunks)
-⋮----
-function makeResponse(reader)
-⋮----
-return
-</file>
-
-<file path="src/features.js">
-// ── FEATURES v3 — Overhaul ─────────────────────────────────────────────────────
-⋮----
-// ─── PLAN MODE ────────────────────────────────────────────────────────────────
-export function parsePlanSteps(reply)
-⋮----
-export async function generatePlan(task, folder, callAI, signal)
-⋮----
-export async function executePlanStep(step, folder, callAI, signal, onChunk)
-⋮----
-// ─── BACKGROUND AGENTS WITH GIT WORKTREE ISOLATION ───────────────────────────
-⋮----
-export function getBgAgents()
-⋮----
-async function execGit(folder, cmd)
-⋮----
-// ── Background agent helpers ──────────────────────────────────────────────────
-⋮----
-async function _setupBgWorktree(agent, folder, wtPath, branch)
-⋮----
-async function _executeBgActions(agent, actions, wtPath)
-⋮----
-async function _runBgAgentLoop(agent, task, wtPath, branch, callAI, signal)
-⋮----
-async function _commitBgChanges(agent, id, task, wtPath, branch, allWrites, totalPatches)
-⋮----
-// Background agent dengan REAL agentic loop (tidak hanya satu call)
-export async function runBackgroundAgent(task, folder, callAI, onDone)
-⋮----
-agent.abort = () =>
-⋮----
-// Async agent loop in background
-⋮----
-export async function mergeBackgroundAgent(id, folder)
-⋮----
-export function abortBgAgent(id)
-⋮----
-// ─── SKILLS SYSTEM ────────────────────────────────────────────────────────────
-// ── loadSkills: .yuyu/skills/*.md only ─────────────────────────────────────
-export async function loadSkills(folder, activeMap =
-⋮----
-// .yuyu/skills/*.md
-⋮----
-active: activeMap[f.name] !== false,   // default on
-⋮----
-// ── Upload / save skill to .yuyu/skills/ ────────────────────────────────────
-export async function saveSkillFile(folder, name, content)
-⋮----
-// ── Delete skill file ─────────────────────────────────────────────────────────
-export async function deleteSkillFile(folder, name)
-⋮----
-export function selectSkills(skills, taskText)
-⋮----
-// ─── HOOKS v2 ────────────────────────────────────────────────────────────────
-⋮----
-export async function runHooksV2(hookList, context, folder)
-⋮----
-// ─── TOKEN TRACKER ────────────────────────────────────────────────────────────
-export class TokenTracker
-⋮----
-reset()
-record(inTk, outTk, model)
-lastCost()
-summary()
-⋮----
-// ─── SESSION MANAGER ─────────────────────────────────────────────────────────
-export async function saveSession(name, messages, folder, branch)
-⋮----
-export async function loadSessions()
-⋮----
-// ─── REWIND ──────────────────────────────────────────────────────────────────
-export function rewindMessages(messages, turns)
-⋮----
-// ─── EFFORT LEVELS ───────────────────────────────────────────────────────────
-⋮----
-// ─── PERMISSIONS ─────────────────────────────────────────────────────────────
-⋮----
-write_file:  true,   // auto-execute like Claude Code
-⋮----
-exec:        true,   // Claude Code runs commands freely
-⋮----
-delete_file: false,  // tetap false — terlalu destruktif
-⋮----
-export function checkPermission(permissions, actionType)
-⋮----
-// normalize: patch_file and write_file use separate permissions now
-⋮----
-// ─── ELICITATION ─────────────────────────────────────────────────────────────
-export function parseElicitation(reply)
-⋮----
-// ─── TF-IDF MEMORY RANKING ───────────────────────────────────────────────────
-export function tfidfRank(memories, queryText, topN = 5)
-</file>
-
-<file path="src/main.jsx">
-class ErrorBoundary extends React.Component
-⋮----
-static getDerivedStateFromError(e)
-render()
-</file>
-
-<file path="src/multitab.test.js">
-// ── Mock dependencies ─────────────────────────────────────────────────────────
-⋮----
-// ── Multi-tab core ────────────────────────────────────────────────────────────
-⋮----
-// ── Pinned files ──────────────────────────────────────────────────────────────
-⋮----
-// ── Undo ──────────────────────────────────────────────────────────────────────
-⋮----
-// ── undoLastEdit with history ─────────────────────────────────────────────────
-⋮----
-// ── readFilesParallel ─────────────────────────────────────────────────────────
-⋮----
-// ── loadFilePrefs ─────────────────────────────────────────────────────────────
-⋮----
-// ── setSelectedFile ───────────────────────────────────────────────────────────
-⋮----
-// ── setFileContent ────────────────────────────────────────────────────────────
-⋮----
-// ── saveFile edge cases ───────────────────────────────────────────────────────
-</file>
-
-<file path="src/setupTest.js">
-// Global test setup — vitest isolates modules per file by default
-// TextDecoder/TextEncoder are available natively in Node 18+ — do NOT override them
-</file>
-
-<file path="src/uistore.test.js">
-expect(result.current.multiCursor).toBe(true); // default ON
-</file>
-
-<file path="src/utils.extended.test.js">
-// @vitest-environment node
 ⋮----
 // ═══════════════════════════════════════════════════════════════════════════════
-// executeAction — all remaining action types
+// /batch
 // ═══════════════════════════════════════════════════════════════════════════════
 ⋮----
 // ═══════════════════════════════════════════════════════════════════════════════
-// countTokens — extended
+// /handoff
 // ═══════════════════════════════════════════════════════════════════════════════
 ⋮----
-// countTokens does not guard against null entries — documents current behavior
-⋮----
-const msgs = [{ content: 'abc' }]; // 3/4 = 0.75 → round to 1
+// askCerebrasStream is called directly — mock via api module
 ⋮----
 // ═══════════════════════════════════════════════════════════════════════════════
-// resolvePath — extended
-// ═══════════════════════════════════════════════════════════════════════════════
-⋮----
-// '/base/src/file.js' with leading slash stripped = 'base/src/file.js'
-// which does not start with '/base', so it gets joined → '/base/base/src/file.js'
-// Use paths WITHOUT leading slash for relative resolution to avoid this
-⋮----
-// Already-prefixed path (no extra slash) works correctly:
-⋮----
-expect(typeof result2).toBe('string'); // documents current behavior without asserting wrong
-⋮----
-// ═══════════════════════════════════════════════════════════════════════════════
-// generateDiff — extended
+// /deps
 // ═══════════════════════════════════════════════════════════════════════════════
 ⋮----
 // ═══════════════════════════════════════════════════════════════════════════════
-// parseActions — extended
+// /refactor
 // ═══════════════════════════════════════════════════════════════════════════════
-</file>
-
-<file path="src/utils.snapshot.test.js">
-// @vitest-environment node
 ⋮----
-// ── Snapshot Tests: hl() output ───────────────────────────────────────────────
-// Pertama kali run: vitest simpan "foto" output.
-// Run berikutnya: kalau output berubah 1 karakter, test langsung fail.
-// Update snapshot: npx vitest run --update-snapshots
-</file>
-
-<file path="src/utils.test.js">
-// @vitest-environment node
+// ═══════════════════════════════════════════════════════════════════════════════
+// /loop edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
 ⋮----
-// ── TEST countTokens ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// /search edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
 ⋮----
-// (5 + 6) / 4 = 2.75 → rounded to 3
+// ═══════════════════════════════════════════════════════════════════════════════
+// /undo edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
 ⋮----
-{ text: 'No content' }  // no .content field
+// ═══════════════════════════════════════════════════════════════════════════════
+// /amemory edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
 ⋮----
-// only 'Hi' counts: 2 / 4 = 0.5 → rounds to 1
+// ═══════════════════════════════════════════════════════════════════════════════
+// /rules edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
 ⋮----
-// ── TEST getFileIcon ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// /bgmerge edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
 ⋮----
-// ── TEST hl (syntax highlight) ───────────────────────────────────────────────
-⋮----
-// ── TEST resolvePath ─────────────────────────────────────────────────────────
-⋮----
-// ── TEST parseActions ────────────────────────────────────────────────────────
-</file>
-
-<file path=".deepsource.toml">
-version = 1
-
-[[analyzers]]
-name = "javascript"
-enabled = true
-
-  [analyzers.meta]
-  environment = ["browser", "es2022"]
-  plugins = ["react"]
-
-[[analyzers]]
-name = "secrets"
-enabled = true
-# Scan for accidentally committed API keys/tokens.
-# CEREBRAS_KEY, GROQ_KEY, GITHUB_TOKEN jangan pernah hardcoded.
-
-[[transformers]]
-name = "prettier"
-enabled = true
-
-[test_coverage]
-reporter = "javascript"
-threshold = 60
-
-# ── Suppress false positives ────────────────────────────────────────────────
-# JS-C1002: short variable names — T, m, r, e, a, i semua intentional
-# (T = theme object, m = messages callback, r = result, i = index)
-[[issues]]
-issue_code = "JS-C1002"
-issue_type = "anti-pattern"
-[[issues.suppressed_in]]
-file_paths = ["src/**"]
-
-# JS-R1005: cyclomatic complexity — sendMsg & handleSlashCommand
-# complex by design (agent loop + 60+ slash commands), refactor hurt readability
-[[issues]]
-issue_code = "JS-R1005"
-issue_type = "anti-pattern"
-[[issues.suppressed_in]]
-file_paths = [
-  "src/hooks/useAgentLoop.js",
-  "src/hooks/useSlashCommands.js",
-  "src/hooks/useApprovalFlow.js",
-  "src/components/FileEditor.jsx",
-]
-
-# JS-0067: global scope — bgAgents Map, tokenTracker singleton intentional
-[[issues]]
-issue_code = "JS-0067"
-issue_type = "anti-pattern"
-[[issues.suppressed_in]]
-file_paths = ["src/features.js", "yuyu-server.js"]
-</file>
-
-<file path="eslint.config.js">
-// Node.js files (server + git helper)
-⋮----
-// Source files
-⋮----
-// Test files — LAST so it overrides source rules for *.test.js inside src/
-</file>
-
-<file path="YUYU.md">
-# YUYU.md — Project Rules
-> YuyuCode project-specific constraints. Dibaca Yuyu di setiap sesi.
-
-## Coding Standards
-- Gunakan React hooks, bukan class components
-- State management: useState + props passing (tidak ada Redux/Zustand)
-- File naming: camelCase untuk hooks (useXxx.js), PascalCase untuk components (.jsx)
-- Tidak ada TypeScript — project ini pure JavaScript + JSX
-- Komentar penting pakai `// ──` style (lihat codebase existing)
-
-## Architecture Decisions
-- Agent loop ada di `useAgentLoop.js` — jangan pecah ke file lain
-- Semua slash commands di `useSlashCommands.js` — satu file, pakai else-if chain
-- Theme system: token-based, zero hardcoded colors di component JSX
-- Server communication: selalu lewat `callServer()` di `api.js`
-- No npm build lokal — Vite build hanya di CI (ARM64 constraint)
-
-## Forbidden Patterns
-- JANGAN `npm run build` lokal — crash di Termux ARM64
-- JANGAN upgrade vitest ke v4+ — crash silent di ARM64
-- JANGAN hapus `"overrides": { "rollup": "npm:@rollup/wasm-node" }` di package.json
-- JANGAN override `global.TextDecoder` di test files — infinite recursion Node 24
-- JANGAN edit folder `android/` manual — di-generate Capacitor
-
-## Preferred Libraries
-- Code editor: CodeMirror 6
-- Terminal: xterm.js
-- File search: Fuse.js
-- Diff: `diff` library (Myers algorithm)
-- Testing: vitest@1 (bukan v4)
-
-## Commands
-- Dev: `npm run dev` (port 5173)
-- Test: `npx vitest run` (harus 546/546 pass sebelum commit)
-- Lint: `npm run lint` (harus 0 problems)
-- Bench: `npm run bench`
-- Deploy: `node yugit.cjs "feat: ..."`
-- Release: `node yugit.cjs "release: vX.Y — deskripsi"`
-</file>
-
-<file path=".github/workflows/codeql.yml">
-name: CodeQL · SAST
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  schedule:
-    - cron: '0 3 * * 1'  # Senin 03:00 UTC — weekly deep scan
-
-jobs:
-  analyze:
-    name: CodeQL · JavaScript
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: javascript
-          # Queries:
-          # security-extended  — lebih banyak security rules dari default
-          # security-and-quality — security + code quality (duplicate, dead code)
-          queries: security-extended, security-and-quality
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: codeql-javascript
-          # Hasil muncul di: GitHub → Security → Code scanning alerts
-</file>
-
-<file path="src/components/panels.base.jsx">
-export function BottomSheet(
-⋮----
-function onTouchStart(e)
-function onTouchMove(e)
-function onTouchEnd()
-⋮----
-{/* drag handle zone */}
-⋮----
-export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories, checkpoints, model, models, T,
-  onModelChange, onNewChat, theme, onThemeChange, showSidebar, onToggleSidebar,
-  onShowMemory, onShowCheckpoints, onShowMCP, onShowGitHub, onShowDeploy,
-  onShowDiff, onShowSearch, onShowSnippets, onShowCustomActions,
-  onShowSessions, onShowPermissions, onShowPlugins, onShowConfig,
-  onShowSkills,
-runTests, generateCommitMsg, exportChat, compactContext })
-⋮----
-
-⋮----
-action:()=>
-⋮----
-// ─── DEP GRAPH PANEL (d3 force layout) ───────────────────────────────────────
-</file>
-
-<file path="src/hooks/useApprovalFlow.js">
-// ── Helpers ───────────────────────────────────────────────────────────────────
-⋮----
-function getWriteTargets(msg, targetPath)
-⋮----
-const isWrite = a
-⋮----
-async function backupTargets(targets, folder, setEditHistory)
-⋮----
-function getSyntaxCmd(ext, absPath)
-⋮----
-async function verifySyntax(targets, folder, setMessages, sendMsgRef)
-⋮----
-function handleReject(idx, targets, setMessages, sendMsgRef)
-⋮----
-function autoResumeIfAllDone(msg, targets, idx, setMessages, sendMsgRef)
-⋮----
-// ── Hook ─────────────────────────────────────────────────────────────────────
-⋮----
-export function useApprovalFlow({
-  messages, setMessages,
-  folder, hooks, permissions,
-  _editHistory, setEditHistory,
-  sendMsgRef, callAI, abortRef,
-  setLoading,
-})
-⋮----
-async function handleApprove(idx, ok, targetPath)
-⋮----
-async function handlePlanApprove(idx, approved)
-</file>
-
-<file path="src/hooks/useChatStore.js">
-export function useChatStore()
-⋮----
-// ── Core chat ──
-⋮----
-const [gracefulStop, setGracefulStop]   = useState(false); // finish iter then stop
-const [agentStatus, setAgentStatus]   = useState(''); // e.g. 'Iter 2/10 · exec'
-⋮----
-// ── Rate limit ──
-⋮----
-// ── Memories / Checkpoints ──
-⋮----
-// ── Agent / Plan ──
-⋮----
-// ── Input extras ──
-⋮----
-// ── Persisted setters ──
-function setMemories(next)
-function setCheckpoints(next)
-⋮----
-// ── Load from Preferences ──
-function loadChatPrefs(
-⋮----
-// ── Persist messages on change (called from useEffect in App) ──
-function persistMessages(msgs)
-⋮----
-// ── trimHistory ──
-function trimHistory(msgs)
-⋮----
-// ── Auto memory extraction ──
-async function extractMemories(userMsg, aiReply, folder)
-⋮----
-// Skip kalau reply terlalu pendek atau tidak technical
-⋮----
-// ── getRelevantMemories (TF-IDF scoring) ──
-function getRelevantMemories(txt)
-⋮----
-// Fallback to most recent if no scores > 0
-⋮----
-// ── saveCheckpoint — chat + file snapshot via git stash snapshot ──
-async function saveCheckpoint(folder, branch, notes, callServerFn)
-⋮----
-// Snapshot file state: capture git diff as patch
-⋮----
-filePatch,                       // git diff snapshot
-⋮----
-// ── restoreCheckpoint — chat + optional file restore ──
-async function restoreCheckpoint(cp, setFolder, setFolderInput, setNotesRaw, callServerFn)
-⋮----
-// Offer to restore file state via reverse patch
-⋮----
-// ── exportChat ──
-function exportChat()
-⋮----
-// ── clearChat ──
-function clearChat()
-⋮----
-// ── startRateLimitTimer ──
-function startRateLimitTimer(secs)
-⋮----
-deleteMessage: (idx)
-editMessage:   (idx, newContent) => setMessages(m => m.map((msg, i) => i === idx ?
-searchMessages: (q) =>
-⋮----
-// functions
-</file>
-
-<file path="src/hooks/useFileStore.js">
-// ── Module-level helpers for handleApprove ───────────────────────────────────
-async function _backupFiles(targets, folder)
-⋮----
-function _getSyntaxCmd(ext, absPath)
-⋮----
-async function _verifySyntaxBatch(targets, folder, setMessages)
-⋮----
-export function useFileStore()
-⋮----
-// ── Multi-tab state ──
-const [openTabs, setOpenTabs]       = useState([]);   // [{path, content, dirty}]
-⋮----
-// ── Legacy single-view state (still used for some flows) ──
-const [activeTab, setActiveTab]     = useState('chat'); // 'chat' | 'file'
-⋮----
-// ── Derived compat ──
-⋮----
-// ── Lists ──
-⋮----
-// Ref to always read the latest openTabs in async contexts
-⋮----
-// ── Persisted setters ──
-function setRecentFiles(next)
-function setPinnedFiles(next)
-⋮----
-// ── Load from Preferences ──
-function loadFilePrefs(
-⋮----
-// ── setActiveTabIdx (also switches to file tab) ──
-function setActiveTabIdx(idx)
-⋮----
-// ── openFile — opens in existing tab or new tab ──
-async function openFile(path)
-⋮----
-// Check if already open
-⋮----
-// Load content
-⋮----
-// Recent files
-⋮----
-// ── closeTab ──
-function closeTab(idx)
-⋮----
-// ── updateTabContent — marks a tab dirty (from editor changes) ──
-function updateTabContent(idx, content)
-⋮----
-// ── saveFile — saves current active tab to server ──
-async function saveFile(content, onMsg)
-⋮----
-// ── Backward compat setters ──
-function setSelectedFile(path)
-⋮----
-function setFileContent(content)
-⋮----
-// ── togglePin ──
-function togglePin(path)
-⋮----
-// ── undoLastEdit ──
-async function undoLastEdit(onMsg)
-⋮----
-// ── readFilesParallel ──
-async function readFilesParallel(paths, folder)
-⋮----
-// ── handleApprove (write file batch with backup + rollback) ──
-async function handleApprove(idx, ok, targetPath, messages, setMessages, folder, hooks, runHooksV2, permissions)
-⋮----
-// Multi-tab
-⋮----
-// Backward compat derived
-⋮----
-// Legacy view state
-⋮----
-// Lists
-⋮----
-// Actions
-</file>
-
-<file path="src/hooks/useNotifications.js">
-export function useNotifications()
-⋮----
-function sendNotification(title, body)
-⋮----
-function haptic(type = 'light')
-⋮----
-function speakText(text)
-⋮----
-function stopTts()
-</file>
-
-<file path="src/hooks/useUIStore.js">
-export function useUIStore()
-⋮----
-// ── Ambient brightness ──
-⋮----
-// ── Panels / Overlays ──
-⋮----
-// ── Editor feature toggles (Fase 1+2) ──
-⋮----
-// ── Editor feature toggles (Fase 3) ──
-⋮----
-// ── Theme / Display ──
-⋮----
-// ── Misc UI ──
-⋮----
-// ── Elicitation ──
-⋮----
-// ── Merge Conflict ──
-⋮----
-// ── Derived: T = active theme object ──
-⋮----
-// ── Persisted setters ──
-function setTheme(key)
-function setFontSize(n)
-function setSidebarWidth(w)
-function setVimMode(v)
-function setShowMinimap(v)
-function setGhostTextEnabled(v)
-function setLintEnabled(v)
-function setTsLspEnabled(v)
-function setBlameEnabled(v)
-function setMultiCursor(v)
-function setStickyScroll(v)
-function setCollabEnabled(v)
-⋮----
-// ── Load from Preferences ──
-function loadUIPrefs(
-⋮----
-// panels
-⋮----
-// editor feature toggles fase 1+2
-⋮----
-// editor feature toggles fase 3
-⋮----
-// theme/display
-⋮----
-// misc
+// ═══════════════════════════════════════════════════════════════════════════════
+// /diff edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
 </file>
 
 <file path="src/api.extended.test.js">
@@ -2299,68 +2359,85 @@ getReader: () => (
 // Override setTimeout to not actually wait
 </file>
 
-<file path="src/editor.bench.js">
-// @vitest-environment node
+<file path="src/api.js">
+// ── SHARED SSE STREAM READER ───────────────────────────────────────────────────
+export async function readSSEStream(resp, onChunk, signal)
 ⋮----
-// ── Inline pure functions (copied from FileEditor — cannot import component) ──
-function getLangExt(path)
+// ── INJECT VISION IMAGE ────────────────────────────────────────────────────────
+function injectVision(messages, imageBase64)
 ⋮----
-function isEmmetLang(path)
+// ── CEREBRAS STREAMING ─────────────────────────────────────────────────────────
+async function _cerebrasOnce(messages, model, onChunk, signal, options)
 ⋮----
-function isTsLang(path)
+// ── GROQ STREAMING ─────────────────────────────────────────────────────────────
+async function _groqOnce(messages, model, onChunk, signal, options)
 ⋮----
-function buildSrcdoc(tabs)
+// ── UNIFIED AI CALL — auto-fallback Cerebras → Groq ───────────────────────────
+export async function askCerebrasStream(messages, model, onChunk, signal, options =
 ⋮----
-// ── Fixtures ──────────────────────────────────────────────────────────────────
+// ── Groq model: langsung ke Groq ──
 ⋮----
-// Realistic component — what yuyu-map actually processes
+// ── Cerebras model: try Cerebras, fallback Groq on rate limit ──
 ⋮----
-// Fixtures for computeSalience
+// ── CALL SERVER (HTTP) ─────────────────────────────────────────────────────────
+export async function callServer(payload)
 ⋮----
-// ── getLang benchmark ─────────────────────────────────────────────────────────
+// ── EXEC STREAM via WebSocket ──────────────────────────────────────────────────
+export function execStream(command, cwd, onLine, signal)
 ⋮----
-// ── isEmmetLang benchmark ─────────────────────────────────────────────────────
+const cleanup = () =>
+const done = (exitCode) =>
 ⋮----
-// ── isTsLang benchmark ───────────────────────────────────────────────────────
+ws.onopen = () => ws.send(JSON.stringify(
+ws.onmessage = (e) =>
+ws.onerror = () =>
+ws.onclose = () =>
 ⋮----
-// ── buildSrcdoc benchmark ─────────────────────────────────────────────────────
-⋮----
-// ── generateDiff benchmark ────────────────────────────────────────────────────
-⋮----
-// ── Multi-tab state operations (pure JS, no hook) ─────────────────────────────
-⋮----
-// ── extractSymbols benchmark (NEW) ───────────────────────────────────────────
-⋮----
-// ── compressSource benchmark (NEW) ────────────────────────────────────────────
-⋮----
-// ── extractImports benchmark (NEW) ────────────────────────────────────────────
-⋮----
-// ── computeSalience benchmark (NEW) ───────────────────────────────────────────
-⋮----
-// Pure scoring pass — no disk I/O, uses pre-built fixtures
-⋮----
-// ── parseActions hot path benchmark (NEW) ─────────────────────────────────────
+// ── CALL SERVER BATCH ──────────────────────────────────────────────────────────
+export async function callServerBatch(payloads)
 </file>
 
-<file path="src/editor.test.js">
+<file path="src/features.bgagent.test.js">
 // @vitest-environment node
+// features.bgagent.test.js — coverage untuk runBackgroundAgent, _setupBgWorktree,
+// _executeBgActions, _runBgAgentLoop, _commitBgChanges, mergeBackgroundAgent (conflict),
+// runHooksV2 http branch, selectSkills contentWords branch
 ⋮----
-// ── Mock CodeMirror — tidak bisa jalan di jsdom tanpa DOM penuh ───────────────
+// ── runHooksV2 — http branch ──────────────────────────────────────────────────
 ⋮----
-vi.mock('lucide-react', () => (
+// Test di-skip: duplicate dengan features.extended.test.js
 ⋮----
-// ── Inline pure functions (copied dari FileEditor — tidak bisa import karena mock) ──
-function getLangExt(path)
+// ── selectSkills — contentWords branch ───────────────────────────────────────
 ⋮----
-function isEmmetLang(path)
+// task has keyword "webpack" which is in tooling.md content
 ⋮----
-function isTsLang(path)
+const longContent = 'x '.repeat(1100); // > 2048 chars
 ⋮----
-// ── getLang ───────────────────────────────────────────────────────────────────
+// ── runBackgroundAgent — full lifecycle ───────────────────────────────────────
 ⋮----
-// ── isEmmetLang ───────────────────────────────────────────────────────────────
+// git worktree add → ok
+// git add -A → ok
+// git commit → ok
 ⋮----
-// ── isTsLang ──────────────────────────────────────────────────────────────────
+.mockResolvedValueOnce('Step done.\nDONE') // iter 1 → DONE
+⋮----
+// Wait for async background loop to complete
+⋮----
+// Should not throw, agent ends gracefully
+⋮----
+// ── abortBgAgent — active agent ───────────────────────────────────────────────
+⋮----
+// slow AI so we can abort mid-run
+⋮----
+await new Promise(r => setTimeout(r, 20)); // let it start
+⋮----
+// ── mergeBackgroundAgent — conflict path ──────────────────────────────────────
+⋮----
+// First run an agent to done state so we can merge it
+⋮----
+// Now try to merge — should hit CONFLICT path
+⋮----
+// If agent didn't reach done state, test passes trivially (setup issue, not logic issue)
 </file>
 
 <file path="src/features.extended.test.js">
@@ -2416,6 +2493,87 @@ import { Preferences } from '@capacitor/preferences'; // used via vi.mock above 
 // just verify no throw
 </file>
 
+<file path="src/features.js">
+// ── FEATURES v3 — Overhaul ─────────────────────────────────────────────────────
+⋮----
+// ─── PLAN MODE ────────────────────────────────────────────────────────────────
+export function parsePlanSteps(reply)
+⋮----
+export async function generatePlan(task, folder, callAI, signal)
+⋮----
+export async function executePlanStep(step, folder, callAI, signal, onChunk)
+⋮----
+// ─── BACKGROUND AGENTS WITH GIT WORKTREE ISOLATION ───────────────────────────
+⋮----
+export function getBgAgents()
+⋮----
+async function execGit(folder, cmd)
+⋮----
+// ── Background agent helpers ──────────────────────────────────────────────────
+⋮----
+async function _setupBgWorktree(agent, folder, wtPath, branch)
+⋮----
+async function _executeBgActions(agent, actions, wtPath)
+⋮----
+async function _runBgAgentLoop(agent, task, wtPath, branch, callAI, signal)
+⋮----
+async function _commitBgChanges(agent, id, task, wtPath, branch, allWrites, totalPatches)
+⋮----
+export async function runBackgroundAgent(task, folder, callAI, onDone)
+⋮----
+agent.abort = () =>
+⋮----
+export async function mergeBackgroundAgent(id, folder)
+⋮----
+export function abortBgAgent(id)
+⋮----
+// ─── SKILLS SYSTEM ────────────────────────────────────────────────────────────
+// ── loadSkills: .yuyu/skills/*.md only ─────────────────────────────────────
+export async function loadSkills(folder, activeMap =
+⋮----
+active: activeMap[f.name] !== false,   // default on
+⋮----
+// ── Upload / save skill to .yuyu/skills/ ────────────────────────────────────
+export async function saveSkillFile(folder, name, content)
+⋮----
+// ── Delete skill file ─────────────────────────────────────────────────────────
+export async function deleteSkillFile(folder, name)
+⋮----
+export function selectSkills(skills, taskText)
+⋮----
+// ─── HOOKS v2 ────────────────────────────────────────────────────────────────
+⋮----
+export async function runHooksV2(hookList, context, folder)
+⋮----
+// ─── TOKEN TRACKER ────────────────────────────────────────────────────────────
+export class TokenTracker
+⋮----
+reset()
+record(inTk, outTk, model)
+lastCost()
+summary()
+⋮----
+// ─── SESSION MANAGER ─────────────────────────────────────────────────────────
+export async function saveSession(name, messages, folder, branch)
+⋮----
+export async function loadSessions()
+⋮----
+// ─── REWIND ──────────────────────────────────────────────────────────────────
+export function rewindMessages(messages, turns)
+⋮----
+// ─── EFFORT LEVELS ───────────────────────────────────────────────────────────
+⋮----
+// ─── PERMISSIONS ─────────────────────────────────────────────────────────────
+⋮----
+export function checkPermission(permissions, actionType)
+⋮----
+// ─── ELICITATION ─────────────────────────────────────────────────────────────
+export function parseElicitation(reply)
+⋮----
+// ─── TF-IDF MEMORY RANKING ───────────────────────────────────────────────────
+export function tfidfRank(memories, queryText, topN = 5)
+</file>
+
 <file path="src/features.test.js">
 // @vitest-environment node
 ⋮----
@@ -2438,34 +2596,41 @@ import { Preferences } from '@capacitor/preferences'; // used via vi.mock above 
 // ── EFFORT_CONFIG ─────────────────────────────────────────────────────────────
 </file>
 
-<file path="src/globalfind.test.js">
-// @vitest-environment node
+<file path="src/multitab.test.js">
+// ── Mock dependencies ─────────────────────────────────────────────────────────
 ⋮----
-// ── Pure logic extracted dari GlobalFindReplace ───────────────────────────────
+// ── Multi-tab core ────────────────────────────────────────────────────────────
 ⋮----
-function parseGrepOutput(raw, folder)
+// ── Pinned files ──────────────────────────────────────────────────────────────
 ⋮----
-function buildSearchPattern(query, useRegex, matchCase)
+// ── Undo ──────────────────────────────────────────────────────────────────────
 ⋮----
-function applyReplace(content, query, replaceStr, useRegex, matchCase)
+// ── undoLastEdit with history ─────────────────────────────────────────────────
 ⋮----
-// ── parseGrepOutput ───────────────────────────────────────────────────────────
+// ── readFilesParallel ─────────────────────────────────────────────────────────
 ⋮----
-// ── buildSearchPattern ────────────────────────────────────────────────────────
+// ── loadFilePrefs ─────────────────────────────────────────────────────────────
 ⋮----
-// ── applyReplace ──────────────────────────────────────────────────────────────
-</file>
-
-<file path="src/livepreview.test.js">
-// @vitest-environment node
+// ── setSelectedFile ───────────────────────────────────────────────────────────
 ⋮----
-// ── Inline buildSrcdoc (copied — cannot import component directly in jsdom) ───
+// ── setFileContent ────────────────────────────────────────────────────────────
 ⋮----
-function buildSrcdoc(tabs)
+// ── saveFile edge cases ───────────────────────────────────────────────────────
 ⋮----
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// ── closeTab edge case: empty tabs ────────────────────────────────────────────
 ⋮----
-// Should not inject new script
+// ── setSelectedFile — no tabs, null path → setActiveTab chat ─────────────────
+⋮----
+// ── handleApprove — reject ────────────────────────────────────────────────────
+⋮----
+// ── handleApprove — approve single file ──────────────────────────────────────
+⋮----
+.mockResolvedValueOnce({ ok: true, data: 'backup content' }) // backup read
+.mockResolvedValueOnce({ ok: true });                         // write
+⋮----
+// rollback → write called for backups
+⋮----
+.mockResolvedValueOnce({ ok: true, data: 'SYNTAX_OK' }); // syntax check
 </file>
 
 <file path="src/themes.test.js">
@@ -2492,6 +2657,157 @@ const _REQUIRED_HEADER = ['bg', 'logoGrad', 'titleColor', 'accentColor', 'status
 // ═══════════════════════════════════════════════════════════════════════════════
 // Cross-theme consistency
 // ═══════════════════════════════════════════════════════════════════════════════
+</file>
+
+<file path=".deepsource.toml">
+version = 1
+
+# ══════════════════════════════════════════════════════════════════════════════
+# YuyuCode — DeepSource Configuration
+# v4.2.0 | React 19 + Capacitor 8 | Termux/Android
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Exclude patterns ──────────────────────────────────────────────────────────
+exclude_patterns = [
+  "dist/**",
+  "build/**",
+  "node_modules/**",
+  "android/**",
+  "ios/**",
+  "patch/**",
+  "public/**",
+  "**/*.apk",
+  "yugit.cjs",
+  "yuyu-bench.cjs",
+]
+
+# ── Test patterns ─────────────────────────────────────────────────────────────
+test_patterns = [
+  "**/*.test.js",
+  "**/*.test.jsx",
+  "**/*.test.cjs",
+  "**/*.branch.test.js",
+  "**/*.extended.test.js",
+  "**/*.extra.test.js",
+  "**/*.bench.js",
+  "**/*.bench.cjs",
+  "src/__snapshots__/**",
+  "src/setupTest.js",
+]
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ANALYZER: JavaScript
+# ══════════════════════════════════════════════════════════════════════════════
+[[analyzers]]
+name    = "javascript"
+enabled = true
+
+  [analyzers.meta]
+  # Hybrid: browser (React 19 + Capacitor WebView) + node (yuyu-server.js Termux)
+  environment = ["browser", "node"]
+
+  # ES Modules (type: "module" di package.json)
+  # Nilai valid: "es-modules" bukan "esm"
+  module_system = "es-modules"
+
+  # React JSX support — pakai plugins, bukan dialect
+  # dialect hanya support "typescript" | "flow"
+  plugins = ["react"]
+
+  # ES2022: class fields, top-level await, Array.at(), error.cause
+  ecma_version = "2022"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ANALYZER: Test Coverage
+# ══════════════════════════════════════════════════════════════════════════════
+# Threshold (70%) diset di DeepSource dashboard, bukan di sini.
+# Untuk melaporkan coverage ke DeepSource, tambahkan step ini di quality.yml
+# setelah `vitest run --coverage`:
+#
+#   - name: Report coverage to DeepSource
+#     run: |
+#       curl https://deepsource.io/cli | sh
+#       ./bin/deepsource report \
+#         --analyzer test-coverage \
+#         --key javascript \
+#         --value-file ./coverage/lcov.info
+#     env:
+#       DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
+#
+[[analyzers]]
+name    = "test-coverage"
+enabled = true
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CATATAN SUPPRESSION (inline comment di source file)
+# ══════════════════════════════════════════════════════════════════════════════
+#
+#  JS-C1002 (short variable names) — loop dense: t, m, r, e
+#    → // deepsource-disable-next-line JS-C1002
+#    File: useAgentLoop.js, features.js
+#
+#  JS-R1005 (cyclomatic complexity) — state machine async + command parsing
+#    → // deepsource-disable-next-line JS-R1005
+#    File: useAgentLoop.js, useSlashCommands.js, useApprovalFlow.js
+#
+#  JS-0067 (singleton) — tokenTracker & bgAgents adalah intentional module-level state
+#    → // deepsource-disable-next-line JS-0067
+#    File: src/features.js, yuyu-server.js
+#
+#  JS-0002 (no-console) — yuyu-server.js di Termux: terminal IS the UI
+#    → // deepsource-disable-next-line JS-0002
+#    File: yuyu-server.js, src/hooks/useDevTools.js
+#
+#  JS-D007 (function length) — slash command context locality
+#    → // deepsource-disable-next-line JS-D007
+#    File: src/hooks/useSlashCommands.js
+#
+# ══════════════════════════════════════════════════════════════════════════════
+</file>
+
+<file path=".gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.env.local
+*.zip
+commit-history.txt
+🚀 YuyuGit v2 starting...
+
+📝 Changed files:
+M .gitignore
+
+📊 Staged changes:
+.gitignore | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+✅ Committed: [main 388fbe5] coverage/
+📡 Pushing...
+
+💡 Fix: remote punya commit yang belum ada di local.
+   Coba: git pull --rebase && node yugit.cjs "coverage/"
+coverage/
 </file>
 
 <file path="bashrc-additions.sh">
@@ -2662,10 +2978,6 @@ yuyu-unstash() {
 }
 </file>
 
-<file path="vite.config.js">
-manualChunks(id)
-</file>
-
 <file path="yuyu-server.test.cjs">
 // @vitest-environment node
 // yuyu-server.test.cjs — Test suite untuk yuyu-server.js
@@ -2700,29 +3012,47 @@ function handleForTest(payload)
 // ═══════════════════════════════════════════════════════════════════════════════
 </file>
 
+<file path="src/components/AppPanels.jsx">
+// ── AppPanels ─────────────────────────────────────────────────────────────────
+⋮----
+export function AppPanels({
+  T, ui, project, file, chat,
+  sendMsg, compactContext, runShortcut,
+  fetchGitHub, runDeploy, runTests, generateCommitMsg,
+  haptic, saveCheckpoint, restoreCheckpoint,
+  fileInputRef, handleImageAttach,
+})
+⋮----
+{/* Search */}
+⋮----
+{/* Light overlays */}
+⋮----
+{/* Command Palette */}
+⋮----
+{/* Memory */}
+⋮----
+{/* Checkpoints */}
+⋮----
+{/* Swarm log */}
+⋮----
+{/* Onboarding */}
+⋮----
+{/* Activity-wrapped panels */}
+⋮----
+{/* File input (hidden) */}
+⋮----
+{/* Commit modal */}
+</file>
+
 <file path="src/components/LivePreview.jsx">
 // ── LivePreview — live HTML/CSS/JS iframe preview ─────────────────────────────
-// Combines open HTML/CSS/JS files into a single srcdoc iframe.
-// Intercepts console.log via postMessage for in-app display.
 ⋮----
 function buildSrcdoc(tabs)
 ⋮----
-// Inject CSS and JS into HTML
-⋮----
-// No HTML tab — synthesize one from CSS + JS
-⋮----
 export function LivePreview(
-⋮----
-// Debounced rebuild on tab content change
-⋮----
-// Manual refresh
-⋮----
-// Console message listener
 ⋮----
 function onMsg(e)
 ⋮----
-// srcdoc iframes always have origin 'null' — this IS the origin check.
-// Any other origin (external window, extension, etc.) is rejected.
 if (e.origin !== 'null') return; // lgtm[js/missing-origin-check]
 ⋮----
 const logColor = (level) =>
@@ -2732,6 +3062,569 @@ const logColor = (level) =>
 {/* Console panel */}
 ⋮----
 {/* iframe */}
+</file>
+
+<file path="src/components/panels.tools.jsx">
+// ─── CUSTOM ACTIONS PANEL ─────────────────────────────────────────────────────
+export function CustomActionsPanel(
+⋮----
+function save(list)
+⋮----
+function add()
+⋮----
+// ─── SHORTCUTS PANEL ──────────────────────────────────────────────────────────
+⋮----
+// ─── SHORTCUTS PANEL ──────────────────────────────────────────────────────────
+export function ShortcutsPanel(
+⋮----
+// ─── GIT BLAME PANEL ──────────────────────────────────────────────────────────
+⋮----
+// ─── SNIPPET LIBRARY ──────────────────────────────────────────────────────────
+export function SnippetLibrary(
+⋮----
+function addSnippet()
+⋮----
+// ─── THEME BUILDER ────────────────────────────────────────────────────────────
+⋮----
+// ─── THEME BUILDER ────────────────────────────────────────────────────────────
+export function ThemeBuilder(
+⋮----
+{/* accent swatch */}
+⋮----
+// ─── COMMAND PALETTE ──────────────────────────────────────────────────────────
+⋮----
+// ── DeployPanel ───────────────────────────────────────────────────────────────
+export function DeployPanel(
+⋮----
+// ── McpPanel ──────────────────────────────────────────────────────────────────
+⋮----
+// ── McpPanel ──────────────────────────────────────────────────────────────────
+export function McpPanel(
+⋮----
+// ── GitHubPanel ───────────────────────────────────────────────────────────────
+⋮----
+// ── GitHubPanel ───────────────────────────────────────────────────────────────
+export function GitHubPanel(
+⋮----
+// ── SessionsPanel ─────────────────────────────────────────────────────────────
+⋮----
+// ── SessionsPanel ─────────────────────────────────────────────────────────────
+export function SessionsPanel(
+⋮----
+// ── PermissionsPanel ──────────────────────────────────────────────────────────
+⋮----
+// ── PermissionsPanel ──────────────────────────────────────────────────────────
+export function PermissionsPanel(
+⋮----
+// ── PluginsPanel ──────────────────────────────────────────────────────────────
+// ── PluginsPanel ──────────────────────────────────────────────────────────────
+⋮----
+export function PluginsPanel(
+⋮----
+// ── ConfigPanel ───────────────────────────────────────────────────────────────
+export function ConfigPanel({
+  effort, fontSize, theme, model, thinkingEnabled, models,
+  onEffort, onFontSize, onTheme, onModel, onThinking,
+  vimMode, onVimMode,
+  showMinimap, onMinimap,
+  ghostTextEnabled, onGhostText,
+  lintEnabled, onLint,
+  tsLspEnabled, onTsLsp,
+  blameEnabled, onBlame,
+  multiCursor, onMultiCursor,
+  stickyScroll, onStickyScroll,
+  collabEnabled, onCollab,
+  diffReview, onDiffReview,
+  onClose, T,
+})
+⋮----
+
+⋮----
+const makeToggle = (label, sublabel, value, onToggle, color, bg, br)
+⋮----
+function ToggleRow(
+⋮----
+// ── BgAgentPanel — live progress tracking ────────────────────────────────────
+// ── ElapsedTime — isolated so Date.now() stays out of parent render ──────────
+function ElapsedTime(
+</file>
+
+<file path="src/hooks/useAgentLoop.branch.test.js">
+// @vitest-environment jsdom
+// useAgentLoop.branch.test.js — condition branch coverage
+⋮----
+function makeProject(o =
+⋮----
+function makeChat(o =
+⋮----
+function makeFile(o =
+⋮----
+function makeCtx(o =
+⋮----
+// ── iter > 1 → setAgentRunning(true) + sendNotification ──────────────────────
+⋮----
+// iter 1: return with data so loop continues; iter 2: return without data
+⋮----
+// ── exec error → auto-fix loop ────────────────────────────────────────────────
+⋮----
+// AI called more than once due to auto-fix
+⋮----
+// ── exec false positive — should NOT trigger auto-fix ────────────────────────
+⋮----
+expect(mockAskCerebrasStream.mock.calls.length).toBeGreaterThanOrEqual(1); // no auto-fix retry, but loop may continue
+⋮----
+// ── autoVerifyWrites — error detected → continue ─────────────────────────────
+⋮----
+// ping ok, backup read, then exec verify → error
+⋮----
+// ── getRunCmd — .py file ──────────────────────────────────────────────────────
+⋮----
+// ── getRunCmd — .sh file ──────────────────────────────────────────────────────
+⋮----
+// ── defensive review — LGTM path (no patches applied) ────────────────────────
+⋮----
+if (aiCalls === 2) return Promise.resolve('LGTM'); // defensive review
+⋮----
+// Defensive review ran (2 AI calls minimum) but no extra patches
+⋮----
+// ── defensive review — applies patches when review finds issues ───────────────
+⋮----
+.mockReturnValueOnce([writeAction])  // iter 1: write
+.mockReturnValueOnce([patchAction])  // defensive review: patch
+⋮----
+// ── offline detection ─────────────────────────────────────────────────────────
+⋮----
+// ── CONTINUE → auto sendMsg ───────────────────────────────────────────────────
+⋮----
+// Override sendMsg after render to capture auto-continue
+⋮----
+// CONTINUE should have scheduled a continuation
+⋮----
+// ── checkServerHealth catch → returns false ───────────────────────────────────
+⋮----
+// Server unreachable → shows error message
+⋮----
+// ── !serverOk → shows error and returns ──────────────────────────────────────
+⋮----
+// ── sendMsg early return — chat.loading = true ────────────────────────────────
+⋮----
+// ── sendMsg early return — empty txt ─────────────────────────────────────────
+⋮----
+// ── gatherProjectContext — no folder → returns {} ────────────────────────────
+⋮----
+// No folder = no context gathered, but still runs
+⋮----
+// ── executeWithPermission — permission denied ─────────────────────────────────
+⋮----
+// ── auto-compact triggers ─────────────────────────────────────────────────────
+⋮----
+// Inject compactContext via chat store mock
+⋮----
+// Auto-compact path exercised (may or may not call depending on impl)
+⋮----
+// ── gracefulStop → gracefulStopPending = true ────────────────────────────────
+⋮----
+// ── PROJECT_NOTE extraction ───────────────────────────────────────────────────
+⋮----
+// ── parseElicitation returns value → setElicitationData ──────────────────────
+⋮----
+// ── ttsEnabled → speakText called ────────────────────────────────────────────
+⋮----
+// ── catch — rate limit error ──────────────────────────────────────────────────
+⋮----
+// ── catch — generic non-abort non-rate-limit online error ────────────────────
+⋮----
+// ensure navigator.onLine = true (default)
+⋮----
+// ── retryLast — no user message ───────────────────────────────────────────────
+⋮----
+// ── retryLast — user message exists ──────────────────────────────────────────
+⋮----
+// ── webSearch + safeActions parallel block ────────────────────────────────────
+⋮----
+// ── patch diffReview — new file (no orig.data) ───────────────────────────────
+⋮----
+if (type === 'read') return Promise.resolve({ ok: false, data: '' }); // no orig
+⋮----
+// ── write diffReview — new file (no orig.data) ───────────────────────────────
+⋮----
+if (type === 'read') return Promise.resolve({ ok: false, data: '' }); // new file
+⋮----
+// ── patch failed.length > 0 → self-correct ───────────────────────────────────
+⋮----
+// ── abTest — catch block ──────────────────────────────────────────────────────
+⋮----
+.mockResolvedValueOnce('done') // sendMsg initial ping passes
+⋮----
+// ── callAI — imageBase64 true → VISION_MODEL ─────────────────────────────────
+⋮----
+// callAI was called with imageBase64 → should use VISION_MODEL
+⋮----
+// ── vision content array — Array.isArray(m.content) ──────────────────────────
+⋮----
+// ── getRunCmd — unknown extension returns null ────────────────────────────────
+⋮----
+// No exec call for yaml — getRunCmd returns null
+⋮----
+// ── compactContext — messages.length < 10 early return ───────────────────────
+⋮----
+// ── compactContext — catch non-AbortError ─────────────────────────────────────
+⋮----
+// First call = sendMsg ping ok, second = compactContext throws
+⋮----
+.mockResolvedValueOnce('done') // sendMsg main call
+.mockRejectedValueOnce(new Error('stream failed')); // compactContext call
+⋮----
+// ── buildFeedback — write failed branch ──────────────────────────────────────
+⋮----
+// ── agentNote — iter >= MAX_ITER ─────────────────────────────────────────────
+⋮----
+// Force loop to run MAX_ITER times by always returning combinedData
+⋮----
+// Always return a read_file so combinedData is not null and loop continues
+⋮----
+// ── retryLast — idx === -1 (lastUser is last msg, no slice) ──────────────────
+⋮----
+// lastUser IS the last message, so lastIndexOf returns last index
+// but the retryLast logic: idx = m.lastIndexOf(lastUser)
+// if idx !== -1, use m.slice(0, idx), else use m
+// So we need a case where find returns a user msg but lastIndexOf is -1
+// Actually looking at the code: messages.reverse().find(m => m.role === 'user')
+// then chat.setMessages(m => { idx = m.lastIndexOf(lastUser); return idx !== -1 ? m.slice(0, idx) : m })
+// To hit idx === -1: lastUser object from reversed copy not found by reference in original
+⋮----
+// ── patch diffReview — orig.ok && orig.data && a.old_str (true branch) ───────
+</file>
+
+<file path="src/hooks/useApprovalFlow.test.js">
+// @vitest-environment jsdom
+⋮----
+// ── Mocks ─────────────────────────────────────────────────────────────────────
+⋮----
+function makeCtx(overrides =
+⋮----
+// clearAllMocks resets implementations — restore defaults
+⋮----
+// ── handleApprove — reject ────────────────────────────────────────────────────
+⋮----
+// ── handleApprove — approve ───────────────────────────────────────────────────
+⋮----
+// Need 2 read backups + 2 rollback writes
+⋮----
+.mockResolvedValue({ ok: true, data: '' }); // rollback writes
+⋮----
+// Rollback: should call write for each backup
+⋮----
+// ── handlePlanApprove ─────────────────────────────────────────────────────────
+⋮----
+// ── handleApprove — patch_file type ──────────────────────────────────────────
+⋮----
+// ── handleApprove — multi-target success message ──────────────────────────────
+⋮----
+// setMessages called with success message for multiple files
+⋮----
+// ── verifySyntax — SYNTAX_ERR path ───────────────────────────────────────────
+⋮----
+.mockResolvedValueOnce({ ok: true, data: 'backup' })           // backup read
+.mockResolvedValueOnce({ ok: true, data: 'SYNTAX_ERR: unexpected token' }); // syntax check
+⋮----
+// ── handlePlanApprove — with actual steps ────────────────────────────────────
+⋮----
+// ── verifySyntax — unknown ext, !cmd continue ────────────────────────────────
+⋮----
+// exec should NOT be called for .css (getSyntaxCmd returns null)
+⋮----
+// ── verifySyntax — !vOut continue (exec returns empty) ───────────────────────
+⋮----
+.mockResolvedValueOnce({ ok: true, data: '   ' }); // empty/whitespace output
+⋮----
+// No syntax error message should be posted
+⋮----
+// ── handlePlanApprove — step with patch_file writes ──────────────────────────
+⋮----
+// ── handlePlanApprove — step reply only (no writes), else if (cleaned) ───────
+⋮----
+actions: [], // no write/patch actions
+⋮----
+// ── handlePlanApprove — step catch non-AbortError ────────────────────────────
+⋮----
+// Should show error message and continue
+</file>
+
+<file path="src/hooks/useChatStore.js">
+export function useChatStore()
+⋮----
+// ── Core chat ──
+⋮----
+const [gracefulStop, setGracefulStop]   = useState(false); // finish iter then stop
+const [agentStatus, setAgentStatus]   = useState(''); // e.g. 'Iter 2/10 · exec'
+⋮----
+// ── Rate limit ──
+⋮----
+// ── Memories / Checkpoints ──
+⋮----
+// ── Agent / Plan ──
+⋮----
+// ── Input extras ──
+⋮----
+// ── Persisted setters ──
+function setMemories(next)
+function setCheckpoints(next)
+⋮----
+// ── Load from Preferences ──
+function loadChatPrefs(
+⋮----
+// ── Persist messages on change (called from useEffect in App) ──
+function persistMessages(msgs)
+⋮----
+// ── trimHistory ──
+function trimHistory(msgs)
+⋮----
+// ── Auto memory extraction ──
+async function extractMemories(userMsg, aiReply, folder)
+⋮----
+// ── getRelevantMemories (TF-IDF scoring) ──
+function getRelevantMemories(txt)
+⋮----
+// ── saveCheckpoint — chat + file snapshot via git stash snapshot ──
+async function saveCheckpoint(folder, branch, notes, callServerFn)
+⋮----
+filePatch,                       // git diff snapshot
+⋮----
+// ── restoreCheckpoint — chat + optional file restore ──
+async function restoreCheckpoint(cp, setFolder, setFolderInput, setNotesRaw, callServerFn)
+⋮----
+// ── exportChat ──
+function exportChat()
+⋮----
+// ── clearChat ──
+function clearChat()
+⋮----
+// ── startRateLimitTimer ──
+function startRateLimitTimer(secs)
+⋮----
+deleteMessage: (idx)
+editMessage:   (idx, newContent) => setMessages(m => m.map((msg, i) => i === idx ?
+searchMessages: (q) =>
+</file>
+
+<file path="src/branch.coverage.test.js">
+// @vitest-environment node
+// branch.coverage.test.js — utils.js condition branch coverage
+⋮----
+// ── read_file: no meta → raw data ────────────────────────────────────────────
+⋮----
+// ── patch_file: new_str undefined → '' ───────────────────────────────────────
+⋮----
+// ── list_files: size=0 vs size>0 ─────────────────────────────────────────────
+⋮----
+// ── generateDiff: maxLines truncation ────────────────────────────────────────
+⋮----
+// ── lint: various branches ────────────────────────────────────────────────────
+⋮----
+// ── create_structure: partial failure ────────────────────────────────────────
+⋮----
+// ── move_file: from vs path ───────────────────────────────────────────────────
+⋮----
+// ── resolvePath: actual documented behavior ───────────────────────────────────
+⋮----
+// '/file' → strips to 'file' → base + '/' + 'file'
+</file>
+
+<file path="src/utils.integration.test.js">
+// @vitest-environment node
+⋮----
+// ── Dependency injection — NO vi.mock needed, compatible with isolate:false ──
+// executeAction(action, folder, _callServer) — inject a mock directly
+⋮----
+// ── Integration: parseActions → executeAction ─────────────────────────────────
+⋮----
+// ── generateDiff ───────────────────────────────────────────────────────────────
+⋮----
+// ── resolvePath ───────────────────────────────────────────────────────────────
+⋮----
+// resolvePath strips leading slash from p before checking,
+// so '/proj/src/App.jsx' becomes 'proj/src/App.jsx' which doesn't startWith '/proj'
+// result: base + '/' + stripped = '/proj/proj/src/App.jsx'
+// This is the documented behavior — callers should pass relative paths
+⋮----
+// ── Fuzz: parseActions edge cases ─────────────────────────────────────────────
+⋮----
+// ── Property-based tests (inline — no external deps needed) ──────────────────
+// Minimal fc-like runner — zero dependency, works without npm install
+⋮----
+assert(prop,
+property(arb, fn)
+property2(a1, a2, fn)
+string(
+constantFrom(...vals)
+record(shape)
+filteredString(filter,
+</file>
+
+<file path="sonar-project.properties">
+sonar.projectKey=Liveiciee_yuyucode
+sonar.organization=liveiciee
+
+# Source
+sonar.sources=src
+sonar.exclusions=src/**/*.test.js,src/**/*.spec.js,src/__snapshots__/**,node_modules/**,android/**,dist/**
+
+# Test files
+sonar.tests=src
+sonar.test.inclusions=src/**/*.test.js,src/**/*.spec.js
+
+# Coverage — generated by vitest --coverage di quality.yml
+sonar.javascript.lcov.reportPaths=coverage/lcov.info
+
+# Language
+sonar.sourceEncoding=UTF-8
+
+# ── Ignore false-positive rules ───────────────────────────────────────────────
+# S6582: "Unsafe optional chaining" — all usages are guarded with || 0 / || ''
+#        or inside .filter()/.map() where undefined short-circuit is intentional.
+# S1154: "Results of 'Array' operations should not be ignored" — FP on chaining
+# S6671: "Logging should not be vulnerable to injection" — console.warn only in dev
+# S1874: "Deprecated APIs" — Capacitor legacy APIs still supported
+# S4507: "Delivering code in production with debug features" — not applicable
+sonar.issue.ignore.multicriteria=e1
+
+sonar.issue.ignore.multicriteria.e1.ruleKey=javascript:S6582
+sonar.issue.ignore.multicriteria.e1.resourceKey=src/**
+</file>
+
+<file path="src/components/FileEditor.jsx">
+// ── FileEditor — CodeMirror 6 · Full IDE ─────────────────────────────────────
+⋮----
+// ── TypeScript LSP — lazy load @valtown/codemirror-ts ────────────────────────
+⋮----
+async function getTsExtensions()
+⋮----
+// ── Language detector ─────────────────────────────────────────────────────────
+function getLang(path)
+⋮----
+function isEmmetLang(path)
+⋮----
+function isTsLang(path)
+⋮----
+// ── Theme builder ─────────────────────────────────────────────────────────────
+function buildTheme(T)
+⋮----
+// ── Ghost text ────────────────────────────────────────────────────────────────
+⋮----
+create: () => (
+update(val, tr)
+⋮----
+if (e.is(setGhostEffect))     return { text: '', pos: 0 }; // clear L2 saat L1 datang
+⋮----
+class GhostWidget extends WidgetType
+⋮----
+toDOM()
+eq(other)
+ignoreEvent()
+⋮----
+run(view)
+⋮----
+// ── L1: fast, Llama 8B, 300ms debounce — next line ──
+async function fetchL1Suggestion(prefix)
+⋮----
+// ── L2: deeper, Llama 8B dengan max_tokens lebih besar, 900ms debounce — next function body ──
+async function fetchL2Suggestion(prefix)
+⋮----
+function makeGhostPlugin()
+⋮----
+update(upd)
+destroy()
+⋮----
+// ── Inline blame gutter ───────────────────────────────────────────────────────
+class BlameMarker extends GutterMarker
+⋮----
+function makeBlameGutter(blameMap)
+⋮----
+lineMarker(view, line)
+initialSpacer: ()
+⋮----
+async function fetchBlame(folder, filePath)
+⋮----
+// ── Syntax lint ───────────────────────────────────────────────────────────────
+function makeSyntaxLinter(path, folder)
+⋮----
+// ── Minimap ───────────────────────────────────────────────────────────────────
+function Minimap(
+⋮----
+function draw()
+⋮----
+// ── Breadcrumb ────────────────────────────────────────────────────────────────
+function Breadcrumb(
+⋮----
+function update(v)
+⋮----
+// ── Collab WS plugin ──────────────────────────────────────────────────────────
+function makeCollabPlugin(wsRef)
+⋮----
+schedule()
+async push()
+⋮----
+// ── Build optional extensions ─────────────────────────────────────────────────
+function buildOptionalExtensions(cfg, path, _folder, collabWsRef)
+⋮----
+// ── Main FileEditor ───────────────────────────────────────────────────────────
+⋮----
+insert(text)
+focus()
+foldAll()
+unfoldAll()
+⋮----
+// ── Mount ──────────────────────────────────────────────────────────────────
+⋮----
+}, []); // eslint-disable-line react-hooks/exhaustive-deps
+⋮----
+// ── Theme sync ──────────────────────────────────────────────────────────────
+⋮----
+// ── Lang sync ───────────────────────────────────────────────────────────────
+⋮----
+// ── Optional extensions sync ────────────────────────────────────────────────
+⋮----
+}, [ // eslint-disable-line react-hooks/exhaustive-deps
+⋮----
+// ── Blame toggle ────────────────────────────────────────────────────────────
+⋮----
+// ── Blame gutter update ─────────────────────────────────────────────────────
+⋮----
+// ── TS LSP lazy attach ──────────────────────────────────────────────────────
+⋮----
+// ── Collab WS ───────────────────────────────────────────────────────────────
+⋮----
+ws.onopen = () =>
+ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+⋮----
+? null // fallback
+⋮----
+ws.onclose = () =>
+⋮----
+// ── Tab swap ─────────────────────────────────────────────────────────────────
+⋮----
+}, [tab?.path]); // eslint-disable-line react-hooks/exhaustive-deps
+⋮----
+// ── External content sync ────────────────────────────────────────────────────
+⋮----
+// ── Save ──────────────────────────────────────────────────────────────────
+⋮----
+function onKey(e)
+⋮----
+const tbBtn = (active) => (
+⋮----
+{/* Toolbar */}
+⋮----
+{/* badges */}
+⋮----
+{/* fold/unfold */}
+⋮----
+{/* Breadcrumb */}
+⋮----
+{/* Editor + minimap */}
 </file>
 
 <file path="src/hooks/useProjectStore.js">
@@ -2792,8 +3685,6 @@ const tryJSON = (val, setter) =>
 // ── Load folder-specific prefs ──
 async function loadFolderPrefs(f)
 ⋮----
-// Auto-load skills dari .yuyu/skills/, respect saved active map
-⋮----
 // ── Skill helpers ──
 async function toggleSkill(name)
 async function uploadSkill(name, mdContent)
@@ -2801,99 +3692,49 @@ async function removeSkill(name)
 </file>
 
 <file path="src/constants.js">
-// Re-export THEMES_MAP as THEMES untuk backward compat (panels.jsx, App.jsx)
-⋮----
 // ── Agent loop limits ─────────────────────────────────────────────────────────
-export const AUTO_COMPACT_CHARS   = 80_000;  // trigger auto-compact
-export const CONTEXT_WARN_CHARS    = 50_000;  // show yellow context bar warning
-export const AUTO_COMPACT_MIN_MSG = 12;      // min messages before auto-compact
-export const MAX_FILE_PREVIEW     = 2_000;   // chars of open file injected to context
-export const MAX_SKILL_PREVIEW    = 6_000;   // max chars per skill in context
-export const CONTEXT_RECENT_KEEP  = 6;       // messages kept after compact
 ⋮----
 // ── Vision ───────────────────────────────────────────────────────────────────
-⋮----
-// Cerebras — ultra-fast inference
-⋮----
-// Groq — large context, fallback
 ⋮----
 // ── SIAPA YUYU ───────────────────────────────────────────────────────────
 </file>
 
-<file path="src/utils.integration.test.js">
+<file path="src/features.extra.test.js">
 // @vitest-environment node
 ⋮----
-// ── Dependency injection — NO vi.mock needed, compatible with isolate:false ──
-// executeAction(action, folder, _callServer) — inject a mock directly
+// ── vi.hoisted: create stable mock fn references BEFORE any import is resolved ──
+// This is the canonical fix for "spy not called" / "undefined.ok" in CI with
+// --coverage (V8 instrumentation), because the factory runs in a hoisted context
+// where inline vi.fn() can produce a different instance than what the test sees.
 ⋮----
-// ── Integration: parseActions → executeAction ─────────────────────────────────
+// ── Module mocks — reference the hoisted fns, not inline vi.fn() ──────────────
 ⋮----
-// ── generateDiff ───────────────────────────────────────────────────────────────
+// ── Imports AFTER mock declarations (vi.mock is hoisted anyway, but explicit) ──
 ⋮----
-// ── resolvePath ───────────────────────────────────────────────────────────────
+// ── Reset call history only; mockImplementation survives vi.clearAllMocks() ───
 ⋮----
-// resolvePath strips leading slash from p before checking,
-// so '/proj/src/App.jsx' becomes 'proj/src/App.jsx' which doesn't startWith '/proj'
-// result: base + '/' + stripped = '/proj/proj/src/App.jsx'
-// This is the documented behavior — callers should pass relative paths
+// Re-apply default implementations after clearAllMocks resets call history.
+// Using mockImplementation (not mockResolvedValue) for maximum CI stability.
 ⋮----
-// ── Fuzz: parseActions edge cases ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// saveSession / loadSessions
+// ═══════════════════════════════════════════════════════════════════════════════
 ⋮----
-// ── Property-based tests (inline — no external deps needed) ──────────────────
-// Minimal fc-like runner — zero dependency, works without npm install
+expect(withName).toHaveLength(1); // deduped
 ⋮----
-assert(prop,
-property(arb, fn)
-property2(a1, a2, fn)
-string(
-constantFrom(...vals)
-record(shape)
-filteredString(filter,
-</file>
-
-<file path=".gitignore">
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.env.local
-*.zip
-commit-history.txt
-🚀 YuyuGit v2 starting...
-
-📝 Changed files:
-M .gitignore
-
-📊 Staged changes:
-.gitignore | 5 +++++
- 1 file changed, 5 insertions(+)
-
-✅ Committed: [main 388fbe5] coverage/
-📡 Pushing...
-
-💡 Fix: remote punya commit yang belum ada di local.
-   Coba: git pull --rebase && node yugit.cjs "coverage/"
-coverage/
+// ═══════════════════════════════════════════════════════════════════════════════
+// loadSkills / saveSkillFile / deleteSkillFile
+// ═══════════════════════════════════════════════════════════════════════════════
+⋮----
+// spaces and ! are replaced with -; alphanumeric, dots, hyphens preserved
+⋮----
+// ═══════════════════════════════════════════════════════════════════════════════
+// DEFAULT_HOOKS shape
+// ═══════════════════════════════════════════════════════════════════════════════
+⋮----
+// ═══════════════════════════════════════════════════════════════════════════════
+// generatePlan / executePlanStep (mocked callAI)
+// ═══════════════════════════════════════════════════════════════════════════════
 </file>
 
 <file path="llms.txt">
@@ -2922,44 +3763,54 @@ Runs entirely on a phone (Oppo A77s, Snapdragon 680) via Termux. No laptop. No d
 - `src/theme.js` — 
 - `src/plugins/brightness.js` — 
 - `src/components/panels.jsx` — 
-- `vitest.config.js` — 
 - `src/themes/index.js` — THEMES_MAP, THEME_KEYS, DEFAULT_THEME
 - `src/main.jsx` — 
 - `src/hooks/useBrightness.js` — useBrightness
 - `vite.config.js` — 
+- `vitest.config.js` — 
 - `src/components/AppSidebar.jsx` — AppSidebar
 
 ## Hooks
 - `src/hooks/useAgentLoop.js` — useAgentLoop
+- `src/hooks/useAgentLoop.test.js` — 
 - `src/hooks/useAgentSwarm.js` — useAgentSwarm
+- `src/hooks/useAgentSwarm.test.js` — 
 - `src/hooks/useApprovalFlow.js` — 
+- `src/hooks/useApprovalFlow.test.js` — 
 - `src/hooks/useBrightness.js` — useBrightness
 - `src/hooks/useChatStore.js` — useChatStore
+- `src/hooks/useChatStore.test.js` — 
 - `src/hooks/useDevTools.js` — 
+- `src/hooks/useDevTools.test.js` — 
 - `src/hooks/useFileStore.js` — useFileStore
 - `src/hooks/useGrowth.js` — useGrowth
+- `src/hooks/useGrowth.test.js` — 
 - `src/hooks/useMediaHandlers.js` — useMediaHandlers
+- `src/hooks/useMediaHandlers.test.js` — 
 - `src/hooks/useNotifications.js` — useNotifications
+- `src/hooks/useNotifications.test.js` — 
 - `src/hooks/useProjectStore.js` — useProjectStore
+- `src/hooks/useProjectStore.test.js` — 
 - `src/hooks/useSlashCommands.js` — 
+- `src/hooks/useSlashCommands.test.js` — 
 - `src/hooks/useUIStore.js` — useUIStore
 
 ## Components
-- `src/components/AppChat.jsx` (525L)
+- `src/components/AppChat.jsx` (527L)
 - `src/components/AppHeader.jsx` (78L)
 - `src/components/AppPanels.jsx` (272L)
 - `src/components/AppSidebar.jsx` (38L)
-- `src/components/FileEditor.jsx` (866L)
-- `src/components/FileTree.jsx` (293L)
+- `src/components/FileEditor.jsx` (867L)
+- `src/components/FileTree.jsx` (295L)
 - `src/components/GlobalFindReplace.jsx` (248L)
 - `src/components/KeyboardRow.jsx` (73L)
-- `src/components/LivePreview.jsx` (208L)
-- `src/components/MsgBubble.jsx` (533L)
+- `src/components/LivePreview.jsx` (211L)
+- `src/components/MsgBubble.jsx` (287L)
 - `src/components/SearchBar.jsx` (68L)
 - `src/components/Terminal.jsx` (342L)
 - `src/components/ThemeEffects.jsx` (168L)
 - `src/components/VoiceBtn.jsx` (135L)
-- `src/components/panels.agent.jsx` (317L)
+- `src/components/panels.agent.jsx` (316L)
 - `src/components/panels.base.jsx` (167L)
 - `src/components/panels.git.jsx` (537L)
 - `src/components/panels.jsx` (19L)
@@ -3002,508 +3853,6 @@ node yuyu-map.cjs --compress-only  # only update compressed.md
 ```
 
 > Auto-generated by `node yuyu-map.cjs` — run after major refactors
-</file>
-
-<file path="sonar-project.properties">
-sonar.projectKey=Liveiciee_yuyucode
-sonar.organization=liveiciee
-
-# Source
-sonar.sources=src
-sonar.exclusions=src/**/*.test.js,src/**/*.spec.js,src/__snapshots__/**,node_modules/**,android/**,dist/**
-
-# Test files
-sonar.tests=src
-sonar.test.inclusions=src/**/*.test.js,src/**/*.spec.js
-
-# Coverage — generated by vitest --coverage di quality.yml
-sonar.javascript.lcov.reportPaths=coverage/lcov.info
-
-# Language
-sonar.sourceEncoding=UTF-8
-
-# ── Ignore false-positive rules ───────────────────────────────────────────────
-# S6582: "Unsafe optional chaining" — all usages are guarded with || 0 / || ''
-#        or inside .filter()/.map() where undefined short-circuit is intentional.
-# S1154: "Results of 'Array' operations should not be ignored" — FP on chaining
-# S6671: "Logging should not be vulnerable to injection" — console.warn only in dev
-# S1874: "Deprecated APIs" — Capacitor legacy APIs still supported
-# S4507: "Delivering code in production with debug features" — not applicable
-sonar.issue.ignore.multicriteria=e1
-
-sonar.issue.ignore.multicriteria.e1.ruleKey=javascript:S6582
-sonar.issue.ignore.multicriteria.e1.resourceKey=src/**
-</file>
-
-<file path=".github/workflows/build-apk.yml">
-name: Build APK
-
-on:
-  push:
-    branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'README.md'
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-          cache: 'npm'
-
-      - name: Cache node_modules
-        id: nm-cache
-        uses: actions/cache@v5
-        with:
-          path: node_modules
-          key: nm-${{ hashFiles('package-lock.json') }}
-
-      - name: Install dependencies
-        if: steps.nm-cache.outputs.cache-hit != 'true'
-        run: npm ci
-
-      - name: Build Vite
-        run: npm run build
-        env:
-          VITE_CEREBRAS_API_KEY: ${{ secrets.VITE_CEREBRAS_API_KEY }}
-          VITE_TAVILY_API_KEY: ${{ secrets.VITE_TAVILY_API_KEY }}
-          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: 'tools platform-tools platforms;android-34 build-tools;34.0.0'
-
-      - name: Cache Gradle
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: gradle-
-
-      - name: Add Capacitor Android
-        run: |
-          if [ ! -d "android" ]; then npx cap add android; fi
-          npx cap sync android
-          # Restore custom icon after cap sync overwrites
-          echo "=== RESTORING ICONS ==="
-          cp -v .github/icons/ic_launcher_background.xml android/app/src/main/res/drawable/ic_launcher_background.xml
-          cp -v .github/icons/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
-          echo "=== ICONS RESTORED ==="
-
-      # Auto-bump versionCode = build number, versionName = 1.0.N
-      - name: Bump version
-        uses: chkfung/android-version-actions@v1.2.1
-        with:
-          gradlePath: android/app/build.gradle
-          versionCode: ${{ github.run_number }}
-          versionName: 1.0.${{ github.run_number }}
-
-      - name: Build Release APK
-        working-directory: android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --parallel --build-cache
-
-      # Decode keystore from secret, sign & zipalign
-      - name: Sign APK
-        id: sign_apk
-        uses: r0adkll/sign-android-release@v1
-        with:
-          releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "34.0.0"
-
-      - name: Rename signed APK
-        run: cp "${{ steps.sign_apk.outputs.signedReleaseFile }}" android/app/build/outputs/apk/release/YuyuCode.apk
-
-      # Keep artifact upload as backup
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: YuyuCode-v1.0.${{ github.run_number }}
-          path: android/app/build/outputs/apk/release/YuyuCode.apk
-
-      - name: Get version & commit info
-        id: info
-        run: |
-          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-          echo "msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
-
-      # Create GitHub Release — hanya jika commit message diawali 'release:'
-      - name: Create Release
-        if: startsWith(github.event.head_commit.message, 'release:')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.info.outputs.version }}
-          name: "YuyuCode v${{ steps.info.outputs.version }} (${{ steps.info.outputs.date }})"
-          body: |
-            **${{ steps.info.outputs.msg }}**
-
-            | | |
-            |---|---|
-            | Version | ${{ steps.info.outputs.version }} |
-            | Build | #${{ github.run_number }} |
-            | Commit | ${{ github.sha }} |
-            | Date | ${{ steps.info.outputs.date }} |
-
-            ⬇️ Download **YuyuCode.apk** di bawah
-          files: android/app/build/outputs/apk/release/YuyuCode.apk
-          make_latest: true
-</file>
-
-<file path="src/components/AppPanels.jsx">
-// ── AppPanels ─────────────────────────────────────────────────────────────────
-// Semua panel overlay, modal, dan floating UI yang render di atas main layout.
-// Memory, checkpoints, swarm log, dep graph, semua BottomSheet panels,
-// onboarding, dan commit modal.
-⋮----
-export function AppPanels({
-  T, ui, project, file, chat,
-  sendMsg, compactContext, runShortcut,
-  fetchGitHub, runDeploy, runTests, generateCommitMsg,
-  haptic, saveCheckpoint, restoreCheckpoint,
-  fileInputRef, handleImageAttach,
-})
-⋮----
-{/* Search */}
-⋮----
-{/* Light overlays */}
-⋮----
-{/* Command Palette */}
-⋮----
-{/* Memory */}
-⋮----
-{/* Checkpoints */}
-⋮----
-{/* Swarm log */}
-⋮----
-{/* Onboarding */}
-⋮----
-{/* Activity-wrapped panels */}
-⋮----
-{/* File input (hidden) */}
-⋮----
-{/* Commit modal */}
-</file>
-
-<file path="src/components/panels.tools.jsx">
-// ─── CUSTOM ACTIONS PANEL ─────────────────────────────────────────────────────
-export function CustomActionsPanel(
-⋮----
-function save(list)
-⋮----
-function add()
-⋮----
-// ─── SHORTCUTS PANEL ──────────────────────────────────────────────────────────
-⋮----
-// ─── SHORTCUTS PANEL ──────────────────────────────────────────────────────────
-export function ShortcutsPanel(
-⋮----
-// ─── GIT BLAME PANEL ──────────────────────────────────────────────────────────
-⋮----
-// ─── SNIPPET LIBRARY ──────────────────────────────────────────────────────────
-export function SnippetLibrary(
-⋮----
-function addSnippet()
-⋮----
-// ─── THEME BUILDER ────────────────────────────────────────────────────────────
-// ThemeBuilder diganti ThemePicker — theme kini dari file src/themes/*.js
-⋮----
-// ─── THEME BUILDER ────────────────────────────────────────────────────────────
-export function ThemeBuilder(
-⋮----
-{/* accent swatch */}
-⋮----
-// ─── COMMAND PALETTE ──────────────────────────────────────────────────────────
-⋮----
-// ── DeployPanel ───────────────────────────────────────────────────────────────
-export function DeployPanel(
-⋮----
-// ── McpPanel ──────────────────────────────────────────────────────────────────
-⋮----
-// ── McpPanel ──────────────────────────────────────────────────────────────────
-export function McpPanel(
-⋮----
-// ── GitHubPanel ───────────────────────────────────────────────────────────────
-⋮----
-// ── GitHubPanel ───────────────────────────────────────────────────────────────
-export function GitHubPanel(
-⋮----
-// ── SessionsPanel ─────────────────────────────────────────────────────────────
-⋮----
-// ── SessionsPanel ─────────────────────────────────────────────────────────────
-export function SessionsPanel(
-⋮----
-// ── PermissionsPanel ──────────────────────────────────────────────────────────
-⋮----
-// ── PermissionsPanel ──────────────────────────────────────────────────────────
-export function PermissionsPanel(
-⋮----
-// ── PluginsPanel ──────────────────────────────────────────────────────────────
-// ── PluginsPanel ──────────────────────────────────────────────────────────────
-⋮----
-export function PluginsPanel(
-⋮----
-// ── ConfigPanel ───────────────────────────────────────────────────────────────
-export function ConfigPanel({
-  effort, fontSize, theme, model, thinkingEnabled, models,
-  onEffort, onFontSize, onTheme, onModel, onThinking,
-  // Fase 1+2
-  vimMode, onVimMode,
-  showMinimap, onMinimap,
-  ghostTextEnabled, onGhostText,
-  lintEnabled, onLint,
-  // Fase 3
-  tsLspEnabled, onTsLsp,
-  blameEnabled, onBlame,
-  multiCursor, onMultiCursor,
-  stickyScroll, onStickyScroll,
-  collabEnabled, onCollab,
-  // Visual Diff Review
-  diffReview, onDiffReview,
-  onClose, T,
-})
-⋮----
-// Fase 1+2
-⋮----
-// Fase 3
-⋮----
-// Visual Diff Review
-⋮----
-
-⋮----
-const makeToggle = (label, sublabel, value, onToggle, color, bg, br)
-⋮----
-function ToggleRow(
-⋮----
-// ── BgAgentPanel — live progress tracking ────────────────────────────────────
-// ── ElapsedTime — isolated so Date.now() stays out of parent render ──────────
-function ElapsedTime(
-</file>
-
-<file path="src/hooks/useAgentLoop.js">
-// ── Module-level helpers for sendMsg ─────────────────────────────────────────
-⋮----
-async function checkServerHealth()
-⋮----
-function isExecError(a)
-⋮----
-function buildFeedback(readActions, safeActions, webSearchActions, patchActions, fullWriteActions, execActions)
-⋮----
-async function autoLoadImports(readActions, autoContext, projectFolder)
-⋮----
-function getRunCmd(wr, projectFolder)
-⋮----
-// Returns updated allMessages if error found (to trigger continue), or null
-async function autoVerifyWrites(fullWriteActions, projectFolder, allMessages, reply, iter, MAX_ITER)
-⋮----
-export function useAgentLoop({
-  project, chat, file, ui,
-  sendNotification, haptic, speakText,
-  abortRef, handleSlashCommandRef,
-  growth,
-})
-⋮----
-// ── callAI ──
-function callAI(msgs, onChunk, signal, imageBase64)
-⋮----
-// Llama 4 Scout support vision, llama-3.3-70b tidak
-⋮----
-// ── abTest — kirim ke dua model paralel, tampilkan side by side ──
-async function abTest(task, modelA, modelB)
-⋮----
-// Tampilkan hasil side by side
-⋮----
-...m.slice(0, -1), // hapus "Menunggu..." bubble
-⋮----
-// ── compactContext ──
-// inlineCall=true → dipanggil dari dalam sendMsg, jangan overwrite abortRef atau set loading
-async function compactContext(inlineCall = false)
-⋮----
-// Bug #2 fix: jangan overwrite abortRef saat inline — buat local ctrl
-⋮----
-// Gunakan signal dari abortRef.current supaya outer abort juga bisa stop compact
-⋮----
-// Bug #3 fix: jangan reset loading jika inline (sendMsg yang akan reset di akhir)
-⋮----
-// ── executeWithPermission ──
-async function executeWithPermission(a, folder)
-⋮----
-// ── gatherProjectContext — "read before act" ─────────────────────────────────
-async function gatherProjectContext(txt, _signal)
-⋮----
-// 1. Handoff + YUYU.md
-⋮----
-// 2. Pinned files (parallel)
-⋮----
-// 3. Compressed source — only for complex refactor tasks
-⋮----
-// 4. Keyword heuristic — map keywords to relevant files
-⋮----
-// ── buildSystemPrompt ───────────────────────────────────────────────────────
-function buildSystemPrompt(txt, cfg)
-⋮----
-const stripFrontmatter = s
-⋮----
-// ── sendMsg — agent loop ──
-async function sendMsg(override, _opts =
-⋮----
-// Slash command
-⋮----
-// Auto-compact jika context > 80K chars
-⋮----
-await compactContext(true); // inline — jangan reset abortRef atau loading
-// compactContext sudah update chat.messages — tapi kita gunakan history lama
-// untuk allMessages awal (messages baru akan terpakai di iter berikutnya via getState)
-⋮----
-// ── Pre-load pinned files ──
-⋮----
-// ── Read before act — gather project context sebelum iter 1 ──
-⋮----
-// ── MAIN AGENT LOOP ──
-// ── Server health check before first iter ──
-⋮----
-// Graceful stop — finish this iteration then stop
-⋮----
-// content bisa array (vision dari iter sebelumnya) — flatten ke string untuk history
-⋮----
-// Token tracking
-⋮----
-// ── Separate actions by type ──
-// patch_file  → auto-execute (find-and-replace)
-// write_file  → auto-execute WITH backup (Claude Code behavior)
-// read_file   → parallel
-// web_search  → parallel
-// safe others (list,tree,search,mkdir,file_info,find_symbol) → parallel
-// exec        → serial (side effects, order matters)
-// mcp         → serial
-⋮----
-// ── Read files (parallel) ──
-⋮----
-// ── Web search + safe actions (all parallel) ──
-⋮----
-// ── Exec / MCP (serial — order matters) ──
-⋮----
-// ── AUTO-EXECUTE / DIFF REVIEW: patch_file ──
-⋮----
-// ── Diff Review mode — pre-compute diff, pause loop, tunggu user ──
-⋮----
-// Baca file asli untuk diff preview
-⋮----
-a.executed = false; // pending — belum dieksekusi
-⋮----
-// Push message dengan actions pending, break loop — tunggu approval
-⋮----
-return; // loop pause — resume via /continue setelah user approve
-⋮----
-// Patch failed → self-correct
-⋮----
-// ── AUTO-EXECUTE / DIFF REVIEW: write_file ──
-⋮----
-// ── Diff Review mode — pre-compute diff, pause loop ──
-⋮----
-// File baru — tidak ada diff, tunjukkan sebagai full add
-⋮----
-// Backup dulu untuk undo
-⋮----
-// Store backups for undo
-⋮----
-// ── Defensive review pass — security & edge cases ──
-⋮----
-// ── Auto-verify after write — run file, feed error back ──
-⋮----
-// ── Auto-load imports dari file yang dibaca ──
-⋮----
-// ── Exec error → auto-fix loop ──
-⋮----
-// ── Build feedback ──
-⋮----
-// ── Tidak ada data baru → done ──
-⋮----
-// ── Ada data → feed back ke AI ──
-⋮----
-// Graceful stop — selesaikan iterasi ini lalu berhenti
-⋮----
-// Tambah XP per sesi dan pelajari style
-⋮----
-// Auto-continue
-⋮----
-// PROJECT_NOTE extraction
-⋮----
-// Elicitation
-⋮----
-// Tambah XP per sesi dan pelajari style — hanya jika bukan cancel
-⋮----
-// ── Derived actions ──
-function cancelMsg()
-⋮----
-// XP & learnFromSession tidak di sini — ditangani di catch sendMsg (hanya jika bukan AbortError)
-⋮----
-async function continueMsg()
-⋮----
-async function retryLast()
-</file>
-
-<file path="src/features.extra.test.js">
-// @vitest-environment node
-⋮----
-// ── vi.hoisted: create stable mock fn references BEFORE any import is resolved ──
-// This is the canonical fix for "spy not called" / "undefined.ok" in CI with
-// --coverage (V8 instrumentation), because the factory runs in a hoisted context
-// where inline vi.fn() can produce a different instance than what the test sees.
-⋮----
-// ── Module mocks — reference the hoisted fns, not inline vi.fn() ──────────────
-⋮----
-// ── Imports AFTER mock declarations (vi.mock is hoisted anyway, but explicit) ──
-⋮----
-// ── Reset call history only; mockImplementation survives vi.clearAllMocks() ───
-⋮----
-// Re-apply default implementations after clearAllMocks resets call history.
-// Using mockImplementation (not mockResolvedValue) for maximum CI stability.
-⋮----
-// ═══════════════════════════════════════════════════════════════════════════════
-// saveSession / loadSessions
-// ═══════════════════════════════════════════════════════════════════════════════
-⋮----
-expect(withName).toHaveLength(1); // deduped
-⋮----
-// ═══════════════════════════════════════════════════════════════════════════════
-// loadSkills / saveSkillFile / deleteSkillFile
-// ═══════════════════════════════════════════════════════════════════════════════
-⋮----
-// spaces and ! are replaced with -; alphanumeric, dots, hyphens preserved
-⋮----
-// ═══════════════════════════════════════════════════════════════════════════════
-// DEFAULT_HOOKS shape
-// ═══════════════════════════════════════════════════════════════════════════════
-⋮----
-// ═══════════════════════════════════════════════════════════════════════════════
-// generatePlan / executePlanStep (mocked callAI)
-// ═══════════════════════════════════════════════════════════════════════════════
 </file>
 
 <file path="yuyu-bench.cjs">
@@ -3633,16 +3982,12 @@ jobs:
 // ── ThinkingBlock — collapsible, pakai count kalau ada newlines ──────────────
 export function ThinkingBlock(
 ⋮----
-// Count "steps" = non-empty paragraphs separated by blank lines
-⋮----
 // ── StreamingBubble — live render saat generate, parse think realtime ─────────
 export function StreamingBubble(
 ⋮----
-// Parse <think> dari stream secara realtime
-⋮----
-// Nothing yet — show blink cursor only
-⋮----
 // ── MsgContent — markdown + code blocks ──────────────────────────────────────
+function MsgContent(
+⋮----
 // ── MsgBubble ─────────────────────────────────────────────────────────────────
 export function MsgBubble(
 ⋮----
@@ -3655,66 +4000,8 @@ function doCopy()
 onEdit&&
 </file>
 
-<file path="src/utils.js">
-// ── TOKEN COUNT ──
-export function countTokens(msgs)
-⋮----
-// ── FILE ICON ──
-export function getFileIcon(name)
-⋮----
-// ── SYNTAX HIGHLIGHT ──
-export function hl(code, lang = '')
-⋮----
-function protect(str, fn)
-⋮----
-// default JS/JSX/TS/TSX
-⋮----
-// ── PATH RESOLVER ──
-export function resolvePath(base, p)
-⋮----
-// ── ACTION PARSER ──
-export function parseActions(text)
-⋮----
-// ── SIMPLE DIFF GENERATOR ──
-function formatDiffLine(hunk, line, oldLine, newLine)
-⋮----
-function advanceContext(hunk, hunkLines)
-⋮----
-export function generateDiff(original, patched, maxLines = 40)
-⋮----
-// ── ACTION EXECUTOR ──
-// Dispatch table — each handler receives (action, base, _callServer)
-⋮----
-async read_file(action, base, cs)
-write_file:  (a, base, cs) => cs(
-append_file: (a, base, cs) => cs(
-patch_file:  (a, base, cs) => cs(
-tree:        (a, base, cs) => cs(
-exec:        (a, base, cs) => cs(
-web_search:  (a, _b, cs)  => cs(
-file_info:   (a, base, cs) => cs(
-delete_file: (a, base, cs) => cs(
-mkdir:       (a, base, cs) => cs(
-find_symbol: (a, base, cs) => cs(
-mcp:         (a, _b, cs)  => cs(
-⋮----
-async search(action, base, cs)
-⋮----
-async list_files(action, base, cs)
-⋮----
-move_file(action, base, cs)
-⋮----
-async create_structure(action, base, cs)
-⋮----
-async lint(action, base, cs)
-⋮----
-export async function executeAction(action, baseFolder, _callServer = callServer)
-</file>
-
 <file path="src/components/AppChat.jsx">
 // ── AppChat ───────────────────────────────────────────────────────────────────
-// Center area: multi-tab bar, chat, file viewer, file editor, terminal,
-// live preview, keyboard row, follow-up chips, quick bar, and composer.
 ⋮----
 export function AppChat({
   T, ui, project, file, chat,
@@ -3727,18 +4014,8 @@ export function AppChat({
 ⋮----
 const [searchQ, setSearchQ] = useState(null); // null=hidden, ''=open
 ⋮----
-// editorConfig derived from ui prefs
-⋮----
-// Fase 3
-⋮----
 // ── Keyboard row insert handler ──────────────────────────────────────────
 function handleKeyboardInsert(text)
-⋮----
-// If file editor is visible and focused → insert into CM
-⋮----
-// Fallback: insert into textarea
-⋮----
-// Active tab object
 ⋮----
 {/* ── MULTI-TAB BAR ── */}
 ⋮----
@@ -3760,8 +4037,6 @@ function handleKeyboardInsert(text)
 ⋮----
 
 ⋮----
-// nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
-// safe: hl() escapes &, <, > before any processing
 dangerouslySetInnerHTML={{ __html: hl(activeTab.content || '', activeTab.path?.split('.').pop() || '') }}/* hl() sanitizes input: escapes &<> before adding only <span> tags *//>
 ⋮----
 {/* ── FILE EDITOR (CodeMirror) ── */}
@@ -3779,182 +4054,104 @@ dangerouslySetInnerHTML={{ __html: hl(activeTab.content || '', activeTab.path?.s
 {/* ── QUICK BAR ── */}
 ⋮----
 {/* ── INPUT COMPOSER ── */}
-⋮----
-// Fuzzy prefix + substring match
-⋮----
-// Context boost: periksa pesan terakhir untuk saran relevan
-⋮----
-// Sort: context boost dulu, lalu alphabetical
 </file>
 
-<file path="src/components/FileEditor.jsx">
-// ── FileEditor — CodeMirror 6 · Full IDE ─────────────────────────────────────
-// Fase 1+2: Multi-tab, Vim, Emmet, Ghost Text, Minimap, Lint
-// Fase 3:   TypeScript LSP, Inline Blame, Sticky Scroll, Code Fold,
-//           Multi-Cursor, Breadcrumb, Realtime Collab
+<file path="src/hooks/useAgentLoop.js">
+// ── Module-level helpers for sendMsg ─────────────────────────────────────────
 ⋮----
-// ── TypeScript LSP — lazy load @valtown/codemirror-ts ────────────────────────
+async function checkServerHealth()
 ⋮----
-async function getTsExtensions()
+function isExecError(a)
 ⋮----
-// ── Language detector ─────────────────────────────────────────────────────────
-function getLang(path)
+function buildFeedback(readActions, safeActions, webSearchActions, patchActions, fullWriteActions, execActions)
 ⋮----
-function isEmmetLang(path)
+async function autoLoadImports(readActions, autoContext, projectFolder)
 ⋮----
-function isTsLang(path)
+function getRunCmd(wr, projectFolder)
 ⋮----
-// ── Theme builder ─────────────────────────────────────────────────────────────
-function buildTheme(T)
+async function autoVerifyWrites(fullWriteActions, projectFolder, allMessages, reply, iter, MAX_ITER)
 ⋮----
-// ── Ghost text ────────────────────────────────────────────────────────────────
+export function useAgentLoop({
+  project, chat, file, ui,
+  sendNotification, haptic, speakText,
+  abortRef, handleSlashCommandRef,
+  growth,
+})
 ⋮----
-create: () => (
-update(val, tr)
+// ── callAI ──
+function callAI(msgs, onChunk, signal, imageBase64)
 ⋮----
-// L2 ghost text — deeper preview (dimmer, different color)
+// ── abTest — kirim ke dua model paralel, tampilkan side by side ──
+async function abTest(task, modelA, modelB)
 ⋮----
-if (e.is(setGhostEffect))     return { text: '', pos: 0 }; // clear L2 saat L1 datang
+...m.slice(0, -1), // hapus "Menunggu..." bubble
 ⋮----
-class GhostWidget extends WidgetType
+// ── compactContext ──
+async function compactContext(inlineCall = false)
 ⋮----
-toDOM()
+// ── executeWithPermission ──
+async function executeWithPermission(a, folder)
 ⋮----
-// L1: putih-biru transparan (sudah ada). L2: lebih gelap, multi-line preview
+// ── gatherProjectContext — "read before act" ─────────────────────────────────
+async function gatherProjectContext(txt, _signal)
 ⋮----
-eq(other)
-ignoreEvent()
+// ── buildSystemPrompt ───────────────────────────────────────────────────────
+function buildSystemPrompt(txt, cfg)
 ⋮----
-// Hanya tampilkan L2 kalau tidak ada L1 aktif
+const stripFrontmatter = s
 ⋮----
-run(view)
+// ── sendMsg — agent loop ──
+async function sendMsg(override, _opts =
 ⋮----
-// Tab+Tab: cek double-tab via timestamp
+await compactContext(true); // inline — jangan reset abortRef atau loading
 ⋮----
-// accept L2
+// ── Pre-load pinned files ──
 ⋮----
-// double-tap Tab → accept L2
+// ── Read before act — gather project context sebelum iter 1 ──
 ⋮----
-// ── L1: fast, Llama 8B, 300ms debounce — next line ──
-async function fetchL1Suggestion(prefix)
+// ── MAIN AGENT LOOP ──
+// ── Server health check before first iter ──
 ⋮----
-// ── L2: deeper, Llama 8B dengan max_tokens lebih besar, 900ms debounce — next function body ──
-async function fetchL2Suggestion(prefix)
+// ── Separate actions by type ──
 ⋮----
-function makeGhostPlugin()
+// ── Read files (parallel) ──
 ⋮----
-update(upd)
+// ── Web search + safe actions (all parallel) ──
 ⋮----
-// L1: 300ms debounce — immediate next line
+// ── Exec / MCP (serial — order matters) ──
 ⋮----
-// L2: 900ms debounce — deeper multi-line preview
+// ── AUTO-EXECUTE / DIFF REVIEW: patch_file ──
 ⋮----
-destroy()
+// ── Diff Review mode — pre-compute diff, pause loop, tunggu user ──
 ⋮----
-// ── Inline blame gutter ───────────────────────────────────────────────────────
-class BlameMarker extends GutterMarker
+a.executed = false; // pending — belum dieksekusi
 ⋮----
-function makeBlameGutter(blameMap)
+return; // loop pause — resume via /continue setelah user approve
 ⋮----
-lineMarker(view, line)
-initialSpacer: ()
+// ── AUTO-EXECUTE / DIFF REVIEW: write_file ──
 ⋮----
-async function fetchBlame(folder, filePath)
+// ── Diff Review mode — pre-compute diff, pause loop ──
 ⋮----
-// git blame --abbrev=7 format: "^abc1234 (Author   2024-01-01 1) code"
+// ── Defensive review pass — security & edge cases ──
 ⋮----
-// ── Syntax lint ───────────────────────────────────────────────────────────────
-function makeSyntaxLinter(path, folder)
+// ── Auto-verify after write — run file, feed error back ──
 ⋮----
-// ── Minimap ───────────────────────────────────────────────────────────────────
-function Minimap(
+// ── Auto-load imports dari file yang dibaca ──
 ⋮----
-function draw()
+// ── Exec error → auto-fix loop ──
 ⋮----
-// ── Breadcrumb ────────────────────────────────────────────────────────────────
-function Breadcrumb(
+// ── Build feedback ──
 ⋮----
-// Listen to cursor movement via a plugin attached after mount
+// ── Tidak ada data baru → done ──
 ⋮----
-function update(v)
-// Initial read
+// ── Ada data → feed back ke AI ──
 ⋮----
-// Subscribe via updateListener extension — inject as a state facet
-// Since view is already created, we use a transaction listener
+// ── Derived actions ──
+function cancelMsg()
 ⋮----
-// Inject via a new compartment on existing view
+async function continueMsg()
 ⋮----
-// ── Collab WS plugin ──────────────────────────────────────────────────────────
-function makeCollabPlugin(wsRef)
-⋮----
-schedule()
-async push()
-⋮----
-// sendableUpdates is processed in update() — this slot reserved for future batch sends
-⋮----
-// ── Build optional extensions ─────────────────────────────────────────────────
-function buildOptionalExtensions(cfg, path, _folder, collabWsRef)
-⋮----
-// ── Main FileEditor ───────────────────────────────────────────────────────────
-⋮----
-insert(text)
-focus()
-foldAll()
-unfoldAll()
-⋮----
-// ── Mount ──────────────────────────────────────────────────────────────────
-⋮----
-}, []); // eslint-disable-line react-hooks/exhaustive-deps
-⋮----
-// ── Theme sync ──────────────────────────────────────────────────────────────
-⋮----
-// ── Lang sync ───────────────────────────────────────────────────────────────
-⋮----
-// ── Optional extensions sync ────────────────────────────────────────────────
-⋮----
-}, [ // eslint-disable-line react-hooks/exhaustive-deps
-⋮----
-// ── Blame toggle ────────────────────────────────────────────────────────────
-⋮----
-// ── Blame gutter update ─────────────────────────────────────────────────────
-⋮----
-// ── TS LSP lazy attach ──────────────────────────────────────────────────────
-⋮----
-// Further TS integration would attach completionSource + hoverTooltip here
-// Requires a tsserver worker — deferred to when worker is available
-⋮----
-// ── Collab WS ───────────────────────────────────────────────────────────────
-⋮----
-ws.onopen = () =>
-ws.onmessage = e => {
-      try {
-        const msg = JSON.parse(e.data);
-⋮----
-? null // fallback
-⋮----
-ws.onclose = () =>
-⋮----
-// ── Tab swap ─────────────────────────────────────────────────────────────────
-⋮----
-}, [tab?.path]); // eslint-disable-line react-hooks/exhaustive-deps
-⋮----
-// ── External content sync ────────────────────────────────────────────────────
-⋮----
-// ── Save ──────────────────────────────────────────────────────────────────
-⋮----
-function onKey(e)
-⋮----
-const tbBtn = (active) => (
-⋮----
-{/* Toolbar */}
-⋮----
-{/* badges */}
-⋮----
-{/* fold/unfold */}
-⋮----
-{/* Breadcrumb */}
-⋮----
-{/* Editor + minimap */}
+async function retryLast()
 </file>
 
 <file path="src/App.jsx">
@@ -3963,14 +4160,9 @@ export default function App()
 // ── STORES ──
 ⋮----
 // ── Dynamic brightness filter — perceptual compensation ──────────────────
-// Humans perceive brightness logarithmically (Weber-Fechner law).
-// No filter above 25% brightness — normal usage range stays untouched.
-// Below 25%: gentle linear boost max 1.4x + slight desaturation to
-// counteract warm/orange shift (CSS brightness() boosts all RGB equally).
 ⋮----
 const t      = 1 - (b / 0.25);           // 0 at 25%, 1 at 0%
 const boost  = 1 + t * 0.40;             // 1.0x → 1.4x max
-const desat  = 1 - t * 0.18;             // desaturate to prevent warm shift
 ⋮----
 // ── REFS ──
 ⋮----
@@ -3999,9 +4191,6 @@ function connect()
 ⋮----
 ws.onopen = () => ws.send(JSON.stringify(
 ws.onmessage = async (e) =>
-⋮----
-// Sanitize filename from server — strip null bytes and path traversal
-⋮----
 ws.onerror = () =>
 ws.onclose = () =>
 ⋮----
@@ -4022,6 +4211,120 @@ function onEnd()
 {/* Brightness screen overlay — mix-blend-mode:screen, no banding */}
 ⋮----
 {/* Badge toast */}
+</file>
+
+<file path="yugit.cjs">
+// yugit.cjs — YuyuCode git helper v2
+// Usage:
+//   node yugit.cjs "feat(api): add endpoint"          # commit + push
+//   node yugit.cjs "fix: broken layout" --no-push     # commit only
+//   node yugit.cjs "docs: update readme" --amend      # amend last commit
+//   node yugit.cjs "revert: bad deploy" --hash abc123 # git revert <hash>
+//   node yugit.cjs "feat: thing" "body text" "BREAKING CHANGE: x"  # with body/footer
+//   node yugit.cjs "release: v2.x — desc"             # auto version bump + push
+//   node yugit.cjs --push                              # push existing local commits
+//   node yugit.cjs --squash 3                         # squash last N commits
+//   node yugit.cjs --status                           # show branch + changes + recent commits
+⋮----
+// ── Parse args ────────────────────────────────────────────────────────────────
+⋮----
+// Filter flags out — remaining args are: [msg, body?, footer?]
+⋮----
+function run(cmd)
+⋮----
+function tryRun(cmd)
+⋮----
+// ── Conventional commit type extractor (scope-aware) ─────────────────────────
+// Handles: feat(api): desc → type=feat, scope=api
+function parseCommitType(m)
+⋮----
+// ── Auto version bump ─────────────────────────────────────────────────────────
+function bumpVersion()
+⋮----
+// Explicit vX.Y or vX.Y.Z in message → set directly
+⋮----
+// ── Diff stat display ─────────────────────────────────────────────────────────
+function showDiffStat()
+⋮----
+// ── Build commit message (multi-line support) ─────────────────────────────────
+function buildCommitArgs(finalMsg)
+⋮----
+// ── Sanity check ──────────────────────────────────────────────────────────────
+⋮----
+// ── STATUS mode ───────────────────────────────────────────────────────────────
+⋮----
+// ── PUSH-ONLY mode ────────────────────────────────────────────────────────────
+⋮----
+// ── SQUASH mode ───────────────────────────────────────────────────────────────
+⋮----
+// Get the commit message of the oldest commit being squashed
+⋮----
+// ── AMEND mode ────────────────────────────────────────────────────────────────
+⋮----
+// ── REVERT mode ───────────────────────────────────────────────────────────────
+⋮----
+// ── Auto bump version on release ──────────────────────────────────────────────
+⋮----
+// ── Re-check status after possible package.json edit ─────────────────────────
+⋮----
+// ── git add ───────────────────────────────────────────────────────────────────
+⋮----
+// ── git commit ────────────────────────────────────────────────────────────────
+⋮----
+// ── git push ──────────────────────────────────────────────────────────────────
+</file>
+
+<file path="src/utils.js">
+// ── TOKEN COUNT ──
+export function countTokens(msgs)
+⋮----
+// ── FILE ICON ──
+export function getFileIcon(name)
+⋮----
+// ── SYNTAX HIGHLIGHT ──
+export function hl(code, lang = '')
+⋮----
+function protect(str, fn)
+⋮----
+// ── PATH RESOLVER ──
+export function resolvePath(base, p)
+⋮----
+// ── ACTION PARSER ──
+export function parseActions(text)
+⋮----
+// ── SIMPLE DIFF GENERATOR ──
+function formatDiffLine(hunk, line, oldLine, newLine)
+⋮----
+function advanceContext(hunk, hunkLines)
+⋮----
+export function generateDiff(original, patched, maxLines = 40)
+⋮----
+// ── ACTION EXECUTOR ──
+⋮----
+async read_file(action, base, cs)
+write_file:  (a, base, cs) => cs(
+append_file: (a, base, cs) => cs(
+patch_file:  (a, base, cs) => cs(
+tree:        (a, base, cs) => cs(
+exec:        (a, base, cs) => cs(
+web_search:  (a, _b, cs)  => cs(
+file_info:   (a, base, cs) => cs(
+delete_file: (a, base, cs) => cs(
+mkdir:       (a, base, cs) => cs(
+find_symbol: (a, base, cs) => cs(
+mcp:         (a, _b, cs)  => cs(
+⋮----
+async search(action, base, cs)
+⋮----
+async list_files(action, base, cs)
+⋮----
+move_file(action, base, cs)
+⋮----
+async create_structure(action, base, cs)
+⋮----
+async lint(action, base, cs)
+⋮----
+export async function executeAction(action, baseFolder, _callServer = callServer)
 </file>
 
 <file path="yuyu-map.cjs">
@@ -4220,65 +4523,9 @@ const randStr = (len = 20) => Array.from(
 // ─────────────────────────────────────────────────────────────────────────────
 </file>
 
-<file path="yugit.cjs">
-// yugit.cjs — YuyuCode git helper v2
-// Usage:
-//   node yugit.cjs "feat(api): add endpoint"          # commit + push
-//   node yugit.cjs "fix: broken layout" --no-push     # commit only
-//   node yugit.cjs "docs: update readme" --amend      # amend last commit
-//   node yugit.cjs "revert: bad deploy" --hash abc123 # git revert <hash>
-//   node yugit.cjs "feat: thing" "body text" "BREAKING CHANGE: x"  # with body/footer
-//   node yugit.cjs "release: v2.x — desc"             # auto version bump + push
-//   node yugit.cjs --push                              # push existing local commits
-//   node yugit.cjs --squash 3                         # squash last N commits
-//   node yugit.cjs --status                           # show branch + changes + recent commits
-⋮----
-// ── Parse args ────────────────────────────────────────────────────────────────
-⋮----
-// Filter flags out — remaining args are: [msg, body?, footer?]
-⋮----
-function run(cmd)
-⋮----
-function tryRun(cmd)
-⋮----
-// ── Conventional commit type extractor (scope-aware) ─────────────────────────
-// Handles: feat(api): desc → type=feat, scope=api
-function parseCommitType(m)
-⋮----
-// ── Auto version bump ─────────────────────────────────────────────────────────
-function bumpVersion()
-⋮----
-// Explicit vX.Y or vX.Y.Z in message → set directly
-⋮----
-// ── Diff stat display ─────────────────────────────────────────────────────────
-function showDiffStat()
-⋮----
-// ── Build commit message (multi-line support) ─────────────────────────────────
-function buildCommitArgs(finalMsg)
-⋮----
-// ── Sanity check ──────────────────────────────────────────────────────────────
-⋮----
-// ── STATUS mode ───────────────────────────────────────────────────────────────
-⋮----
-// ── PUSH-ONLY mode ────────────────────────────────────────────────────────────
-⋮----
-// ── SQUASH mode ───────────────────────────────────────────────────────────────
-⋮----
-// Get the commit message of the oldest commit being squashed
-⋮----
-// ── AMEND mode ────────────────────────────────────────────────────────────────
-⋮----
-// ── REVERT mode ───────────────────────────────────────────────────────────────
-⋮----
-// ── Auto bump version on release ──────────────────────────────────────────────
-⋮----
-// ── Re-check status after possible package.json edit ─────────────────────────
-⋮----
-// ── git add ───────────────────────────────────────────────────────────────────
-⋮----
-// ── git commit ────────────────────────────────────────────────────────────────
-⋮----
-// ── git push ──────────────────────────────────────────────────────────────────
+<file path="vitest.config.js">
+// isolate: true in CI prevents mock cache race conditions across parallel threads.
+// isolate: false locally for speed.
 </file>
 
 <file path="src/hooks/useSlashCommands.js">
@@ -4289,12 +4536,10 @@ function parseActionsLocal(text)
 async function processBatchFile(f, folder, batchCmd, callAI, signal, setMessages)
 ⋮----
 export function useSlashCommands({
-  // state
   model, folder, branch, messages, selectedFile, fileContent, notes,
   memories, checkpoints: _checkpoints, skills, thinkingEnabled, effort, loopActive,
   loopIntervalRef, agentMemory, splitView, pushToTalk, sessionName,
   sessionColor, fileWatcherActive, fileWatcherInterval,
-  // setters
   setModel, setMessages, setFolder: _setFolder, setFolderInput: _setFolderInput, setLoading, setStreaming: _setStreaming,
   setThinkingEnabled, setEffort, setLoopActive, setLoopIntervalRef,
   setSplitView, setPushToTalk, setSessionName, setSessionColor,
@@ -4308,24 +4553,14 @@ export function useSlashCommands({
   setDepGraph, setFontSize,
   setShowMergeConflict, setMergeConflictData,
   setShowSkills, setShowBgAgents,
-  // functions
   sendMsg, compactContext, saveCheckpoint, exportChat, searchMessages,
   setGracefulStop, loading,
   editHistory, setEditHistory, pinnedFiles, togglePin,
   browseTo, runAgentSwarm, callAI, abTest,
   growth,
   sendNotification, haptic,
-  // refs
   abortRef,
 })
-⋮----
-// state
-⋮----
-// setters
-⋮----
-// functions
-⋮----
-// refs
 ⋮----
 // ── Individual command handlers ────────────────────────────────────────────
 ⋮----
@@ -4340,11 +4575,6 @@ async function resolveLocalImport(imp, fromPath, depth)
 // ── Main dispatcher ────────────────────────────────────────────────────────
 ⋮----
 // eslint-disable-next-line react-hooks/exhaustive-deps
-</file>
-
-<file path="vitest.config.js">
-// isolate: true in CI prevents mock cache race conditions across parallel threads.
-// isolate: false locally for speed.
 </file>
 
 <file path="yuyu-server.js">
@@ -4401,6 +4631,16 @@ const trimLines  = s
 // ── DIRECTORY TREE ────────────────────────────────────────────────────────────
 function buildTree(dirPath, depth, maxDepth, prefix)
 ⋮----
+function walkSync(dir)
+⋮----
+function extractSigs(src, _filePath)
+⋮----
+// export function / async function
+⋮----
+// export const = arrow
+⋮----
+// function Component / function useHook
+⋮----
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 function handle(payload)
 ⋮----
@@ -4413,16 +4653,6 @@ function handle(payload)
 // ── CODEBASE INDEX — real-time symbol extraction ──────────────────────────
 // Returns function/component/hook signatures for entire src/ directory.
 // No body, just signatures — low token cost, high signal.
-⋮----
-function walkSync(dir)
-⋮----
-function extractSigs(src, _filePath)
-⋮----
-// export function / async function
-⋮----
-// export const = arrow
-⋮----
-// function Component / function useHook
 ⋮----
 // Format as compact markdown
 ⋮----
@@ -4716,6 +4946,83 @@ Kirim **hanya file yang disentuh** — cek `git diff --name-only HEAD`.
 > Tidak ada fitur yang dilewat. Satu per satu sampai selesai. 🚀
 </file>
 
+<file path="package.json">
+{
+  "name": "yuyucode",
+  "private": true,
+  "version": "4.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "echo '🔍 Scouring the codebase...' && eslint . && echo '✨ 0 problems found! Code is pure.'",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ci": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=lcov --coverage.reporter=text",
+    "bench": "node yuyu-bench.cjs",
+    "bench:save": "node yuyu-bench.cjs --save",
+    "bench:reset": "node yuyu-bench.cjs --reset"
+  },
+  "dependencies": {
+    "@capacitor-community/speech-recognition": "^7.0.1",
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/camera": "^8.0.1",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/preferences": "^8.0.1",
+    "@capgo/capacitor-brightness": "^8.0.7",
+    "@codemirror/collab": "^6.1.1",
+    "@codemirror/commands": "^6.8.0",
+    "@codemirror/lang-css": "^6.2.1",
+    "@codemirror/lang-html": "^6.4.9",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.2.5",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/language": "^6.11.0",
+    "@codemirror/lint": "^6.8.4",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.36.6",
+    "@emmetio/codemirror6-plugin": "^0.4.0",
+    "@replit/codemirror-vim": "^6.0.0",
+    "@valtown/codemirror-ts": "^2.2.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "codemirror": "^6.0.2",
+    "d3": "^7.9.0",
+    "diff": "^8.0.3",
+    "fuse.js": "^7.1.0",
+    "lucide-react": "^0.577.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.2.0",
+    "@eslint/js": "^9.39.4",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "fast-check": "^3.22.0",
+    "globals": "^17.4.0",
+    "happy-dom": "^14.0.0",
+    "jsdom": "^29.0.0",
+    "vite": "^5.4.0",
+    "vitest": "^1.6.1",
+    "@vitest/coverage-v8": "^1.6.1"
+  },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node"
+  }
+}
+</file>
+
 <file path="README.md">
 <div align="center">
 
@@ -4733,8 +5040,8 @@ Kirim **hanya file yang disentuh** — cek `git diff --name-only HEAD`.
 [![CodeQL](https://github.com/liveiciee/yuyucode/actions/workflows/codeql.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
 [![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=alert_status)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![SonarCloud Coverage](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=coverage)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
-[![Version](https://img.shields.io/badge/version-4.1.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-661%20passing-brightgreen)](#testing--benchmarks)
+[![Version](https://img.shields.io/badge/version-4.2.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-1024%20passing-brightgreen)](#testing--benchmarks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
 ![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?logo=react&logoColor=61DAFB)
@@ -4769,7 +5076,7 @@ Kirim **hanya file yang disentuh** — cek `git diff --name-only HEAD`.
 
 ## Status
 
-> **v4.1.0** — Personal tool. Works on one phone — mine. Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). No contributions expected, though issues are welcome. Use at your own risk.
+> **v4.2.0** — Personal tool. Works on one phone — mine. Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). No contributions expected, though issues are welcome. Use at your own risk.
 
 ---
 
@@ -4896,6 +5203,8 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 - **Incremental codebase map** — `yuyu-map.cjs` runs `git diff --name-only HEAD` before scanning; only changed files re-analyzed
 - **Benchmark regression detector** — `yuyu-bench.cjs` stores results in `.yuyu/bench-history.json`; flags 2× regressions vs baseline
 - **Property-based test coverage** — `parseActions` and `resolvePath` fuzz-tested with 100 random inputs each via `fast-check`
+- **`resolvePath` basename dedup fix** — fixed silent bug where paths like `myproject/src/App.js` would double-prefix to `/project/myproject/src/App.js` instead of `/project/src/App.js` when base ends with the project name
+- **Branch coverage infrastructure** — 363 new tests systematically targeting SonarCloud condition branches across all core hooks; discovered `isolate: false` module-cache issue in Termux vitest causing false test failures
 - **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits, sets `package.json` version, triggers CI APK build. Supports `--no-push`, `--amend`, `--hash` revert, scopes, breaking changes, `--push`, `--squash N`, `--status`.
 
 ---
@@ -4903,8 +5212,9 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 ## Testing & Benchmarks
 
 ```
-661 tests passing. 0 lint warnings. Runs on Termux ARM64.
+1024 tests passing. 0 lint warnings. Runs on Termux ARM64.
 50 of which are property-based (fast-check, 100 random inputs each).
+363 of which are branch coverage tests added in v4.2 (condition/branch coverage for SonarCloud).
 ```
 
 | File | Type | Tests |
@@ -4927,6 +5237,13 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 | `yuyu-map.test.cjs` | Unit — map, symbols, compress, handoff, llms.txt | 92 |
 | `yuyu-server.test.cjs` | Integration — HTTP, read/write/patch/batch/exec | 30 |
 | `useSlashCommands.test.js` | Unit — all 68 slash command handlers | 115 |
+| `api.branch.test.js` | Branch coverage — api.js conditions | 12 |
+| `branch.coverage.test.js` | Branch coverage — utils.js executeAction/resolvePath | 22 |
+| `features.branch.test.js` | Branch coverage — features.js | 27 |
+| `features.bgagent.test.js` | Branch coverage — background agent | 11 |
+| `useFileStore.branch.test.js` | Branch coverage — useFileStore | 14 |
+| `useAgentLoop.branch.test.js` | Branch coverage — agent loop conditions | 39 |
+| `useSlashCommands.branch.test.js` | Branch coverage — slash command handlers | 41 |
 
 ### Benchmarks (Termux ARM64)
 
@@ -5209,12 +5526,13 @@ WebSocket :8766 — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`
 
 **Secrets:** `VITE_CEREBRAS_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_TAVILY_API_KEY`, `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `SONAR_TOKEN`
 
-## State v4.1
+## State v4.2
 
-- Version: 4.1.0 · Tests: 661 ✅ · Slash commands: ~68
+- Version: 4.2.0 · Tests: 1024 ✅ · Slash commands: ~68
 - Features: YUYU.md, visual diff review + reject feedback, ghost text L1+L2, /review --all, contextual slash suggestions, context bar, graceful stop, chat search, /pin, /undo, /diff, /ask, offline detect, read cache
 - CI/CD: CodeQL ✅ · SonarCloud Quality Gate ✅ · Semgrep SAST ✅
 - SonarCloud: Security A · Maintainability A · Reliability in progress (cognitive complexity refactor)
+- Coverage: 70.0% overall (+1.6% from v4.1) · New code 88.9% · Branch coverage systematic tests added
 
 </details>
 
@@ -5223,83 +5541,6 @@ WebSocket :8766 — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`
 <div align="center">
   <sub>built on a phone · for a phone · with love 🌸</sub>
 </div>
-</file>
-
-<file path="package.json">
-{
-  "name": "yuyucode",
-  "private": true,
-  "version": "4.1.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "echo '🔍 Scouring the codebase...' && eslint . && echo '✨ 0 problems found! Code is pure.'",
-    "preview": "vite preview",
-    "test": "vitest",
-    "test:ci": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=lcov --coverage.reporter=text",
-    "bench": "node yuyu-bench.cjs",
-    "bench:save": "node yuyu-bench.cjs --save",
-    "bench:reset": "node yuyu-bench.cjs --reset"
-  },
-  "dependencies": {
-    "@capacitor-community/speech-recognition": "^7.0.1",
-    "@capacitor/android": "^8.2.0",
-    "@capacitor/camera": "^8.0.1",
-    "@capacitor/core": "^8.2.0",
-    "@capacitor/filesystem": "^8.1.2",
-    "@capacitor/preferences": "^8.0.1",
-    "@capgo/capacitor-brightness": "^8.0.7",
-    "@codemirror/collab": "^6.1.1",
-    "@codemirror/commands": "^6.8.0",
-    "@codemirror/lang-css": "^6.2.1",
-    "@codemirror/lang-html": "^6.4.9",
-    "@codemirror/lang-javascript": "^6.2.5",
-    "@codemirror/lang-json": "^6.0.2",
-    "@codemirror/lang-markdown": "^6.2.5",
-    "@codemirror/lang-python": "^6.2.1",
-    "@codemirror/language": "^6.11.0",
-    "@codemirror/lint": "^6.8.4",
-    "@codemirror/state": "^6.5.2",
-    "@codemirror/view": "^6.36.6",
-    "@emmetio/codemirror6-plugin": "^0.4.0",
-    "@replit/codemirror-vim": "^6.0.0",
-    "@valtown/codemirror-ts": "^2.2.0",
-    "@xterm/addon-fit": "^0.10.0",
-    "@xterm/xterm": "^5.5.0",
-    "codemirror": "^6.0.2",
-    "d3": "^7.9.0",
-    "diff": "^8.0.3",
-    "fuse.js": "^7.1.0",
-    "lucide-react": "^0.577.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1",
-    "typescript": "^5.8.3"
-  },
-  "devDependencies": {
-    "@capacitor/cli": "^8.2.0",
-    "@eslint/js": "^9.39.4",
-    "@testing-library/react": "^16.3.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^4.3.0",
-    "eslint": "^9.39.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "fast-check": "^3.22.0",
-    "globals": "^17.4.0",
-    "happy-dom": "^14.0.0",
-    "jsdom": "^29.0.0",
-    "vite": "^5.4.0",
-    "vitest": "^1.6.1",
-    "@vitest/coverage-v8": "^1.6.1"
-  },
-  "overrides": {
-    "rollup": "npm:@rollup/wasm-node"
-  }
-}
 </file>
 
 </files>

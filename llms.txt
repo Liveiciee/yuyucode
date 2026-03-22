@@ -1,5 +1,5 @@
 # YuyuCode — LLM Context Brief
-> Version: 4.1.0 | Generated: 2026-03-21
+> Version: 4.2.0 | Generated: 2026-03-22
 
 ## What is this project?
 YuyuCode is a Claude Code / Cursor-style agentic coding assistant built natively for Android.
@@ -21,16 +21,17 @@ Runs entirely on a phone (Oppo A77s, Snapdragon 680) via Termux. No laptop. No d
 ## Hot files (highest salience)
 - `src/setupTest.js` — 
 - `src/theme.js` — 
-- `src/plugins/brightness.js` — 
 - `src/components/panels.jsx` — 
+- `src/plugins/brightness.js` — 
 - `src/themes/index.js` — THEMES_MAP, THEME_KEYS, DEFAULT_THEME
-- `src/main.jsx` — 
 - `src/hooks/useBrightness.js` — useBrightness
+- `src/main.jsx` — 
 - `vite.config.js` — 
 - `vitest.config.js` — 
 - `src/components/AppSidebar.jsx` — AppSidebar
 
 ## Hooks
+- `src/hooks/useAgentLoop.branch.test.js` — 
 - `src/hooks/useAgentLoop.js` — useAgentLoop
 - `src/hooks/useAgentLoop.test.js` — 
 - `src/hooks/useAgentSwarm.js` — useAgentSwarm
@@ -51,30 +52,31 @@ Runs entirely on a phone (Oppo A77s, Snapdragon 680) via Termux. No laptop. No d
 - `src/hooks/useNotifications.test.js` — 
 - `src/hooks/useProjectStore.js` — useProjectStore
 - `src/hooks/useProjectStore.test.js` — 
+- `src/hooks/useSlashCommands.branch.test.js` — 
 - `src/hooks/useSlashCommands.js` — 
 - `src/hooks/useSlashCommands.test.js` — 
 - `src/hooks/useUIStore.js` — useUIStore
 
 ## Components
-- `src/components/AppChat.jsx` (527L)
-- `src/components/AppHeader.jsx` (78L)
-- `src/components/AppPanels.jsx` (272L)
-- `src/components/AppSidebar.jsx` (38L)
-- `src/components/FileEditor.jsx` (867L)
-- `src/components/FileTree.jsx` (295L)
-- `src/components/GlobalFindReplace.jsx` (248L)
-- `src/components/KeyboardRow.jsx` (73L)
-- `src/components/LivePreview.jsx` (211L)
-- `src/components/MsgBubble.jsx` (287L)
+- `src/components/AppChat.jsx` (515L)
+- `src/components/AppHeader.jsx` (76L)
+- `src/components/AppPanels.jsx` (269L)
+- `src/components/AppSidebar.jsx` (37L)
+- `src/components/FileEditor.jsx` (847L)
+- `src/components/FileTree.jsx` (294L)
+- `src/components/GlobalFindReplace.jsx` (243L)
+- `src/components/KeyboardRow.jsx` (71L)
+- `src/components/LivePreview.jsx` (202L)
+- `src/components/MsgBubble.jsx` (338L)
 - `src/components/SearchBar.jsx` (68L)
-- `src/components/Terminal.jsx` (342L)
-- `src/components/ThemeEffects.jsx` (168L)
-- `src/components/VoiceBtn.jsx` (135L)
+- `src/components/Terminal.jsx` (339L)
+- `src/components/ThemeEffects.jsx` (159L)
+- `src/components/VoiceBtn.jsx` (133L)
 - `src/components/panels.agent.jsx` (316L)
 - `src/components/panels.base.jsx` (167L)
-- `src/components/panels.git.jsx` (537L)
-- `src/components/panels.jsx` (19L)
-- `src/components/panels.tools.jsx` (608L)
+- `src/components/panels.git.jsx` (531L)
+- `src/components/panels.jsx` (10L)
+- `src/components/panels.tools.jsx` (604L)
 
 ## Agent loop flow
 1. User sends message → `useAgentLoop.sendMsg()`
