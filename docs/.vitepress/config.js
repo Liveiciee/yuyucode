@@ -14,7 +14,7 @@ export default defineConfig({
     siteTitle: 'YuyuCode',
 
     nav: [
-      { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'Guide', link: '/guide/what-is-yuyucode' },
       { text: 'Features', link: '/features/' },
       { text: 'Reference', link: '/reference/slash-commands' },
       { text: 'FAQ', link: '/faq' },
@@ -49,8 +49,24 @@ export default defineConfig({
           items: [
             { text: 'YUYU.md', link: '/guide/yuyu-md' },
             { text: 'AI Providers', link: '/guide/ai-providers' },
+            { text: 'Themes', link: '/guide/themes' },
+            { text: 'MCP Integration', link: '/guide/mcp' },
             { text: 'CI/CD', link: '/guide/ci-cd' },
+          ],
+        },
+        {
+          text: 'Internals',
+          items: [
+            { text: 'Memory System', link: '/guide/memory' },
+            { text: 'Growth & Gamification', link: '/guide/growth' },
             { text: 'Testing & Benchmarks', link: '/guide/testing' },
+          ],
+        },
+        {
+          text: 'Help',
+          items: [
+            { text: 'Troubleshooting', link: '/guide/troubleshooting' },
+            { text: 'FAQ', link: '/faq' },
           ],
         },
       ],
