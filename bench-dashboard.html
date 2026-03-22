@@ -248,7 +248,7 @@ function fmt(n, asTime=false) {
   return n.toFixed(0);
 }
 
-const fmtDate = ts => new Date(ts).toLocaleString('en-GB', {
+const fmtDate = ts => new Date(typeof ts === 'number' ? ts : ts).toLocaleString('en-GB', {
   day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
 });
 
@@ -280,7 +280,12 @@ Chart.defaults.font.family = "'JetBrains Mono', monospace";
 Chart.defaults.font.size = 9;
 
 function render(data) {
-  const entries = data.entries || [];
+  // github-action-benchmark stores entries as object: { "Suite Name": [{commit,date,benches}] }
+  const rawEntries = data.entries || {};
+  const allRuns = Object.values(rawEntries).flat();
+  // Sort by date ascending
+  const entries = allRuns.sort((a, b) => new Date(a.date) - new Date(b.date));
+
   if (!entries.length) {
     document.getElementById('root').innerHTML =
       '<div class="err">No data yet.<br>Push to main to trigger the first bench run.</div>';
@@ -289,7 +294,12 @@ function render(data) {
 
   const last  = entries[entries.length - 1];
   const prev  = entries[entries.length - 2] || null;
+  // Normalize commit: github-action-benchmark stores commit as object {id, message, ...}
+  entries.forEach(e => {
+    if (typeof e.commit === 'object') e.commit = e.commit.id || e.commit.hash || '';
+  });
   const names = [...new Set(entries.flatMap(e => e.benches.map(b => b.name)))];
+
 
   // topbar meta
   document.getElementById('meta').innerHTML =
