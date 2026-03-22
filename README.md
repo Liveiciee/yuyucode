@@ -15,7 +15,7 @@
 [![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=alert_status)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![SonarCloud Coverage](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=coverage)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![Version](https://img.shields.io/badge/version-4.2.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-1024%20passing-brightgreen)](#testing--benchmarks)
+[![Tests](https://img.shields.io/badge/tests-1031%20passing-brightgreen)](#testing--benchmarks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
 ![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?logo=react&logoColor=61DAFB)
@@ -186,7 +186,7 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 ## Testing & Benchmarks
 
 ```
-1024 tests passing. 0 lint warnings. Runs on Termux ARM64.
+1031 tests passing. 0 lint warnings. Runs on Termux ARM64.
 50 of which are property-based (fast-check, 100 random inputs each).
 363 of which are branch coverage tests added in v4.2 (condition/branch coverage for SonarCloud).
 ```
@@ -206,9 +206,9 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 | `editor.test.js` | Unit — getLang, isEmmet, isTsLang | 21 |
 | `livepreview.test.js` | Unit — buildSrcdoc | 12 |
 | `multitab.test.js` | Unit — useFileStore multi-tab | 18 |
-| `uistore.test.js` | Unit — useUIStore | 25 |
+| `uistore.test.js` | Unit — useUIStore | 26 |
 | `globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
-| `yuyu-map.test.cjs` | Unit — map, symbols, compress, handoff, llms.txt | 92 |
+| `yuyu-map.test.cjs` | Unit — map, symbols, compress, handoff, llms.txt | 98 |
 | `yuyu-server.test.cjs` | Integration — HTTP, read/write/patch/batch/exec | 30 |
 | `useSlashCommands.test.js` | Unit — all 68 slash command handlers | 115 |
 | `api.branch.test.js` | Branch coverage — api.js conditions | 12 |
@@ -340,9 +340,10 @@ It's not a polished product. It's proof that the constraints were never the hard
 
 ## Yang Tidak Boleh Diubah Tanpa Konfirmasi
 
-- `"overrides": { "rollup": "npm:@rollup/wasm-node" }` di `package.json` — ini yang bikin Vite jalan di Termux ARM64. Hapus = build mati.
-- Folder `android/` — di-generate Capacitor, edit manual bisa rusak sync.
-- `vitest@1` — v4 crash silent di Termux ARM64. Jangan upgrade.
+- [`"overrides": { "rollup": "npm:@rollup/wasm-node" }`](./package.json) di `package.json` — ini yang bikin Vite jalan di Termux ARM64. Hapus = build mati.
+- [Folder `android/`](./android/) — di-generate Capacitor, edit manual bisa rusak sync.
+- [`vitest@3`](./vitest.config.js) — v4 crash `Illegal instruction` di ARM64 Snapdragon 680. Jangan upgrade.
+- [`isolate: false`](./vitest.config.js) di vitest — `vi.mock`/`vi.hoisted` bocor antar file. Jangan pakai.
 - Jangan override `global.TextDecoder` di test files — infinite recursion di Node 24.
 - Keystore encoding: `openssl base64` + `tr -d '\n'`, bukan `base64 -w 0`.
 
@@ -356,10 +357,11 @@ cd ~/yuyucode && npm run dev &
 yuyu-apply yuyu-patch.zip       # zip — unzip + lint + test + rollback otomatis
 yuyu-apply --dry-run            # preview dulu
 yuyu-cp README.md               # file tunggal
+yuyu-cp quality.yml .github/workflows/quality.yml  # file ke subdirectory
 
 # Selalu setelah apply:
 npm run lint        # 0 problems
-npx vitest run      # harus 546/546 pass
+npx vitest run      # harus 1031/1031 pass
 node yuyu-map.cjs   # update codebase map
 
 # Push
@@ -498,15 +500,15 @@ WebSocket :8766 — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`
 8. GitHub Release hanya kalau commit diawali `release:`
 9. Push yang hanya ubah `.md` → skip CI
 
-**Secrets:** `VITE_CEREBRAS_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_TAVILY_API_KEY`, `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `SONAR_TOKEN`
+**Secrets:** `VITE_CEREBRAS_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_TAVILY_API_KEY`, `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `SONAR_TOKEN`, `DEEPSOURCE_DSN`
 
 ## State v4.2
 
-- Version: 4.2.0 · Tests: 1024 ✅ · Slash commands: ~68
+- Version: 4.2.0 · Tests: 1031 ✅ · Slash commands: ~68
 - Features: YUYU.md, visual diff review + reject feedback, ghost text L1+L2, /review --all, contextual slash suggestions, context bar, graceful stop, chat search, /pin, /undo, /diff, /ask, offline detect, read cache
-- CI/CD: CodeQL ✅ · SonarCloud Quality Gate ✅ · Semgrep SAST ✅
-- SonarCloud: Security A · Maintainability A · Reliability in progress (cognitive complexity refactor)
-- Coverage: 70.0% overall (+1.6% from v4.1) · New code 88.9% · Branch coverage systematic tests added
+- CI/CD: CodeQL ✅ · SonarCloud Quality Gate ✅ · Semgrep SAST ✅ · DeepSource ✅
+- SonarCloud: Security A · Maintainability A · Coverage 70% ✅
+- vitest@3 + happy-dom — 16s → 9s ✅
 
 </details>
 

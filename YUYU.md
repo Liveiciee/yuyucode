@@ -16,8 +16,9 @@
 - No npm build lokal — Vite build hanya di CI (ARM64 constraint)
 
 ## Forbidden Patterns
-- JANGAN `npm run build` lokal — crash di Termux ARM64
-- JANGAN upgrade vitest ke v4+ — crash silent di ARM64
+- Hindari `npm run build` lokal — build hanya dibutuhkan untuk APK, sudah di-handle CI
+- JANGAN upgrade vitest ke v4+ — crash Illegal instruction di ARM64 Snapdragon 680
+- JANGAN pakai isolate: false di vitest — vi.mock/vi.hoisted bocor antar file
 - JANGAN hapus `"overrides": { "rollup": "npm:@rollup/wasm-node" }` di package.json
 - JANGAN override `global.TextDecoder` di test files — infinite recursion Node 24
 - JANGAN edit folder `android/` manual — di-generate Capacitor
@@ -27,11 +28,11 @@
 - Terminal: xterm.js
 - File search: Fuse.js
 - Diff: `diff` library (Myers algorithm)
-- Testing: vitest@1 (bukan v4)
+- Testing: vitest@3 (bukan v4 — crash Illegal instruction di ARM64)
 
 ## Commands
 - Dev: `npm run dev` (port 5173)
-- Test: `npx vitest run` (harus 546/546 pass sebelum commit)
+- Test: `npx vitest run` (harus 1031/1031 pass sebelum commit)
 - Lint: `npm run lint` (harus 0 problems)
 - Bench: `npm run bench`
 - Deploy: `node yugit.cjs "feat: ..."`
