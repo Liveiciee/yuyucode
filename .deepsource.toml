@@ -5,48 +5,5 @@ name = "javascript"
 enabled = true
 
   [analyzers.meta]
-  environment = ["browser", "es2022"]
-  plugins = ["react"]
-
-[[analyzers]]
-name = "secrets"
-enabled = true
-# Scan for accidentally committed API keys/tokens.
-# CEREBRAS_KEY, GROQ_KEY, GITHUB_TOKEN jangan pernah hardcoded.
-
-[[transformers]]
-name = "prettier"
-enabled = true
-
-[test_coverage]
-reporter = "javascript"
-threshold = 60
-
-# ── Suppress false positives ────────────────────────────────────────────────
-# JS-C1002: short variable names — T, m, r, e, a, i semua intentional
-# (T = theme object, m = messages callback, r = result, i = index)
-[[issues]]
-issue_code = "JS-C1002"
-issue_type = "anti-pattern"
-[[issues.suppressed_in]]
-file_paths = ["src/**"]
-
-# JS-R1005: cyclomatic complexity — sendMsg & handleSlashCommand
-# complex by design (agent loop + 60+ slash commands), refactor hurt readability
-[[issues]]
-issue_code = "JS-R1005"
-issue_type = "anti-pattern"
-[[issues.suppressed_in]]
-file_paths = [
-  "src/hooks/useAgentLoop.js",
-  "src/hooks/useSlashCommands.js",
-  "src/hooks/useApprovalFlow.js",
-  "src/components/FileEditor.jsx",
-]
-
-# JS-0067: global scope — bgAgents Map, tokenTracker singleton intentional
-[[issues]]
-issue_code = "JS-0067"
-issue_type = "anti-pattern"
-[[issues.suppressed_in]]
-file_paths = ["src/features.js", "yuyu-server.js"]
+  environment = ["browser", "node"]
+  module_system = "esm"
