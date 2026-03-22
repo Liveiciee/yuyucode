@@ -169,3 +169,124 @@ yuyu-unstash() {
   echo ""
   echo "✅ Selesai! Perubahan stash yang tidak konflik sudah masuk."
 }
+
+# ── YuyuCode Bench v3 commands ────────────────────────────────────────────────
+# Berdasarkan workflow: bench sebelum commit, setelah refactor, dan release.
+
+# ── yuyu-bench — shortcut utama ──────────────────────────────────────────────
+yuyu-bench() {
+  cd ~/yuyucode
+  node yuyu-bench.cjs "$@"
+}
+
+# ── yuyu-bench-save — update baseline (pakai setelah refactor disengaja) ─────
+yuyu-bench-save() {
+  cd ~/yuyucode
+  echo "💾 Updating baseline..."
+  node yuyu-bench.cjs --save
+}
+
+# ── yuyu-bench-trend — lihat grafik history semua metric ─────────────────────
+yuyu-bench-trend() {
+  cd ~/yuyucode
+  node yuyu-bench.cjs --trend
+}
+
+# ── yuyu-bench-watch — auto re-run tiap file src/ berubah ────────────────────
+yuyu-bench-watch() {
+  cd ~/yuyucode
+  echo "👁  Watch mode aktif. Ctrl+C untuk berhenti."
+  node yuyu-bench.cjs --watch
+}
+
+# ── yuyu-precommit — full check sebelum node yugit.cjs ───────────────────────
+# Urutan: lint → test → bench. Berhenti kalau salah satu gagal.
+yuyu-precommit() {
+  cd ~/yuyucode
+  echo ""
+  echo "═══════════════════════════════════════"
+  echo "  🚦 YuyuCode Pre-commit Check"
+  echo "═══════════════════════════════════════"
+  echo ""
+
+  # 1. Lint
+  echo "① Lint..."
+  if ! npm run lint --silent 2>&1 | tail -3; then
+    echo "❌ Lint gagal — fix dulu sebelum commit."
+    return 1
+  fi
+  echo "✅ Lint OK"
+  echo ""
+
+  # 2. Test
+  echo "② Tests..."
+  local test_out
+  test_out=$(npx vitest run --reporter=verbose 2>&1 | tail -5)
+  echo "$test_out"
+  if echo "$test_out" | grep -q "failed"; then
+    echo "❌ Tests gagal — fix dulu sebelum commit."
+    return 1
+  fi
+  echo "✅ Tests OK"
+  echo ""
+
+  # 3. Bench
+  echo "③ Bench..."
+  node yuyu-bench.cjs
+  local bench_exit=$?
+  if [ $bench_exit -ne 0 ]; then
+    echo ""
+    echo "⚠️  Ada regresi bench. Tetap commit?"
+    echo -n "y = lanjut commit  |  n = batal: "
+    read -s -n 1 key
+    echo ""
+    [ "$key" != "y" ] && [ "$key" != "Y" ] && echo "✋ Commit dibatalkan." && return 1
+  fi
+
+  echo ""
+  echo "═══════════════════════════════════════"
+  echo "  ✅ Semua check passed — siap commit!"
+  echo "═══════════════════════════════════════"
+  echo ""
+  echo "💡 Jalankan: node yugit.cjs \"feat: ...\""
+}
+
+# ── yuyu-release-check — bench compare sebelum/sesudah refactor besar ────────
+# Usage: yuyu-release-check <tag-lama>
+# Contoh: yuyu-release-check v4.1.0
+yuyu-release-check() {
+  cd ~/yuyucode
+  local old_tag="${1}"
+  if [ -z "$old_tag" ]; then
+    echo "Usage: yuyu-release-check <git-tag>"
+    echo "Contoh: yuyu-release-check v4.1.0"
+    return 1
+  fi
+
+  echo "📊 Comparing bench: $old_tag → HEAD"
+
+  # Simpan baseline HEAD
+  node yuyu-bench.cjs --export
+  local head_snap=".yuyu/bench-export.json"
+  local old_snap=".yuyu/bench-${old_tag}.json"
+
+  # Checkout tag → run bench → export
+  git stash -q
+  git checkout -q "$old_tag" 2>/dev/null || { echo "❌ Tag '$old_tag' tidak ditemukan."; git stash pop -q; return 1; }
+  node yuyu-bench.cjs --export
+  cp "$head_snap" "$old_snap"
+
+  # Kembali ke HEAD
+  git checkout - -q 2>/dev/null
+  git stash pop -q 2>/dev/null
+
+  # Compare
+  node yuyu-bench.cjs --compare "$old_snap" "$head_snap"
+}
+
+# ── Tab completions ───────────────────────────────────────────────────────────
+_yuyu_bench_completion() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  COMPREPLY=( $(compgen -W "--save --reset --trend --watch --export --compare" -- "$cur") )
+}
+complete -F _yuyu_bench_completion yuyu-bench

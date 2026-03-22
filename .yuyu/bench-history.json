@@ -1,34 +1,130 @@
 {
   "empty tabs": {
-    "score": 6.12,
-    "savedAt": "2026-03-20T20:20:45.975Z"
+    "baseline": 6.300000000000001,
+    "savedAt": "2026-03-22T13:09:00.269Z",
+    "gitHash": "260fbd3",
+    "runs": [
+      {
+        "score": 6.300000000000001,
+        "ts": "2026-03-22T13:09:00.269Z",
+        "gitHash": "260fbd3",
+        "memMb": 4.4,
+        "rme": 0.72,
+        "battPct": null,
+        "charging": null
+      }
+    ]
   },
   "no action blocks": {
-    "score": 105.85,
-    "savedAt": "2026-03-20T20:20:45.975Z"
+    "baseline": 104.28999999999999,
+    "savedAt": "2026-03-22T13:09:00.269Z",
+    "gitHash": "260fbd3",
+    "runs": [
+      {
+        "score": 104.28999999999999,
+        "ts": "2026-03-22T13:09:00.269Z",
+        "gitHash": "260fbd3",
+        "memMb": 4.4,
+        "rme": 0.23,
+        "battPct": null,
+        "charging": null
+      }
+    ]
   },
   "non-code file (early return)": {
-    "score": 1416.58,
-    "savedAt": "2026-03-20T20:20:45.975Z"
+    "baseline": 1396.6999999999998,
+    "savedAt": "2026-03-22T13:09:00.269Z",
+    "gitHash": "260fbd3",
+    "runs": [
+      {
+        "score": 1396.6999999999998,
+        "ts": "2026-03-22T13:09:00.269Z",
+        "gitHash": "260fbd3",
+        "memMb": 4.4,
+        "rme": 0.28,
+        "battPct": null,
+        "charging": null
+      }
+    ]
   },
   "open 1 tab (Array spread)": {
-    "score": 56.62,
-    "savedAt": "2026-03-20T20:20:45.975Z"
+    "baseline": 62.61,
+    "savedAt": "2026-03-22T13:09:00.269Z",
+    "gitHash": "260fbd3",
+    "runs": [
+      {
+        "score": 62.61,
+        "ts": "2026-03-22T13:09:00.269Z",
+        "gitHash": "260fbd3",
+        "memMb": 4.4,
+        "rme": 0.69,
+        "battPct": null,
+        "charging": null
+      }
+    ]
   },
   "single call — jsx": {
-    "score": 10.35,
-    "savedAt": "2026-03-20T20:20:45.975Z"
+    "baseline": 9.8,
+    "savedAt": "2026-03-22T13:09:00.269Z",
+    "gitHash": "260fbd3",
+    "runs": [
+      {
+        "score": 9.8,
+        "ts": "2026-03-22T13:09:00.269Z",
+        "gitHash": "260fbd3",
+        "memMb": 4.4,
+        "rme": 0.31,
+        "battPct": null,
+        "charging": null
+      }
+    ]
   },
   "single call — ts": {
-    "score": 4.77,
-    "savedAt": "2026-03-20T20:20:45.975Z"
+    "baseline": 4.65,
+    "savedAt": "2026-03-22T13:09:00.269Z",
+    "gitHash": "260fbd3",
+    "runs": [
+      {
+        "score": 4.65,
+        "ts": "2026-03-22T13:09:00.269Z",
+        "gitHash": "260fbd3",
+        "memMb": 4.4,
+        "rme": 0.33,
+        "battPct": null,
+        "charging": null
+      }
+    ]
   },
   "small diff (4 lines)": {
-    "score": 5832.92,
-    "savedAt": "2026-03-20T20:20:45.975Z"
+    "baseline": 5615.14,
+    "savedAt": "2026-03-22T13:09:00.269Z",
+    "gitHash": "260fbd3",
+    "runs": [
+      {
+        "score": 5615.14,
+        "ts": "2026-03-22T13:09:00.269Z",
+        "gitHash": "260fbd3",
+        "memMb": 4.4,
+        "rme": 0.73,
+        "battPct": null,
+        "charging": null
+      }
+    ]
   },
   "small file — 1 import": {
-    "score": 5.49,
-    "savedAt": "2026-03-20T20:20:45.975Z"
+    "baseline": 5.279999999999999,
+    "savedAt": "2026-03-22T13:09:00.269Z",
+    "gitHash": "260fbd3",
+    "runs": [
+      {
+        "score": 5.279999999999999,
+        "ts": "2026-03-22T13:09:00.269Z",
+        "gitHash": "260fbd3",
+        "memMb": 4.4,
+        "rme": 0.5,
+        "battPct": null,
+        "charging": null
+      }
+    ]
   }
 }

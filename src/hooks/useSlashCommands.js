@@ -636,6 +636,51 @@ export function useSlashCommands({
     }]);
   }, [growth, setMessages]);
 
+  // ④ /bench — in-app benchmark command
+  const handleBench = useCallback(async (parts) => {
+    const sub = parts[1]?.toLowerCase();
+
+    // Sub-command map
+    const subCmds = {
+      save:    'node yuyu-bench.cjs --save 2>&1',
+      reset:   'node yuyu-bench.cjs --reset 2>&1',
+      trend:   'node yuyu-bench.cjs --trend 2>&1',
+      export:  'node yuyu-bench.cjs --export 2>&1',
+    };
+
+    if (sub && !subCmds[sub]) {
+      setMessages(m => [...m, {
+        role: 'assistant',
+        content: '📊 **Usage /bench:**\n`/bench` — run + compare ke baseline\n`/bench save` — update baseline\n`/bench reset` — hapus history\n`/bench trend` — lihat sparkline history\n`/bench export` — export history ke JSON',
+        actions: [],
+      }]);
+      return;
+    }
+
+    const cmd = subCmds[sub] || 'node yuyu-bench.cjs 2>&1';
+    setLoading(true);
+    setMessages(m => [...m, {
+      role: 'assistant',
+      content: `📊 Running \`${cmd.split(' ').slice(0, 3).join(' ')}\`...`,
+      actions: [],
+    }]);
+
+    const r = await callServer({ type: 'exec', path: folder, command: cmd });
+    const output = (r.data || r.error || '(no output)').slice(0, 3000);
+
+    // Deteksi regresi dari output untuk warna pesan
+    const hasRegression = output.includes('🔴') || output.includes('regression');
+    const hasThermal    = output.includes('THERMAL WARNING');
+    const icon = hasRegression ? '⚠️' : hasThermal ? '🌡' : '✅';
+
+    setMessages(m => [...m, {
+      role: 'assistant',
+      content: `${icon} **Bench result:**\n\`\`\`\n${output}\n\`\`\``,
+      actions: [],
+    }]);
+    setLoading(false);
+  }, [folder, setLoading, setMessages]);
+
   const handleTest = useCallback(async (parts) => {
     const targetPath = parts.slice(1).join(' ').trim();
     const filePath = targetPath ? folder + '/' + targetPath.replace(/^\//, '') : selectedFile;
@@ -740,6 +785,7 @@ export function useSlashCommands({
       '/watch':      () => { if (fileWatcherActive) { clearInterval(fileWatcherInterval); setFileWatcherActive(false); setFileWatcherInterval(null); setMessages(m => [...m, { role: 'assistant', content: '👁 File watcher dimatikan.', actions: [] }]); } else { setFileWatcherActive(true); setFileSnapshots({}); setMessages(m => [...m, { role: 'assistant', content: '👁 File watcher aktif. Yuyu akan notify real-time via WebSocket kalau ada file berubah dari luar app.', actions: [] }]); } },
       '/refactor':   () => handleRefactor(parts),
       '/lint':       () => handleLint(),
+      '/bench':      () => handleBench(parts),
       '/self-edit':  () => handleSelfEdit(parts),
       '/websearch':  () => handleWebsearch(parts),
       '/rules':      () => handleRules(parts),
@@ -764,7 +810,7 @@ export function useSlashCommands({
       handleModel, handleCompact, handleHandoff, handleReview, handleSearch, handleDiff,
       handleDeps, handleDb, handleStatus, handlePin, handleUndo, handleLoop, handleAmemory,
       handleBatch, handleRules, handleInit, handleBgMerge, handleRefactor, handleLint,
-      handleSelfEdit, handleWebsearch, handleSummarize, handlePlan, handleAsk, handleXp,
+      handleBench, handleSelfEdit, handleWebsearch, handleSummarize, handlePlan, handleAsk, handleXp,
       handleTest, handleScaffold]);
 
   return { handleSlashCommand };
