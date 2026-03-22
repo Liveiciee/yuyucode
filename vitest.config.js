@@ -9,7 +9,7 @@ const pool    = (isArm64 || isCI) ? 'threads' : 'vmThreads';
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment:  'jsdom',
+    environment:  'happy-dom',
     globals:      true,
     setupFiles:   './src/setupTest.js',
     pool,
