@@ -1,4 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="22" fill="#0C0915"/>
-  <text y=".9em" font-size="80" text-anchor="middle" x="50">🌸</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e0f20"/>
+      <stop offset="100%" stop-color="#0a080c"/>
+    </linearGradient>
+    <linearGradient id="p1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fce7f3"/>
+      <stop offset="60%" stop-color="#f472b6"/>
+      <stop offset="100%" stop-color="#9d174d"/>
+    </linearGradient>
+    <linearGradient id="p2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fef3c7"/>
+      <stop offset="60%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="42" fill="url(#bg)"/>
+  <g transform="rotate(18 96 96)"><path d="M96 96 C81 83 74 56 96 39 C118 56 111 83 96 96Z" fill="url(#p1)"/></g>
+  <g transform="rotate(90 96 96)"><path d="M96 96 C81 83 74 56 96 39 C118 56 111 83 96 96Z" fill="url(#p2)"/></g>
+  <g transform="rotate(162 96 96)"><path d="M96 96 C81 83 74 56 96 39 C118 56 111 83 96 96Z" fill="url(#p1)"/></g>
+  <g transform="rotate(234 96 96)"><path d="M96 96 C81 83 74 56 96 39 C118 56 111 83 96 96Z" fill="url(#p2)"/></g>
+  <g transform="rotate(306 96 96)"><path d="M96 96 C81 83 74 56 96 39 C118 56 111 83 96 96Z" fill="url(#p1)"/></g>
+  <circle cx="96" cy="96" r="12" fill="#fde68a"/>
+  <circle cx="93" cy="93" r="4" fill="rgba(255,255,255,.55)"/>
 </svg>
