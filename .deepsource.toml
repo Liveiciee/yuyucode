@@ -42,7 +42,7 @@ enabled = true
 
   [analyzers.meta]
   # Hybrid: browser (React 19 + Capacitor WebView) + node (yuyu-server.js Termux)
-  environment = ["browser", "node"]
+  environment = ["browser", "nodejs"]
 
   # ES Modules (type: "module" di package.json)
   # Nilai valid: "es-modules" bukan "esm"
