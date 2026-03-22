@@ -14,8 +14,8 @@
 [![CodeQL](https://github.com/liveiciee/yuyucode/actions/workflows/codeql.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
 [![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=alert_status)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![SonarCloud Coverage](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=coverage)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
-[![Version](https://img.shields.io/badge/version-4.1.0-blue)](#)
-[![Tests](https://img.shields.io/badge/tests-661%20passing-brightgreen)](#testing--benchmarks)
+[![Version](https://img.shields.io/badge/version-4.2.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-1024%20passing-brightgreen)](#testing--benchmarks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%20(Termux)-3DDC84?logo=android&logoColor=white)
 ![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?logo=react&logoColor=61DAFB)
@@ -50,7 +50,7 @@
 
 ## Status
 
-> **v4.1.0** — Personal tool. Works on one phone — mine. Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). No contributions expected, though issues are welcome. Use at your own risk.
+> **v4.2.0** — Personal tool. Works on one phone — mine. Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). No contributions expected, though issues are welcome. Use at your own risk.
 
 ---
 
@@ -177,6 +177,8 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 - **Incremental codebase map** — `yuyu-map.cjs` runs `git diff --name-only HEAD` before scanning; only changed files re-analyzed
 - **Benchmark regression detector** — `yuyu-bench.cjs` stores results in `.yuyu/bench-history.json`; flags 2× regressions vs baseline
 - **Property-based test coverage** — `parseActions` and `resolvePath` fuzz-tested with 100 random inputs each via `fast-check`
+- **`resolvePath` basename dedup fix** — fixed silent bug where paths like `myproject/src/App.js` would double-prefix to `/project/myproject/src/App.js` instead of `/project/src/App.js` when base ends with the project name
+- **Branch coverage infrastructure** — 363 new tests systematically targeting SonarCloud condition branches across all core hooks; discovered `isolate: false` module-cache issue in Termux vitest causing false test failures
 - **Auto version bump** — `yugit.cjs` detects `release: vX.Y` commits, sets `package.json` version, triggers CI APK build. Supports `--no-push`, `--amend`, `--hash` revert, scopes, breaking changes, `--push`, `--squash N`, `--status`.
 
 ---
@@ -184,8 +186,9 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 ## Testing & Benchmarks
 
 ```
-661 tests passing. 0 lint warnings. Runs on Termux ARM64.
+1024 tests passing. 0 lint warnings. Runs on Termux ARM64.
 50 of which are property-based (fast-check, 100 random inputs each).
+363 of which are branch coverage tests added in v4.2 (condition/branch coverage for SonarCloud).
 ```
 
 | File | Type | Tests |
@@ -208,6 +211,13 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 | `yuyu-map.test.cjs` | Unit — map, symbols, compress, handoff, llms.txt | 92 |
 | `yuyu-server.test.cjs` | Integration — HTTP, read/write/patch/batch/exec | 30 |
 | `useSlashCommands.test.js` | Unit — all 68 slash command handlers | 115 |
+| `api.branch.test.js` | Branch coverage — api.js conditions | 12 |
+| `branch.coverage.test.js` | Branch coverage — utils.js executeAction/resolvePath | 22 |
+| `features.branch.test.js` | Branch coverage — features.js | 27 |
+| `features.bgagent.test.js` | Branch coverage — background agent | 11 |
+| `useFileStore.branch.test.js` | Branch coverage — useFileStore | 14 |
+| `useAgentLoop.branch.test.js` | Branch coverage — agent loop conditions | 39 |
+| `useSlashCommands.branch.test.js` | Branch coverage — slash command handlers | 41 |
 
 ### Benchmarks (Termux ARM64)
 
@@ -490,12 +500,13 @@ WebSocket :8766 — `watch`, `exec_stream`, `kill`, `collab_join`, `collab_push`
 
 **Secrets:** `VITE_CEREBRAS_API_KEY`, `VITE_GROQ_API_KEY`, `VITE_TAVILY_API_KEY`, `ANDROID_KEYSTORE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `SONAR_TOKEN`
 
-## State v4.1
+## State v4.2
 
-- Version: 4.1.0 · Tests: 661 ✅ · Slash commands: ~68
+- Version: 4.2.0 · Tests: 1024 ✅ · Slash commands: ~68
 - Features: YUYU.md, visual diff review + reject feedback, ghost text L1+L2, /review --all, contextual slash suggestions, context bar, graceful stop, chat search, /pin, /undo, /diff, /ask, offline detect, read cache
 - CI/CD: CodeQL ✅ · SonarCloud Quality Gate ✅ · Semgrep SAST ✅
 - SonarCloud: Security A · Maintainability A · Reliability in progress (cognitive complexity refactor)
+- Coverage: 70.0% overall (+1.6% from v4.1) · New code 88.9% · Branch coverage systematic tests added
 
 </details>
 
