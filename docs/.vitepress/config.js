@@ -50,6 +50,7 @@ export default defineConfig({
             { text: 'YUYU.md', link: '/guide/yuyu-md' },
             { text: 'AI Providers', link: '/guide/ai-providers' },
             { text: 'CI/CD', link: '/guide/ci-cd' },
+            { text: 'Testing & Benchmarks', link: '/guide/testing' },
           ],
         },
       ],
