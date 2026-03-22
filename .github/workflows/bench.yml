@@ -69,14 +69,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Simpan dulu ke /tmp sebelum ganti branch
+          cp bench-dashboard.html /tmp/bench-dashboard.html
+
           git fetch origin gh-pages
           git checkout gh-pages
 
-          # Buat folder kalau belum ada
           mkdir -p dev/bench
-
-          # Copy custom dashboard ke root gh-pages
-          cp ${{ github.workspace }}/bench-dashboard.html dev/bench/index.html
+          cp /tmp/bench-dashboard.html dev/bench/index.html
 
           git add dev/bench/index.html
           git diff --cached --quiet || git commit -m "chore: update benchmark dashboard [skip ci]"
