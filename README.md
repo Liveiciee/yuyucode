@@ -12,6 +12,7 @@
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
 [![Quality Gate](https://github.com/liveiciee/yuyucode/actions/workflows/quality.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
 [![CodeQL](https://github.com/liveiciee/yuyucode/actions/workflows/codeql.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
+[![Benchmark](https://github.com/liveiciee/yuyucode/actions/workflows/bench.yml/badge.svg)](https://liveiciee.github.io/yuyucode/dev/bench/)
 [![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=alert_status)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![SonarCloud Coverage](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=coverage)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![Version](https://img.shields.io/badge/version-4.2.0-blue)](#)
@@ -219,24 +220,34 @@ Full terminal emulator: 2000-line scrollback, ANSI escape support. Traffic light
 | `useAgentLoop.branch.test.js` | Branch coverage — agent loop conditions | 39 |
 | `useSlashCommands.branch.test.js` | Branch coverage — slash command handlers | 41 |
 
-### Benchmarks (Termux ARM64)
+### Benchmarks
+
+#### 📱 Device — Termux ARM64 (Snapdragon 680)
 
 ```
-getLangExt          5.89x  faster than 10 mixed extensions
-isEmmetLang         4.46x  faster than 10 mixed
-isTsLang            4.77x  faster than 10 mixed
-buildSrcdoc         4.59x  faster than html + css + js combined
-multi-tab open     37.19x  faster than open 50 tabs sequentially
-generateDiff     5815.78x  faster than large diff (500 lines)
-extractSymbols    218.21x  faster than large file (10 components, ~500 lines)
-compressSource    636.52x  faster than large file (500 lines)
-parseActions       84.22x  faster than mixed valid/invalid blocks (agent loop hot path)
+getLangExt          5.08x  faster than 10 mixed extensions
+isEmmetLang         4.48x  faster than 10 mixed
+isTsLang            4.55x  faster than 10 mixed
+buildSrcdoc         4.52x  faster than html + css + js combined
+multi-tab open     35.57x  faster than open 50 tabs sequentially
+generateDiff     5545.38x  faster than large diff (500 lines)
+extractSymbols    206.08x  faster than large file (10 components, ~500 lines)
+compressSource    634.74x  faster than large file (500 lines)
+parseActions       80.24x  faster than mixed valid/invalid blocks (agent loop hot path)
 ```
 
 > The Myers diff number isn't a typo. Small diffs exit the algorithm early — large diffs don't.
 >
 > Benchmarks run on Oppo A77s (Snapdragon 680, 8GB RAM) via Termux ARM64.
 > Not a MacBook. Not a server. A ~$130 phone from 2022.
+
+#### 🖥️ CI — Ubuntu x86_64 (GitHub Actions)
+
+[![Benchmark](https://github.com/liveiciee/yuyucode/actions/workflows/bench.yml/badge.svg)](https://liveiciee.github.io/yuyucode/dev/bench/)
+
+Historical performance chart: **[liveiciee.github.io/yuyucode/dev/bench](https://liveiciee.github.io/yuyucode/dev/bench/)**
+
+Runs automatically on every push to `main`. Alerts via commit comment jika ada regresi >150% dari baseline. Angka CI berbeda dari device benchmark (x86\_64 vs ARM64) — keduanya intentional: device bench untuk feel di HP nyata, CI bench untuk deteksi regresi yang stabil antar commit.
 
 ---
 

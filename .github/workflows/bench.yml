@@ -1,0 +1,58 @@
+name: Benchmark
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: ['**.md']
+
+# Izin nulis ke gh-pages untuk simpan history chart
+permissions:
+  contents: write
+  deployments: write
+
+jobs:
+  benchmark:
+    name: Performance · Vitest Bench (x86_64)
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Cache node_modules
+        id: nm-cache
+        uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: nm-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        if: steps.nm-cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Run benchmarks
+        run: node yuyu-bench-ci.cjs
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: YuyuCode Benchmark (CI · Ubuntu x86_64)
+          tool: customSmallerIsBetter
+          output-file-path: .yuyu/bench-ci.json
+          # Simpan chart ke gh-pages
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # Alert kalau ada regresi >150% dari baseline
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: false           # non-blocking — CI tetap hijau
+          alert-comment-cc-users: '@liveiciee'
+          # URL chart di gh-pages
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
