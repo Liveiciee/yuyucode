@@ -214,3 +214,9 @@ Kirim **hanya file yang disentuh** — cek `git diff --name-only HEAD`.
 
 > "Berat, Lama, Susah Bukan Hambatan."
 > Tidak ada fitur yang dilewat. Satu per satu sampai selesai. 🚀
+
+## 🆕 Project Management (PRIORITY)
+- New Project flow — buat folder baru + pilih template
+- Open Project — browse/ketik path folder lain  
+- Recent Projects — list project yang pernah dibuka
+- Blank workspace state — tanpa auto-load yuyucode folder

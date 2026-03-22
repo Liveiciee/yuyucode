@@ -139,7 +139,10 @@ function makeProps(overrides = {}) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+  featuresModule.mergeBackgroundAgent.mockResolvedValue({ ok: true, msg: 'Merged', hasConflicts: false });
+  featuresModule.generatePlan.mockResolvedValue({ steps: [{ num: 1, text: 'Do thing' }], reply: '1. Do thing' });
+  featuresModule.tokenTracker.summary.mockReturnValue('📊 Token summary');
   callServer.mockResolvedValue({ ok: true, data: '' });
   Preferences.get.mockResolvedValue({ value: null });
   Preferences.set.mockResolvedValue(undefined);
