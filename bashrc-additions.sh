@@ -88,9 +88,15 @@ yuyu-cp() {
   fi
 
   # Determine destination
+  # Arg ke-2 bisa berupa: subdir ("src/hooks") atau full path ("src/hooks/useX.js")
   local dest
   if [ -n "$dest_dir" ]; then
-    dest="${base_dest}/${dest_dir}/${file}"
+    # Kalau arg ke-2 sudah berakhiran nama file yang sama → full path
+    if [[ "$dest_dir" == */"$file" ]] || [[ "$dest_dir" == "$file" ]]; then
+      dest="${base_dest}/${dest_dir}"
+    else
+      dest="${base_dest}/${dest_dir}/${file}"
+    fi
   else
     dest="${base_dest}/${file}"
   fi
