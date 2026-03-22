@@ -14,14 +14,14 @@ const START_TIME = Date.now();
 const _readCache = new Map(); // path → { data, meta, ts }
 const READ_CACHE_TTL = 10_000; // 10 seconds
 
-function getCached(path) {
-  const e = _readCache.get(path);
+function getCached(filePath) {
+  const e = _readCache.get(filePath);
   if (!e) return null;
-  if (Date.now() - e.ts > READ_CACHE_TTL) { _readCache.delete(path); return null; }
+  if (Date.now() - e.ts > READ_CACHE_TTL) { _readCache.delete(filePath); return null; }
   return e;
 }
-function setCache(path, data, meta) {
-  _readCache.set(path, { data, meta, ts: Date.now() });
+function setCache(filePath, data, meta) {
+  _readCache.set(filePath, { data, meta, ts: Date.now() });
   // Limit cache size to 50 entries
   if (_readCache.size > 50) _readCache.delete(_readCache.keys().next().value);
 }
@@ -529,6 +529,7 @@ const server = http.createServer((req, res) => {
   if (VERBOSE) {
     const safeMethod = ['GET','POST','PUT','DELETE','PATCH','OPTIONS','HEAD'].includes(req.method) ? req.method : 'UNKNOWN';
     const safeUrl = req.url ? req.url.replace(/[\r\n]/g, '') : '/';
+    // deepsource-disable-next-line JS-0002
     console.log(`[${new Date().toISOString()}] ${safeMethod} ${safeUrl}`);
   }
 
@@ -538,6 +539,7 @@ const server = http.createServer((req, res) => {
     if (!checkRateLimit(ip)) {
       res.writeHead(429, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, data: 'Rate limit exceeded. Max ' + RATE_LIMIT + ' req/min.' }));
+      // deepsource-disable-next-line JS-0002
       if (VERBOSE) console.log(`  ⚠ Rate limit hit: ${ip}`);
       return;
     }
@@ -583,8 +585,11 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
+  // deepsource-disable-next-line JS-0002
   console.log(`🌸 YuyuServer ${VERSION} — HTTP :${PORT}`);
+  // deepsource-disable-next-line JS-0002
   console.log(`   HOME: ${HOME}`);
+  // deepsource-disable-next-line JS-0002
   console.log(`   Tools: ${Object.keys(MCP_TOOLS).join(', ')}`);
 });
 
@@ -714,6 +719,7 @@ if (WebSocketServer) {
     });
   });
 
+  // deepsource-disable-next-line JS-0002
   console.log(`🔌 YuyuServer WebSocket — WS :${WS_PORT} (file watch + streaming exec)`);
 }
 
