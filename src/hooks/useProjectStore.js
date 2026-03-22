@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { MODELS } from '../constants.js';
 import { callServer } from '../api.js';
-import { runHooksV2, EFFORT_CONFIG, loadSkills, saveSkillFile, deleteSkillFile } from '../features.js';
+import { runHooksV2, EFFORT_CONFIG, DEFAULT_PERMISSIONS, loadSkills, saveSkillFile, deleteSkillFile } from '../features.js';
 
 export function useProjectStore() {
   // ── Battery ──
@@ -39,11 +39,7 @@ export function useProjectStore() {
   const [histIdx, setHistIdx]           = useState(-1);
 
   // ── Permissions / Hooks / Plugins ──
-  const [permissions, setPermissionsRaw] = useState({
-    read_file: true, write_file: true, exec: true,
-    list_files: true, search: true, mcp: false,
-    delete_file: false, browse: false,
-  });
+  const [permissions, setPermissionsRaw] = useState(DEFAULT_PERMISSIONS);
   const [hooks, setHooksRaw]           = useState({ preWrite: [], postWrite: [], postPush: [] });
   const [activePlugins, setActivePluginsRaw] = useState({});
 

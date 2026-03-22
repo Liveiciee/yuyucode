@@ -589,15 +589,4 @@ export function ConfigPanel({
   );
 }
 
-// ── BgAgentPanel — live progress tracking ────────────────────────────────────
-// ── ElapsedTime — isolated so Date.now() stays out of parent render ──────────
-function ElapsedTime({ startedAt }) {
-  const [now, setNow] = React.useState(() => Date.now());
-  useEffect(() => {
-    const iv = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(iv);
-  }, []);
-  const elapsed = Math.round((now - startedAt) / 1000);
-  return <span>{elapsed > 60 ? Math.floor(elapsed/60) + 'm' : elapsed + 's'}</span>;
-}
 

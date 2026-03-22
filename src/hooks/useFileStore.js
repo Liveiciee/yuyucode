@@ -1,40 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { callServer } from '../api.js';
-import { executeAction, resolvePath } from '../utils.js';
-
-// ── Module-level helpers for handleApprove ───────────────────────────────────
-async function _backupFiles(targets, folder) {
-  const backups = [];
-  for (const a of targets) {
-    const backup = await callServer({ type: 'read', path: resolvePath(folder, a.path) });
-    if (backup.ok) { backups.push({ path: resolvePath(folder, a.path), content: backup.data }); a.original = backup.data; }
-  }
-  return backups;
-}
-
-function _getSyntaxCmd(ext, absPath) {
-  if (['js', 'cjs', 'mjs'].includes(ext)) return `node --check "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
-  if (ext === 'json') return `python3 -m json.tool "${absPath}" > /dev/null 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
-  if (ext === 'sh')   return `bash -n "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
-  return null;
-}
-
-async function _verifySyntaxBatch(targets, folder, setMessages) {
-  for (const wr of targets) {
-    const ext  = (wr.path || '').split('.').pop().toLowerCase();
-    const cmd  = _getSyntaxCmd(ext, resolvePath(folder, wr.path));
-    if (!cmd) continue;
-    const vr   = await callServer({ type: 'exec', path: folder, command: cmd });
-    const vOut = (vr.data || '').trim();
-    if (!vOut) continue;
-    const hasErr = vOut.includes('SYNTAX_ERR') || (vOut.toLowerCase().includes('error') && !vOut.includes('SYNTAX_OK'));
-    if (hasErr) {
-      const fname = (wr.path || '').split('/').pop();
-      setMessages(m => [...m, { role: 'assistant', content: 'Syntax error di ' + fname + ':\n```\n' + vOut.slice(0, 300) + '\n```', actions: [] }]);
-    }
-  }
-}
+import { executeAction, resolvePath, verifySyntaxBatch, backupFiles } from '../utils.js';
 
 export function useFileStore() {
   // ── Multi-tab state ──
@@ -206,7 +173,7 @@ export function useFileStore() {
       return;
     }
 
-    const backups = await _backupFiles(targets, folder);
+    const backups = await backupFiles(targets, folder);
     if (backups.length) setEditHistory(h => [...h.slice(-(10 - backups.length)), ...backups]);
 
     const results = await Promise.all(targets.map(a => executeAction(a, folder)));
@@ -224,7 +191,7 @@ export function useFileStore() {
       setMessages(m => [...m, { role: 'assistant', content: '✅ ' + targets.length + ' file berhasil ditulis~', actions: [] }]);
     await runHooksV2(hooks?.postWrite || [], targets.map(a => a.path).join(','), folder);
 
-    if (permissions?.exec) await _verifySyntaxBatch(targets, folder, setMessages);
+    if (permissions?.exec) await verifySyntaxBatch(targets, folder, setMessages);
   }
 
   return {

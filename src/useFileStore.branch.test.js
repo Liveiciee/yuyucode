@@ -3,35 +3,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
+const mockCallServer = vi.hoisted(() => vi.fn());
+
 vi.mock('@capacitor/preferences', () => ({
   Preferences: {
     get:  vi.fn().mockResolvedValue({ value: null }),
     set:  vi.fn().mockResolvedValue(undefined),
   },
 }));
-vi.mock('./api.js', () => ({ callServer: vi.fn() }));
-vi.mock('./utils.js', () => ({
-  executeAction: vi.fn(),
-  resolvePath: vi.fn((base, p) => base + '/' + p),
-}));
+vi.mock('./api.js', () => ({ callServer: mockCallServer }));
+// utils.js NOT mocked as module — vi.spyOn to avoid cache pollution (isolate:false)
 
 import { callServer } from './api.js';
-import { executeAction } from './utils.js';
+import * as utilsModule from './utils.js';
 import { useFileStore } from './hooks/useFileStore.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Reset both default AND queue
-  callServer.mockReset();
-  callServer.mockResolvedValue({ ok: true, data: '' });
-  executeAction.mockReset();
-  executeAction.mockResolvedValue({ ok: true, data: 'written' });
+  mockCallServer.mockReset();
+  mockCallServer.mockResolvedValue({ ok: true, data: '' });
+  vi.spyOn(utilsModule, 'executeAction').mockResolvedValue({ ok: true, data: 'written' });
 });
 
 // ── saveFile — r.ok=false branch ──────────────────────────────────────────────
 describe('useFileStore — saveFile r.ok=false', () => {
   it('does not update tabs when write fails', async () => {
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'content' }) // openFile
       .mockResolvedValueOnce({ ok: false, data: 'disk full' }); // saveFile write fails
 
@@ -46,7 +43,7 @@ describe('useFileStore — saveFile r.ok=false', () => {
 // ── setSelectedFile — null with/without tabs ──────────────────────────────────
 describe('useFileStore — setSelectedFile null', () => {
   it('closes tab when path is null and tabs exist', async () => {
-    callServer.mockResolvedValue({ ok: true, data: 'code' });
+    mockCallServer.mockResolvedValue({ ok: true, data: 'code' });
     const { result } = renderHook(() => useFileStore());
     await act(async () => { await result.current.openFile('/project/A.js'); });
     act(() => { result.current.setSelectedFile(null); });
@@ -72,7 +69,7 @@ describe('useFileStore — setFileContent no tabs', () => {
 // ── handleApprove — write_file approve ───────────────────────────────────────
 describe('useFileStore — handleApprove write_file', () => {
   it('executes write and updates messages', async () => {
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup' }) // _backupFiles read
       .mockResolvedValue({ ok: false, data: '' });          // fallback
 
@@ -86,7 +83,7 @@ describe('useFileStore — handleApprove write_file', () => {
         0, true, null, messages, setMessages, '/project', { postWrite: [] }, vi.fn(), {}
       );
     });
-    expect(executeAction).toHaveBeenCalled();
+    expect(utilsModule.executeAction).toHaveBeenCalled();
     expect(setMessages).toHaveBeenCalled();
   });
 
@@ -109,8 +106,8 @@ describe('useFileStore — handleApprove write_file', () => {
 describe('useFileStore — handleApprove backup fails', () => {
   it('proceeds with write even when backup fails', async () => {
     // Use mockReset + mockResolvedValue to ensure clean state
-    callServer.mockReset();
-    callServer.mockResolvedValue({ ok: false, data: 'not found' }); // ALL calls fail
+    mockCallServer.mockReset();
+    mockCallServer.mockResolvedValue({ ok: false, data: 'not found' }); // ALL calls fail
 
     const action = { type: 'write_file', path: 'new.js', executed: false };
     const messages = [{ role: 'assistant', content: 'write', actions: [action] }];
@@ -125,7 +122,7 @@ describe('useFileStore — handleApprove backup fails', () => {
     // No backup → no editHistory update
     expect(result.current.editHistory).toHaveLength(0);
     // But write still attempted
-    expect(executeAction).toHaveBeenCalled();
+    expect(utilsModule.executeAction).toHaveBeenCalled();
   });
 });
 
@@ -136,7 +133,7 @@ describe('useFileStore — handleApprove multi-target', () => {
       { type: 'write_file', path: 'a.js', executed: false },
       { type: 'write_file', path: 'b.js', executed: false },
     ];
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup_a' })
       .mockResolvedValueOnce({ ok: true, data: 'backup_b' })
       .mockResolvedValue({ ok: false });
@@ -161,12 +158,12 @@ describe('useFileStore — handleApprove rollback', () => {
       { type: 'write_file', path: 'a.js', executed: false },
       { type: 'write_file', path: 'b.js', executed: false },
     ];
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup_a' })
       .mockResolvedValueOnce({ ok: true, data: 'backup_b' })
       .mockResolvedValue({ ok: true }); // rollback writes
 
-    executeAction
+    utilsModule.executeAction
       .mockResolvedValueOnce({ ok: false, data: 'disk full' })
       .mockResolvedValue({ ok: true });
 
@@ -180,14 +177,14 @@ describe('useFileStore — handleApprove rollback', () => {
       );
     });
     // rollback write calls
-    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'write' }));
+    expect(mockCallServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'write' }));
   });
 });
 
 // ── _verifySyntaxBatch — no cmd for .jsx ─────────────────────────────────────
 describe('useFileStore — _verifySyntaxBatch skips .jsx', () => {
   it('does not run syntax check for .jsx extension', async () => {
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup' }) // backup
       .mockResolvedValue({ ok: false });
 
@@ -202,7 +199,7 @@ describe('useFileStore — _verifySyntaxBatch skips .jsx', () => {
       );
     });
     // No exec call for .jsx
-    const execCalls = callServer.mock.calls.filter(c => c[0]?.type === 'exec');
+    const execCalls = mockCallServer.mock.calls.filter(c => c[0]?.type === 'exec');
     expect(execCalls).toHaveLength(0);
   });
 });
@@ -210,7 +207,7 @@ describe('useFileStore — _verifySyntaxBatch skips .jsx', () => {
 // ── _verifySyntaxBatch — empty vOut → skip ───────────────────────────────────
 describe('useFileStore — _verifySyntaxBatch empty output', () => {
   it('skips error when exec returns empty string', async () => {
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup' })
       .mockResolvedValueOnce({ ok: true, data: '' }); // empty vOut
 
@@ -231,7 +228,7 @@ describe('useFileStore — _verifySyntaxBatch empty output', () => {
 // ── _verifySyntaxBatch — SYNTAX_ERR → shows error ────────────────────────────
 describe('useFileStore — _verifySyntaxBatch syntax error', () => {
   it('adds syntax error message when SYNTAX_ERR in output', async () => {
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup' })
       .mockResolvedValueOnce({ ok: true, data: 'SYNTAX_ERR: unexpected token at line 5' });
 
@@ -252,7 +249,7 @@ describe('useFileStore — _verifySyntaxBatch syntax error', () => {
 // ── _getSyntaxCmd — json and sh branches ─────────────────────────────────────
 describe('useFileStore — _getSyntaxCmd json and sh', () => {
   it('runs json syntax check for .json files', async () => {
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup' })
       .mockResolvedValueOnce({ ok: true, data: 'SYNTAX_OK' });
 
@@ -266,12 +263,12 @@ describe('useFileStore — _getSyntaxCmd json and sh', () => {
         0, true, null, messages, setMessages, '/project', { postWrite: [] }, vi.fn(), { exec: true }
       );
     });
-    const execCall = callServer.mock.calls.find(c => c[0]?.type === 'exec');
+    const execCall = mockCallServer.mock.calls.find(c => c[0]?.type === 'exec');
     expect(execCall[0].command).toContain('json');
   });
 
   it('runs bash syntax check for .sh files', async () => {
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup' })
       .mockResolvedValueOnce({ ok: true, data: 'SYNTAX_OK' });
 
@@ -285,7 +282,7 @@ describe('useFileStore — _getSyntaxCmd json and sh', () => {
         0, true, null, messages, setMessages, '/project', { postWrite: [] }, vi.fn(), { exec: true }
       );
     });
-    const execCall = callServer.mock.calls.find(c => c[0]?.type === 'exec');
+    const execCall = mockCallServer.mock.calls.find(c => c[0]?.type === 'exec');
     expect(execCall[0].command).toContain('bash');
   });
 });

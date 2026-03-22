@@ -156,7 +156,7 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
               style={{...inputStyle, resize:'vertical', minHeight:'120px', lineHeight:'1.6'}}/>
             <button onClick={handleAdd} disabled={!newName.trim()||!newContent.trim()||busy}
               style={{background:accentBg, border:'1px solid '+accentBorder, borderRadius:'7px', padding:'9px', color:accent, fontSize:'12px', cursor:'pointer', fontWeight:'500', opacity:(!newName.trim()||!newContent.trim()||busy)?0.45:1}}>
-              {busy ? 'Menyimpan...' : 'Simpan ke .claude/skills/'}
+              {busy ? 'Menyimpan...' : 'Simpan ke .yuyu/skills/'}
             </button>
           </div>
         )}
@@ -180,7 +180,7 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
                 </div>
                 <div style={{fontSize:'10px', color:textMute, fontFamily:'monospace'}}>
                   {Math.round((s.content||'').length/100)/10}KB
-                  {s.builtin ? ' · SKILL.md (root)' : ' · .claude/skills/'}
+                  {s.builtin ? ' · SKILL.md (root)' : ' · .yuyu/skills/'}
                   {!s.active && <span style={{color:textMute}}> · dimatikan</span>}
                 </div>
               </div>
@@ -214,7 +214,6 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
 // ── DeployPanel ───────────────────────────────────────────────────────────────
 
 
-// ── ElapsedTime — isolated so Date.now() stays out of parent render ──────────
 // ── ElapsedTime — isolated so Date.now() stays out of parent render ──────────
 function ElapsedTime({ startedAt }) {
   const [now, setNow] = React.useState(() => Date.now());

@@ -231,7 +231,7 @@ ${outB.slice(0, 1500)}
     if (mapR.ok && mapR.data)         ctx['__map__'] = mapR.data;
     if (treeR.ok)                     ctx['__tree__'] = treeR.data;
 
-    const pinned = (project.pinnedFiles || []).slice(0, 5);
+    const pinned = (file.pinnedFiles || []).slice(0, 5);
     if (pinned.length) {
       const pinnedReads = await Promise.all(pinned.map(p => callServer({ type: 'read', path: p, to: 80 })));
       pinnedReads.forEach((r, i) => { if (r.ok) ctx['📌 ' + pinned[i].split('/').pop()] = r.data; });

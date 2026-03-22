@@ -1,6 +1,5 @@
 // ── AppPanels ─────────────────────────────────────────────────────────────────
-import React from 'react';
-import { Activity } from 'react';
+import React, { Activity } from 'react';
 import { Trash2, Brain, MapPin, Plus, Zap, X } from 'lucide-react';
 import { loadSessions, getBgAgents, mergeBackgroundAgent, abortBgAgent } from '../features.js';
 import { callServer } from '../api.js';

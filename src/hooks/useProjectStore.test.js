@@ -13,11 +13,12 @@ vi.mock('../api.js', () => ({
   callServer: vi.fn().mockResolvedValue({ ok: true, data: '' }),
 }));
 vi.mock('../features.js', () => ({
-  runHooksV2:     vi.fn().mockResolvedValue(undefined),
-  EFFORT_CONFIG:  { low: { maxIter: 3 }, medium: { maxIter: 6 }, high: { maxIter: 12 } },
-  loadSkills:     vi.fn().mockResolvedValue([]),
-  saveSkillFile:  vi.fn().mockResolvedValue({ ok: true }),
-  deleteSkillFile: vi.fn().mockResolvedValue({ ok: true }),
+  runHooksV2:          vi.fn().mockResolvedValue(undefined),
+  EFFORT_CONFIG:       { low: { maxIter: 3 }, medium: { maxIter: 6 }, high: { maxIter: 12 } },
+  DEFAULT_PERMISSIONS: { read_file: true, write_file: true, patch_file: true, exec: true, list_files: true, tree: true, search: true, mcp: false, delete_file: false, move_file: false, mkdir: true, browse: false, web_search: true },
+  loadSkills:          vi.fn().mockResolvedValue([]),
+  saveSkillFile:       vi.fn().mockResolvedValue({ ok: true }),
+  deleteSkillFile:     vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 import { useProjectStore } from './useProjectStore.js';

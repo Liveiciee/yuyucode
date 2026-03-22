@@ -8,8 +8,10 @@ vi.mock('../api.js', () => ({
   callServer: mockCallServer,
 }));
 vi.mock('../utils.js', () => ({
-  executeAction: vi.fn().mockResolvedValue({ ok: true, data: 'written' }),
-  resolvePath: vi.fn((base, p) => base + '/' + p),
+  executeAction:      vi.fn().mockResolvedValue({ ok: true, data: 'written' }),
+  resolvePath:        vi.fn((base, p) => base + '/' + p),
+  backupFiles:        vi.fn(),
+  verifySyntaxBatch:  vi.fn(),
 }));
 vi.mock('../features.js', () => ({
   runHooksV2:      vi.fn().mockResolvedValue(undefined),
@@ -17,7 +19,7 @@ vi.mock('../features.js', () => ({
   parsePlanSteps:  vi.fn().mockReturnValue([]),
 }));
 
-import { executeAction } from '../utils.js';
+import { executeAction, backupFiles, verifySyntaxBatch } from '../utils.js';
 import { useApprovalFlow } from './useApprovalFlow.js';
 
 function makeCtx(overrides = {}) {
@@ -43,9 +45,10 @@ function makeCtx(overrides = {}) {
 
 beforeEach(async () => {
   vi.clearAllMocks();
-  // clearAllMocks resets implementations — restore defaults
   mockCallServer.mockResolvedValue({ ok: true, data: 'original content' });
   executeAction.mockResolvedValue({ ok: true, data: 'written' });
+  backupFiles.mockResolvedValue([]);
+  verifySyntaxBatch.mockResolvedValue(undefined);
   const { parsePlanSteps } = await import('../features.js');
   parsePlanSteps.mockReturnValue([]);
 });
@@ -94,7 +97,7 @@ describe('useApprovalFlow — handleApprove approve', () => {
     });
     const { handleApprove } = useApprovalFlow(ctx);
     await handleApprove(0, true, null);
-    expect(mockCallServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'read' }));
+    expect(backupFiles).toHaveBeenCalled();
     expect(executeAction).toHaveBeenCalled();
   });
 
@@ -104,11 +107,11 @@ describe('useApprovalFlow — handleApprove approve', () => {
       { type: 'write_file', path: 'a.js', executed: false },
       { type: 'write_file', path: 'b.js', executed: false },
     ];
-    // Need 2 read backups + 2 rollback writes
-    mockCallServer
-      .mockResolvedValueOnce({ ok: true, data: 'backup_a' })
-      .mockResolvedValueOnce({ ok: true, data: 'backup_b' })
-      .mockResolvedValue({ ok: true, data: '' }); // rollback writes
+    backupFiles.mockResolvedValueOnce([
+      { path: '/project/a.js', content: 'backup_a' },
+      { path: '/project/b.js', content: 'backup_b' },
+    ]);
+    mockCallServer.mockResolvedValue({ ok: true, data: '' }); // rollback writes
     const ctx = makeCtx({
       messages: [{ role: 'assistant', content: 'write', actions }],
     });
@@ -178,7 +181,7 @@ describe('useApprovalFlow — handleApprove approve', () => {
     });
     const { handleApprove } = useApprovalFlow(ctx);
     await handleApprove(0, true, null);
-    expect(mockCallServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'exec' }));
+    expect(verifySyntaxBatch).toHaveBeenCalled();
   });
 });
 
@@ -281,9 +284,6 @@ describe('useApprovalFlow — verifySyntax SYNTAX_ERR', () => {
 
   it('handles json file syntax check', async () => {
     const action = { type: 'write_file', path: 'config.json', executed: false };
-    mockCallServer
-      .mockResolvedValueOnce({ ok: true, data: 'backup' })
-      .mockResolvedValueOnce({ ok: true, data: 'SYNTAX_OK' });
     executeAction.mockResolvedValue({ ok: true, data: 'written' });
 
     const ctx = makeCtx({
@@ -292,16 +292,16 @@ describe('useApprovalFlow — verifySyntax SYNTAX_ERR', () => {
     });
     const { handleApprove } = useApprovalFlow(ctx);
     await handleApprove(0, true, null);
-    expect(mockCallServer).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'exec', command: expect.stringContaining('json') })
+    expect(verifySyntaxBatch).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ path: 'config.json' })]),
+      expect.any(String),
+      expect.any(Function),
+      expect.anything()
     );
   });
 
   it('handles sh file syntax check', async () => {
     const action = { type: 'write_file', path: 'deploy.sh', executed: false };
-    mockCallServer
-      .mockResolvedValueOnce({ ok: true, data: 'backup' })
-      .mockResolvedValueOnce({ ok: true, data: 'SYNTAX_OK' });
     executeAction.mockResolvedValue({ ok: true, data: 'written' });
 
     const ctx = makeCtx({
@@ -310,8 +310,11 @@ describe('useApprovalFlow — verifySyntax SYNTAX_ERR', () => {
     });
     const { handleApprove } = useApprovalFlow(ctx);
     await handleApprove(0, true, null);
-    expect(mockCallServer).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'exec', command: expect.stringContaining('bash') })
+    expect(verifySyntaxBatch).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ path: 'deploy.sh' })]),
+      expect.any(String),
+      expect.any(Function),
+      expect.anything()
     );
   });
 });

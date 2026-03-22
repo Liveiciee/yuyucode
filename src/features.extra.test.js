@@ -1,10 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// ── vi.hoisted: create stable mock fn references BEFORE any import is resolved ──
-// This is the canonical fix for "spy not called" / "undefined.ok" in CI with
-// --coverage (V8 instrumentation), because the factory runs in a hoisted context
-// where inline vi.fn() can produce a different instance than what the test sees.
 const mockCallServer = vi.hoisted(() =>
   vi.fn().mockImplementation(() => Promise.resolve({ ok: false, data: '' }))
 );
@@ -17,21 +13,9 @@ const mockPreferencesSet = vi.hoisted(() =>
   vi.fn().mockImplementation(() => Promise.resolve(undefined))
 );
 
-const mockParseActions = vi.hoisted(() =>
-  vi.fn().mockReturnValue([])
-);
-
-const mockExecuteAction = vi.hoisted(() =>
-  vi.fn().mockResolvedValue({ ok: true, data: '' })
-);
-
-// ── Module mocks — reference the hoisted fns, not inline vi.fn() ──────────────
+// ── Module mocks ───────────────────────────────────────────────────────────────
 vi.mock('./api.js', () => ({ callServer: mockCallServer }));
-
-vi.mock('./utils.js', () => ({
-  parseActions:  mockParseActions,
-  executeAction: mockExecuteAction,
-}));
+// utils.js NOT mocked as module — use vi.spyOn to avoid cache pollution (isolate:false)
 
 vi.mock('@capacitor/preferences', () => ({
   Preferences: {
@@ -40,7 +24,8 @@ vi.mock('@capacitor/preferences', () => ({
   },
 }));
 
-// ── Imports AFTER mock declarations (vi.mock is hoisted anyway, but explicit) ──
+// ── Imports ────────────────────────────────────────────────────────────────────
+import * as utilsModule from './utils.js';
 import {
   saveSession, loadSessions,
   loadSkills, saveSkillFile, deleteSkillFile,
@@ -48,16 +33,13 @@ import {
   generatePlan, executePlanStep,
 } from './features.js';
 
-// ── Reset call history only; mockImplementation survives vi.clearAllMocks() ───
 beforeEach(() => {
   vi.clearAllMocks();
-  // Re-apply default implementations after clearAllMocks resets call history.
-  // Using mockImplementation (not mockResolvedValue) for maximum CI stability.
   mockCallServer.mockImplementation(() => Promise.resolve({ ok: false, data: '' }));
   mockPreferencesGet.mockImplementation(() => Promise.resolve({ value: null }));
   mockPreferencesSet.mockImplementation(() => Promise.resolve(undefined));
-  mockParseActions.mockReturnValue([]);
-  mockExecuteAction.mockResolvedValue({ ok: true, data: '' });
+  vi.spyOn(utilsModule, 'parseActions').mockReturnValue([]);
+  vi.spyOn(utilsModule, 'executeAction').mockResolvedValue({ ok: true, data: '' });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -3,22 +3,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
 // ── Mock dependencies ─────────────────────────────────────────────────────────
+const mockCallServer = vi.hoisted(() => vi.fn());
+
 vi.mock('@capacitor/preferences', () => ({
   Preferences: {
     get:  vi.fn().mockResolvedValue({ value: null }),
     set:  vi.fn().mockResolvedValue(undefined),
   },
 }));
-vi.mock('./api.js', () => ({ callServer: vi.fn() }));
-vi.mock('./utils.js', () => ({
-  executeAction: vi.fn(),
-  resolvePath: vi.fn((base, p) => base + '/' + p),
-}));
+vi.mock('./api.js', () => ({ callServer: mockCallServer }));
+// utils.js is NOT mocked as a module — use vi.spyOn per-test to avoid
+// replacing the module in the shared registry (isolate:false cache pollution).
 
 import { callServer } from './api.js';
+import * as utilsModule from './utils.js';
 import { useFileStore } from './hooks/useFileStore.js';
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockCallServer.mockResolvedValue({ ok: true, data: '' });
+  vi.spyOn(utilsModule, 'executeAction').mockResolvedValue({ ok: true, data: 'written' });
+});
 
 // ── Multi-tab core ────────────────────────────────────────────────────────────
 describe('useFileStore — multi-tab', () => {
@@ -363,18 +368,13 @@ describe('useFileStore — handleApprove reject', () => {
 // ── handleApprove — approve single file ──────────────────────────────────────
 describe('useFileStore — handleApprove approve', () => {
   it('backs up, writes, and updates messages on success', async () => {
-    const { executeAction } = await import('./hooks/useFileStore.js').catch(() => ({}));
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup content' }) // backup read
       .mockResolvedValueOnce({ ok: true });                         // write
 
     const action = { type: 'write_file', path: 'src/App.jsx', executed: false };
     const messages = [{ role: 'assistant', content: 'write', actions: [action] }];
     const setMessages = vi.fn(fn => typeof fn === 'function' ? fn(messages) : undefined);
-
-    const mockExecuteActionLocal = vi.fn().mockResolvedValue({ ok: true, data: 'written' });
-    const { executeAction: execAct } = await import('./utils.js');
-    execAct.mockResolvedValue({ ok: true, data: 'written' });
 
     const { result } = renderHook(() => useFileStore());
     await act(async () => {
@@ -390,13 +390,12 @@ describe('useFileStore — handleApprove approve', () => {
       { type: 'write_file', path: 'a.js', executed: false },
       { type: 'write_file', path: 'b.js', executed: false },
     ];
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup_a' })
       .mockResolvedValueOnce({ ok: true, data: 'backup_b' })
       .mockResolvedValue({ ok: true });
 
-    const { executeAction: execAct } = await import('./utils.js');
-    execAct.mockResolvedValueOnce({ ok: false, data: 'disk full' });
+    utilsModule.executeAction.mockResolvedValueOnce({ ok: false, data: 'disk full' });
 
     const messages = [{ role: 'assistant', content: 'write', actions }];
     const setMessages = vi.fn(fn => typeof fn === 'function' ? fn(messages) : undefined);
@@ -408,16 +407,13 @@ describe('useFileStore — handleApprove approve', () => {
       );
     });
     // rollback → write called for backups
-    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'write' }));
+    expect(mockCallServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'write' }));
   });
 
   it('runs _verifySyntaxBatch when exec permission active', async () => {
-    callServer
+    mockCallServer
       .mockResolvedValueOnce({ ok: true, data: 'backup' })
       .mockResolvedValueOnce({ ok: true, data: 'SYNTAX_OK' }); // syntax check
-
-    const { executeAction: execAct } = await import('./utils.js');
-    execAct.mockResolvedValue({ ok: true, data: 'written' });
 
     const action = { type: 'write_file', path: 'src/App.js', executed: false };
     const messages = [{ role: 'assistant', content: 'write', actions: [action] }];
@@ -429,6 +425,6 @@ describe('useFileStore — handleApprove approve', () => {
         0, true, null, messages, setMessages, '/project', { postWrite: [] }, vi.fn(), { exec: true }
       );
     });
-    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'exec' }));
+    expect(mockCallServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'exec' }));
   });
 });

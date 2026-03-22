@@ -5,7 +5,10 @@ import { executeAction, parseActions, resolvePath, generateDiff, countTokens } f
 vi.mock('./api.js', () => ({ callServer: vi.fn() }));
 import { callServer } from './api.js';
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  callServer.mockResolvedValue({ ok: true, data: '' });
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // executeAction — all remaining action types

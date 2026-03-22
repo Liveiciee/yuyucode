@@ -18,7 +18,7 @@ export default defineConfig({
     },
 
     // isolate: true wajib — vi.mock/vi.hoisted bocor dengan isolate:false
-    isolate:     isCI ? true : false,
+    isolate:     true,
     clearMocks:  true,
     css:         false,
     testTimeout: 5000,

@@ -110,8 +110,9 @@ export default function App() {
     setShowDepGraph: ui.setShowDepGraph, setDepGraph: ui.setDepGraph, setFontSize: ui.setFontSize,
     setShowMergeConflict: ui.setShowMergeConflict, setMergeConflictData: ui.setMergeConflictData,
     setShowSkills: ui.setShowSkills, setShowBgAgents: ui.setShowBgAgents,
+    pinnedFiles: file.pinnedFiles, togglePin: file.togglePin,
     sendMsg, compactContext,
-    saveCheckpoint: () => chat.saveCheckpoint(project.folder, project.branch, project.notes),
+    saveCheckpoint: () => chat.saveCheckpoint(project.folder, project.branch, project.notes, callServer),
     exportChat: chat.exportChat, generateCommitMsg, runTests, browseTo, runAgentSwarm,
     callAI, abTest, addHistory: project.addHistory, runHooks: project.runHooks,
     growth, sendNotification, haptic, abortRef,
@@ -235,9 +236,9 @@ export default function App() {
   // ── HELPERS ──
   function saveFolder(f) { project.saveFolder(f); ui.setShowFolder(false); }
   function undoLastEdit() { file.undoLastEdit(msg => chat.setMessages(m=>[...m,{role:'assistant',content:msg,actions:[]}])); }
-  function saveCheckpoint() { chat.saveCheckpoint(project.folder, project.branch, project.notes); }
+  function saveCheckpoint() { chat.saveCheckpoint(project.folder, project.branch, project.notes, callServer); }
   function restoreCheckpoint(cp) {
-    chat.restoreCheckpoint(cp, project.setFolder, project.setFolderInput, n=>project.setNotes(n));
+    chat.restoreCheckpoint(cp, project.setFolder, project.setFolderInput, n=>project.setNotes(n), callServer);
     ui.setShowCheckpoints(false);
   }
   function onSidebarDragStart(e) {

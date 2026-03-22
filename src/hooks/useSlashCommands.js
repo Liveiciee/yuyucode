@@ -2,21 +2,8 @@ import { useCallback, useRef } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { callServer, askCerebrasStream } from '../api.js';
 import { MODELS } from '../constants.js';
-import { countTokens } from '../utils.js';
+import { countTokens, parseActions } from '../utils.js';
 import { generatePlan, runBackgroundAgent, mergeBackgroundAgent, tokenTracker, saveSession, loadSessions, rewindMessages } from '../features.js';
-
-
-
-// ── parseActionsLocal — extract action blocks from AI reply ─────────────────
-function parseActionsLocal(text) {
-  const regex = /```action\n([\s\S]*?)```/g;
-  const actions = [];
-  let m;
-  while ((m = regex.exec(text)) !== null) {
-    try { actions.push(JSON.parse(m[1].trim())); } catch (_e) { }
-  }
-  return actions;
-}
 
 // ── processBatchFile — run batch command on a single file ───────────────────
 async function processBatchFile(f, folder, batchCmd, callAI, signal, setMessages) {
@@ -29,7 +16,7 @@ async function processBatchFile(f, folder, batchCmd, callAI, signal, setMessages
       { role: 'user', content: '```\n' + r.data.slice(0, 6000) + '\n```' },
     ], () => { }, signal);
     if (reply.trim().toUpperCase().startsWith('SKIP')) return 'skipped';
-    const acts = parseActionsLocal(reply).filter(a => a.type === 'write_file');
+    const acts = parseActions(reply).filter(a => a.type === 'write_file');
     acts.forEach(w => { if (!w.path.startsWith('/')) w.path = folder + '/src/' + w.path.replace(/^\.\//, ''); });
     return acts;
   } catch (e) {

@@ -221,3 +221,60 @@ export async function executeAction(action, baseFolder, _callServer = callServer
   if (handler) return handler(action, base, _callServer);
   return { ok: false, data: 'Unknown action type: ' + action.type };
 }
+
+// ── SHARED SYNTAX CHECK ───────────────────────────────────────────────────────
+// Used by useApprovalFlow and useFileStore — single source of truth.
+
+export function getSyntaxCmd(ext, absPath) {
+  if (['js', 'cjs', 'mjs'].includes(ext))
+    return `node --check "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  if (ext === 'json')
+    return `python3 -m json.tool "${absPath}" > /dev/null 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  if (ext === 'sh')
+    return `bash -n "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  return null;
+}
+
+// verifySyntaxBatch — run syntax check on written files, post errors to chat.
+// If sendMsgRef is provided, also fires an auto-fix request to AI.
+export async function verifySyntaxBatch(targets, folder, setMessages, sendMsgRef = null) {
+  for (const wr of targets) {
+    const ext     = (wr.path || '').split('.').pop().toLowerCase();
+    const absPath = resolvePath(folder, wr.path);
+    const cmd     = getSyntaxCmd(ext, absPath);
+    if (!cmd) continue;
+    const vr   = await callServer({ type: 'exec', path: folder, command: cmd });
+    const vOut = (vr.data || '').trim();
+    if (!vOut) continue;
+    const hasError = vOut.includes('SYNTAX_ERR') ||
+      (vOut.toLowerCase().includes('error') && !vOut.includes('SYNTAX_OK'));
+    if (hasError) {
+      const fname = (wr.path || '').split('/').pop();
+      setMessages(m => [...m, {
+        role: 'assistant',
+        content: 'Syntax error di ' + fname + ':\n```\n' + vOut.slice(0, 300) + '\n```',
+        actions: [],
+      }]);
+      if (sendMsgRef) {
+        setTimeout(() => sendMsgRef.current?.(
+          'Fix syntax error di ' + wr.path + ':\n```\n' + vOut.slice(0, 300) + '\n```'
+        ), 700);
+      }
+    }
+  }
+}
+
+// ── SHARED FILE BACKUP ────────────────────────────────────────────────────────
+// Reads current content of targets before overwrite, returns backup array.
+// Callers are responsible for calling setEditHistory with the result.
+export async function backupFiles(targets, folder) {
+  const backups = [];
+  for (const a of targets) {
+    const backup = await callServer({ type: 'read', path: resolvePath(folder, a.path) });
+    if (backup.ok) {
+      backups.push({ path: resolvePath(folder, a.path), content: backup.data });
+      a.original = backup.data;
+    }
+  }
+  return backups;
+}
