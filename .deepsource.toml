@@ -99,3 +99,8 @@ enabled = true
 #    File: src/hooks/useSlashCommands.js
 #
 # ══════════════════════════════════════════════════════════════════════════════
+
+# ── Ignore rules ──────────────────────────────────────────────────────────────
+# JS-0833: false positive — module_system = "es-modules" already set
+[[issues]]
+skip_patterns = ["JS-0833"]
