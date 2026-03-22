@@ -34,6 +34,7 @@ export default defineConfig({
           items: [
             { text: 'What is YuyuCode?', link: '/guide/what-is-yuyucode' },
             { text: 'Getting Started', link: '/guide/getting-started' },
+            { text: 'How-to Examples', link: '/guide/how-to' },
           ],
         },
         {
@@ -41,6 +42,8 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/guide/architecture' },
             { text: 'Agent Loop', link: '/guide/agent-loop' },
+            { text: 'State Architecture', link: '/guide/state-architecture' },
+            { text: 'System Prompt', link: '/guide/system-prompt' },
             { text: 'YuyuServer', link: '/guide/yuyu-server' },
           ],
         },
@@ -48,10 +51,10 @@ export default defineConfig({
           text: 'Configuration',
           items: [
             { text: 'YUYU.md', link: '/guide/yuyu-md' },
+            { text: 'Skills', link: '/guide/skills' },
             { text: 'AI Providers', link: '/guide/ai-providers' },
             { text: 'Themes', link: '/guide/themes' },
             { text: 'MCP Integration', link: '/guide/mcp' },
-            { text: 'CI/CD', link: '/guide/ci-cd' },
           ],
         },
         {
@@ -59,7 +62,16 @@ export default defineConfig({
           items: [
             { text: 'Memory System', link: '/guide/memory' },
             { text: 'Growth & Gamification', link: '/guide/growth' },
+            { text: 'Codebase Tools', link: '/guide/codebase-tools' },
+            { text: 'yugit', link: '/guide/yugit' },
+          ],
+        },
+        {
+          text: 'Development',
+          items: [
+            { text: 'Patterns', link: '/guide/patterns' },
             { text: 'Testing & Benchmarks', link: '/guide/testing' },
+            { text: 'CI/CD', link: '/guide/ci-cd' },
           ],
         },
         {
