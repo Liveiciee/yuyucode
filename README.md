@@ -9,7 +9,7 @@
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=coverage)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![DeepSource](https://deepsource.io/gh/liveiciee/yuyucode.svg/)](https://deepsource.io/gh/liveiciee/yuyucode/)
 [![Last Commit](https://img.shields.io/github/last-commit/liveiciee/yuyucode)](https://github.com/liveiciee/yuyucode/commits/main)
-
+![Since](https://img.shields.io/github/created-at/liveiciee/yuyucode)
 <br/>
 
 > *Every line of code in this repo was written from a phone, in Termux, using Claude AI.*
