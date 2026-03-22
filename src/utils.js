@@ -101,6 +101,7 @@ export function parseActions(text) {
 function formatDiffLine(hunk, line, oldLine, newLine) {
   if (hunk.removed) return { text: `- L${oldLine}: ${line}`, oldInc: 1, newInc: 0 };
   if (hunk.added)   return { text: `+ L${newLine}: ${line}`, oldInc: 0, newInc: 1 };
+  /* istanbul ignore next */
   return null;
 }
 

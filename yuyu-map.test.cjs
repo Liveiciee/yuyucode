@@ -188,6 +188,13 @@ describe('compressSource', () => {
   it('handles empty source', () => {
     expect(compressSource('', 'utils.js')).toBe('');
   });
+
+  it('truncates long export const line over 100 chars', () => {
+    const longValue = 'x'.repeat(90);
+    const src = `export const LONG_CONSTANT = '${longValue}';\nexport function foo() { return 1; }`;
+    const out = compressSource(src, 'utils.js');
+    expect(out).toContain('…');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -702,10 +709,24 @@ describe('main()', () => {
     expect(mapContent).toContain('useCounter');
   });
 
+  it('uses repomix output when tryRepomix succeeds', () => {
+    const repomixContent = '# Repomix compressed output\nsome content here\n';
+    const repomixSpawn = vi.fn((_cmd, _args) => {
+      const outIdx = (_args || []).indexOf('--output');
+      if (outIdx !== -1 && _args[outIdx + 1]) {
+        const outFile = _args[outIdx + 1];
+        fs.mkdirSync(path.dirname(outFile), { recursive: true });
+        fs.writeFileSync(outFile, repomixContent);
+      }
+      return { error: null, status: 0, stderr: '' };
+    });
+    main({ root: tmpDir, yuyuDir, spawnSync: repomixSpawn });
+    const compressed = fs.readFileSync(path.join(yuyuDir, 'compressed.md'), 'utf8');
+    expect(compressed).toBe(repomixContent);
+  });
+
   it('incremental mode — logs changed file count when git diff returns files', () => {
-    const srcFile = path.join(tmpDir, 'src', 'utils.js');
-    fs.writeFileSync(srcFile, 'export function helper() {}\n');
-    // spawnSync: git diff returns changed file, repomix fails
+    fs.writeFileSync(path.join(tmpDir, 'src', 'utils.js'), 'export function helper() {}\n');
     const incrementalSpawn = vi.fn((cmd, args) => {
       if (cmd === 'git' && args.includes('--name-only')) {
         return { error: null, status: 0, stdout: 'src/utils.js\n', stderr: '' };
@@ -716,7 +737,6 @@ describe('main()', () => {
   });
 
   it('git hint — logs feat message when changed files exist', () => {
-    // spawnSync: repomix fails, git diff returns changed files
     const hintSpawn = vi.fn((cmd, args) => {
       if (cmd === 'git' && args.includes('--name-only')) {
         return { error: null, status: 0, stdout: 'src/api.js\n', stderr: '' };
@@ -734,32 +754,15 @@ describe('main()', () => {
     expect(() => main({ root: tmpDir, yuyuDir, spawnSync: throwingSpawn })).not.toThrow();
   });
 
-  it('import graph — salience increases for imported files', () => {
-    // api.js imports utils.js — utils.js should have higher importedBy
+  it('import graph — salience computed for files with deps', () => {
     fs.writeFileSync(path.join(tmpDir, 'src', 'utils.js'),
-      "export function helper() { return 1; }\n"
+      'export function helper() { return 1; }\n'
     );
     fs.writeFileSync(path.join(tmpDir, 'src', 'api.js'),
       "import { helper } from './utils.js';\nexport function callApi() { return helper(); }\n"
     );
     main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
     expect(fs.existsSync(path.join(yuyuDir, 'map.md'))).toBe(true);
-  });
-
-  it('uses repomix output when tryRepomix succeeds', () => {
-    const repomixContent = '# Repomix compressed output\nsome content here\n';
-    const repomixSpawn = vi.fn((_cmd, _args, opts) => {
-      const outIdx = (_args || []).indexOf('--output');
-      if (outIdx !== -1 && _args[outIdx + 1]) {
-        const outFile = _args[outIdx + 1];
-        fs.mkdirSync(path.dirname(outFile), { recursive: true });
-        fs.writeFileSync(outFile, repomixContent);
-      }
-      return { error: null, status: 0, stderr: '' };
-    });
-    main({ root: tmpDir, yuyuDir, spawnSync: repomixSpawn });
-    const compressed = fs.readFileSync(path.join(yuyuDir, 'compressed.md'), 'utf8');
-    expect(compressed).toBe(repomixContent);
   });
 });
 

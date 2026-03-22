@@ -190,3 +190,12 @@ describe('useUIStore — loadUIPrefs Fase 3', () => {
     expect(result.current.showOnboarding).toBe(false);
   });
 });
+
+describe('setSidebarWidth', () => {
+  it('persists to Preferences', () => {
+    const { result } = renderHook(() => useUIStore());
+    act(() => { result.current.setSidebarWidth(320); });
+    expect(result.current.sidebarWidth).toBe(320);
+    expect(Preferences.set).toHaveBeenCalledWith({ key: 'yc_sidebar_w', value: '320' });
+  });
+});
