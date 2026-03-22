@@ -568,6 +568,7 @@ function main(_opts = {}) {
   }
 }
 
+/* istanbul ignore next */
 if (require.main === module) {
   main();
 }

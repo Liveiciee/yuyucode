@@ -701,6 +701,33 @@ describe('main()', () => {
     const mapContent = fs.readFileSync(path.join(yuyuDir, 'map.md'), 'utf8');
     expect(mapContent).toContain('useCounter');
   });
+
+  it('uses repomix output when tryRepomix succeeds', () => {
+    // Mock spawnSync yang nulis file output repomix lalu return status 0
+    const repomixContent = '# Repomix compressed output\nsome content here\n';
+    const repomixSpawn = vi.fn((_cmd, _args, opts) => {
+      // Cari --output arg lalu tulis file-nya
+      const outIdx = (_args || []).indexOf('--output');
+      if (outIdx !== -1 && _args[outIdx + 1]) {
+        const outFile = _args[outIdx + 1];
+        fs.mkdirSync(path.dirname(outFile), { recursive: true });
+        fs.writeFileSync(outFile, repomixContent);
+      }
+      return { error: null, status: 0, stderr: '' };
+    });
+    main({ root: tmpDir, yuyuDir, spawnSync: repomixSpawn });
+    const compressed = fs.readFileSync(path.join(yuyuDir, 'compressed.md'), 'utf8');
+    expect(compressed).toBe(repomixContent);
+  });
+
+  it('git hint catch block — does not throw when spawnSync throws', () => {
+    // spawnSync normal untuk repomix (offline), tapi throw untuk git
+    const throwingSpawn = vi.fn((cmd) => {
+      if (cmd === 'git') throw new Error('git not found');
+      return { error: new Error('offline'), status: null, stderr: '' };
+    });
+    expect(() => main({ root: tmpDir, yuyuDir, spawnSync: throwingSpawn })).not.toThrow();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
