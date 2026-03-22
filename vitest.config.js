@@ -16,38 +16,45 @@ export default defineConfig({
     poolOptions: {
       threads: { useAtomics: true },
     },
-    deps: {
-      optimizer: {
-        ssr: {
-          include: [
-            'react',
-            'react-dom',
-            '@testing-library/react',
-            'lucide-react',
-          ],
-        },
-      },
-    },
-    isolate:     false,
+
+    // isolate: true wajib — vi.mock/vi.hoisted bocor dengan isolate:false
+    isolate:     isCI ? true : false,
+    clearMocks:  true,
     css:         false,
     testTimeout: 5000,
     hookTimeout: 5000,
-    reporters:   process.env.CI ? ['verbose'] : ['dot'],
-    sequence: {
-      concurrent: false,
-      shuffle:    false,
-    },
 
-    // Persist transform cache ke filesystem — transform 7s → <1s di run ke-2+
-    experimental: {
-      fsModuleCache: true,
-    },
+    // highlight test > 500ms
+    slowTestThreshold: 500,
+
+    // auto-retry test flaky (bgagent timing)
+    retry: 1,
+
+    reporters: process.env.CI ? ['verbose'] : ['dot'],
+
+    // suppress console.log dari source saat test
+    onConsoleLog: (_log, type) => type !== 'stderr' ? false : undefined,
 
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
+      thresholds: {
+        lines:      70,
+        functions:  70,
+        branches:   60,
+        statements: 70,
+      },
+      perFile: true,
+      include: [
+        'src/hooks/**/*.js',
+        'src/features.js',
+        'src/utils.js',
+        'src/api.js',
+        'yuyu-server.js',
+        'yuyu-map.cjs',
+      ],
       exclude: [
-        'yugit.cjs', 'yuyu-bench.cjs', 'yuyu-server.js', 'yuyu-map.cjs',
+        'yugit.cjs', 'yuyu-bench.cjs',
         'public/**', 'android/**', 'patch/**',
         'src/main.jsx', 'src/plugins/**',
         'src/constants.js', 'src/theme.js', 'src/setupTest.js',
