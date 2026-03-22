@@ -62,7 +62,6 @@ export function hl(code, lang = '') {
     s = protect(s, t => t.replace(/:\s*([^;{]+)/g, ': <span style="color:#98c379">$1</span>'));
     return s;
   }
-  // default JS/JSX/TS/TSX
   s = protect(s, t => t.replace(/(\/\/.*$|\/\*.*?\*\/)/gms, '<span style="color:#6a737d">$1</span>'));
   s = protect(s, t => t.replace(/(`(?:[^`\\]|\\.)*`)/g, '<span style="color:#98c379">$1</span>'));
   s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
@@ -148,7 +147,6 @@ export function generateDiff(original, patched, maxLines = 40) {
 }
 
 // ── ACTION EXECUTOR ──
-// Dispatch table — each handler receives (action, base, _callServer)
 const ACTION_HANDLERS = {
   async read_file(action, base, cs) {
     const payload = { type: 'read', path: resolvePath(base, action.path) };

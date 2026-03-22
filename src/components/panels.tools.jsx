@@ -181,7 +181,6 @@ export function SnippetLibrary({ onInsert, onClose, T }) {
 }
 
 // ─── THEME BUILDER ────────────────────────────────────────────────────────────
-// ThemeBuilder diganti ThemePicker — theme kini dari file src/themes/*.js
 
 // ─── THEME BUILDER ────────────────────────────────────────────────────────────
 export function ThemeBuilder({ onClose, themeKey, themesMap, themeKeys, onTheme, T }) {
@@ -463,18 +462,15 @@ export function PluginsPanel({ activePlugins, folder, onToggle, onClose, T }) {
 export function ConfigPanel({
   effort, fontSize, theme, model, thinkingEnabled, models,
   onEffort, onFontSize, onTheme, onModel, onThinking,
-  // Fase 1+2
   vimMode, onVimMode,
   showMinimap, onMinimap,
   ghostTextEnabled, onGhostText,
   lintEnabled, onLint,
-  // Fase 3
   tsLspEnabled, onTsLsp,
   blameEnabled, onBlame,
   multiCursor, onMultiCursor,
   stickyScroll, onStickyScroll,
   collabEnabled, onCollab,
-  // Visual Diff Review
   diffReview, onDiffReview,
   onClose, T,
 }) {

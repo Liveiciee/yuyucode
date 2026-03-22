@@ -1,6 +1,4 @@
 // ── Ink & Paper ────────────────────────────────────────────────────────────────
-// Efek: paper grain texture via SVG, brushstroke separators, aged paper feel
-// Zero glow — semua matte, kontras tinggi seperti tinta di kertas
 // ─────────────────────────────────────────────────────────────────────────────
 
 const theme = {
@@ -106,7 +104,6 @@ const theme = {
 
   fx: {
     aiBubble: () => ({
-      // Ink: no bubble at all — bare text with left rule
       background: 'transparent',
       border: 'none',
       boxShadow: 'none',

@@ -163,7 +163,6 @@ export function useProjectStore() {
     if (branchR.ok) setBranch(branchR.data.trim());
     setAgentsMd(agentsR.ok && agentsR.data ? agentsR.data : '');
     setYuyuMd(yuyuMdR.ok && yuyuMdR.data ? yuyuMdR.data : '');
-    // Auto-load skills dari .yuyu/skills/, respect saved active map
     (async () => {
       let activeMap = {};
       try { const r = await Preferences.get({ key: 'yc_skills_active_' + f }); activeMap = r.value ? JSON.parse(r.value) : {}; } catch (_e) {}

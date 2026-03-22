@@ -153,7 +153,6 @@ async function _commitBgChanges(agent, id, task, wtPath, branch, allWrites, tota
   agent.log.push('Selesai. ' + allWrites.length + ' file. Gunakan /bgmerge ' + id + ' untuk merge.');
 }
 
-// Background agent dengan REAL agentic loop (tidak hanya satu call)
 export async function runBackgroundAgent(task, folder, callAI, onDone) {
   const id     = 'bg_' + Date.now();
   const branch = 'agent-' + id.slice(-8);
@@ -167,7 +166,6 @@ export async function runBackgroundAgent(task, folder, callAI, onDone) {
     callServer({ type: 'exec', path: folder, command: 'git worktree remove --force ' + wtPath + ' 2>/dev/null; git branch -D ' + branch + ' 2>/dev/null' });
   };
 
-  // Async agent loop in background
   (async () => {
     try {
       await _setupBgWorktree(agent, folder, wtPath, branch);
@@ -231,7 +229,6 @@ export function abortBgAgent(id) {
 // ── loadSkills: .yuyu/skills/*.md only ─────────────────────────────────────
 export async function loadSkills(folder, activeMap = {}) {
   const skills = [];
-  // .yuyu/skills/*.md
   const list = await callServer({ type: 'list', path: folder + '/.yuyu/skills' });
   if (list.ok && Array.isArray(list.data)) {
     const files = list.data.filter(f => !f.isDir && f.name.endsWith('.md'));
@@ -364,14 +361,14 @@ export const EFFORT_CONFIG = {
 // ─── PERMISSIONS ─────────────────────────────────────────────────────────────
 export const DEFAULT_PERMISSIONS = {
   read_file:   true,
-  write_file:  true,   // auto-execute like Claude Code
+  write_file:  true,
   patch_file:  true,
-  exec:        true,   // Claude Code runs commands freely
+  exec:        true,
   list_files:  true,
   tree:        true,
   search:      true,
   mcp:         false,
-  delete_file: false,  // tetap false — terlalu destruktif
+  delete_file: false,
   move_file:   false,
   mkdir:       true,
   browse:      false,
@@ -380,7 +377,6 @@ export const DEFAULT_PERMISSIONS = {
 
 export function checkPermission(permissions, actionType) {
   if (!permissions) return false;
-  // normalize: patch_file and write_file use separate permissions now
   const key = actionType;
   if (permissions[key] !== undefined) return permissions[key];
   return DEFAULT_PERMISSIONS[key] !== undefined ? DEFAULT_PERMISSIONS[key] : false;

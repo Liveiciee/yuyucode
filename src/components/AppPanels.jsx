@@ -1,7 +1,4 @@
 // ── AppPanels ─────────────────────────────────────────────────────────────────
-// Semua panel overlay, modal, dan floating UI yang render di atas main layout.
-// Memory, checkpoints, swarm log, dep graph, semua BottomSheet panels,
-// onboarding, dan commit modal.
 import React from 'react';
 import { Activity } from 'react';
 import { Trash2, Brain, MapPin, Plus, Zap, X } from 'lucide-react';

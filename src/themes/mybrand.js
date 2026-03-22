@@ -1,6 +1,4 @@
 // ── My Brand Theme — Template untuk Custom Theme ────────────────────────────
-// TEMPLATE: Ini bukan tema aktif. Copy, rename, isi token, import di index.js.
-// Lihat src/themes/obsidian.js untuk referensi skema lengkap.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** @type {import('./index').YuyuTheme} */

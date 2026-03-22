@@ -26,7 +26,6 @@ export function useMediaHandlers({ setVisionImage, setInput, haptic, setDragOver
         haptic('light');
       }
     } catch (e) {
-      // User cancelled or permission denied — silent fail
       if (!e.message?.includes('cancelled') && !e.message?.includes('cancel')) {
         console.warn('Camera error:', e.message);
       }

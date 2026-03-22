@@ -1,6 +1,4 @@
 // ── AppHeader ─────────────────────────────────────────────────────────────────
-// Session color bar, header (title/effort/tokens/xp/palette), folder input,
-// UndoBar, dan status bar (offline/ratelimit/agent running).
 import React from 'react';
 import { Menu, Command, FilePlus2, Check, Radio, AlertTriangle, RotateCcw } from 'lucide-react';
 import { countTokens } from '../utils.js';

@@ -1,14 +1,6 @@
 import React, { useEffect } from 'react';
 
 // ── ThemeEffects ───────────────────────────────────────────────────────────────
-// Render semua visual overlay berdasarkan tema aktif:
-//   - Atmosphere orbs (semua tema)
-//   - Scanlines layer (obsidian, neon)
-//   - CRT scan bar (obsidian)
-//   - Aurora animated orbs (aurora)
-//   - Neon grid + scan pulse (neon)
-//   - Paper grain SVG (ink)
-//   - Vignette corner (obsidian)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function ThemeEffects({ T }) {
@@ -18,7 +10,6 @@ export function ThemeEffects({ T }) {
   const isInk      = name.toLowerCase().includes('ink');
   const isObsidian = name.toLowerCase().includes('obsidian');
 
-  // Inject theme CSS once per theme change
   useEffect(() => {
     const id = 'yuyu-theme-css';
     let el = document.getElementById(id);

@@ -122,7 +122,6 @@ export function FileTree({ folder, onSelectFile, selectedFile, T }) {
     setCtxMenu(null); load();
   }
 
-  // Flatten tree into searchable list
   function flattenTree(items, basePath, acc = []) {
     if (!items) return acc;
     for (const item of items) {

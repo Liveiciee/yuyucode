@@ -1,6 +1,4 @@
 // ── KeyboardRow — extra symbol row above Android soft keyboard ─────────────────
-// Inserts symbols at cursor: either into a textarea or a CodeMirror view.
-// Shows whenever a file is in edit mode on mobile.
 import React from 'react';
 
 const SYMBOLS = [

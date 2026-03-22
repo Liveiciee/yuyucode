@@ -26,7 +26,6 @@ export async function readSSEStream(resp, onChunk, signal) {
         } catch (_e) { }
       }
     }
-    // flush
     if (buffer.startsWith('data: ') && buffer !== 'data: [DONE]') {
       try {
         const content = JSON.parse(buffer.slice(6)).choices?.[0]?.delta?.content || '';
@@ -101,8 +100,6 @@ async function _groqOnce(messages, model, onChunk, signal, options) {
 }
 
 // ── UNIFIED AI CALL — auto-fallback Cerebras → Groq ───────────────────────────
-// - Cerebras model → tries Cerebras, jika rate limit → fallback ke Groq (kimi-k2)
-// - Groq model → langsung ke Groq
 export async function askCerebrasStream(messages, model, onChunk, signal, options = {}, _attempt = 0) {
   if (!Array.isArray(messages) || messages.length === 0)
     throw new Error('Messages must be a non-empty array');
@@ -130,19 +127,16 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
   } catch (e) {
     if (e.name === 'AbortError') throw e;
 
-    // Rate limit → auto-switch ke Groq
     if (e.message.startsWith('RATE_LIMIT:') && GROQ_KEY) {
       const fallbackModel = FALLBACK_MODEL;
       try {
         return await _groqOnce(messages, fallbackModel, onChunk, signal, options);
       } catch (ge) {
         if (ge.name === 'AbortError') throw ge;
-        // Groq juga rate limit? lempar error asli biar timer tetap jalan
         throw e;
       }
     }
 
-    // Server error → retry
     if (_attempt < 2 && (e.message.startsWith('CEREBRAS_SERVER:') || e.message.includes('fetch'))) {
       await new Promise(r => setTimeout(r, (_attempt + 1) * 2000));
       return askCerebrasStream(messages, model, onChunk, signal, options, _attempt + 1);

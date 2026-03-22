@@ -34,7 +34,6 @@ export function GlobalFindReplace({ folder, onOpenFile, onClose, T }) {
     setResults([]);
     setReplaceLog('');
 
-    // Build grep command
     const flags = ['-rn', '--include=*.js', '--include=*.jsx', '--include=*.ts',
       '--include=*.tsx', '--include=*.css', '--include=*.json', '--include=*.md',
       '--include=*.html', '--include=*.py', '--exclude-dir=node_modules',
@@ -48,13 +47,11 @@ export function GlobalFindReplace({ folder, onOpenFile, onClose, T }) {
 
     if (!r.ok || !r.data) { setResults([]); return; }
 
-    // Parse grep output: "path/to/file:linenum:col: text"
     const fileMap = new Map();
     (r.data || '').split('\n').filter(Boolean).forEach(line => {
       const m = line.match(/^(.+?):(\d+):\s*(.*)/);
       if (!m) return;
       let [, filePath, lineNum, content] = m;
-      // Make path relative
       const rel = filePath.startsWith(folder) ? filePath.slice(folder.length + 1) : filePath;
       if (!fileMap.has(rel)) fileMap.set(rel, []);
       fileMap.get(rel).push({ line: parseInt(lineNum), text: content.trim() });
@@ -62,7 +59,6 @@ export function GlobalFindReplace({ folder, onOpenFile, onClose, T }) {
 
     const parsed = Array.from(fileMap.entries()).map(([file, matches]) => ({ file, matches }));
     setResults(parsed);
-    // Auto-expand if few files
     if (parsed.length <= 5) setExpanded(new Set(parsed.map(p => p.file)));
   }, [query, folder, useRegex, matchCase]);
 
@@ -74,7 +70,6 @@ export function GlobalFindReplace({ folder, onOpenFile, onClose, T }) {
     let replaced = 0;
     for (const { file } of results) {
       const absPath = folder + '/' + file;
-      // Read file
       const r = await callServer({ type: 'read', path: absPath });
       if (!r.ok) continue;
       let content = r.data || '';

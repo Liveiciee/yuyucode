@@ -1,5 +1,4 @@
 // ── AppSidebar ────────────────────────────────────────────────────────────────
-// Overlay sidebar: backdrop, file tree, recent files, resize handle.
 import React from 'react';
 import { FileTree } from './FileTree.jsx';
 

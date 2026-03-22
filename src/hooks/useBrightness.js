@@ -1,6 +1,4 @@
 // ── useBrightness — real-time adaptive brightness ────────────────────────
-// ContentObserver native → emit setiap slider berubah → scale filter dinamis
-// Tidak ada polling. Tidak ada threshold on/off. Murni proporsional.
 
 import { useEffect, useRef } from 'react';
 import { BrightnessPlugin } from '../plugins/brightness.js';

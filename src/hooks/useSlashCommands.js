@@ -41,12 +41,10 @@ async function processBatchFile(f, folder, batchCmd, callAI, signal, setMessages
 
 
 export function useSlashCommands({
-  // state
   model, folder, branch, messages, selectedFile, fileContent, notes,
   memories, checkpoints: _checkpoints, skills, thinkingEnabled, effort, loopActive,
   loopIntervalRef, agentMemory, splitView, pushToTalk, sessionName,
   sessionColor, fileWatcherActive, fileWatcherInterval,
-  // setters
   setModel, setMessages, setFolder: _setFolder, setFolderInput: _setFolderInput, setLoading, setStreaming: _setStreaming,
   setThinkingEnabled, setEffort, setLoopActive, setLoopIntervalRef,
   setSplitView, setPushToTalk, setSessionName, setSessionColor,
@@ -60,14 +58,12 @@ export function useSlashCommands({
   setDepGraph, setFontSize,
   setShowMergeConflict, setMergeConflictData,
   setShowSkills, setShowBgAgents,
-  // functions
   sendMsg, compactContext, saveCheckpoint, exportChat, searchMessages,
   setGracefulStop, loading,
   editHistory, setEditHistory, pinnedFiles, togglePin,
   browseTo, runAgentSwarm, callAI, abTest,
   growth,
   sendNotification, haptic,
-  // refs
   abortRef,
 }) {
   const activeDbRef = useRef({});

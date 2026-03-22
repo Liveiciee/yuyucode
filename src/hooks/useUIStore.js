@@ -144,7 +144,6 @@ export function useUIStore() {
 
   return {
     brightnessLevel, setBrightnessLevel,
-    // panels
     showSidebar, setShowSidebar,
     showTerminal, setShowTerminal,
     showFolder, setShowFolder,
@@ -171,13 +170,11 @@ export function useUIStore() {
     showThemePicker, setShowThemePicker,
     showThemeBuilder: showThemePicker, setShowThemeBuilder: setShowThemePicker,
     showOnboarding, setShowOnboarding,
-    // editor feature toggles fase 1+2
     vimMode, setVimMode,
     showMinimap, setShowMinimap,
     ghostTextEnabled, setGhostTextEnabled,
     lintEnabled, setLintEnabled,
     showLivePreview, setShowLivePreview,
-    // editor feature toggles fase 3
     tsLspEnabled, setTsLspEnabled,
     blameEnabled, setBlameEnabled,
     multiCursor, setMultiCursor,
@@ -185,14 +182,12 @@ export function useUIStore() {
     collabEnabled, setCollabEnabled,
     collabRoom, setCollabRoom,
     showGlobalFind, setShowGlobalFind,
-    // theme/display
     theme: themeKey, setTheme,
     themeKey, THEMES_MAP, THEME_KEYS,
     fontSize, setFontSize,
     sidebarWidth, setSidebarWidth,
     dragging, setDragging,
     T,
-    // misc
     depGraph, setDepGraph,
     deployLog, setDeployLog,
     sessionList, setSessionList,

@@ -38,7 +38,7 @@ async function _verifySyntaxBatch(targets, folder, setMessages) {
 
 export function useFileStore() {
   // ── Multi-tab state ──
-  const [openTabs, setOpenTabs]       = useState([]);   // [{path, content, dirty}]
+  const [openTabs, setOpenTabs]       = useState([]);
   const [activeTabIdx, setActiveTabIdxRaw] = useState(0);
 
   // ── Legacy single-view state (still used for some flows) ──
@@ -55,7 +55,6 @@ export function useFileStore() {
   const [pinnedFiles, setPinnedFilesRaw] = useState([]);
   const [editHistory, setEditHistory]    = useState([]);
 
-  // Ref to always read the latest openTabs in async contexts
   const openTabsRef = useRef(openTabs);
   const activeTabIdxRef = useRef(activeTabIdx);
   useEffect(() => { openTabsRef.current = openTabs; });
@@ -87,7 +86,6 @@ export function useFileStore() {
 
   // ── openFile — opens in existing tab or new tab ──
   async function openFile(path) {
-    // Check if already open
     const existing = openTabsRef.current.findIndex(t => t.path === path);
     if (existing >= 0) {
       setActiveTabIdx(existing);
@@ -96,7 +94,6 @@ export function useFileStore() {
       return;
     }
 
-    // Load content
     setActiveTab('file');
     setEditMode(false);
     const r = await callServer({ type: 'read', path });
@@ -108,7 +105,6 @@ export function useFileStore() {
       return newTabs;
     });
 
-    // Recent files
     const next = [path, ...recentFiles.filter(f => f !== path)].slice(0, 8);
     setRecentFiles(next);
   }
@@ -232,26 +228,21 @@ export function useFileStore() {
   }
 
   return {
-    // Multi-tab
     openTabs, setOpenTabs,
     activeTabIdx, setActiveTabIdx,
     closeTab, updateTabContent,
 
-    // Backward compat derived
     selectedFile, setSelectedFile,
     fileContent, setFileContent,
 
-    // Legacy view state
     activeTab, setActiveTab,
     editMode, setEditMode,
     splitView, setSplitView,
 
-    // Lists
     recentFiles, setRecentFiles,
     pinnedFiles, setPinnedFiles,
     editHistory, setEditHistory,
 
-    // Actions
     loadFilePrefs,
     openFile, saveFile, togglePin, undoLastEdit,
     readFilesParallel, handleApprove,

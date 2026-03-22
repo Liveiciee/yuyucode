@@ -77,7 +77,6 @@ function getRunCmd(wr, projectFolder) {
   return null;
 }
 
-// Returns updated allMessages if error found (to trigger continue), or null
 async function autoVerifyWrites(fullWriteActions, projectFolder, allMessages, reply, iter, MAX_ITER) {
   for (const wr of fullWriteActions.filter(a => a.result?.ok)) {
     const runCmd = getRunCmd(wr, projectFolder);
@@ -109,7 +108,6 @@ export function useAgentLoop({
   // ── callAI ──
   function callAI(msgs, onChunk, signal, imageBase64) {
     const cfg = project.effortCfg;
-    // Llama 4 Scout support vision, llama-3.3-70b tidak
     const model = imageBase64 ? VISION_MODEL : project.model;
     return askCerebrasStream(msgs, model, onChunk, signal, {
       maxTokens: cfg.maxTokens,
@@ -147,7 +145,6 @@ Menunggu kedua model...`, actions: [] }
       return;
     }
 
-    // Tampilkan hasil side by side
     const labelA = modelA.split('/').pop().slice(0, 20);
     const labelB = modelB.split('/').pop().slice(0, 20);
     chat.setMessages(m => [
@@ -173,7 +170,6 @@ ${outB.slice(0, 1500)}
   }
 
   // ── compactContext ──
-  // inlineCall=true → dipanggil dari dalam sendMsg, jangan overwrite abortRef atau set loading
   async function compactContext(inlineCall = false) {
     const currentMsgs = chat.messages;
     if (currentMsgs.length < 10) {
@@ -181,10 +177,8 @@ ${outB.slice(0, 1500)}
       return;
     }
     if (!inlineCall) chat.setLoading(true);
-    // Bug #2 fix: jangan overwrite abortRef saat inline — buat local ctrl
     const ctrl = new AbortController();
     if (!inlineCall) abortRef.current = ctrl;
-    // Gunakan signal dari abortRef.current supaya outer abort juga bisa stop compact
     const signal = inlineCall ? abortRef.current?.signal : ctrl.signal;
     try {
       const toCompact = currentMsgs.slice(1, -6);
@@ -203,7 +197,6 @@ ${outB.slice(0, 1500)}
         chat.setMessages(m => [...m, { role: 'assistant', content: '❌ Compact gagal: ' + e.message, actions: [] }]);
       }
     }
-    // Bug #3 fix: jangan reset loading jika inline (sendMsg yang akan reset di akhir)
     if (!inlineCall) chat.setLoading(false);
   }
 
@@ -225,7 +218,6 @@ ${outB.slice(0, 1500)}
     const ctx = {};
     const folder = project.folder;
 
-    // 1. Handoff + YUYU.md
     const [handoffR, yuyuMdR, llmsR, mapR, treeR] = await Promise.all([
       callServer({ type: 'read', path: folder + '/.yuyu/handoff.md' }),
       callServer({ type: 'read', path: folder + '/YUYU.md' }),
@@ -239,20 +231,17 @@ ${outB.slice(0, 1500)}
     if (mapR.ok && mapR.data)         ctx['__map__'] = mapR.data;
     if (treeR.ok)                     ctx['__tree__'] = treeR.data;
 
-    // 2. Pinned files (parallel)
     const pinned = (project.pinnedFiles || []).slice(0, 5);
     if (pinned.length) {
       const pinnedReads = await Promise.all(pinned.map(p => callServer({ type: 'read', path: p, to: 80 })));
       pinnedReads.forEach((r, i) => { if (r.ok) ctx['📌 ' + pinned[i].split('/').pop()] = r.data; });
     }
 
-    // 3. Compressed source — only for complex refactor tasks
     if (/refactor|overhaul|all files|semuanya|codebase|arsitektur/i.test(txt)) {
       const compR = await callServer({ type: 'read', path: folder + '/.yuyu/compressed.md', from: 1, to: 200 });
       if (compR.ok && compR.data) ctx['__compressed__'] = compR.data;
     }
 
-    // 4. Keyword heuristic — map keywords to relevant files
     const kw = txt.toLowerCase();
     const KEYWORD_FILES = [
       [['api','fetch','cerebras','groq'],         '/src/api.js'],
@@ -321,7 +310,6 @@ ${outB.slice(0, 1500)}
     const txt = (typeof override === 'string' ? override : chat.input).trim();
     if (!txt || chat.loading) return;
 
-    // Slash command
     if (txt.startsWith('/')) {
       chat.setInput('');
       chat.setSlashSuggestions([]);
@@ -345,7 +333,6 @@ ${outB.slice(0, 1500)}
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
-    // Auto-compact jika context > 80K chars
     const totalChars = history.reduce((a, m) => a + (m.content?.length || 0), 0);
     if (totalChars > AUTO_COMPACT_CHARS && history.length > AUTO_COMPACT_MIN_MSG) {
       chat.setMessages(m => [...m, {
@@ -354,8 +341,6 @@ ${outB.slice(0, 1500)}
         actions: [],
       }]);
       await compactContext(true); // inline — jangan reset abortRef atau loading
-      // compactContext sudah update chat.messages — tapi kita gunakan history lama
-      // untuk allMessages awal (messages baru akan terpakai di iter berikutnya via getState)
     }
 
     try {
@@ -394,7 +379,6 @@ ${outB.slice(0, 1500)}
       let gracefulStopPending = false;
       while (iter < MAX_ITER) {
         iter++;
-        // Graceful stop — finish this iteration then stop
         if (chat.gracefulStop) {
           chat.setGracefulStop(false);
           chat.setAgentStatus('Menyelesaikan iterasi terakhir...');
@@ -415,7 +399,6 @@ ${outB.slice(0, 1500)}
         const groqMsgs = [
           { role: 'system', content: systemPrompt + DECISION_HINT + autoCtxBlock },
           ...chat.trimHistory(allMessages).map(m => {
-            // content bisa array (vision dari iter sebelumnya) — flatten ke string untuk history
             const raw = Array.isArray(m.content)
               ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ')
               : (m.content || '');
@@ -430,7 +413,6 @@ ${outB.slice(0, 1500)}
         chat.setStreaming('');
         chat.setAgentStatus('');
 
-        // Token tracking
         const inTk  = Math.round(groqMsgs.reduce((a, m) => a + (m.content?.length || 0), 0) / 4);
         const outTk = Math.round((reply?.length || 0) / 4);
         tokenTracker.record(inTk, outTk, project.model);
@@ -438,13 +420,6 @@ ${outB.slice(0, 1500)}
         const allActs = parseActions(reply);
 
         // ── Separate actions by type ──
-        // patch_file  → auto-execute (find-and-replace)
-        // write_file  → auto-execute WITH backup (Claude Code behavior)
-        // read_file   → parallel
-        // web_search  → parallel
-        // safe others (list,tree,search,mkdir,file_info,find_symbol) → parallel
-        // exec        → serial (side effects, order matters)
-        // mcp         → serial
         const patchActions     = allActs.filter(a => a.type === 'patch_file');
         const fullWriteActions = allActs.filter(a => a.type === 'write_file');
         const readActions      = allActs.filter(a => a.type === 'read_file');
@@ -479,7 +454,6 @@ ${outB.slice(0, 1500)}
             // ── Diff Review mode — pre-compute diff, pause loop, tunggu user ──
             await runHooksV2(project.hooks.preWrite, patchActions.map(a => a.path).join(','), project.folder);
             for (const a of patchActions) {
-              // Baca file asli untuk diff preview
               const orig = await callServer({ type: 'read', path: resolvePath(project.folder, a.path) });
               if (orig.ok && orig.data && a.old_str) {
                 const patched = orig.data.replace(a.old_str, a.new_str ?? '');
@@ -488,7 +462,6 @@ ${outB.slice(0, 1500)}
               }
               a.executed = false; // pending — belum dieksekusi
             }
-            // Push message dengan actions pending, break loop — tunggu approval
             finalContent = reply;
             finalActions  = [...allActs];
             chat.setMessages(m => [...m, { role: 'assistant', content: finalContent, actions: finalActions }]);
@@ -505,7 +478,6 @@ ${outB.slice(0, 1500)}
           });
           await runHooksV2(project.hooks.postWrite, patchActions.map(a => a.path).join(','), project.folder);
 
-          // Patch failed → self-correct
           const failed = patchActions.filter(a => !a.result?.ok);
           if (failed.length > 0) {
             const failInfo = failed.map(a =>
@@ -537,7 +509,6 @@ ${outB.slice(0, 1500)}
                 a.diffPreview = generateDiff(orig.data, a.content || '', 60);
                 a.original = orig.data;
               } else {
-                // File baru — tidak ada diff, tunjukkan sebagai full add
                 const lines = (a.content || '').split('\n');
                 a.diffPreview = lines.slice(0, 30).map((l, i) => '+ L' + (i+1) + ': ' + l).join('\n') +
                   (lines.length > 30 ? '\n... (+' + (lines.length - 30) + ' baris lagi)' : '');
@@ -554,7 +525,6 @@ ${outB.slice(0, 1500)}
 
           await runHooksV2(project.hooks.preWrite, fullWriteActions.map(a => a.path).join(','), project.folder);
           const writeResults = await Promise.all(fullWriteActions.map(async a => {
-            // Backup dulu untuk undo
             const backup = await callServer({ type: 'read', path: resolvePath(project.folder, a.path) });
             if (backup.ok) a.original = backup.data;
             return executeAction(a, project.folder);
@@ -565,7 +535,6 @@ ${outB.slice(0, 1500)}
           });
           await runHooksV2(project.hooks.postWrite, fullWriteActions.map(a => a.path).join(','), project.folder);
 
-          // Store backups for undo
           const backups = fullWriteActions
             .filter(a => a.original !== undefined)
             .map(a => ({ path: resolvePath(project.folder, a.path), content: a.original }));
@@ -641,7 +610,6 @@ ${outB.slice(0, 1500)}
           { role: 'user',      content: 'Hasil aksi:\n' + combinedData + '\n\nLanjutkan.' + agentNote },
         ];
 
-        // Graceful stop — selesaikan iterasi ini lalu berhenti
         if (gracefulStopPending) {
           finalContent = reply;
           finalActions  = allInlineActions;
@@ -650,18 +618,15 @@ ${outB.slice(0, 1500)}
       }
 
       chat.setAgentRunning(false);
-    // Tambah XP per sesi dan pelajari style
     growth?.addXP('message_sent');
     growth?.learnFromSession(chat.messages, project.folder);
       if (iter > 1) sendNotification('YuyuCode ✅', 'Agent selesai: ' + txt.slice(0, 40));
 
-      // Auto-continue
       if (finalContent.trim().endsWith('CONTINUE')) {
         setTimeout(() => sendMsg('Lanjutkan response sebelumnya dari titik terakhir.'), 300);
         return;
       }
 
-      // PROJECT_NOTE extraction
       if (finalContent.includes('PROJECT_NOTE:')) {
         const nm = finalContent.match(/PROJECT_NOTE:(.*?)(?:\n|$)/);
         if (nm) project.setNotes((project.notes + '\n' + nm[1].trim()).trim(), project.folder);
@@ -669,7 +634,6 @@ ${outB.slice(0, 1500)}
 
       chat.setMessages(m => [...m, { role: 'assistant', content: finalContent, actions: finalActions }]);
 
-      // Elicitation
       const elicit = parseElicitation(finalContent);
       if (elicit) ui.setElicitationData(elicit);
 
@@ -679,7 +643,6 @@ ${outB.slice(0, 1500)}
     } catch (e) {
       chat.setAgentRunning(false);
       if (e.name !== 'AbortError') {
-        // Tambah XP per sesi dan pelajari style — hanya jika bukan cancel
         growth?.addXP('message_sent');
         growth?.learnFromSession(chat.messages, project.folder);
         await runHooksV2(project.hooks.onError, e.message, project.folder).catch(() => {});
@@ -703,7 +666,6 @@ ${outB.slice(0, 1500)}
     chat.setLoading(false);
     chat.setStreaming('');
     chat.setAgentRunning(false);
-    // XP & learnFromSession tidak di sini — ditangani di catch sendMsg (hanya jika bukan AbortError)
   }
 
   async function continueMsg() {

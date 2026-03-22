@@ -1,6 +1,4 @@
 // ── LivePreview — live HTML/CSS/JS iframe preview ─────────────────────────────
-// Combines open HTML/CSS/JS files into a single srcdoc iframe.
-// Intercepts console.log via postMessage for in-app display.
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
@@ -31,7 +29,6 @@ function buildSrcdoc(tabs) {
   const jsTab   = tabs.find(t => /\.[jt]sx?$/.test(t.path) && !/\.test\.|\.spec\./.test(t.path));
 
   if (htmlTab) {
-    // Inject CSS and JS into HTML
     let html = htmlTab.content || '';
     if (cssTab && !html.includes('<link') && !html.includes('<style')) {
       html = html.replace('</head>', `<style>${cssTab.content}</style></head>`);
@@ -42,7 +39,6 @@ function buildSrcdoc(tabs) {
     return CONSOLE_INTERCEPT + html;
   }
 
-  // No HTML tab — synthesize one from CSS + JS
   return `<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${cssTab ? `<style>${cssTab.content}</style>` : ''}
@@ -70,7 +66,6 @@ export function LivePreview({ tabs, T, onClose }) {
   const error   = T?.error     || '#f87171';
   const warning = T?.warning   || '#fbbf24';
 
-  // Debounced rebuild on tab content change
   useEffect(() => {
     if (!autoRefresh) return;
     clearTimeout(refreshTimer.current);
@@ -80,17 +75,13 @@ export function LivePreview({ tabs, T, onClose }) {
     return () => clearTimeout(refreshTimer.current);
   }, [tabs, autoRefresh]);
 
-  // Manual refresh
   const refresh = useCallback(() => {
     setSrcdoc('');
     requestAnimationFrame(() => setSrcdoc(buildSrcdoc(tabs)));
   }, [tabs]);
 
-  // Console message listener
   useEffect(() => {
     function onMsg(e) {
-      // srcdoc iframes always have origin 'null' — this IS the origin check.
-      // Any other origin (external window, extension, etc.) is rejected.
       if (e.origin !== 'null') return; // lgtm[js/missing-origin-check]
       if (!e.data || e.data.type !== 'console') return;
       const { level, args } = e.data;

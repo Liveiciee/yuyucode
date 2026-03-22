@@ -27,7 +27,6 @@ export function GitComparePanel({ folder, onClose, T }) {
     const r   = await callServer({ type:'exec', path:folder, command: cmd });
     const raw = r.data || '';
     setDiff(raw);
-    // Compute stats
     const lines   = raw.split('\n');
     const added   = lines.filter(l => l.startsWith('+') && !l.startsWith('+++')).length;
     const removed = lines.filter(l => l.startsWith('-') && !l.startsWith('---')).length;
@@ -67,7 +66,6 @@ export function GitComparePanel({ folder, onClose, T }) {
   }
 
   function renderSplit() {
-    // Parse hunk into left (old) and right (new) columns
     const hunks = [];
     let currentFile = '';
     diff.split('\n').forEach(line => {
@@ -78,7 +76,6 @@ export function GitComparePanel({ folder, onClose, T }) {
       const last = hunks[hunks.length - 1];
       if (line.startsWith('+')) last.pairs.push({ left: null, right: line.slice(1) });
       else if (line.startsWith('-')) {
-        // Try to pair with next + line
         const nextUnpaired = last.pairs.findIndex(p => p.left === null && p.right !== null);
         if (nextUnpaired !== -1) last.pairs[nextUnpaired].left = line.slice(1);
         else last.pairs.push({ left: line.slice(1), right: null });
@@ -304,13 +301,11 @@ export function DepGraphPanel({ depGraph, onClose, T }) {
 
     d3.select(el).selectAll('*').remove();
 
-    // Support both new {nodes, edges} format and legacy {file, imports} format
     let nodes, links;
     if (depGraph.nodes && depGraph.edges) {
       nodes = depGraph.nodes.map(n => ({ ...n }));
       links = depGraph.edges.map(e => ({ source: e.source, target: e.target }));
     } else {
-      // Legacy fallback
       nodes = [
         { id: depGraph.file, type: 'root', label: depGraph.file },
         ...(depGraph.imports||[]).map(imp => ({
@@ -324,7 +319,6 @@ export function DepGraphPanel({ depGraph, onClose, T }) {
 
     const svg = d3.select(el).append('svg').attr('width', W).attr('height', H);
 
-    // Arrow marker
     svg.append('defs').append('marker')
       .attr('id', 'dep-arrow').attr('viewBox', '0 -4 8 8')
       .attr('refX', 22).attr('refY', 0)

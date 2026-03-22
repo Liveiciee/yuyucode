@@ -1,6 +1,4 @@
 // ── useGrowth — Yuyu yang tumbuh + Gamifikasi ─────────────────────────────────
-// Yuyu belajar dari setiap sesi: naming style, bahasa dominan, error patterns
-// Gamifikasi: streak harian, XP, badge — motivasi solo dev tanpa tim
 
 import { useState, useEffect } from 'react';
 import { Preferences } from '@capacitor/preferences';
@@ -51,7 +49,6 @@ export function useGrowth() {
       if (badgesR.value)  { try { setBadgesRaw(JSON.parse(badgesR.value)); } catch (_e) {} }
       if (styleR.value)   setLearnedStyleRaw(styleR.value);
 
-      // Update streak on open
       const today = new Date().toLocaleDateString('id');
       const last  = lastR.value || '';
       if (last !== today) {
@@ -85,7 +82,6 @@ export function useGrowth() {
     const newXp = xp + gain;
     setXp(newXp);
 
-    // Cek badge baru
     const earned = BADGES.filter(b =>
       !badges.includes(b.id) && b.req(newXp, streak)
     );
@@ -99,20 +95,17 @@ export function useGrowth() {
 
   // ── learnFromSession — analisis pola coding, update learnedStyle ──
   async function learnFromSession(messages, folder) {
-    // Minimal 5 pesan dan ada aktivitas file
     const hasFileActivity = messages.some(m =>
       m.content?.includes('write_file') || m.content?.includes('patch_file')
     );
     if (messages.length < 5 || !hasFileActivity) return;
 
-    // Ambil sample pesan user
     const userMsgs = messages
       .filter(m => m.role === 'user')
       .slice(-8)
       .map(m => m.content.slice(0, 200))
       .join('\n---\n');
 
-    // Ambil sample kode yang ditulis AI
     const codeActivity = messages
       .filter(m => m.role === 'assistant' && m.content?.includes('```'))
       .slice(-5)
@@ -139,7 +132,6 @@ Singkat, konkret, actionable. Bahasa Indonesia.`
 
       if (!reply.includes('•')) return;
 
-      // Merge dengan style lama — pertahankan yang lama, update/tambah yang baru
       const oldLines = learnedStyle.split('\n').filter(l => l.startsWith('•'));
       const newLines = reply.split('\n').filter(l => l.startsWith('•'));
       const merged   = [...new Set([...oldLines, ...newLines])].slice(0, 15);

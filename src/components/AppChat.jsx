@@ -1,6 +1,4 @@
 // ── AppChat ───────────────────────────────────────────────────────────────────
-// Center area: multi-tab bar, chat, file viewer, file editor, terminal,
-// live preview, keyboard row, follow-up chips, quick bar, and composer.
 import React, { useState, useRef, useEffect } from 'react';
 import { Pin, Eye, ScrollText, Camera, Paperclip, Volume2, VolumeX, Loader, Play } from 'lucide-react';
 import { hl } from '../utils.js';
@@ -27,14 +25,12 @@ export function AppChat({
   const inputRef      = useRef(null);
   const fileEditorRef = useRef(null);
 
-  // editorConfig derived from ui prefs
   const editorConfig = {
     vimMode:     ui.vimMode,
     emmet:       true,
     ghostText:   ui.ghostTextEnabled,
     minimap:     ui.showMinimap,
     lint:        ui.lintEnabled,
-    // Fase 3
     tsLsp:       ui.tsLspEnabled,
     blame:       ui.blameEnabled,
     multiCursor: ui.multiCursor,
@@ -47,12 +43,10 @@ export function AppChat({
 
   // ── Keyboard row insert handler ──────────────────────────────────────────
   function handleKeyboardInsert(text) {
-    // If file editor is visible and focused → insert into CM
     if (file.activeTab === 'file' && file.editMode && fileEditorRef.current) {
       fileEditorRef.current.insert(text);
       return;
     }
-    // Fallback: insert into textarea
     const el = inputRef.current;
     if (!el) return;
     const start = el.selectionStart ?? el.value.length;
@@ -65,7 +59,6 @@ export function AppChat({
     });
   }
 
-  // Active tab object
   const activeTab = file.openTabs[file.activeTabIdx] || null;
 
   return (
@@ -246,8 +239,6 @@ export function AppChat({
             </div>
             <pre style={{ margin: 0, padding: '8px 12px', whiteSpace: 'pre-wrap',
               wordBreak: 'break-word', color: T.textSec, flex: 1 }}
-              // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
-              // safe: hl() escapes &, <, > before any processing
               dangerouslySetInnerHTML={{ __html: hl(activeTab.content || '', activeTab.path?.split('.').pop() || '') }}/* hl() sanitizes input: escapes &<> before adding only <span> tags *//>
           </div>
         </div>
@@ -425,11 +416,9 @@ export function AppChat({
                 e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
                 if (e.target.value.startsWith('/')) {
                   const typed = e.target.value.toLowerCase();
-                  // Fuzzy prefix + substring match
                   const matched = SLASH_COMMANDS.filter(s =>
                     s.cmd.startsWith(typed) || s.cmd.includes(typed.slice(1))
                   );
-                  // Context boost: periksa pesan terakhir untuk saran relevan
                   const lastMsg = chat.messages[chat.messages.length - 1];
                   const lastContent = (lastMsg?.content || '').toLowerCase();
                   const contextBoost = [];
@@ -443,7 +432,6 @@ export function AppChat({
                     if (lastContent.includes('selesai') || lastContent.includes('done') || lastContent.includes('✅'))
                       contextBoost.push('/review --all', '/lint', '/test');
                   }
-                  // Sort: context boost dulu, lalu alphabetical
                   const sorted = [...matched].sort((a, b) => {
                     const aBoost = contextBoost.includes(a.cmd) ? -1 : 0;
                     const bBoost = contextBoost.includes(b.cmd) ? -1 : 0;

@@ -2,29 +2,26 @@ export const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
 export const GROQ_KEY     = import.meta.env.VITE_GROQ_API_KEY     || '';
 export const TAVILY_KEY   = import.meta.env.VITE_TAVILY_API_KEY   || '';
 
-// Re-export THEMES_MAP as THEMES untuk backward compat (panels.jsx, App.jsx)
 export { THEMES_MAP as THEMES } from './themes/index.js';
 export const YUYU_SERVER  = 'http://localhost:8765';
 export const WS_SERVER    = 'ws://127.0.0.1:8766';
 export const MAX_HISTORY  = 60;
 
 // ── Agent loop limits ─────────────────────────────────────────────────────────
-export const AUTO_COMPACT_CHARS   = 80_000;  // trigger auto-compact
-export const CONTEXT_WARN_CHARS    = 50_000;  // show yellow context bar warning
-export const AUTO_COMPACT_MIN_MSG = 12;      // min messages before auto-compact
-export const MAX_FILE_PREVIEW     = 2_000;   // chars of open file injected to context
-export const MAX_SKILL_PREVIEW    = 6_000;   // max chars per skill in context
-export const CONTEXT_RECENT_KEEP  = 6;       // messages kept after compact
+export const AUTO_COMPACT_CHARS   = 80_000;
+export const CONTEXT_WARN_CHARS    = 50_000;
+export const AUTO_COMPACT_MIN_MSG = 12;
+export const MAX_FILE_PREVIEW     = 2_000;
+export const MAX_SKILL_PREVIEW    = 6_000;
+export const CONTEXT_RECENT_KEEP  = 6;
 
 // ── Vision ───────────────────────────────────────────────────────────────────
 export const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 export const FALLBACK_MODEL = 'moonshotai/kimi-k2-instruct-0905';
 
 export const MODELS = [
-  // Cerebras — ultra-fast inference
   { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥',  provider: 'cerebras' },
   { id: 'llama3.1-8b',                    label: 'Llama 3.1 8B ⚡',  provider: 'cerebras' },
-  // Groq — large context, fallback
   { id: 'moonshotai/kimi-k2-instruct-0905',           label: 'Kimi K2 🌙',        provider: 'groq' },
   { id: 'llama-3.3-70b-versatile',                    label: 'Llama 3.3 70B 🦙',  provider: 'groq' },
   { id: 'meta-llama/llama-4-scout-17b-16e-instruct',  label: 'Llama 4 Scout 👁',  provider: 'groq' },

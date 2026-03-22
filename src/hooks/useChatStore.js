@@ -81,7 +81,6 @@ export function useChatStore() {
 
   // ── Auto memory extraction ──
   async function extractMemories(userMsg, aiReply, folder) {
-    // Skip kalau reply terlalu pendek atau tidak technical
     if (aiReply.length < 300) return;
     const technicalSignals = /\.(jsx?|tsx?|py|sh|json|yml|md)\b|```|patch_file|write_file|exec|import |function |class |const |error|bug|fix|install|npm|git/i;
     if (!technicalSignals.test(aiReply) && !technicalSignals.test(userMsg)) return;
@@ -104,14 +103,12 @@ export function useChatStore() {
   function getRelevantMemories(txt) {
     if (!memories.length) return [];
     const ranked = tfidfRank(memories, txt, 5);
-    // Fallback to most recent if no scores > 0
     const hasScore = ranked.some(m => (m._score || 0) > 0);
     return hasScore ? ranked : memories.slice(0, 5);
   }
 
   // ── saveCheckpoint — chat + file snapshot via git stash snapshot ──
   async function saveCheckpoint(folder, branch, notes, callServerFn) {
-    // Snapshot file state: capture git diff as patch
     let filePatch = '';
     if (folder && callServerFn) {
       const diffR = await callServerFn({ type: 'exec', path: folder, command: 'git diff HEAD 2>/dev/null | head -200' });
@@ -134,7 +131,6 @@ export function useChatStore() {
     setMessages(cp.messages || []);
     if (cp.folder) { setFolder(cp.folder); setFolderInput(cp.folder); }
     if (cp.notes) setNotesRaw(cp.notes);
-    // Offer to restore file state via reverse patch
     if (cp.filePatch && cp.filePatch.trim() && callServerFn) {
       const revert = await callServerFn({ type: 'exec', path: cp.folder, command: 'git stash 2>/dev/null && echo STASHED || echo SKIP' });
       const stashed = revert.ok && (revert.data||'').includes('STASHED');
@@ -206,7 +202,6 @@ export function useChatStore() {
     visionImage, setVisionImage,
     slashSuggestions, setSlashSuggestions,
     ttsEnabled, setTtsEnabled,
-    // functions
     loadChatPrefs, persistMessages,
     trimHistory, extractMemories, getRelevantMemories,
     saveCheckpoint, restoreCheckpoint,

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { hl } from '../utils.js';
 import {
   FileText, Pencil, FileDiff, Folder, FolderOpen, Search, Globe,
   Network, ArrowRight, Trash2, Plug, Wrench, Check, X, Scissors,
@@ -14,7 +15,6 @@ export function ThinkingBlock({ text, T, live = false }) {
   const c    = tc.color || 'rgba(167,139,250,.5)';
   const cFaint = c.replace(/[\d.]+\)$/, '.15)') || 'rgba(167,139,250,.15)';
   const cBg    = c.replace(/[\d.]+\)$/, '.04)') || 'rgba(167,139,250,.04)';
-  // Count "steps" = non-empty paragraphs separated by blank lines
   const steps = text.trim().split(/\n\n+/).filter(s => s.trim()).length;
   const label = live
     ? 'Sedang berpikir…'
@@ -58,7 +58,6 @@ export function StreamingBubble({ text, T }) {
   const fxAi      = T?.fx?.aiBubble?.() || {};
   const textColor = T?.text || 'rgba(255,255,255,.9)';
 
-  // Parse <think> dari stream secara realtime
   const thinkMatch  = text.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
   const thinkText   = thinkMatch ? thinkMatch[1] : null;
   const thinkClosed = text.includes('</think>');
@@ -87,7 +86,6 @@ export function StreamingBubble({ text, T }) {
         {cleanText ? (
           <MsgContent text={cleanText} T={T}/>
         ) : !thinkText ? (
-          // Nothing yet — show blink cursor only
           <span style={{display:'inline-block',width:'2px',height:'14px',
             background:T?.accent||'#a78bfa',verticalAlign:'middle',
             animation:'blink 1s infinite'}}/>
@@ -103,6 +101,59 @@ export function StreamingBubble({ text, T }) {
 }
 
 // ── MsgContent — markdown + code blocks ──────────────────────────────────────
+function MsgContent({ text, T }) {
+  if (!text) return null;
+  const accent  = T?.accent  || '#a78bfa';
+  const textCol = T?.text    || 'rgba(255,255,255,.9)';
+  const mutedCol= T?.textMute|| 'rgba(255,255,255,.45)';
+  const borderC = T?.border  || 'rgba(255,255,255,.08)';
+  const codeBg  = T?.codeBg  || 'rgba(0,0,0,.35)';
+
+  const parts = text.split(/(```[\s\S]*?```)/g);
+  return (
+    <span style={{whiteSpace:'pre-wrap',wordBreak:'break-word'}}>
+      {parts.map((part, i) => {
+        const fence = part.match(/^```(\w*)\n?([\s\S]*?)```$/);
+        if (fence) {
+          const lang = fence[1] || '';
+          const code = fence[2];
+          const highlighted = hl(code, lang);
+          return (
+            <pre key={i} style={{
+              background: codeBg,
+              border: '1px solid ' + borderC,
+              borderRadius: '8px',
+              padding: '10px 14px',
+              margin: '8px 0',
+              overflowX: 'auto',
+              fontSize: '12.5px',
+              lineHeight: '1.65',
+              fontFamily: 'monospace',
+              whiteSpace: 'pre',
+            }}>
+              {lang && (
+                <div style={{fontSize:'10px',color:mutedCol,marginBottom:'6px',
+                  fontFamily:'monospace',letterSpacing:'.06em'}}>
+                  {lang}
+                </div>
+              )}
+              <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+            </pre>
+          );
+        }
+        const html = part
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+          .replace(/\*(.+?)\*/g,'<em>$1</em>')
+          .replace(/`([^`]+)`/g,`<code style="background:${codeBg};border-radius:4px;padding:1px 5px;font-family:monospace;font-size:12px;color:${accent}">$1</code>`)
+          .replace(/^#{1,3} (.+)$/gm,`<span style="font-weight:700;color:${textCol};font-size:15px">$1</span>`)
+          .replace(/^[-*] (.+)$/gm,'• $1');
+        return <span key={i} dangerouslySetInnerHTML={{ __html: html }} />;
+      })}
+    </span>
+  );
+}
+
 // ── MsgBubble ─────────────────────────────────────────────────────────────────
 export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, isLast, onAutoFix, onDelete, onEdit, T }) {
   const [actionsVisible,setActionsVisible]=useState(false);

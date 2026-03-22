@@ -30,16 +30,12 @@ export default function App() {
   const growth  = useGrowth();
 
   // ── Dynamic brightness filter — perceptual compensation ──────────────────
-  // Humans perceive brightness logarithmically (Weber-Fechner law).
-  // No filter above 25% brightness — normal usage range stays untouched.
-  // Below 25%: gentle linear boost max 1.4x + slight desaturation to
-  // counteract warm/orange shift (CSS brightness() boosts all RGB equally).
   const _brightnessCalc = (() => {
     const b = ui.brightnessLevel;
     if (b >= 0.25) return { filter: 'none', overlay: 0 };
     const t      = 1 - (b / 0.25);           // 0 at 25%, 1 at 0%
     const boost  = 1 + t * 0.40;             // 1.0x → 1.4x max
-    const desat  = 1 - t * 0.18;             // desaturate to prevent warm shift
+    const desat  = 1 - t * 0.18;
     const filter = `brightness(${boost.toFixed(3)}) saturate(${desat.toFixed(3)})`;
     const overlay = t * 0.08;
     return { filter, overlay };
@@ -204,7 +200,6 @@ export default function App() {
         try {
           const {event,filename} = JSON.parse(e.data);
           if (event==='watching'||!filename) return;
-          // Sanitize filename from server — strip null bytes and path traversal
           const safeFilename = String(filename).split('\u0000').join('').replace(/\.\.\//g,'');
           const absPath = project.folder+(safeFilename.startsWith('/')?safeFilename:'/'+safeFilename);
           const prev    = fileSnapshotsRef.current[absPath];

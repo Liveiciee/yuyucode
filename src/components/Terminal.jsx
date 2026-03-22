@@ -5,7 +5,6 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { callServer, execStream } from '../api.js';
 
-// xterm CSS diinject manual supaya tidak corrupt global styles
 const XTERM_CSS = `
 .xterm { height: 100%; }
 .xterm-viewport { overflow-y: auto !important; }
@@ -40,7 +39,7 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI, T }) {
   const [isRunning,   setIsRunning] = useState(false);
   const [histIdx,     setHistIdx]   = useState(-1);
 
-  const wrapRef   = useRef(null);  // outer wrapper div (flex:1)
+  const wrapRef   = useRef(null);
   const xtermRef  = useRef(null);  // xterm mount target
   const termRef   = useRef(null);
   const fitRef    = useRef(null);
@@ -97,7 +96,6 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI, T }) {
     term.loadAddon(fit);
     term.open(xtermRef.current);
 
-    // Fit after paint
     requestAnimationFrame(() => {
       try { fit.fit(); } catch(_e) {}
     });
@@ -109,7 +107,6 @@ export function Terminal({ folder, cmdHistory, addHistory, onSendToAI, T }) {
     term.writeln('\x1b[38;5;240m' + folder + '\x1b[0m');
     term.writeln('');
 
-    // ResizeObserver untuk fit otomatis
     const ro = new ResizeObserver(() => {
       requestAnimationFrame(() => {
         try { fit.fit(); } catch(_e) {}

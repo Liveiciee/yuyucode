@@ -1,5 +1,4 @@
 // ── Obsidian Warm ──────────────────────────────────────────────────────────────
-// Efek: CRT scanlines rolling, amber phosphor glow, screen vignette, warm static
 // ─────────────────────────────────────────────────────────────────────────────
 
 const theme = {

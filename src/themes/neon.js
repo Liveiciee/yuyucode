@@ -1,5 +1,4 @@
 // ── Neon Terminal ──────────────────────────────────────────────────────────────
-// Efek: real neon glow, flicker animation, cyberpunk grid, scan pulse
 // ─────────────────────────────────────────────────────────────────────────────
 
 const theme = {
@@ -106,31 +105,24 @@ const theme = {
 
   // ── Per-element effect functions ─────────────────────────────────────────
   fx: {
-    // Extra box-shadow for accented borders
     glowBorder: (color='#00ff8c', intensity=1) => ({
       boxShadow: `0 0 ${6*intensity}px ${color}88, 0 0 ${14*intensity}px ${color}44, inset 0 0 ${5*intensity}px ${color}11`,
     }),
-    // AI bubble extra glow
     aiBubble: () => ({
       boxShadow: '0 0 20px rgba(0,255,140,.08), 0 0 40px rgba(0,255,140,.04)',
     }),
-    // User bubble glow
     userBubble: () => ({
       boxShadow: '0 0 20px rgba(0,180,255,.14), 0 0 40px rgba(0,180,255,.06)',
     }),
-    // Neon text glow
     glowText: (color='#00ff8c') => ({
       textShadow: `0 0 7px ${color}, 0 0 14px ${color}88, 0 0 28px ${color}44`,
     }),
-    // Code block glow
     codeBlock: () => ({
       boxShadow: '0 0 1px rgba(0,255,140,.2), 0 0 8px rgba(0,255,140,.06)',
     }),
-    // Action chip glow when ok
     chipOk: () => ({
       boxShadow: '0 0 8px rgba(0,255,140,.25)',
     }),
-    // Input focus
     inputFocus: () => ({
       boxShadow: '0 0 0 1px rgba(0,255,140,.3), 0 0 12px rgba(0,255,140,.12)',
     }),

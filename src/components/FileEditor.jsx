@@ -1,7 +1,4 @@
 // ── FileEditor — CodeMirror 6 · Full IDE ─────────────────────────────────────
-// Fase 1+2: Multi-tab, Vim, Emmet, Ghost Text, Minimap, Lint
-// Fase 3:   TypeScript LSP, Inline Blame, Sticky Scroll, Code Fold,
-//           Multi-Cursor, Breadcrumb, Realtime Collab
 import React, { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { Save, ChevronRight } from 'lucide-react';
 import { EditorView, basicSetup } from 'codemirror';
@@ -137,7 +134,6 @@ const ghostField = StateField.define({
   },
 });
 
-// L2 ghost text — deeper preview (dimmer, different color)
 const ghostL2Field = StateField.define({
   create: () => ({ text: '', pos: 0 }),
   update(val, tr) {
@@ -156,7 +152,6 @@ class GhostWidget extends WidgetType {
   toDOM() {
     const span = document.createElement('span');
     span.textContent = this.text;
-    // L1: putih-biru transparan (sudah ada). L2: lebih gelap, multi-line preview
     span.style.cssText = this.level === 2
       ? 'opacity:0.22;color:#79b8ff;pointer-events:none;white-space:pre;'
       : 'opacity:0.38;color:inherit;pointer-events:none;';
@@ -175,7 +170,6 @@ const ghostDecorations = EditorView.decorations.compute([ghostField], state => {
 const ghostL2Decorations = EditorView.decorations.compute([ghostL2Field, ghostField], state => {
   const l1 = state.field(ghostField);
   const { text, pos } = state.field(ghostL2Field);
-  // Hanya tampilkan L2 kalau tidak ada L1 aktif
   if (!text || pos > state.doc.length || l1.text) return Decoration.none;
   return Decoration.set([Decoration.widget({ widget: new GhostWidget(text, 2), side: 1 }).range(pos)]);
 });
@@ -185,10 +179,8 @@ const ghostAcceptKeymap = keymap.of([{
   run(view) {
     const l1 = view.state.field(ghostField);
     const l2 = view.state.field(ghostL2Field);
-    // Tab+Tab: cek double-tab via timestamp
     const now = Date.now();
     if (!l1.text && l2.text) {
-      // accept L2
       view.dispatch({ changes: { from: l2.pos, insert: l2.text },
         effects: clearGhostEffect.of(null), selection: { anchor: l2.pos + l2.text.length } });
       return true;
@@ -196,7 +188,6 @@ const ghostAcceptKeymap = keymap.of([{
     if (l1.text) {
       view._lastTabTime = view._lastTabTime || 0;
       if (now - view._lastTabTime < 400 && l2.text) {
-        // double-tap Tab → accept L2
         view.dispatch({ changes: { from: l1.pos, insert: l1.text + l2.text },
           effects: clearGhostEffect.of(null), selection: { anchor: l1.pos + l1.text.length + l2.text.length } });
       } else {
@@ -277,7 +268,6 @@ function makeGhostPlugin() {
       if (text) upd.view.dispatch({ effects: clearGhostEffect.of(null) });
       const view = upd.view;
 
-      // L1: 300ms debounce — immediate next line
       this.timerL1 = setTimeout(() => {
         if (view.isDestroyed) return;
         const pos    = view.state.selection.main.head;
@@ -290,7 +280,6 @@ function makeGhostPlugin() {
         });
       }, 300);
 
-      // L2: 900ms debounce — deeper multi-line preview
       this.timerL2 = setTimeout(() => {
         if (view.isDestroyed) return;
         const pos    = view.state.selection.main.head;
@@ -340,7 +329,6 @@ async function fetchBlame(folder, filePath) {
   if (!r.ok || !r.data) return new Map();
   const map = new Map();
   (r.data || '').split('\n').forEach((line, idx) => {
-    // git blame --abbrev=7 format: "^abc1234 (Author   2024-01-01 1) code"
     const m = line.match(/^[\^]?([0-9a-f]{4,})\s+\(([^)]+?)\s+(\d{4}-\d{2}-\d{2})\s+\d+\)/);
     if (!m) return;
     const hash   = m[1].slice(0, 7);
@@ -458,7 +446,6 @@ function Minimap({ viewRef, T }) {
 function Breadcrumb({ viewRef, T }) {
   const [crumbs, setCrumbs] = useState([]);
 
-  // Listen to cursor movement via a plugin attached after mount
   const setCrumbsRef = useRef(setCrumbs);
   useEffect(() => { setCrumbsRef.current = setCrumbs; }, [setCrumbs]);
 
@@ -483,14 +470,10 @@ function Breadcrumb({ viewRef, T }) {
       }
       setCrumbsRef.current(path.slice(-4));
     }
-    // Initial read
     update(view);
-    // Subscribe via updateListener extension — inject as a state facet
-    // Since view is already created, we use a transaction listener
     const ext = EditorView.updateListener.of(upd => {
       if (upd.selectionSet || upd.docChanged) update(upd.view);
     });
-    // Inject via a new compartment on existing view
     const comp = new Compartment();
     view.dispatch({ effects: StateEffect.appendConfig.of(comp.of(ext)) });
     return () => {
@@ -533,7 +516,6 @@ function makeCollabPlugin(wsRef) {
       if (!ws || ws.readyState !== 1) { this.schedule(); return; }
       this.pushing = true;
       try {
-        // sendableUpdates is processed in update() — this slot reserved for future batch sends
         void 0;
       } finally { this.pushing = false; this.schedule(); }
     }
@@ -705,8 +687,6 @@ export const FileEditor = forwardRef(function FileEditor(
     getTsExtensions().then(mod => {
       if (cancelled || !mod) return;
       setTsReady(true);
-      // Further TS integration would attach completionSource + hoverTooltip here
-      // Requires a tsserver worker — deferred to when worker is available
     });
     return () => { cancelled = true; };
   }, [editorConfig?.tsLsp, tab?.path]);

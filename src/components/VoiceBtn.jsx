@@ -28,7 +28,6 @@ export function VoiceBtn({ onResult, disabled, T }) {
       const available = await SpeechRecognition.available();
       if (available.available) {
         await SpeechRecognition.requestPermissions();
-        // Show partial results
         SpeechRecognition.addListener('partialResults', (data) => {
           if (data.matches && data.matches.length > 0) setPartial(data.matches[0]);
         });
@@ -41,7 +40,6 @@ export function VoiceBtn({ onResult, disabled, T }) {
         return;
       }
     } catch (_e) { }
-    // Web fallback
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { alert('Speech recognition tidak tersedia'); return; }
     const r = new SR();

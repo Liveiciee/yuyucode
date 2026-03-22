@@ -1,5 +1,4 @@
 // ── Aurora Glass ───────────────────────────────────────────────────────────────
-// Efek: glassmorphism real, aurora bands bergerak, backdrop blur, refraction
 // ─────────────────────────────────────────────────────────────────────────────
 
 const theme = {
