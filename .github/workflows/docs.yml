@@ -37,6 +37,15 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Merge gh-pages content (bench, etc.)
+        run: |
+          git fetch origin gh-pages
+          git checkout origin/gh-pages -- dev/ 2>/dev/null || echo "no dev/ on gh-pages yet"
+          if [ -d dev ]; then
+            cp -r dev docs/.vitepress/dist/dev
+            echo "✅ Merged dev/ from gh-pages"
+          fi
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vitepress/dist
