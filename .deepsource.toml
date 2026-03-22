@@ -17,6 +17,7 @@ exclude_patterns = [
   "**/*.apk",
   "yugit.cjs",
   "yuyu-bench.cjs",
+  "bashrc-additions.sh",
 ]
 
 # ── Test patterns ─────────────────────────────────────────────────────────────
@@ -51,9 +52,6 @@ enabled = true
   # React JSX support — pakai plugins, bukan dialect
   # dialect hanya support "typescript" | "flow"
   plugins = ["react"]
-
-  # ES2022: class fields, top-level await, Array.at(), error.cause
-  ecma_version = "2022"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ANALYZER: Test Coverage
