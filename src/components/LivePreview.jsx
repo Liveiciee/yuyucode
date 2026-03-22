@@ -1,6 +1,6 @@
 // ── LivePreview — live HTML/CSS/JS iframe preview ─────────────────────────────
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { RefreshCw, AlertCircle } from 'lucide-react';
+import { RefreshCw, AlertCircle, Terminal as TermIcon } from 'lucide-react';
 
 const CONSOLE_INTERCEPT = `
 <script>

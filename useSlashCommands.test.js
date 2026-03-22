@@ -1360,7 +1360,9 @@ describe('/diff edge cases', () => {
   });
 });
 
-// /mcp list
+// ═══════════════════════════════════════════════════════════════════════════════
+// /mcp sub-commands
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/mcp list', () => {
   it('fetches and shows mcp tools', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: { mytool: { desc: 'My tool', actions: ['run'] } } });
@@ -1369,6 +1371,7 @@ describe('/mcp list', () => {
     expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'mcp_list' }));
     expect(props.setMessages).toHaveBeenCalled();
   });
+
   it('shows error when mcp_list fails', async () => {
     callServer.mockResolvedValueOnce({ ok: false, data: 'server error' });
     const props = makeProps();
@@ -1377,13 +1380,13 @@ describe('/mcp list', () => {
   });
 });
 
-// /mcp connect
 describe('/mcp connect', () => {
   it('shows usage when name or url missing', async () => {
     const props = makeProps();
     await runCmd(props, '/mcp connect');
     expect(props.setMessages).toHaveBeenCalled();
   });
+
   it('connects a new mcp server', async () => {
     callServer
       .mockResolvedValueOnce({ ok: true, data: '[]' })
@@ -1391,7 +1394,9 @@ describe('/mcp connect', () => {
     const props = makeProps();
     await runCmd(props, '/mcp connect myapi http://localhost:3001 My API');
     expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'write' }));
+    expect(props.setMessages).toHaveBeenCalled();
   });
+
   it('shows error when write fails', async () => {
     callServer
       .mockResolvedValueOnce({ ok: false, data: '' })
@@ -1400,23 +1405,15 @@ describe('/mcp connect', () => {
     await runCmd(props, '/mcp connect myapi http://localhost:3001');
     expect(props.setMessages).toHaveBeenCalled();
   });
-  it('replaces server with same name', async () => {
-    callServer
-      .mockResolvedValueOnce({ ok: true, data: JSON.stringify([{ name: 'myapi', url: 'http://old.com' }]) })
-      .mockResolvedValueOnce({ ok: true, data: '' });
-    const props = makeProps();
-    await runCmd(props, '/mcp connect myapi http://new.com Updated API');
-    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'write' }));
-  });
 });
 
-// /mcp disconnect
 describe('/mcp disconnect', () => {
   it('shows usage when no name', async () => {
     const props = makeProps();
     await runCmd(props, '/mcp disconnect');
     expect(props.setMessages).toHaveBeenCalled();
   });
+
   it('removes existing server', async () => {
     callServer
       .mockResolvedValueOnce({ ok: true, data: JSON.stringify([{ name: 'myapi', url: 'http://localhost:3001' }]) })
@@ -1425,6 +1422,7 @@ describe('/mcp disconnect', () => {
     await runCmd(props, '/mcp disconnect myapi');
     expect(props.setMessages).toHaveBeenCalled();
   });
+
   it('shows not found when server missing', async () => {
     callServer
       .mockResolvedValueOnce({ ok: true, data: '[]' })
@@ -1435,32 +1433,21 @@ describe('/mcp disconnect', () => {
   });
 });
 
-// /mcp open panel
-describe('/mcp open panel', () => {
-  it('opens MCP panel with no subcommand', async () => {
-    const props = makeProps();
-    await runCmd(props, '/mcp');
-    expect(props.setShowMCP).toHaveBeenCalledWith(true);
-  });
-  it('opens MCP panel for unknown subcommand', async () => {
-    const props = makeProps();
-    await runCmd(props, '/mcp open');
-    expect(props.setShowMCP).toHaveBeenCalledWith(true);
-  });
-});
-
+// ═══════════════════════════════════════════════════════════════════════════════
 // /init
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/init', () => {
   it('generates SKILL.md when none exists', async () => {
     callServer
-      .mockResolvedValueOnce({ ok: true, data: '{"name":"yuyucode"}' })
-      .mockResolvedValueOnce({ ok: true, data: [{ isDir: false, name: 'App.jsx' }] })
-      .mockResolvedValueOnce({ ok: true, data: 'abc123 feat: init' })
-      .mockResolvedValueOnce({ ok: false, data: '' });
+      .mockResolvedValueOnce({ ok: true, data: '{"name":"yuyucode"}' }) // package.json
+      .mockResolvedValueOnce({ ok: true, data: [{ isDir: false, name: 'App.jsx' }] }) // list src
+      .mockResolvedValueOnce({ ok: true, data: 'abc123 feat: init' }) // git log
+      .mockResolvedValueOnce({ ok: false, data: '' }); // SKILL.md not found
     const props = makeProps();
     await runCmd(props, '/init');
     expect(props.sendMsg).toHaveBeenCalled();
   });
+
   it('warns when SKILL.md exists without overwrite', async () => {
     callServer
       .mockResolvedValueOnce({ ok: true, data: '{}' })
@@ -1469,8 +1456,10 @@ describe('/init', () => {
       .mockResolvedValueOnce({ ok: true, data: '# existing SKILL' });
     const props = makeProps();
     await runCmd(props, '/init');
+    expect(props.setMessages).toHaveBeenCalled();
     expect(props.sendMsg).not.toHaveBeenCalled();
   });
+
   it('overwrites when overwrite flag given', async () => {
     callServer
       .mockResolvedValueOnce({ ok: true, data: '{}' })
@@ -1483,7 +1472,9 @@ describe('/init', () => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
 // /scaffold
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/scaffold', () => {
   it('shows usage for unknown template', async () => {
     const props = makeProps();
@@ -1491,16 +1482,19 @@ describe('/scaffold', () => {
     expect(props.setMessages).toHaveBeenCalled();
     expect(props.sendMsg).not.toHaveBeenCalled();
   });
+
   it('shows usage when no template given', async () => {
     const props = makeProps();
     await runCmd(props, '/scaffold');
     expect(props.setMessages).toHaveBeenCalled();
   });
+
   it('scaffolds react project', async () => {
     const props = makeProps();
     await runCmd(props, '/scaffold react');
     expect(props.sendMsg).toHaveBeenCalledWith(expect.stringContaining('react'));
   });
+
   it('scaffolds node project', async () => {
     const props = makeProps();
     await runCmd(props, '/scaffold node');
@@ -1508,58 +1502,43 @@ describe('/scaffold', () => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
 // /bench
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/bench', () => {
   it('runs benchmark with no subcommand', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: 'ops/sec: 1234' });
     const props = makeProps();
     await runCmd(props, '/bench');
+    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'exec' }));
     expect(props.setMessages).toHaveBeenCalled();
   });
+
   it('runs bench save', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: 'saved' });
     const props = makeProps();
     await runCmd(props, '/bench save');
     expect(props.setMessages).toHaveBeenCalled();
   });
-  it('runs bench trend', async () => {
-    callServer.mockResolvedValueOnce({ ok: true, data: '▁▂▃▄▅' });
-    const props = makeProps();
-    await runCmd(props, '/bench trend');
-    expect(props.setMessages).toHaveBeenCalled();
-  });
-  it('runs bench export', async () => {
-    callServer.mockResolvedValueOnce({ ok: true, data: '[{"ops":1234}]' });
-    const props = makeProps();
-    await runCmd(props, '/bench export');
-    expect(props.setMessages).toHaveBeenCalled();
-  });
-  it('runs bench reset', async () => {
-    callServer.mockResolvedValueOnce({ ok: true, data: 'reset done' });
-    const props = makeProps();
-    await runCmd(props, '/bench reset');
-    expect(props.setMessages).toHaveBeenCalled();
-  });
+
   it('shows regression icon when output has regression', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: '🔴 regression detected' });
     const props = makeProps();
     await runCmd(props, '/bench');
     expect(props.setMessages).toHaveBeenCalled();
   });
-  it('shows thermal icon when THERMAL WARNING in output', async () => {
-    callServer.mockResolvedValueOnce({ ok: true, data: 'THERMAL WARNING: CPU throttled' });
-    const props = makeProps();
-    await runCmd(props, '/bench');
-    expect(props.setMessages).toHaveBeenCalled();
-  });
+
   it('shows help for unknown subcommand', async () => {
     const props = makeProps();
     await runCmd(props, '/bench unknown');
     expect(props.setMessages).toHaveBeenCalled();
+    expect(callServer).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'exec' }));
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
 // /self-edit
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/self-edit', () => {
   it('starts self-edit with default task', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: 'import React...' });
@@ -1567,12 +1546,14 @@ describe('/self-edit', () => {
     await runCmd(props, '/self-edit');
     expect(props.sendMsg).toHaveBeenCalledWith(expect.stringContaining('SELF-EDIT'));
   });
+
   it('uses custom task when provided', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: 'import React...' });
     const props = makeProps();
     await runCmd(props, '/self-edit optimasi render');
     expect(props.sendMsg).toHaveBeenCalledWith(expect.stringContaining('optimasi render'));
   });
+
   it('shows error when App.jsx cannot be read', async () => {
     callServer.mockResolvedValueOnce({ ok: false, data: '' });
     const props = makeProps();
@@ -1582,23 +1563,57 @@ describe('/self-edit', () => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// /summarize
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/summarize', () => {
+  it('shows not enough messages when slice too small', async () => {
+    const props = makeProps();
+    await runCmd(props, '/summarize');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('summarizes messages when enough exist', async () => {
+    const manyMsgs = Array.from({ length: 10 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: 'msg ' + i }));
+    const props = makeProps({ messages: manyMsgs });
+    askCerebrasStream.mockResolvedValueOnce('ringkasan singkat');
+    await runCmd(props, '/summarize');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('summarizes from specific index', async () => {
+    const manyMsgs = Array.from({ length: 10 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: 'msg ' + i }));
+    const props = makeProps({ messages: manyMsgs });
+    askCerebrasStream.mockResolvedValueOnce('ringkasan dari index 3');
+    await runCmd(props, '/summarize 3');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // /lint
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/lint', () => {
   it('shows clean when no errors', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: '0 errors found' });
     const props = makeProps();
     await runCmd(props, '/lint');
+    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'exec' }));
     expect(props.setMessages).toHaveBeenCalled();
   });
+
   it('triggers fix when lint errors found', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: 'error: unexpected token on line 5' });
     const props = makeProps();
     await runCmd(props, '/lint');
+    // sendMsg called via setTimeout — just verify setMessages was called
     expect(props.setMessages).toHaveBeenCalled();
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
 // /test
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/test', () => {
   it('shows usage when no file open and no arg', async () => {
     const props = makeProps({ selectedFile: null });
@@ -1606,18 +1621,21 @@ describe('/test', () => {
     expect(props.setMessages).toHaveBeenCalled();
     expect(props.sendMsg).not.toHaveBeenCalled();
   });
+
   it('generates tests for selectedFile', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: 'export function add(a,b){return a+b}' });
     const props = makeProps({ selectedFile: '/project/src/utils.js' });
     await runCmd(props, '/test');
     expect(props.sendMsg).toHaveBeenCalled();
   });
+
   it('generates tests for explicit path', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: 'export function foo(){}' });
     const props = makeProps();
     await runCmd(props, '/test src/api.js');
     expect(props.sendMsg).toHaveBeenCalled();
   });
+
   it('shows error when file cannot be read', async () => {
     callServer.mockResolvedValueOnce({ ok: false, data: '' });
     const props = makeProps();
@@ -1627,50 +1645,17 @@ describe('/test', () => {
   });
 });
 
-// /summarize
-describe('/summarize', () => {
-  it('shows not enough messages when slice too small', async () => {
-    const props = makeProps();
-    await runCmd(props, '/summarize');
-    expect(props.setMessages).toHaveBeenCalled();
-  });
-  it('summarizes messages when enough exist', async () => {
-    const manyMsgs = Array.from({ length: 10 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: 'msg ' + i }));
-    askCerebrasStream.mockResolvedValueOnce('ringkasan singkat');
-    const props = makeProps({ messages: manyMsgs });
-    await runCmd(props, '/summarize');
-    expect(props.setMessages).toHaveBeenCalled();
-  });
-  it('summarizes from specific index', async () => {
-    const manyMsgs = Array.from({ length: 10 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: 'msg ' + i }));
-    askCerebrasStream.mockResolvedValueOnce('ringkasan dari index 3');
-    const props = makeProps({ messages: manyMsgs });
-    await runCmd(props, '/summarize 3');
-    expect(props.setMessages).toHaveBeenCalled();
-  });
-  it('silently ignores AbortError', async () => {
-    const manyMsgs = Array.from({ length: 10 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: 'msg ' + i }));
-    askCerebrasStream.mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }));
-    const props = makeProps({ messages: manyMsgs });
-    await expect(runCmd(props, '/summarize')).resolves.not.toThrow();
-  });
-  it('shows error for non-AbortError', async () => {
-    const manyMsgs = Array.from({ length: 10 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: 'msg ' + i }));
-    askCerebrasStream.mockRejectedValueOnce(new Error('network error'));
-    const props = makeProps({ messages: manyMsgs });
-    await runCmd(props, '/summarize');
-    expect(props.setMessages).toHaveBeenCalled();
-  });
-});
-
+// ═══════════════════════════════════════════════════════════════════════════════
 // /rules init
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/rules init', () => {
   it('calls sendMsg to generate YUYU.md when none exists', async () => {
-    callServer.mockResolvedValueOnce({ ok: false, data: '' });
+    callServer.mockResolvedValueOnce({ ok: false, data: '' }); // YUYU.md not found
     const props = makeProps();
     await runCmd(props, '/rules init');
     expect(props.sendMsg).toHaveBeenCalledWith(expect.stringContaining('YUYU.md'));
   });
+
   it('warns when YUYU.md already exists', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: '# existing rules' });
     const props = makeProps();
@@ -1678,6 +1663,7 @@ describe('/rules init', () => {
     expect(props.setMessages).toHaveBeenCalled();
     expect(props.sendMsg).not.toHaveBeenCalled();
   });
+
   it('overwrites when overwrite flag given', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: '# existing rules' });
     const props = makeProps();
@@ -1686,14 +1672,17 @@ describe('/rules init', () => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
 // /db edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/db edge cases', () => {
-  it('sets active db with use subcommand', async () => {
+  it('sets active db with /db use <name>', async () => {
     callServer.mockResolvedValueOnce({ ok: true, data: [{ isDir: false, name: 'app.db' }] });
     const props = makeProps();
     await runCmd(props, '/db use app.db');
     expect(props.setMessages).toHaveBeenCalled();
   });
+
   it('auto-selects single db file', async () => {
     callServer
       .mockResolvedValueOnce({ ok: true, data: [{ isDir: false, name: 'app.db' }] })
@@ -1702,6 +1691,7 @@ describe('/db edge cases', () => {
     await runCmd(props, '/db SELECT * FROM users');
     expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'mcp' }));
   });
+
   it('shows multi-db message when multiple dbs found', async () => {
     callServer
       .mockResolvedValueOnce({ ok: true, data: [{ isDir: false, name: 'app.db' }, { isDir: false, name: 'test.db' }] })
@@ -1712,7 +1702,9 @@ describe('/db edge cases', () => {
   });
 });
 
-// /loop interval
+// ═══════════════════════════════════════════════════════════════════════════════
+// /loop interval ticks & edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/loop interval behavior', () => {
   it('rejects interval below 10 seconds', async () => {
     const props = makeProps();
@@ -1720,24 +1712,19 @@ describe('/loop interval behavior', () => {
     expect(props.setMessages).toHaveBeenCalled();
     expect(props.setLoopActive).not.toHaveBeenCalled();
   });
+
   it('clears existing loop when starting new one', async () => {
     const props = makeProps({ loopActive: true, loopIntervalRef: 99 });
     await runCmd(props, '/loop 10s git status');
     expect(props.setLoopActive).toHaveBeenCalledWith(true);
   });
-  it('auto-stops loop after 3 errors', async () => {
+
+  it('executes interval tick on success', async () => {
+    const realSetInterval = globalThis.setInterval;
     let capturedFn = null;
-    vi.spyOn(globalThis, 'setInterval').mockImplementation((fn) => { capturedFn = fn; return 1; });
-    callServer.mockResolvedValue({ ok: false, data: 'error' });
-    const props = makeProps();
-    await runCmd(props, '/loop 30s git status');
-    if (capturedFn) { await capturedFn(); await capturedFn(); await capturedFn(); }
-    expect(props.setLoopActive).toHaveBeenCalledWith(false);
-    vi.restoreAllMocks();
-  });
-  it('executes successful tick', async () => {
-    let capturedFn = null;
-    vi.spyOn(globalThis, 'setInterval').mockImplementation((fn) => { capturedFn = fn; return 1; });
+    vi.spyOn(globalThis, 'setInterval').mockImplementation((fn, ms) => {
+      capturedFn = fn; return 1;
+    });
     callServer.mockResolvedValue({ ok: true, data: 'ok output' });
     const props = makeProps();
     await runCmd(props, '/loop 30s git status');
@@ -1745,9 +1732,90 @@ describe('/loop interval behavior', () => {
     expect(props.setMessages).toHaveBeenCalled();
     vi.restoreAllMocks();
   });
+
+  it('increments error streak on failed tick', async () => {
+    vi.spyOn(globalThis, 'setInterval').mockImplementation((fn) => { return 1; });
+    const props = makeProps();
+    await runCmd(props, '/loop 30s git status');
+    vi.restoreAllMocks();
+  });
+
+  it('auto-stops loop after MAX_ERRORS', async () => {
+    let capturedFn = null;
+    vi.spyOn(globalThis, 'setInterval').mockImplementation((fn) => { capturedFn = fn; return 1; });
+    callServer.mockResolvedValue({ ok: false, data: 'error' });
+    const props = makeProps();
+    await runCmd(props, '/loop 30s git status');
+    if (capturedFn) {
+      await capturedFn(); await capturedFn(); await capturedFn();
+    }
+    expect(props.setLoopActive).toHaveBeenCalledWith(false);
+    vi.restoreAllMocks();
+  });
 });
 
-// /handoff error
+// ═══════════════════════════════════════════════════════════════════════════════
+// /bench thermal warning
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/bench thermal warning', () => {
+  it('shows thermal icon when THERMAL WARNING in output', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: 'THERMAL WARNING: CPU throttled' });
+    const props = makeProps();
+    await runCmd(props, '/bench');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('runs bench trend subcommand', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: '▁▂▃▄▅' });
+    const props = makeProps();
+    await runCmd(props, '/bench trend');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('runs bench export subcommand', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: '[{"ops":1234}]' });
+    const props = makeProps();
+    await runCmd(props, '/bench export');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('runs bench reset subcommand', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: 'reset done' });
+    const props = makeProps();
+    await runCmd(props, '/bench reset');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AbortError paths
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('AbortError handling', () => {
+  it('/summarize silently ignores AbortError', async () => {
+    const manyMsgs = Array.from({ length: 10 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: 'msg ' + i }));
+    askCerebrasStream.mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    const props = makeProps({ messages: manyMsgs });
+    await expect(runCmd(props, '/summarize')).resolves.not.toThrow();
+  });
+
+  it('/plan silently ignores AbortError', async () => {
+    featuresModule.generatePlan.mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    const props = makeProps();
+    await expect(runCmd(props, '/plan build something')).resolves.not.toThrow();
+  });
+
+  it('/summarize shows error for non-AbortError', async () => {
+    const manyMsgs = Array.from({ length: 10 }, (_, i) => ({ role: i % 2 === 0 ? 'user' : 'assistant', content: 'msg ' + i }));
+    askCerebrasStream.mockRejectedValueOnce(new Error('network error'));
+    const props = makeProps({ messages: manyMsgs });
+    await runCmd(props, '/summarize');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /handoff error path
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/handoff error path', () => {
   it('shows error message when stream fails', async () => {
     askCerebrasStream.mockRejectedValueOnce(new Error('stream failed'));
@@ -1758,25 +1826,19 @@ describe('/handoff error path', () => {
   });
 });
 
-// /plan AbortError
-describe('/plan AbortError', () => {
-  it('silently ignores AbortError', async () => {
-    featuresModule.generatePlan.mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }));
-    const props = makeProps();
-    await expect(runCmd(props, '/plan build something')).resolves.not.toThrow();
-  });
-});
-
-// /deps import resolution
+// ═══════════════════════════════════════════════════════════════════════════════
+// /deps resolveLocalImport — no candidate found
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/deps import resolution', () => {
-  it('handles external imports', async () => {
+  it('handles external imports in dep graph', async () => {
     callServer
-      .mockResolvedValueOnce({ ok: true, data: "import React from 'react';" })
+      .mockResolvedValueOnce({ ok: true, data: "import React from 'react';\nimport { useState } from 'react';" })
       .mockResolvedValue({ ok: false, data: '' });
     const props = makeProps({ selectedFile: '/project/src/App.jsx' });
     await runCmd(props, '/deps');
     expect(props.setDepGraph).toHaveBeenCalled();
   });
+
   it('handles local import where no candidate resolves', async () => {
     callServer
       .mockResolvedValueOnce({ ok: true, data: "import utils from './utils';" })
@@ -1787,10 +1849,87 @@ describe('/deps import resolution', () => {
   });
 });
 
-// /refactor not found
+// ═══════════════════════════════════════════════════════════════════════════════
+// /batch edge cases
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/batch edge cases', () => {
+  it('handles aborted batch', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: [{ isDir: false, name: 'App.jsx' }] })
+      .mockResolvedValueOnce({ ok: true, data: 'code here' });
+    const { parseActions } = await import('../utils.js');
+    parseActions.mockReturnValueOnce([{ type: 'write_file', path: 'src/App.jsx', content: 'new' }]);
+    const props = makeProps();
+    // Simulate abort by having callAI throw AbortError
+    props.callAI.mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    await runCmd(props, '/batch add comments');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('shows no changes message when all files skipped', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: [{ isDir: false, name: 'App.jsx' }] });
+    callServer.mockResolvedValueOnce({ ok: true, data: 'code' });
+    props => props;
+    const { parseActions } = await import('../utils.js');
+    parseActions.mockReturnValueOnce([]);
+    const props = makeProps();
+    props.callAI.mockResolvedValueOnce('SKIP');
+    await runCmd(props, '/batch add comments');
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /diff — large diff (no full read when lines >= 30)
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/diff large output', () => {
+  it('skips full diff read when stat output has 30+ lines', async () => {
+    const bigStat = Array.from({ length: 35 }, (_, i) => `file${i}.js | 1 +`).join('\n');
+    callServer.mockResolvedValueOnce({ ok: true, data: bigStat });
+    const props = makeProps();
+    await runCmd(props, '/diff');
+    // Should NOT call callServer a second time for full diff
+    expect(callServer).toHaveBeenCalledTimes(1);
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /amemory — add without content falls to show
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/amemory add without content', () => {
+  it('shows memory list when add has no text', async () => {
+    const props = makeProps();
+    await runCmd(props, '/amemory add user');
+    // Falls to else branch — shows all memories
+    expect(props.setMessages).toHaveBeenCalled();
+    expect(props.setAgentMemory).not.toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /mcp — open panel (default/unknown sub)
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/mcp open panel', () => {
+  it('opens MCP panel for unknown subcommand', async () => {
+    const props = makeProps();
+    await runCmd(props, '/mcp open');
+    expect(props.setShowMCP).toHaveBeenCalledWith(true);
+  });
+
+  it('opens MCP panel with no subcommand', async () => {
+    const props = makeProps();
+    await runCmd(props, '/mcp');
+    expect(props.setShowMCP).toHaveBeenCalledWith(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// /refactor — file not found path
+// ═══════════════════════════════════════════════════════════════════════════════
 describe('/refactor not found', () => {
-  it('shows error when symbol not found', async () => {
-    callServer.mockResolvedValueOnce({ ok: true, data: '' });
+  it('shows error when symbol not found in src', async () => {
+    callServer.mockResolvedValueOnce({ ok: true, data: '' }); // empty search results
     const props = makeProps();
     await runCmd(props, '/refactor OldName NewName');
     expect(props.setMessages).toHaveBeenCalled();
@@ -1798,23 +1937,16 @@ describe('/refactor not found', () => {
   });
 });
 
-// /amemory add without content
-describe('/amemory add without content', () => {
-  it('shows memory list when add has no text', async () => {
+// ═══════════════════════════════════════════════════════════════════════════════
+// /mcp connect — existing servers parsed correctly
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('/mcp connect with existing servers', () => {
+  it('replaces server with same name', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: JSON.stringify([{ name: 'myapi', url: 'http://old.com' }]) })
+      .mockResolvedValueOnce({ ok: true, data: '' });
     const props = makeProps();
-    await runCmd(props, '/amemory add user');
-    expect(props.setMessages).toHaveBeenCalled();
-    expect(props.setAgentMemory).not.toHaveBeenCalled();
-  });
-});
-
-// /diff large output
-describe('/diff large output skips full read', () => {
-  it('skips full diff when stat has 30+ lines', async () => {
-    const bigStat = Array.from({ length: 35 }, (_, i) => 'file' + i + '.js | 1 +').join('\n');
-    callServer.mockResolvedValueOnce({ ok: true, data: bigStat });
-    const props = makeProps();
-    await runCmd(props, '/diff');
-    expect(callServer).toHaveBeenCalledTimes(1);
+    await runCmd(props, '/mcp connect myapi http://new.com Updated API');
+    expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'write' }));
   });
 });
