@@ -173,6 +173,42 @@ function buildTree(dirPath, depth, maxDepth, prefix) {
   return out;
 }
 
+const CODE_EXTS = new Set(['.js', '.jsx', '.ts', '.tsx']);
+const IGNORE    = new Set(['node_modules', '.git', 'android', 'dist', '__snapshots__']);
+
+function walkSync(dir) {
+  const out = [];
+  try {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (IGNORE.has(e.name) || e.name.startsWith('.')) continue;
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) out.push(...walkSync(full));
+      else if (CODE_EXTS.has(path.extname(e.name))) out.push(full);
+    }
+  } catch (_) {}
+  return out;
+}
+
+function extractSigs(src, _filePath) {
+  const sigs = [];
+  // export function / async function
+  const re1 = /^export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]{0,120})\)/gm;
+  // export const = arrow
+  const re2 = /^export\s+const\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]{0,80})\)\s*=>/gm;
+  // function Component / function useHook
+  const re3 = /^(?:export\s+)?(?:default\s+)?function\s+([A-Za-z]\w+)\s*\(([^)]{0,80})\)/gm;
+  for (const re of [re1, re2, re3]) {
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      if (!sigs.find(s => s.name === m[1])) {
+        const icon = /^use[A-Z]/.test(m[1]) ? '🪝' : /^[A-Z]/.test(m[1]) ? '⚛' : 'ƒ';
+        sigs.push({ name: m[1], sig: '(' + m[2].trim() + ')', icon });
+      }
+    }
+  }
+  return sigs;
+}
+
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 function handle(payload) {
   const {
@@ -215,41 +251,6 @@ function handle(payload) {
     const srcPath = filePath ? resolvePath(filePath) : path.join(HOME, 'yuyucode', 'src');
     if (!fs.existsSync(srcPath)) return { ok: false, data: 'Path tidak ada: ' + srcPath };
 
-    const CODE_EXTS = new Set(['.js', '.jsx', '.ts', '.tsx']);
-    const IGNORE    = new Set(['node_modules', '.git', 'android', 'dist', '__snapshots__']);
-
-    function walkSync(dir) {
-      const out = [];
-      try {
-        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-          if (IGNORE.has(e.name) || e.name.startsWith('.')) continue;
-          const full = path.join(dir, e.name);
-          if (e.isDirectory()) out.push(...walkSync(full));
-          else if (CODE_EXTS.has(path.extname(e.name))) out.push(full);
-        }
-      } catch (_) {}
-      return out;
-    }
-
-    function extractSigs(src, _filePath) {
-      const sigs = [];
-      // export function / async function
-      const re1 = /^export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]{0,120})\)/gm;
-      // export const = arrow
-      const re2 = /^export\s+const\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]{0,80})\)\s*=>/gm;
-      // function Component / function useHook
-      const re3 = /^(?:export\s+)?(?:default\s+)?function\s+([A-Za-z]\w+)\s*\(([^)]{0,80})\)/gm;
-      for (const re of [re1, re2, re3]) {
-        let m;
-        while ((m = re.exec(src)) !== null) {
-          if (!sigs.find(s => s.name === m[1])) {
-            const icon = /^use[A-Z]/.test(m[1]) ? '🪝' : /^[A-Z]/.test(m[1]) ? '⚛' : 'ƒ';
-            sigs.push({ name: m[1], sig: '(' + m[2].trim() + ')', icon });
-          }
-        }
-      }
-      return sigs;
-    }
 
     const files = walkSync(srcPath);
     const result = [];
