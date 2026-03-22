@@ -382,3 +382,130 @@ describe('useApprovalFlow — handlePlanApprove with steps', () => {
     expect(ctx.setMessages).toHaveBeenCalled();
   });
 });
+
+// ── verifySyntax — unknown ext, !cmd continue ────────────────────────────────
+describe('useApprovalFlow — verifySyntax unknown ext skipped', () => {
+  it('skips syntax check for unknown extensions like .css', async () => {
+    const action = { type: 'write_file', path: 'styles.css', executed: false };
+    mockCallServer.mockResolvedValueOnce({ ok: true, data: 'backup' });
+    executeAction.mockResolvedValue({ ok: true, data: 'written' });
+
+    const ctx = makeCtx({
+      permissions: { exec: true },
+      messages: [{ role: 'assistant', content: 'write', actions: [action] }],
+    });
+    const { handleApprove } = useApprovalFlow(ctx);
+    await handleApprove(0, true, null);
+    // exec should NOT be called for .css (getSyntaxCmd returns null)
+    const execCalls = mockCallServer.mock.calls.filter(c => c[0]?.type === 'exec');
+    expect(execCalls.length).toBe(0);
+  });
+
+  it('skips syntax check for .md files', async () => {
+    const action = { type: 'write_file', path: 'README.md', executed: false };
+    mockCallServer.mockResolvedValueOnce({ ok: true, data: 'backup' });
+    executeAction.mockResolvedValue({ ok: true, data: 'written' });
+
+    const ctx = makeCtx({
+      permissions: { exec: true },
+      messages: [{ role: 'assistant', content: 'write', actions: [action] }],
+    });
+    const { handleApprove } = useApprovalFlow(ctx);
+    await handleApprove(0, true, null);
+    const execCalls = mockCallServer.mock.calls.filter(c => c[0]?.type === 'exec');
+    expect(execCalls.length).toBe(0);
+  });
+});
+
+// ── verifySyntax — !vOut continue (exec returns empty) ───────────────────────
+describe('useApprovalFlow — verifySyntax empty output skipped', () => {
+  it('skips error check when exec returns empty vOut', async () => {
+    const action = { type: 'write_file', path: 'src/App.js', executed: false };
+    mockCallServer
+      .mockResolvedValueOnce({ ok: true, data: 'backup' })
+      .mockResolvedValueOnce({ ok: true, data: '   ' }); // empty/whitespace output
+
+    executeAction.mockResolvedValue({ ok: true, data: 'written' });
+    const sendMsgRef = { current: vi.fn() };
+    const ctx = makeCtx({
+      permissions: { exec: true },
+      messages: [{ role: 'assistant', content: 'write', actions: [action] }],
+      sendMsgRef,
+    });
+    const { handleApprove } = useApprovalFlow(ctx);
+    await handleApprove(0, true, null);
+    // No syntax error message should be posted
+    const allCalls = ctx.setMessages.mock.calls.flat();
+    const msgs = allCalls.map(c => typeof c === 'function' ? c([]) : c).flat();
+    const hasSyntaxErr = msgs.some(m => m?.content?.includes('Syntax error'));
+    expect(hasSyntaxErr).toBe(false);
+  });
+});
+
+// ── handlePlanApprove — step with patch_file writes ──────────────────────────
+describe('useApprovalFlow — handlePlanApprove patch_file write', () => {
+  it('treats patch_file as a write action in plan step', async () => {
+    const { parsePlanSteps } = await import('../features.js');
+    parsePlanSteps.mockReturnValue([
+      { num: 1, text: 'Patch file', done: false, result: null },
+    ]);
+    const { executePlanStep } = await import('../features.js');
+    executePlanStep.mockResolvedValue({
+      reply: 'Patching...',
+      actions: [{ type: 'patch_file', path: 'src/App.jsx', old_str: 'old', new_str: 'new' }],
+    });
+
+    const ctx = makeCtx({
+      messages: [{ role: 'assistant', content: '1. Patch file', actions: [] }],
+    });
+    const { handlePlanApprove } = useApprovalFlow(ctx);
+    await handlePlanApprove(0, true);
+    expect(ctx.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── handlePlanApprove — step reply only (no writes), else if (cleaned) ───────
+describe('useApprovalFlow — handlePlanApprove reply only no writes', () => {
+  it('shows reply text when step has no write actions but has content', async () => {
+    const { parsePlanSteps } = await import('../features.js');
+    parsePlanSteps.mockReturnValue([
+      { num: 1, text: 'Analysis step', done: false, result: null },
+    ]);
+    const { executePlanStep } = await import('../features.js');
+    executePlanStep.mockResolvedValue({
+      reply: 'Here is the analysis result without any file changes.',
+      actions: [], // no write/patch actions
+    });
+
+    const ctx = makeCtx({
+      messages: [{ role: 'assistant', content: '1. Analysis step', actions: [] }],
+    });
+    const { handlePlanApprove } = useApprovalFlow(ctx);
+    await handlePlanApprove(0, true);
+    expect(ctx.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── handlePlanApprove — step catch non-AbortError ────────────────────────────
+describe('useApprovalFlow — handlePlanApprove step throws non-AbortError', () => {
+  it('shows error message when step throws non-AbortError', async () => {
+    const { parsePlanSteps } = await import('../features.js');
+    parsePlanSteps.mockReturnValue([
+      { num: 1, text: 'Failing step', done: false, result: null },
+    ]);
+    const { executePlanStep } = await import('../features.js');
+    executePlanStep.mockRejectedValue(new Error('AI call failed'));
+
+    const ctx = makeCtx({
+      messages: [{ role: 'assistant', content: '1. Failing step', actions: [] }],
+    });
+    const { handlePlanApprove } = useApprovalFlow(ctx);
+    await handlePlanApprove(0, true);
+    // Should show error message and continue
+    const allCalls = ctx.setMessages.mock.calls.flat();
+    const msgs = allCalls.map(c => typeof c === 'function' ? c([]) : c).flat();
+    const hasErr = msgs.some(m => m?.content?.includes('error') || m?.content?.includes('❌'));
+    expect(hasErr).toBe(true);
+    expect(ctx.setLoading).toHaveBeenCalledWith(false);
+  });
+});
