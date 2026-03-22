@@ -125,9 +125,10 @@ describe('selectSkills — all branches', () => {
     expect(selectSkills(skills, 'configure webpack')).toHaveLength(1);
   });
 
-  it('includes short content (<2048) regardless of keyword', () => {
+  it('excludes short content with no keyword match (TF-IDF behavior)', () => {
     const skills = [{ name: 'short.md', content: 'brief', active: true }];
-    expect(selectSkills(skills, 'totally unrelated zzz aaa')).toHaveLength(1);
+    // New TF-IDF behavior: unrelated skills are excluded regardless of size
+    expect(selectSkills(skills, 'totally unrelated zzz aaa')).toHaveLength(0);
   });
 
   it('excludes long content with no keyword match', () => {

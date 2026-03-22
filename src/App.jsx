@@ -19,6 +19,7 @@ import { useDevTools }       from './hooks/useDevTools.js';
 import { useAgentLoop }      from './hooks/useAgentLoop.js';
 import { useGrowth }         from './hooks/useGrowth.js';
 import { useBrightness }     from './hooks/useBrightness.js';
+import { useDb }            from './hooks/useDb.js';
 
 export default function App() {
   // ── STORES ──
@@ -28,6 +29,7 @@ export default function App() {
   const chat    = useChatStore();
   const T       = ui.T;
   const growth  = useGrowth();
+  useDb(); // init SQLite + migrate from Preferences
 
   // ── Dynamic brightness filter — perceptual compensation ──────────────────
   const _brightnessCalc = (() => {

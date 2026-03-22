@@ -5,13 +5,13 @@ export function VoiceBtn({ onResult, disabled, T }) {
   const [listening, setListening]   = useState(false);
   const [partial,   setPartial]     = useState('');
 
-  const accent  = T?.accent  || '#7c3aed';
+  const accent       = T?.accent       || '#7c3aed';
   const accentBorder = T?.accentBorder || 'rgba(124,58,237,.3)';
-  const error   = T?.error   || '#f87171';
-  const errorBg  = T?.errorBg  || 'rgba(248,113,113,.2)';
-  const textMute = T?.textMute || 'rgba(255,255,255,.3)';
-  const border   = T?.border   || 'rgba(255,255,255,.08)';
-  const bg3      = T?.bg3      || 'rgba(255,255,255,.04)';
+  const error        = T?.error        || '#f87171';
+  const errorBg      = T?.errorBg      || 'rgba(248,113,113,.2)';
+  const textMute     = T?.textMute     || 'rgba(255,255,255,.3)';
+  const border       = T?.border       || 'rgba(255,255,255,.08)';
+  const bg3          = T?.bg3          || 'rgba(255,255,255,.04)';
 
   async function toggle() {
     if (listening) {
@@ -87,11 +87,11 @@ export function VoiceBtn({ onResult, disabled, T }) {
 export function PushToTalkBtn({ onResult, disabled, T }) {
   const [recording, setRecording] = useState(false);
 
-  const accent  = T?.accent  || '#7c3aed';
-  const accentBg = T?.accentBg || 'rgba(124,58,237,.15)';
+  const accent       = T?.accent       || '#7c3aed';
+  const accentBg     = T?.accentBg     || 'rgba(124,58,237,.15)';
   const accentBorder = T?.accentBorder || 'rgba(124,58,237,.3)';
-  const error   = T?.error   || '#f87171';
-  const errorBg  = T?.errorBg  || 'rgba(248,113,113,.3)';
+  const error        = T?.error        || '#f87171';
+  const errorBg      = T?.errorBg      || 'rgba(248,113,113,.3)';
 
   async function onPressIn() {
     setRecording(true);

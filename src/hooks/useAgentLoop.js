@@ -277,6 +277,13 @@ ${outB.slice(0, 1500)}
       ? '\n\n## YUYU.md (project rules — ikuti selalu):\n' + project.yuyuMd.slice(0, 2000)
       : '';
     const selectedSkills = selectSkills((project.skills || []).filter(s => s.active !== false), txt);
+    // Track which skills were used — feeds recency scoring
+    if (selectedSkills.length) {
+      const now = Date.now();
+      project.setSkills?.(skills => skills.map(s =>
+        selectedSkills.some(sel => sel.name === s.name) ? { ...s, lastUsed: now } : s
+      ));
+    }
     const skillCtx    = selectedSkills.length
       ? '\n\nSkill context:\n' + selectedSkills.map(s => '## ' + s.name + '\n' + stripFrontmatter(s.content || '')).join('\n\n---\n\n')
       : '';

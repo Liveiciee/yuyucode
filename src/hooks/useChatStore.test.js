@@ -22,6 +22,21 @@ vi.mock('../features.js', () => ({
   tfidfRank: vi.fn((mems, _txt, n) => mems.slice(0, n).map(m => ({ ...m, _score: 1 }))),
 }));
 
+// Mock useDb — tests run in happy-dom (web), SQLite unavailable
+const mockDbSaveMessages    = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const mockDbSaveMemories    = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const mockDbSaveCheckpoint  = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const mockDbLoadCheckpoints = vi.hoisted(() => vi.fn().mockResolvedValue(null));
+vi.mock('./useDb.js', () => ({
+  dbSaveMessages:    mockDbSaveMessages,
+  dbLoadMessages:    vi.fn().mockResolvedValue([]),
+  dbSearchMessages:  vi.fn().mockResolvedValue([]),
+  dbSaveMemories:    mockDbSaveMemories,
+  dbLoadMemories:    vi.fn().mockResolvedValue([]),
+  dbSaveCheckpoint:  mockDbSaveCheckpoint,
+  dbLoadCheckpoints: mockDbLoadCheckpoints,
+}));
+
 import { useChatStore } from './useChatStore.js';
 
 beforeEach(() => {
@@ -72,7 +87,7 @@ describe('useChatStore — message operations', () => {
     expect(result.current.messages[0].content).toBe('new content');
   });
 
-  it('searchMessages finds matches case-insensitively', () => {
+  it('searchMessages finds matches case-insensitively', async () => {
     const { result } = renderHook(() => useChatStore());
     act(() => {
       result.current.setMessages([
@@ -81,15 +96,15 @@ describe('useChatStore — message operations', () => {
         { role: 'user', content: 'Thanks' },
       ]);
     });
-    const matches = result.current.searchMessages('react');
+    const matches = await result.current.searchMessages('react');
     expect(matches).toHaveLength(1);
     expect(matches[0].content).toContain('React');
   });
 
-  it('searchMessages returns empty for blank query', () => {
+  it('searchMessages returns empty for blank query', async () => {
     const { result } = renderHook(() => useChatStore());
-    expect(result.current.searchMessages('')).toEqual([]);
-    expect(result.current.searchMessages('   ')).toEqual([]);
+    expect(await result.current.searchMessages('')).toEqual([]);
+    expect(await result.current.searchMessages('   ')).toEqual([]);
   });
 });
 
@@ -120,9 +135,7 @@ describe('useChatStore — persistMessages', () => {
         { role: 'assistant', content: 'hello' },
       ]);
     });
-    expect(mockPreferencesSet).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'yc_history' })
-    );
+    expect(mockDbSaveMessages).toHaveBeenCalled();
   });
 
   it('sets showFollowUp when last message is assistant', () => {
@@ -171,16 +184,18 @@ describe('useChatStore — trimHistory', () => {
 
 // ── loadChatPrefs ─────────────────────────────────────────────────────────────
 describe('useChatStore — loadChatPrefs', () => {
-  it('restores messages, memories, checkpoints', () => {
+  it('restores messages, memories, checkpoints', async () => {
     const { result } = renderHook(() => useChatStore());
     const msgs = [{ role: 'user', content: 'restored' }];
     const mems = [{ id: 1, text: 'mem1' }];
-    act(() => {
+    await act(async () => {
       result.current.loadChatPrefs({
         history: JSON.stringify(msgs),
         memories: JSON.stringify(mems),
         checkpoints: JSON.stringify([]),
       });
+      // Wait for async db calls to resolve and fall back to Preferences data
+      await new Promise(r => setTimeout(r, 10));
     });
     expect(result.current.messages[0].content).toBe('restored');
     expect(result.current.memories[0].text).toBe('mem1');
@@ -201,9 +216,7 @@ describe('useChatStore — persisted setters', () => {
   it('setMemories persists to Preferences', () => {
     const { result } = renderHook(() => useChatStore());
     act(() => { result.current.setMemories([{ id: 1, text: 'tip' }]); });
-    expect(mockPreferencesSet).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'yc_memories' })
-    );
+    expect(mockDbSaveMemories).toHaveBeenCalled();
   });
 
   it('setCheckpoints persists to Preferences', () => {

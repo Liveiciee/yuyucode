@@ -79,12 +79,12 @@ describe('selectSkills — contentWords matching', () => {
     expect(r.some(s => s.name === 'tooling.md')).toBe(true);
   });
 
-  it('includes short content skills (<2048 chars) regardless of keyword match', () => {
+  it('excludes short content skills when no keyword match (TF-IDF behavior)', () => {
     const skills = [
       { name: 'short.md', content: 'brief content', active: true },
     ];
     const r = selectSkills(skills, 'completely unrelated query abcdefgh');
-    expect(r.some(s => s.name === 'short.md')).toBe(true);
+    expect(r.some(s => s.name === 'short.md')).toBe(false);
   });
 
   it('does not include long content skill when no keyword matches', () => {
@@ -128,7 +128,7 @@ describe('runBackgroundAgent — lifecycle', () => {
     expect(id.startsWith('bg_')).toBe(true);
 
     // Wait for async background loop to complete
-    await new Promise(r => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 200));
 
     expect(onDone).toHaveBeenCalled();
     const agents = getBgAgents();

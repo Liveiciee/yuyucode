@@ -312,28 +312,87 @@ export function useSlashCommands({
 
   const handleLoop = useCallback(async (parts) => {
     const args = parts.slice(1).join(' ').trim();
-    if (!args) {
+
+    // /loop stop or /loop with no args while active → stop
+    if (!args || args === 'stop') {
       if (loopActive) {
         clearInterval(loopIntervalRef);
         setLoopIntervalRef(null);
         setLoopActive(false);
         setMessages(m => [...m, { role: 'assistant', content: '⏹ Loop dihentikan.', actions: [] }]);
       } else {
-        setMessages(m => [...m, { role: 'assistant', content: 'Usage: /loop <interval> <command>\nContoh: /loop 5m git status\nInterval: 1m 5m 10m 30m 1h', actions: [] }]);
+        setMessages(m => [...m, { role: 'assistant', content: [
+          '**`/loop`** — jalankan command berulang\n',
+          '- `/loop 5m git status` — setiap 5 menit',
+          '- `/loop 1h npm run test` — setiap 1 jam',
+          '- `/loop stop` — hentikan loop aktif\n',
+          'Loop otomatis berhenti setelah 3 error berturut-turut.'
+        ].join('\n'), actions: [] }]);
       }
       return;
     }
-    const lm = args.match(/^(\d+)(m|h)\s+(.+)/);
-    if (!lm) { setMessages(m => [...m, { role: 'assistant', content: 'Format: /loop <interval> <cmd>. Contoh: /loop 5m git status', actions: [] }]); return; }
-    const loopMs = parseInt(lm[1]) * (lm[2] === 'h' ? 3600000 : 60000);
+
+    const lm = args.match(/^(\d+)(s|m|h)\s+(.+)/);
+    if (!lm) {
+      setMessages(m => [...m, { role: 'assistant', content: 'Format: `/loop <interval> <cmd>`. Contoh: `/loop 5m git status`', actions: [] }]);
+      return;
+    }
+
+    const multipliers = { s: 1000, m: 60000, h: 3600000 };
+    const loopMs  = parseInt(lm[1]) * multipliers[lm[2]];
     const loopCmd = lm[3];
+    const label   = lm[1] + (lm[2] === 'h' ? ' jam' : lm[2] === 'm' ? ' menit' : ' detik');
+
+    // Min 10s to avoid hammering
+    if (loopMs < 10000) {
+      setMessages(m => [...m, { role: 'assistant', content: '⚠ Interval minimum 10 detik.', actions: [] }]);
+      return;
+    }
+
     if (loopActive) clearInterval(loopIntervalRef);
+
+    let errorStreak = 0;
+    const MAX_ERRORS = 3;
+
     setLoopActive(true);
-    setMessages(m => [...m, { role: 'assistant', content: '🔄 Loop aktif: **' + loopCmd + '** setiap ' + lm[1] + (lm[2] === 'h' ? ' jam' : ' menit') + '. /loop untuk stop.', actions: [] }]);
+    setMessages(m => [...m, {
+      role: 'assistant',
+      content: '🔄 Loop aktif: `' + loopCmd + '` setiap **' + label + '**\n_Auto-stop setelah ' + MAX_ERRORS + ' error berturut-turut. `/loop stop` untuk hentikan._',
+      actions: []
+    }]);
+
     const iv = setInterval(async () => {
       const r = await callServer({ type: 'exec', path: folder, command: loopCmd });
-      setMessages(m => [...m, { role: 'assistant', content: '🔄 Loop [' + new Date().toLocaleTimeString('id') + ']:\n```bash\n' + (r.data || '').slice(0, 500) + '\n```', actions: [] }]);
+      const time = new Date().toLocaleTimeString('id');
+      const hasError = !r.ok || /error|exception|traceback|command not found/i.test(r.data || '');
+
+      if (hasError) {
+        errorStreak++;
+        setMessages(m => [...m, {
+          role: 'assistant',
+          content: '🔄 Loop [' + time + '] ❌ Error ' + errorStreak + '/' + MAX_ERRORS + ':\n```\n' + (r.data || '').slice(0, 400) + '\n```',
+          actions: []
+        }]);
+        if (errorStreak >= MAX_ERRORS) {
+          clearInterval(iv);
+          setLoopIntervalRef(null);
+          setLoopActive(false);
+          setMessages(m => [...m, {
+            role: 'assistant',
+            content: '⏹ Loop auto-stop: ' + MAX_ERRORS + ' error berturut-turut pada `' + loopCmd + '`.',
+            actions: []
+          }]);
+        }
+      } else {
+        errorStreak = 0;
+        setMessages(m => [...m, {
+          role: 'assistant',
+          content: '🔄 Loop [' + time + ']:\n```bash\n' + (r.data || '').slice(0, 500) + '\n```',
+          actions: []
+        }]);
+      }
     }, loopMs);
+
     setLoopIntervalRef(iv);
   }, [folder, loopActive, loopIntervalRef, setLoopActive, setLoopIntervalRef, setMessages]);
 
@@ -716,6 +775,70 @@ export function useSlashCommands({
 
   // ── Main dispatcher ────────────────────────────────────────────────────────
 
+  const handleMcp = useCallback(async (parts) => {
+    const sub = parts[1]?.toLowerCase();
+
+    if (!sub || sub === 'open') { setShowMCP(true); return; }
+
+    if (sub === 'list') {
+      setLoading(true);
+      const r = await callServer({ type: 'mcp_list' });
+      setLoading(false);
+      if (!r.ok) { setMessages(m => [...m, { role: 'assistant', content: '❌ ' + r.data, actions: [] }]); return; }
+      const tools = r.data;
+      const lines = Object.entries(tools).map(([name, info]) =>
+        '**' + name + '** — ' + (info.desc || '') + '\n  Actions: `' + (info.actions || []).join('`, `') + '`'
+      ).join('\n\n');
+      setMessages(m => [...m, { role: 'assistant', content: '🔧 **MCP Tools:**\n\n' + lines, actions: [] }]);
+      return;
+    }
+
+    if (sub === 'connect') {
+      // /mcp connect <name> <url> [description]
+      const name = parts[2];
+      const url  = parts[3];
+      const desc = parts.slice(4).join(' ') || '';
+      if (!name || !url) {
+        setMessages(m => [...m, { role: 'assistant', content: 'Usage: `/mcp connect <name> <url> [description]`\nContoh: `/mcp connect myapi http://localhost:3001 My custom API`', actions: [] }]);
+        return;
+      }
+      setLoading(true);
+      // Save to ~/.yuyu/mcp-servers.json via server
+      const readR = await callServer({ type: 'read', path: '~/.yuyu/mcp-servers.json' });
+      let servers = [];
+      if (readR.ok) { try { servers = JSON.parse(readR.data); } catch(_e){} }
+      // Remove existing with same name
+      servers = servers.filter(s => s.name !== name);
+      servers.push({ name, url, description: desc, actions: [] });
+      const writeR = await callServer({ type: 'write', path: '~/.yuyu/mcp-servers.json', content: JSON.stringify(servers, null, 2) });
+      setLoading(false);
+      if (writeR.ok) {
+        setMessages(m => [...m, { role: 'assistant', content: '✅ MCP server **' + name + '** tersambung → `' + url + '`\nGunakan `/mcp list` untuk lihat semua, atau `/mcp connect` lagi untuk update.', actions: [] }]);
+      } else {
+        setMessages(m => [...m, { role: 'assistant', content: '❌ Gagal simpan: ' + writeR.data, actions: [] }]);
+      }
+      return;
+    }
+
+    if (sub === 'disconnect') {
+      const name = parts[2];
+      if (!name) { setMessages(m => [...m, { role: 'assistant', content: 'Usage: `/mcp disconnect <name>`', actions: [] }]); return; }
+      setLoading(true);
+      const readR = await callServer({ type: 'read', path: '~/.yuyu/mcp-servers.json' });
+      let servers = [];
+      if (readR.ok) { try { servers = JSON.parse(readR.data); } catch(_e){} }
+      const before = servers.length;
+      servers = servers.filter(s => s.name !== name);
+      await callServer({ type: 'write', path: '~/.yuyu/mcp-servers.json', content: JSON.stringify(servers, null, 2) });
+      setLoading(false);
+      setMessages(m => [...m, { role: 'assistant', content: before > servers.length ? '✅ **' + name + '** dihapus dari MCP servers.' : '⚠ Server **' + name + '** tidak ditemukan.', actions: [] }]);
+      return;
+    }
+
+    // Default: open panel
+    setShowMCP(true);
+  }, [setShowMCP, setLoading, setMessages]);
+
   const handleSlashCommand = useCallback(async (cmd) => {
     const parts = cmd.trim().split(' ');
     const base = parts[0];
@@ -730,7 +853,7 @@ export function useSlashCommands({
       '/browse':     () => { const url = parts.slice(1).join(' '); if (!url) { setMessages(m => [...m, { role: 'assistant', content: 'Usage: /browse https://...', actions: [] }]); return; } browseTo(url); },
       '/swarm':      () => { const task = parts.slice(1).join(' '); if (!task) { setMessages(m => [...m, { role: 'assistant', content: 'Usage: /swarm <deskripsi task>', actions: [] }]); return; } runAgentSwarm(task); },
       '/theme':      () => setShowThemeBuilder(true),
-      '/mcp':        () => setShowMCP(true),
+      '/mcp':        () => handleMcp(parts),
       '/github':     () => setShowGitHub(true),
       '/deploy':     () => setShowDeploy(true),
       '/skills':     () => setShowSkills(true),

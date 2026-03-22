@@ -9,6 +9,7 @@ import { LivePreview } from './LivePreview.jsx';
 import { KeyboardRow } from './KeyboardRow.jsx';
 import { GlobalFindReplace } from './GlobalFindReplace.jsx';
 import { VoiceBtn, PushToTalkBtn } from './VoiceBtn.jsx';
+import { useWakeWord } from '../hooks/useWakeWord.js';
 import { FOLLOW_UPS, SLASH_COMMANDS, GIT_SHORTCUTS } from '../constants.js';
 
 export function AppChat({
@@ -23,6 +24,16 @@ export function AppChat({
   const bottomRef     = useRef(null);
   const [searchQ, setSearchQ] = useState(null); // null=hidden, ''=open
   const inputRef      = useRef(null);
+
+  // ── Wake word — "Hey Yuyu" activates PTT focus ───────────────────────────
+  useWakeWord({
+    enabled: project.pushToTalk,
+    onActivated: () => {
+      if (!chat.loading) {
+        inputRef.current?.focus();
+      }
+    },
+  });
   const fileEditorRef = useRef(null);
 
   const editorConfig = {

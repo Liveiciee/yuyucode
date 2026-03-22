@@ -262,19 +262,61 @@ export async function deleteSkillFile(folder, name) {
 
 export function selectSkills(skills, taskText) {
   if (!skills.length) return [];
-  if (!taskText) return skills.slice(0, 3);
-  const kw = taskText.toLowerCase();
-  return skills.filter(s => {
-    const sn = s.name.toLowerCase().replace('.md', '');
-    if (sn === 'skill') return true;
-    if (kw.includes(sn)) return true;
-    if (s.content) {
-      const contentWords = s.content.toLowerCase().replace(/[#*`>_\-[]()]/g, ' ').split(/\s+/).filter(w => w.length > 3).slice(0, 20);
-      if (contentWords.some(w => kw.includes(w))) return true;
+
+  // Always-on skill named exactly "skill.md" — universal context
+  const universal = skills.filter(s => s.name.toLowerCase().replace('.md', '') === 'skill');
+
+  if (!taskText) return [...universal, ...skills.filter(s => !universal.includes(s))].slice(0, 3);
+
+  const queryWords = taskText.toLowerCase()
+    .replace(/[#*`>_\-()[\]]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2);
+
+  const N = skills.length;
+
+  const scored = skills.map(s => {
+    if (universal.includes(s)) return { skill: s, score: 999 };
+
+    const nameWords = s.name.toLowerCase().replace('.md', '').replace(/[-_]/g, ' ').split(/\s+/);
+    const contentText = (s.content || '')
+      .toLowerCase()
+      .replace(/[#*`>_\-()[\]]/g, ' ');
+    const contentWords = contentText.split(/\s+/).filter(w => w.length > 2);
+    const allWords = [...nameWords, ...contentWords];
+
+    let score = 0;
+
+    for (const qw of queryWords) {
+      // Name match — strong signal
+      if (nameWords.some(nw => nw === qw || nw.includes(qw) || qw.includes(nw))) {
+        score += 3.0;
+        continue;
+      }
+      // TF-IDF over content
+      const tf = allWords.filter(w => w === qw).length / (allWords.length || 1);
+      const df = skills.filter(sk => (sk.content || '').toLowerCase().includes(qw)).length;
+      const idf = df > 0 ? Math.log((N + 1) / df) : 0;
+      score += tf * idf;
     }
-    if (s.content && s.content.length < 2048) return true;
-    return false;
+
+    // Recency bonus — recently used skills get a small boost
+    if (s.lastUsed) {
+      const ageDays = (Date.now() - s.lastUsed) / 86400000;
+      score += Math.max(0, 0.3 * (1 - ageDays / 7));
+    }
+
+    return { skill: s, score };
   });
+
+  const THRESHOLD = 0.1;
+  const relevant = scored
+    .filter(x => x.score >= THRESHOLD)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map(x => x.skill);
+
+  return relevant;
 }
 
 // ─── HOOKS v2 ────────────────────────────────────────────────────────────────

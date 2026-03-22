@@ -17,7 +17,7 @@ import {
 } from './features.js';
 
 // ── Mock dependencies ─────────────────────────────────────────────────────────
-vi.mock('./api.js', () => ({ callServer: vi.fn() }));
+vi.mock('./api.js', () => ({ callServer: vi.fn().mockResolvedValue({ ok: true, data: '' }) }));
 vi.mock('./utils.js', () => ({
   parseActions:  vi.fn().mockReturnValue([]),
   executeAction: vi.fn().mockResolvedValue({ ok: true, data: '' }),
@@ -115,6 +115,10 @@ describe('TokenTracker', () => {
 // runHooksV2
 // ═══════════════════════════════════════════════════════════════════════════════
 describe('runHooksV2', () => {
+  beforeEach(() => {
+    callServer.mockResolvedValue({ ok: true, data: '' });
+  });
+
   it('does nothing if hookList is empty', async () => {
     await runHooksV2([], 'ctx', '/folder');
     expect(callServer).not.toHaveBeenCalled();

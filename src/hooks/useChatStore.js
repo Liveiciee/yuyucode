@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { dbSaveMessages, dbLoadMessages, dbSearchMessages, dbSaveMemories, dbLoadMemories, dbSaveCheckpoint, dbLoadCheckpoints } from './useDb.js';
 import { Preferences } from '@capacitor/preferences';
 import { MAX_HISTORY } from '../constants.js';
 import { askCerebrasStream } from '../api.js';
@@ -36,27 +37,35 @@ export function useChatStore() {
   // ── Persisted setters ──
   function setMemories(next) {
     setMemoriesRaw(next);
-    Preferences.set({ key: 'yc_memories', value: JSON.stringify(next) });
+    dbSaveMemories(next); // SQLite primary, Preferences fallback inside
   }
   function setCheckpoints(next) {
     setCheckpointsRaw(next);
     Preferences.set({ key: 'yc_checkpoints', value: JSON.stringify(next) });
   }
 
-  // ── Load from Preferences ──
+  // ── Load from SQLite (with Preferences fallback) ──
   function loadChatPrefs({ history, memories: mem, checkpoints: ckp }) {
-    if (history) { try { setMessages(JSON.parse(history)); } catch (_e) { } }
-    if (mem)     { try { setMemoriesRaw(JSON.parse(mem)); } catch (_e) { } }
-    if (ckp)     { try { setCheckpointsRaw(JSON.parse(ckp)); } catch (_e) { } }
+    // Try SQLite first — async, falls back to Preferences data if DB unavailable
+    dbLoadMessages('default').then(msgs => {
+      if (msgs.length > 0) setMessages(msgs);
+      else if (history) { try { setMessages(JSON.parse(history)); } catch (_e) {} }
+    });
+    dbLoadMemories().then(mems => {
+      if (mems.length > 0) setMemoriesRaw(mems);
+      else if (mem) { try { setMemoriesRaw(JSON.parse(mem)); } catch (_e) {} }
+    });
+    dbLoadCheckpoints().then(cps => {
+      if (cps !== null) setCheckpointsRaw(cps);
+      else if (ckp) { try { setCheckpointsRaw(JSON.parse(ckp)); } catch (_e) {} }
+    });
   }
 
   // ── Persist messages on change (called from useEffect in App) ──
   function persistMessages(msgs) {
     if (msgs.length > 1) {
-      Preferences.set({
-        key: 'yc_history',
-        value: JSON.stringify(msgs.slice(-MAX_HISTORY).map(m => ({ role: m.role, content: m.content }))),
-      });
+      // SQLite primary, Preferences fallback handled inside dbSaveMessages
+      dbSaveMessages(msgs.slice(-MAX_HISTORY), 'default');
     }
     setShowFollowUp(msgs.length > 1 && msgs[msgs.length - 1]?.role === 'assistant');
   }
@@ -123,6 +132,7 @@ export function useChatStore() {
       timestamp: Date.now(),
     };
     setCheckpoints([cp, ...checkpoints].slice(0, 10));
+    dbSaveCheckpoint(cp); // persist to SQLite
     setMessages(m => [...m, { role: 'assistant', content: '📍 **Checkpoint disimpan:** ' + cp.label + (filePatch ? '\n_Git diff snapshot: ' + filePatch.split('\n').length + ' baris_' : ''), actions: [] }]);
   }
 
@@ -178,8 +188,12 @@ export function useChatStore() {
     messages, setMessages,
     deleteMessage: (idx) => setMessages(m => m.filter((_, i) => i !== idx)),
     editMessage:   (idx, newContent) => setMessages(m => m.map((msg, i) => i === idx ? { ...msg, content: newContent } : msg)),
-    searchMessages: (q) => {
+    searchMessages: async (q) => {
       if (!q.trim()) return [];
+      // Try SQLite FTS first
+      const sqlResults = await dbSearchMessages(q, 'default');
+      if (sqlResults.length > 0) return sqlResults;
+      // Fallback: in-memory search
       const lq = q.toLowerCase();
       return messages
         .map((m, i) => ({ ...m, idx: i }))

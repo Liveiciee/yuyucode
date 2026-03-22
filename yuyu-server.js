@@ -59,6 +59,50 @@ const MCP_TOOLS = {
   system:     { desc:'Info sistem dan proses',             actions:['disk','memory','processes','env'] },
 };
 
+// ── External MCP Servers — loaded from ~/.yuyu/mcp-servers.json ──────────────
+// Format: [{ name, url, description, actions: [] }]
+// Agent can call: { type: 'mcp', tool: '<name>', action: '<action>', params: {} }
+let EXTERNAL_MCP = [];
+const EXTERNAL_MCP_PATH = path.join(HOME, '.yuyu', 'mcp-servers.json');
+
+function loadExternalMCP() {
+  try {
+    if (fs.existsSync(EXTERNAL_MCP_PATH)) {
+      EXTERNAL_MCP = JSON.parse(fs.readFileSync(EXTERNAL_MCP_PATH, 'utf8'));
+      console.log('[MCP] Loaded', EXTERNAL_MCP.length, 'external servers'); // skipcq: JS-0002
+    }
+  } catch(e) {
+    console.error('[MCP] Failed to load external servers:', e.message); // skipcq: JS-0002
+    EXTERNAL_MCP = [];
+  }
+}
+
+async function callExternalMCP(server, action, params) {
+  const { url } = server;
+  try {
+    const body = JSON.stringify({ action, params: params || {} });
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!resp.ok) return { ok: false, data: 'HTTP ' + resp.status };
+    const data = await resp.json();
+    return { ok: true, data: typeof data === 'string' ? data : JSON.stringify(data, null, 2).slice(0, 4000) };
+  } catch(e) {
+    return { ok: false, data: e.message };
+  }
+}
+
+loadExternalMCP();
+// Watch for changes to mcp-servers.json
+try {
+  fs.watch(path.dirname(EXTERNAL_MCP_PATH), (event, filename) => {
+    if (filename === 'mcp-servers.json') loadExternalMCP();
+  });
+} catch(_e) {}
+
 // ── HELPERS ────────────────────────────────────────────────────────────────────
 function resolvePath(filePath) {
   if (!filePath) return HOME;
@@ -242,7 +286,7 @@ function handle(payload) {
   }
 
   if (type === 'mcp')      return handleMCP(tool, action, params || payload);
-  if (type === 'mcp_list') return { ok: true, data: MCP_TOOLS };
+  if (type === 'mcp_list') return { ok: true, data: { ...MCP_TOOLS, ...Object.fromEntries(EXTERNAL_MCP.map(s => [s.name, { desc: s.description || s.url, actions: s.actions || [] }])) } };
 
   // ── CODEBASE INDEX — real-time symbol extraction ──────────────────────────
   // Returns function/component/hook signatures for entire src/ directory.
@@ -515,7 +559,11 @@ function handleMCP(tool, action, params) {
     return handle({ type: action, path: p, content: params.content, from: params.from, to: params.to, old_str: params.old_str, new_str: params.new_str });
   }
 
-  return { ok: false, data: 'Unknown MCP tool: ' + tool };
+  // ── External MCP servers ──────────────────────────────────────────────────
+  const extServer = EXTERNAL_MCP.find(s => s.name === tool);
+  if (extServer) return callExternalMCP(extServer, action, params);
+
+  return { ok: false, data: 'Unknown MCP tool: ' + tool + '. Available: ' + [...Object.keys(MCP_TOOLS), ...EXTERNAL_MCP.map(s => s.name)].join(', ') };
 }
 
 // ── HTTP SERVER ───────────────────────────────────────────────────────────────
