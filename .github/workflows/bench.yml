@@ -36,6 +36,16 @@ jobs:
         if: steps.nm-cache.outputs.cache-hit != 'true'
         run: npm ci
 
+      - name: Create gh-pages branch if not exists
+        run: |
+          git fetch origin gh-pages 2>/dev/null && echo "gh-pages exists" || (
+            git checkout --orphan gh-pages &&
+            git reset --hard &&
+            git commit --allow-empty -m "init: gh-pages for benchmark charts" &&
+            git push origin gh-pages &&
+            git checkout main
+          )
+
       - name: Run benchmarks
         run: node yuyu-bench-ci.cjs
 
@@ -45,14 +55,11 @@ jobs:
           name: YuyuCode Benchmark (CI · Ubuntu x86_64)
           tool: customSmallerIsBetter
           output-file-path: .yuyu/bench-ci.json
-          # Simpan chart ke gh-pages
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
-          # Alert kalau ada regresi >150% dari baseline
           alert-threshold: '150%'
           comment-on-alert: true
-          fail-on-alert: false           # non-blocking — CI tetap hijau
+          fail-on-alert: false
           alert-comment-cc-users: '@liveiciee'
-          # URL chart di gh-pages
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
