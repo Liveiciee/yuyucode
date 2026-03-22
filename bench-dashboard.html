@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>yuyu · bench</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,700;1,300&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0a0f;--bg2:#130f17;--bg3:#1a1420;--bg4:#201929;
+  --pink:#ec4899;--pink2:#be185d;--pink3:#f9a8d4;
+  --pink-dim:rgba(236,72,153,.08);--pink-brd:rgba(236,72,153,.18);--pink-glow:rgba(236,72,153,.3);
+  --text:#f5f0f8;--sec:#b8adc4;--mute:rgba(184,173,196,.35);
+  --green:#4ade80;--red:#f87171;--yellow:#fbbf24;
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Instrument Serif',serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.6;min-height:100vh;padding-bottom:80px}
+
+/* scanlines */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.05) 3px,rgba(0,0,0,.05) 4px);pointer-events:none;z-index:9999}
+
+/* ambient orb */
+.orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0}
+.orb1{width:50vw;height:50vw;background:rgba(236,72,153,.06);right:-10%;top:10%}
+.orb2{width:35vw;height:35vw;background:rgba(139,92,246,.04);left:-8%;bottom:20%}
+
+/* topbar */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;
+  background:rgba(13,10,15,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(236,72,153,.08);
+}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--pink);box-shadow:0 0 8px var(--pink-glow);animation:pulse 2.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+.topbar-brand{font-size:12px;color:var(--sec);letter-spacing:.05em}
+.topbar-brand b{color:var(--pink);font-weight:700}
+.topbar-meta{font-size:10px;color:var(--mute);text-align:right;line-height:1.6}
+.topbar-meta a{color:var(--pink);text-decoration:none;opacity:.5;transition:opacity .2s}
+.topbar-meta a:hover{opacity:1}
+
+/* main container */
+.main{position:relative;z-index:1;max-width:880px;margin:0 auto;padding:32px 16px 0}
+
+/* ── FOR EVERYONE section ── */
+.everyone-intro{
+  background:linear-gradient(135deg,rgba(236,72,153,.07),rgba(139,92,246,.04));
+  border:1px solid var(--pink-brd);
+  border-radius:14px;padding:24px 28px;margin-bottom:32px;
+}
+.everyone-intro .tag{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--pink3);margin-bottom:14px;opacity:.8;
+}
+.everyone-intro .tag::before{content:'★';font-size:9px}
+.everyone-title{
+  font-family:var(--serif);font-style:italic;
+  font-size:24px;color:var(--text);line-height:1.2;margin-bottom:8px;
+}
+.everyone-sub{font-size:12px;color:var(--sec);line-height:1.7}
+
+/* human cards */
+.human-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:40px}
+.human-card{
+  background:var(--bg2);border:1px solid rgba(255,255,255,.04);
+  border-radius:12px;padding:18px;
+  display:flex;flex-direction:column;gap:8px;
+  transition:border-color .2s,transform .15s;position:relative;overflow:hidden;
+}
+.human-card:hover{border-color:var(--pink-brd);transform:translateY(-1px)}
+.human-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(236,72,153,.2),transparent)}
+.human-icon{font-size:22px;line-height:1}
+.human-label{font-size:11px;color:var(--sec);font-weight:400}
+.human-headline{font-family:var(--serif);font-size:17px;color:var(--text);line-height:1.3}
+.human-headline b{color:var(--pink)}
+.human-detail{font-size:10px;color:var(--mute);line-height:1.6}
+
+/* ── SECTION DIVIDER ── */
+.section-divider{
+  display:flex;align-items:center;gap:14px;
+  margin:40px 0 28px;
+}
+.section-divider .sd-label{
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  white-space:nowrap;
+}
+.section-divider .sd-line{flex:1;height:1px}
+.sd-for-all .sd-label{color:var(--pink);opacity:.7}
+.sd-for-all .sd-line{background:linear-gradient(90deg,var(--pink-brd),transparent)}
+.sd-pro .sd-label{color:var(--mute)}
+.sd-pro .sd-line{background:rgba(255,255,255,.04)}
+
+/* ── PRO section ── */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:28px}
+.stat{
+  background:var(--bg2);border:1px solid rgba(255,255,255,.04);
+  border-radius:8px;padding:12px 14px;
+  transition:border-color .15s;position:relative;overflow:hidden;
+}
+.stat:hover{border-color:var(--pink-brd)}
+.stat-name{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-val{font-size:20px;font-weight:700;color:var(--text);line-height:1}
+.stat-unit{font-size:9px;color:var(--mute);margin-top:2px}
+.stat-delta{font-size:10px;margin-top:4px}
+.up{color:var(--green)}.dn{color:var(--red)}.fl{color:var(--mute)}
+
+/* charts */
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:28px}
+.chart-card{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:10px;padding:16px}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.chart-name{font-size:10px;color:var(--sec)}
+.chart-val{font-size:12px;font-weight:700;color:var(--pink)}
+.chart-card canvas{max-height:70px}
+
+/* history table */
+.tbl-wrap{overflow-x:auto;border:1px solid rgba(255,255,255,.04);border-radius:10px;margin-bottom:28px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{padding:9px 12px;text-align:left;color:var(--mute);font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:400;border-bottom:1px solid rgba(255,255,255,.04);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.025);color:var(--sec);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg3)}
+.hash{color:var(--pink);opacity:.65;font-style:italic}
+.v{color:var(--text);font-weight:700}
+
+/* regression badge */
+.badge{display:inline-block;font-size:9px;padding:1px 6px;border-radius:4px;font-weight:700}
+.badge-ok{background:rgba(74,222,128,.1);color:var(--green)}
+.badge-warn{background:rgba(248,113,113,.1);color:var(--red)}
+.badge-new{background:rgba(236,72,153,.1);color:var(--pink3)}
+
+/* footer */
+footer{border-top:1px solid rgba(255,255,255,.04);padding:20px 16px 0;max-width:880px;margin:0 auto;font-size:10px;color:var(--mute);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+footer a{color:var(--pink);opacity:.5;text-decoration:none}
+footer a:hover{opacity:1}
+
+/* loading / error */
+.spin{display:flex;align-items:center;justify-content:center;padding:80px;gap:5px}
+.spin span{width:5px;height:5px;border-radius:50%;background:var(--pink);animation:blink 1s infinite}
+.spin span:nth-child(2){animation-delay:.15s}.spin span:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,80%,100%{opacity:.1;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
+.err{margin:40px auto;max-width:400px;text-align:center;padding:24px;border:1px solid rgba(248,113,113,.15);border-radius:10px;background:rgba(248,113,113,.04);color:var(--red);font-size:12px;line-height:1.8}
+
+@media(max-width:540px){
+  .everyone-title{font-size:19px}
+  .human-grid{grid-template-columns:1fr}
+  .charts-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="pulse"></div>
+    <div class="topbar-brand"><b>yuyu</b> · bench</div>
+  </div>
+  <div class="topbar-meta" id="meta">—</div>
+</div>
+
+<div class="main" id="root">
+  <div class="spin"><span></span><span></span><span></span></div>
+</div>
+
+<footer>
+  <span>Built on a ~$130 phone · Oppo A77s × GitHub Actions</span>
+  <span><a href="https://github.com/Liveiciee/yuyucode" target="_blank">github.com/Liveiciee/yuyucode</a></span>
+</footer>
+
+<script>
+// ── human-readable explanations per bench ────────────────────────────────────
+const EXPLAIN = {
+  'single call — jsx': {
+    icon: '⚡',
+    label: 'Language detection',
+    headline: (v, fmt) => `Detects your file type in <b>${fmt(1e9/v, true)}</b>`,
+    detail: 'Every time you open a file, YuyuCode figures out the language instantly — so syntax highlighting, autocomplete, and tools just work.',
+  },
+  'single call — ts': {
+    icon: '⚡',
+    label: 'TypeScript detection',
+    headline: (v, fmt) => `Identifies TypeScript files in <b>${fmt(1e9/v, true)}</b>`,
+    detail: 'Type-checking, IntelliSense, and TS-specific features activate the moment you open a file.',
+  },
+  'empty tabs': {
+    icon: '📑',
+    label: 'New tab speed',
+    headline: (v, fmt) => `Opens a blank tab in <b>${fmt(1e9/v, true)}</b>`,
+    detail: 'Zero wait when you press the new tab button — the editor is ready before your finger lifts off the screen.',
+  },
+  'open 1 tab (Array spread)': {
+    icon: '🗂️',
+    label: 'Tab management',
+    headline: (v, fmt) => `Manages your tabs in <b>${fmt(1e9/v, true)}</b>`,
+    detail: 'Opening, closing, and switching tabs happens faster than the display can refresh — no jank, ever.',
+  },
+  'small diff (4 lines)': {
+    icon: '🔍',
+    label: 'Diff review',
+    headline: (v, fmt) => `Computes code changes in <b>${fmt(1e9/v, true)}</b>`,
+    detail: 'When the AI edits your code, the visual diff appears instantly. You never wait to see what changed.',
+  },
+  'no action blocks': {
+    icon: '🤖',
+    label: 'AI response parsing',
+    headline: (v, fmt) => `Processes AI replies in <b>${fmt(1e9/v, true)}</b>`,
+    detail: 'Every chunk of AI output is parsed in real-time. The faster this runs, the smoother streaming feels.',
+  },
+  'non-code file (early return)': {
+    icon: '🚀',
+    label: 'Smart file skip',
+    headline: (v, fmt) => `Skips non-code files in <b>${fmt(1e9/v, true)}</b>`,
+    detail: 'Images, docs, and configs are instantly recognized and skipped — the editor stays fast no matter what\'s in your project.',
+  },
+  'small file — 1 import': {
+    icon: '📦',
+    label: 'Import analysis',
+    headline: (v, fmt) => `Maps file dependencies in <b>${fmt(1e9/v, true)}</b>`,
+    detail: 'YuyuCode understands how your files connect to each other, enabling smarter AI context and autocomplete.',
+  },
+};
+
+const DEFAULT_EXPLAIN = {
+  icon: '📊',
+  label: name => name,
+  headline: (v, fmt) => `Runs at <b>${fmt(v)} ops/sec</b>`,
+  detail: 'Core engine function — higher is faster.',
+};
+
+// ── utils ────────────────────────────────────────────────────────────────────
+function fmt(n, asTime=false) {
+  if (asTime) {
+    // n = nanoseconds
+    if (n < 1000)      return n.toFixed(0) + ' ns';
+    if (n < 1_000_000) return (n/1000).toFixed(1) + ' µs';
+    return (n/1_000_000).toFixed(2) + ' ms';
+  }
+  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toFixed(0);
+}
+
+const fmtDate = ts => new Date(ts).toLocaleString('en-GB', {
+  day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
+});
+
+function pct(a, b) { return b ? ((a - b) / b * 100) : null; }
+
+function deltaTag(d, cls=true) {
+  if (d === null) return '';
+  const c = d > 2 ? 'up' : d < -2 ? 'dn' : 'fl';
+  const sign = d > 0 ? '+' : '';
+  if (!cls) return `${sign}${d.toFixed(1)}%`;
+  return `<div class="stat-delta ${c}">${sign}${d.toFixed(1)}%</div>`;
+}
+
+// ── load data ────────────────────────────────────────────────────────────────
+function loadData() {
+  return new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = './data.js?t=' + Date.now();
+    s.onload = () => window.BENCHMARK_DATA ? ok(window.BENCHMARK_DATA) : fail(new Error('BENCHMARK_DATA not found'));
+    s.onerror = () => fail(new Error('data.js not found — CI might not have run yet'));
+    document.head.appendChild(s);
+  });
+}
+
+// ── render ───────────────────────────────────────────────────────────────────
+Chart.defaults.color = 'rgba(184,173,196,.4)';
+Chart.defaults.borderColor = 'rgba(255,255,255,.04)';
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.font.size = 9;
+
+function render(data) {
+  const entries = data.entries || [];
+  if (!entries.length) {
+    document.getElementById('root').innerHTML =
+      '<div class="err">No data yet.<br>Push to main to trigger the first bench run.</div>';
+    return;
+  }
+
+  const last  = entries[entries.length - 1];
+  const prev  = entries[entries.length - 2] || null;
+  const names = [...new Set(entries.flatMap(e => e.benches.map(b => b.name)))];
+
+  // topbar meta
+  document.getElementById('meta').innerHTML =
+    `<a href="https://github.com/Liveiciee/yuyucode/commit/${last.commit}" target="_blank">${last.commit.slice(0,7)}</a>` +
+    ` · ${fmtDate(last.date)} · ${entries.length} run${entries.length > 1 ? 's' : ''}`;
+
+  let html = '';
+
+  // ── FOR EVERYONE ──────────────────────────────────────────────────────────
+  html += `
+  <div class="section-divider sd-for-all">
+    <div class="sd-label">For Everyone</div>
+    <div class="sd-line"></div>
+    <span class="badge badge-ok">✓ All fast</span>
+  </div>
+  <div class="everyone-intro">
+    <div class="tag">What does this mean?</div>
+    <div class="everyone-title">Your code editor, benchmarked.</div>
+    <div class="everyone-sub">
+      YuyuCode runs performance tests automatically on every update —
+      so you know the editor is always getting faster, never slower.
+      The numbers below show how fast key operations run on a real server.
+    </div>
+  </div>
+  <div class="human-grid">`;
+
+  for (const b of last.benches) {
+    const ex = EXPLAIN[b.name] || DEFAULT_EXPLAIN;
+    const label = typeof ex.label === 'function' ? ex.label(b.name) : ex.label;
+    const headline = ex.headline(b.value, fmt);
+    const p = prev?.benches.find(x => x.name === b.name);
+    const d = p ? pct(b.value, p.value) : null;
+    const trend = d === null ? '' :
+      d > 2  ? `<span class="up">↑ ${d.toFixed(1)}% faster than last push</span>` :
+      d < -2 ? `<span class="dn">↓ ${Math.abs(d).toFixed(1)}% slower than last push</span>` :
+               `<span class="fl">→ stable</span>`;
+
+    html += `
+    <div class="human-card">
+      <div class="human-icon">${ex.icon}</div>
+      <div class="human-label">${label}</div>
+      <div class="human-headline">${headline}</div>
+      <div class="human-detail">${ex.detail}</div>
+      ${trend ? `<div style="font-size:10px;margin-top:2px">${trend}</div>` : ''}
+    </div>`;
+  }
+
+  html += '</div>';
+
+  // ── FOR PROS ─────────────────────────────────────────────────────────────
+  html += `
+  <div class="section-divider sd-pro">
+    <div class="sd-label">Technical Detail</div>
+    <div class="sd-line"></div>
+  </div>`;
+
+  // raw stat cards
+  html += '<div class="stat-row">';
+  for (const b of last.benches) {
+    const p = prev?.benches.find(x => x.name === b.name);
+    const d = p ? pct(b.value, p.value) : null;
+    html += `
+    <div class="stat">
+      <div class="stat-name">${b.name}</div>
+      <div class="stat-val">${fmt(b.value)}</div>
+      <div class="stat-unit">ops / sec · CI x86_64</div>
+      ${deltaTag(d)}
+    </div>`;
+  }
+  html += '</div>';
+
+  // charts
+  html += '<div class="charts-grid" id="charts"></div>';
+
+  // history table
+  html += '<div class="tbl-wrap"><table><thead><tr><th>commit</th><th>date</th>';
+  for (const n of names) html += `<th title="${n}">${n.split(' ')[0].replace(/[—–]/g, '').trim()}</th>`;
+  html += '</tr></thead><tbody>';
+  for (const e of [...entries].reverse()) {
+    html += `<tr><td class="hash">${e.commit.slice(0,7)}</td><td>${fmtDate(e.date)}</td>`;
+    for (const n of names) {
+      const b = e.benches.find(x => x.name === n);
+      html += `<td class="v">${b ? fmt(b.value) : '—'}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+
+  document.getElementById('root').innerHTML = html;
+
+  // render charts
+  const labels = entries.map(e => e.commit.slice(0, 7));
+  const chartsEl = document.getElementById('charts');
+
+  for (const name of names) {
+    const values = entries.map(e => e.benches.find(b => b.name === name)?.value ?? null);
+    const latestVal = values[values.length - 1];
+
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.innerHTML = `
+      <div class="chart-head">
+        <span class="chart-name">${name}</span>
+        <span class="chart-val">${fmt(latestVal)} ops/s</span>
+      </div>
+      <canvas></canvas>`;
+    chartsEl.appendChild(card);
+
+    const ctx = card.querySelector('canvas').getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 0, 70);
+    g.addColorStop(0, 'rgba(236,72,153,.18)');
+    g.addColorStop(1, 'rgba(236,72,153,.01)');
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          borderColor: '#ec4899',
+          backgroundColor: g,
+          borderWidth: 1.5,
+          pointBackgroundColor: '#ec4899',
+          pointBorderColor: '#0d0a0f',
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          tension: .4,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true, animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1420',
+            borderColor: 'rgba(236,72,153,.25)',
+            borderWidth: 1,
+            titleColor: '#ec4899',
+            bodyColor: '#f5f0f8',
+            callbacks: { label: c => ' ' + fmt(c.raw) + ' ops/sec' },
+          },
+        },
+        scales: {
+          x: { display: false },
+          y: {
+            grid: { color: 'rgba(255,255,255,.025)' },
+            ticks: { callback: v => fmt(v) },
+          },
+        },
+      },
+    });
+  }
+}
+
+loadData().then(render).catch(e => {
+  document.getElementById('root').innerHTML =
+    `<div class="err">Failed to load benchmark data.<br><small style="opacity:.5">${e.message}</small></div>`;
+});
+</script>
+</body>
+</html>
