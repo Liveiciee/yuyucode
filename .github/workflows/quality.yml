@@ -72,6 +72,16 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:ci
 
+      - name: Report coverage to DeepSource
+        run: |
+          curl -fsSL https://cli.deepsource.com/install | BINDIR=./bin sh
+          ./bin/deepsource report \
+            --analyzer test-coverage \
+            --key javascript \
+            --value-file ./coverage/lcov.info
+        env:
+          DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
