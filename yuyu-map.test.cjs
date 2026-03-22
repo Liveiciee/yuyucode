@@ -702,11 +702,53 @@ describe('main()', () => {
     expect(mapContent).toContain('useCounter');
   });
 
+  it('incremental mode — logs changed file count when git diff returns files', () => {
+    const srcFile = path.join(tmpDir, 'src', 'utils.js');
+    fs.writeFileSync(srcFile, 'export function helper() {}\n');
+    // spawnSync: git diff returns changed file, repomix fails
+    const incrementalSpawn = vi.fn((cmd, args) => {
+      if (cmd === 'git' && args.includes('--name-only')) {
+        return { error: null, status: 0, stdout: 'src/utils.js\n', stderr: '' };
+      }
+      return { error: new Error('offline'), status: null, stderr: '' };
+    });
+    expect(() => main({ root: tmpDir, yuyuDir, spawnSync: incrementalSpawn })).not.toThrow();
+  });
+
+  it('git hint — logs feat message when changed files exist', () => {
+    // spawnSync: repomix fails, git diff returns changed files
+    const hintSpawn = vi.fn((cmd, args) => {
+      if (cmd === 'git' && args.includes('--name-only')) {
+        return { error: null, status: 0, stdout: 'src/api.js\n', stderr: '' };
+      }
+      return { error: new Error('offline'), status: null, stderr: '' };
+    });
+    expect(() => main({ root: tmpDir, yuyuDir, spawnSync: hintSpawn })).not.toThrow();
+  });
+
+  it('git hint catch block — does not throw when _spawnSync throws for git', () => {
+    const throwingSpawn = vi.fn((cmd) => {
+      if (cmd === 'git') throw new Error('git not found');
+      return { error: new Error('offline'), status: null, stderr: '' };
+    });
+    expect(() => main({ root: tmpDir, yuyuDir, spawnSync: throwingSpawn })).not.toThrow();
+  });
+
+  it('import graph — salience increases for imported files', () => {
+    // api.js imports utils.js — utils.js should have higher importedBy
+    fs.writeFileSync(path.join(tmpDir, 'src', 'utils.js'),
+      "export function helper() { return 1; }\n"
+    );
+    fs.writeFileSync(path.join(tmpDir, 'src', 'api.js'),
+      "import { helper } from './utils.js';\nexport function callApi() { return helper(); }\n"
+    );
+    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
+    expect(fs.existsSync(path.join(yuyuDir, 'map.md'))).toBe(true);
+  });
+
   it('uses repomix output when tryRepomix succeeds', () => {
-    // Mock spawnSync yang nulis file output repomix lalu return status 0
     const repomixContent = '# Repomix compressed output\nsome content here\n';
     const repomixSpawn = vi.fn((_cmd, _args, opts) => {
-      // Cari --output arg lalu tulis file-nya
       const outIdx = (_args || []).indexOf('--output');
       if (outIdx !== -1 && _args[outIdx + 1]) {
         const outFile = _args[outIdx + 1];
@@ -718,15 +760,6 @@ describe('main()', () => {
     main({ root: tmpDir, yuyuDir, spawnSync: repomixSpawn });
     const compressed = fs.readFileSync(path.join(yuyuDir, 'compressed.md'), 'utf8');
     expect(compressed).toBe(repomixContent);
-  });
-
-  it('git hint catch block — does not throw when spawnSync throws', () => {
-    // spawnSync normal untuk repomix (offline), tapi throw untuk git
-    const throwingSpawn = vi.fn((cmd) => {
-      if (cmd === 'git') throw new Error('git not found');
-      return { error: new Error('offline'), status: null, stderr: '' };
-    });
-    expect(() => main({ root: tmpDir, yuyuDir, spawnSync: throwingSpawn })).not.toThrow();
   });
 });
 

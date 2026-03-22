@@ -548,8 +548,8 @@ function main(_opts = {}) {
   console.log(`   🔥 Hot files: ${hot} | ƒ Symbols: ${totalSymbols}`);
   // Dynamic hint — suggest commit message based on changed files
   try {
-    const diff   = spawnSync('git', ['diff', '--name-only', 'HEAD'],     { cwd: root, encoding: 'utf8', timeout: 3000, stdio: 'pipe' });
-    const staged = spawnSync('git', ['diff', '--cached', '--name-only'], { cwd: root, encoding: 'utf8', timeout: 3000, stdio: 'pipe' });
+    const diff   = _spawnSync('git', ['diff', '--name-only', 'HEAD'],     { cwd: root, encoding: 'utf8', timeout: 3000, stdio: 'pipe' });
+    const staged = _spawnSync('git', ['diff', '--cached', '--name-only'], { cwd: root, encoding: 'utf8', timeout: 3000, stdio: 'pipe' });
     const changed = [...new Set([
       ...(diff.stdout   || '').trim().split('\n'),
       ...(staged.stdout || '').trim().split('\n'),
@@ -568,7 +568,6 @@ function main(_opts = {}) {
   }
 }
 
-/* istanbul ignore next */
 if (require.main === module) {
   main();
 }
