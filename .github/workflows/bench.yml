@@ -5,7 +5,6 @@ on:
     branches: [ main ]
     paths-ignore: ['**.md']
 
-# Izin nulis ke gh-pages untuk simpan history chart
 permissions:
   contents: write
   deployments: write
@@ -38,6 +37,8 @@ jobs:
 
       - name: Create gh-pages branch if not exists
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin gh-pages 2>/dev/null && echo "gh-pages exists" || (
             git checkout --orphan gh-pages &&
             git reset --hard &&
