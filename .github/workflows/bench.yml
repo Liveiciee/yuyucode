@@ -4,6 +4,9 @@ on:
   push:
     branches: [ main ]
     paths-ignore: ['**.md']
+  workflow_dispatch:  # bisa trigger manual dari Actions UI
+  schedule:
+    - cron: '0 0 * * 1'  # tiap Senin jam 00:00 UTC — pastikan data fresh
 
 permissions:
   contents: write
@@ -70,7 +73,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Simpan dulu ke /tmp sebelum ganti branch
           cp bench-dashboard.html /tmp/bench-dashboard.html
 
           git fetch origin gh-pages
@@ -84,3 +86,16 @@ jobs:
           git push origin gh-pages
 
           git checkout main
+
+      # Trigger docs redeploy supaya /dev/bench/ langsung fresh
+      - name: Trigger docs redeploy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'docs.yml',
+              ref: 'main',
+            });
+            console.log('✅ Docs redeploy triggered');
