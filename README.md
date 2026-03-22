@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="public/yuyu-icon.png" width="96" alt="YuyuCode icon" />
+<img src="public/icon.svg" width="96" alt="YuyuCode icon" />
 
-# YuyuCode
+# YuyuCode 🌸
 
 ### A full agentic coding assistant.
 ### Built entirely on an Android phone.
