@@ -200,6 +200,7 @@ function extractSigs(src, _filePath) {
   for (const re of [re1, re2, re3]) {
     let m;
     while ((m = re.exec(src)) !== null) {
+      // deepsource-disable-next-line JS-0073
       if (!sigs.find(s => s.name === m[1])) {
         const icon = /^use[A-Z]/.test(m[1]) ? '🪝' : /^[A-Z]/.test(m[1]) ? '⚛' : 'ƒ';
         sigs.push({ name: m[1], sig: '(' + m[2].trim() + ')', icon });
