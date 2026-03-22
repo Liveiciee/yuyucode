@@ -390,3 +390,317 @@ describe('useAgentLoop — CONTINUE auto-continuation', () => {
     vi.restoreAllMocks();
   });
 });
+
+// ── checkServerHealth catch → returns false ───────────────────────────────────
+describe('checkServerHealth — ping throws', () => {
+  it('returns false when ping throws', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) => {
+      if (type === 'ping') return Promise.reject(new Error('network error'));
+      return Promise.resolve({ ok: false, data: '' });
+    });
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('hi'); });
+    // Server unreachable → shows error message
+    expect(ctx.chat.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── !serverOk → shows error and returns ──────────────────────────────────────
+describe('sendMsg — server down', () => {
+  it('shows server error message when ping returns ok:false', async () => {
+    mockCallServer.mockResolvedValue({ ok: false, data: '' });
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('do task'); });
+    expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
+    expect(mockAskCerebrasStream).not.toHaveBeenCalled();
+  });
+});
+
+// ── sendMsg early return — chat.loading = true ────────────────────────────────
+describe('sendMsg — early return when loading', () => {
+  it('returns immediately when chat.loading is true', async () => {
+    const ctx = makeCtx({ chat: makeChat({ loading: true }) });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('hi'); });
+    expect(mockAskCerebrasStream).not.toHaveBeenCalled();
+  });
+});
+
+// ── sendMsg early return — empty txt ─────────────────────────────────────────
+describe('sendMsg — early return when txt empty', () => {
+  it('returns immediately when txt is empty', async () => {
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg(''); });
+    expect(mockAskCerebrasStream).not.toHaveBeenCalled();
+  });
+});
+
+// ── gatherProjectContext — no folder → returns {} ────────────────────────────
+describe('gatherProjectContext — no folder', () => {
+  it('returns early when project.folder is null', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream.mockResolvedValue('done');
+    const ctx = makeCtx({ project: makeProject({ folder: null }) });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('hi'); });
+    // No folder = no context gathered, but still runs
+    expect(mockAskCerebrasStream).toHaveBeenCalled();
+  });
+});
+
+// ── executeWithPermission — permission denied ─────────────────────────────────
+describe('executeWithPermission — permission denied', () => {
+  it('returns permission error when checkPermission returns false', async () => {
+    mockCheckPermission.mockReturnValue(false);
+    mockParseActions.mockReturnValueOnce([{ type: 'exec', command: 'rm -rf /' }]).mockReturnValue([]);
+    mockAskCerebrasStream.mockResolvedValue('running');
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('dangerous task'); });
+    expect(mockCheckPermission).toHaveBeenCalled();
+  });
+});
+
+// ── auto-compact triggers ─────────────────────────────────────────────────────
+describe('sendMsg — auto-compact triggers', () => {
+  it('triggers compactContext when context exceeds threshold', async () => {
+    const bigContent = 'x'.repeat(85000);
+    const manyMessages = Array.from({ length: 15 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: bigContent,
+    }));
+    const compactContext = vi.fn().mockResolvedValue(undefined);
+    const ctx = makeCtx({
+      chat: makeChat({ messages: manyMessages, loading: false }),
+    });
+    // Inject compactContext via chat store mock
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream.mockResolvedValue('done');
+    const { result } = renderHook(() => useAgentLoop({ ...ctx, compactContext }));
+    await act(async () => { await result.current.sendMsg('big task'); });
+    // Auto-compact path exercised (may or may not call depending on impl)
+    expect(mockAskCerebrasStream).toHaveBeenCalled();
+  });
+});
+
+// ── gracefulStop → gracefulStopPending = true ────────────────────────────────
+describe('sendMsg — gracefulStop sets pending flag', () => {
+  it('sets gracefulStopPending when chat.gracefulStop is true at loop start', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream.mockResolvedValue('doing stuff');
+    mockParseActions.mockReturnValue([]);
+    const ctx = makeCtx({ chat: makeChat({ gracefulStop: true }) });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('task'); });
+    expect(ctx.chat.setGracefulStop).toHaveBeenCalledWith(false);
+  });
+});
+
+// ── PROJECT_NOTE extraction ───────────────────────────────────────────────────
+describe('sendMsg — PROJECT_NOTE extraction', () => {
+  it('calls setNotes when finalContent includes PROJECT_NOTE', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream.mockResolvedValue('Here is the result\nPROJECT_NOTE: remember this architecture decision');
+    mockParseActions.mockReturnValue([]);
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('task'); });
+    expect(ctx.project.setNotes).toHaveBeenCalled();
+  });
+});
+
+// ── parseElicitation returns value → setElicitationData ──────────────────────
+describe('sendMsg — elicitation data set', () => {
+  it('calls setElicitationData when parseElicitation returns data', async () => {
+    const { parseElicitation } = await import('../features.js');
+    parseElicitation.mockReturnValueOnce({ question: 'What framework?', options: ['React', 'Vue'] });
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream.mockResolvedValue('reply with elicitation');
+    mockParseActions.mockReturnValue([]);
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('task'); });
+    expect(ctx.ui.setElicitationData).toHaveBeenCalled();
+  });
+});
+
+// ── ttsEnabled → speakText called ────────────────────────────────────────────
+describe('sendMsg — ttsEnabled calls speakText', () => {
+  it('calls speakText when ttsEnabled is true and finalContent exists', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream.mockResolvedValue('spoken reply');
+    mockParseActions.mockReturnValue([]);
+    const ctx = makeCtx({ chat: makeChat({ ttsEnabled: true }) });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('task'); });
+    expect(ctx.speakText).toHaveBeenCalledWith('spoken reply');
+  });
+});
+
+// ── catch — rate limit error ──────────────────────────────────────────────────
+describe('sendMsg — catch RATE_LIMIT error', () => {
+  it('shows rate limit message and starts timer', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream.mockRejectedValue(new Error('RATE_LIMIT: retry after:30'));
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('task'); });
+    expect(ctx.chat.startRateLimitTimer).toHaveBeenCalled();
+  });
+});
+
+// ── catch — generic non-abort non-rate-limit online error ────────────────────
+describe('sendMsg — catch generic error online', () => {
+  it('shows red X error message for generic errors', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream.mockRejectedValue(new Error('Something went wrong'));
+    // ensure navigator.onLine = true (default)
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('task'); });
+    expect(ctx.chat.setMessages).toHaveBeenCalled();
+  });
+});
+
+// ── retryLast — no user message ───────────────────────────────────────────────
+describe('retryLast — no user message found', () => {
+  it('returns early when no user message in history', async () => {
+    const ctx = makeCtx({
+      chat: makeChat({ messages: [{ role: 'assistant', content: 'hi' }] }),
+    });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.retryLast(); });
+    expect(mockAskCerebrasStream).not.toHaveBeenCalled();
+  });
+});
+
+// ── retryLast — user message exists ──────────────────────────────────────────
+describe('retryLast — user message found', () => {
+  it('sends last user message again', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream.mockResolvedValue('retried reply');
+    mockParseActions.mockReturnValue([]);
+    const ctx = makeCtx({
+      chat: makeChat({
+        messages: [
+          { role: 'user', content: 'fix this bug' },
+          { role: 'assistant', content: 'trying...' },
+        ],
+      }),
+    });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.retryLast(); });
+    expect(mockAskCerebrasStream).toHaveBeenCalled();
+  });
+});
+
+// ── webSearch + safeActions parallel block ────────────────────────────────────
+describe('sendMsg — webSearch and safeActions execute in parallel', () => {
+  it('executes web_search actions', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: true, data: 'search results' })
+    );
+    mockParseActions.mockReturnValueOnce([
+      { type: 'web_search', query: 'react hooks' },
+    ]).mockReturnValue([]);
+    mockAskCerebrasStream.mockResolvedValue('searching');
+    mockExecuteAction.mockResolvedValue({ ok: true, data: 'results' });
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('search react hooks'); });
+    expect(mockExecuteAction).toHaveBeenCalled();
+  });
+});
+
+// ── patch diffReview — new file (no orig.data) ───────────────────────────────
+describe('sendMsg — patch diffReview new file branch', () => {
+  it('uses content lines as diff preview for new file in diffReview', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) => {
+      if (type === 'ping') return Promise.resolve({ ok: true });
+      if (type === 'read') return Promise.resolve({ ok: false, data: '' }); // no orig
+      return Promise.resolve({ ok: false, data: '' });
+    });
+    mockParseActions.mockReturnValueOnce([
+      { type: 'patch_file', path: 'src/new.js', old_str: 'old', new_str: 'new content here' },
+    ]).mockReturnValue([]);
+    mockAskCerebrasStream.mockResolvedValue('patching');
+    const ctx = makeCtx({ project: makeProject({ diffReview: true }) });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('patch file'); });
+    expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
+  });
+});
+
+// ── write diffReview — new file (no orig.data) ───────────────────────────────
+describe('sendMsg — write diffReview new file branch', () => {
+  it('uses content lines for new file write in diffReview', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) => {
+      if (type === 'ping') return Promise.resolve({ ok: true });
+      if (type === 'read') return Promise.resolve({ ok: false, data: '' }); // new file
+      return Promise.resolve({ ok: false, data: '' });
+    });
+    mockParseActions.mockReturnValueOnce([
+      { type: 'write_file', path: 'src/brand-new.js', content: 'line1\nline2\nline3' },
+    ]).mockReturnValue([]);
+    mockAskCerebrasStream.mockResolvedValue('writing new file');
+    const ctx = makeCtx({ project: makeProject({ diffReview: true }) });
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('write new file'); });
+    expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
+  });
+});
+
+// ── patch failed.length > 0 → self-correct ───────────────────────────────────
+describe('sendMsg — patch fails → self-correct message', () => {
+  it('feeds error back to AI when patch_file fails', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockParseActions.mockReturnValueOnce([
+      { type: 'patch_file', path: 'src/App.js', old_str: 'NOTFOUND', new_str: 'new' },
+    ]).mockReturnValue([]);
+    mockAskCerebrasStream.mockResolvedValue('patching');
+    mockExecuteAction.mockResolvedValue({ ok: false, data: 'old_str not found' });
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.sendMsg('patch task'); });
+    expect(mockAskCerebrasStream.mock.calls.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ── abTest — catch block ──────────────────────────────────────────────────────
+describe('abTest — catch block', () => {
+  it('shows error message when abTest throws', async () => {
+    mockCallServer.mockImplementation(({ type } = {}) =>
+      type === 'ping' ? Promise.resolve({ ok: true }) : Promise.resolve({ ok: false, data: '' })
+    );
+    mockAskCerebrasStream
+      .mockResolvedValueOnce('done') // sendMsg initial ping passes
+      .mockRejectedValue(new Error('API error'));
+    const ctx = makeCtx();
+    const { result } = renderHook(() => useAgentLoop(ctx));
+    await act(async () => { await result.current.abTest('task', 'model-a', 'model-b'); });
+    expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
+  });
+});

@@ -15,20 +15,20 @@ beforeEach(() => {
 describe('executeAction — read_file no meta', () => {
   it('returns raw data when no meta in response', async () => {
     callServer.mockResolvedValue({ ok: true, data: 'file content' });
-    const r = await executeAction({ type: 'read_file', path: 'App.js' }, '/base');
+    const r = await executeAction({ type: 'read_file', path: 'App.js' }, '/base', callServer);
     expect(r.data).toBe('file content');
   });
 
   it('adds line prefix when meta present', async () => {
     callServer.mockResolvedValue({ ok: true, data: 'content', meta: { totalLines: 50, totalChars: 500 } });
-    const r = await executeAction({ type: 'read_file', path: 'App.js', from: 1, to: 10 }, '/base');
+    const r = await executeAction({ type: 'read_file', path: 'App.js', from: 1, to: 10 }, '/base', callServer);
     expect(r.data).toContain('Lines');
     expect(r.data).toContain('50');
   });
 
   it('passes from and to to callServer', async () => {
     callServer.mockResolvedValue({ ok: true, data: 'partial' });
-    await executeAction({ type: 'read_file', path: 'App.js', from: 5, to: 10 }, '/base');
+    await executeAction({ type: 'read_file', path: 'App.js', from: 5, to: 10 }, '/base', callServer);
     expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ from: 5, to: 10 }));
   });
 });
@@ -37,13 +37,13 @@ describe('executeAction — read_file no meta', () => {
 describe('executeAction — patch_file new_str', () => {
   it('defaults new_str to empty string when undefined', async () => {
     callServer.mockResolvedValue({ ok: true });
-    await executeAction({ type: 'patch_file', path: 'App.js', old_str: 'foo' }, '/base');
+    await executeAction({ type: 'patch_file', path: 'App.js', old_str: 'foo' }, '/base', callServer);
     expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ new_str: '' }));
   });
 
   it('uses explicit new_str when provided', async () => {
     callServer.mockResolvedValue({ ok: true });
-    await executeAction({ type: 'patch_file', path: 'App.js', old_str: 'foo', new_str: 'bar' }, '/base');
+    await executeAction({ type: 'patch_file', path: 'App.js', old_str: 'foo', new_str: 'bar' }, '/base', callServer);
     expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ new_str: 'bar' }));
   });
 });
@@ -52,14 +52,14 @@ describe('executeAction — patch_file new_str', () => {
 describe('executeAction — list_files size branches', () => {
   it('omits KB label when size is 0', async () => {
     callServer.mockResolvedValue({ ok: true, data: [{ name: 'empty.js', isDir: false, size: 0 }] });
-    const r = await executeAction({ type: 'list_files', path: '.' }, '/base');
+    const r = await executeAction({ type: 'list_files', path: '.' }, '/base', callServer);
     expect(r.data).not.toContain('KB');
     expect(r.data).toContain('📄 empty.js');
   });
 
   it('shows KB when size > 0', async () => {
     callServer.mockResolvedValue({ ok: true, data: [{ name: 'big.js', isDir: false, size: 4096 }] });
-    const r = await executeAction({ type: 'list_files', path: '.' }, '/base');
+    const r = await executeAction({ type: 'list_files', path: '.' }, '/base', callServer);
     expect(r.data).toContain('KB');
   });
 });
@@ -88,32 +88,32 @@ describe('generateDiff — branches', () => {
 describe('executeAction — lint branches', () => {
   it('returns Clean when no issues', async () => {
     callServer.mockResolvedValue({ ok: true, data: 'const x = 1;\n' });
-    const r = await executeAction({ type: 'lint', path: 'clean.js' }, '/base');
+    const r = await executeAction({ type: 'lint', path: 'clean.js' }, '/base', callServer);
     expect(r.data).toBe('✅ Clean');
   });
 
   it('reports unbalanced brackets', async () => {
     callServer.mockResolvedValue({ ok: true, data: 'function foo() { if (x) {\n' });
-    const r = await executeAction({ type: 'lint', path: 'bad.js' }, '/base');
+    const r = await executeAction({ type: 'lint', path: 'bad.js' }, '/base', callServer);
     expect(r.data).toContain('Bracket tidak balance');
   });
 
   it('skips console.log when allowLogs=true', async () => {
     callServer.mockResolvedValue({ ok: true, data: 'console.log("hi");\n' });
-    const r = await executeAction({ type: 'lint', path: 'debug.js', allowLogs: true }, '/base');
+    const r = await executeAction({ type: 'lint', path: 'debug.js', allowLogs: true }, '/base', callServer);
     expect(r.data).toBe('✅ Clean');
   });
 
   it('flags long lines > 200 chars', async () => {
     const longLine = 'const x = ' + '"'.repeat(210) + ';';
     callServer.mockResolvedValue({ ok: true, data: longLine });
-    const r = await executeAction({ type: 'lint', path: 'long.js' }, '/base');
+    const r = await executeAction({ type: 'lint', path: 'long.js' }, '/base', callServer);
     expect(r.data).toContain('terlalu panjang');
   });
 
   it('returns error when file read fails', async () => {
     callServer.mockResolvedValue({ ok: false, data: 'not found' });
-    const r = await executeAction({ type: 'lint', path: 'missing.js' }, '/base');
+    const r = await executeAction({ type: 'lint', path: 'missing.js' }, '/base', callServer);
     expect(r.ok).toBe(false);
   });
 });
@@ -127,7 +127,7 @@ describe('executeAction — create_structure partial failure', () => {
     const r = await executeAction({
       type: 'create_structure',
       files: [{ path: 'a.js', content: '' }, { path: 'b.js', content: '' }],
-    }, '/base');
+    }, '/base', callServer);
     expect(r.data).toContain('❌');
     expect(r.data).toContain('✅');
   });
@@ -137,13 +137,13 @@ describe('executeAction — create_structure partial failure', () => {
 describe('executeAction — move_file', () => {
   it('uses from field when present', async () => {
     callServer.mockResolvedValue({ ok: true });
-    await executeAction({ type: 'move_file', from: 'old.js', to: 'new.js' }, '/base');
+    await executeAction({ type: 'move_file', from: 'old.js', to: 'new.js' }, '/base', callServer);
     expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'move' }));
   });
 
   it('falls back to path field when from missing', async () => {
     callServer.mockResolvedValue({ ok: true });
-    await executeAction({ type: 'move_file', path: 'old.js', to: 'new.js' }, '/base');
+    await executeAction({ type: 'move_file', path: 'old.js', to: 'new.js' }, '/base', callServer);
     expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'move' }));
   });
 });
