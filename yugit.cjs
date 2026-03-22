@@ -292,3 +292,59 @@ if (!push.ok) {
 console.log('✅ Push berhasil! Kode Papa sudah terbang ke GitHub 🌸');
 if (bumped)  console.log(`📦 Package version: ${bumped.to}`);
 if (push.out) console.log(push.out);
+
+// Auto-create GitHub Release on release: commits
+if (isRelease && bumped) {
+  // Extract description after "release: vX.Y —"
+  const releaseDesc = msg.replace(/^release:\s*/i, '').replace(/^v[\d.]+\s*[—-]?\s*/,'').trim();
+  createGitHubRelease(bumped.to, releaseDesc).catch(() => {});
+}
+
+// ── GitHub Release (auto-create on release: commits) ─────────────────────────
+async function createGitHubRelease(version, description) {
+  try {
+    // Extract token from git remote URL
+    const remoteUrl = run('git remote get-url origin');
+    const tokenMatch = remoteUrl.match(/https:\/\/([^@]+)@github\.com/);
+    if (!tokenMatch) {
+      console.log('⚠️  GitHub token tidak ditemukan di remote URL — skip release creation.');
+      console.log('   Jalankan manual: gh release create v' + version);
+      return;
+    }
+    const token = tokenMatch[1];
+
+    // Extract owner/repo from remote URL
+    const repoMatch = remoteUrl.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
+    if (!repoMatch) { console.log('⚠️  Tidak bisa parse repo dari remote URL.'); return; }
+    const [, owner, repo] = repoMatch;
+
+    console.log(`\n🏷️  Creating GitHub Release v${version}...`);
+
+    const body = JSON.stringify({
+      tag_name:         `v${version}`,
+      target_commitish: 'main',
+      name:             `v${version}`,
+      body:             description || `Release v${version}`,
+      draft:            false,
+      prerelease:       false,
+    });
+
+    const res = run(
+      `curl -s -X POST ` +
+      `-H "Authorization: token ${token}" ` +
+      `-H "Content-Type: application/json" ` +
+      `-d '${body.replace(/'/g, "'\\''")}' ` +
+      `https://api.github.com/repos/${owner}/${repo}/releases`
+    );
+
+    const parsed = JSON.parse(res);
+    if (parsed.html_url) {
+      console.log(`✅ GitHub Release created: ${parsed.html_url}`);
+      console.log(`🔖 Tag: v${version}`);
+    } else if (parsed.errors || parsed.message) {
+      console.log(`⚠️  Release API: ${parsed.message || JSON.stringify(parsed.errors)}`);
+    }
+  } catch (e) {
+    console.log('⚠️  Release creation failed:', e.message);
+  }
+}
