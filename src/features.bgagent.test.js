@@ -128,7 +128,7 @@ describe('runBackgroundAgent — lifecycle', () => {
     expect(id.startsWith('bg_')).toBe(true);
 
     // Wait for async background loop to complete
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 50));
 
     expect(onDone).toHaveBeenCalled();
     const agents = getBgAgents();
@@ -148,7 +148,7 @@ describe('runBackgroundAgent — lifecycle', () => {
     const callAI = vi.fn().mockResolvedValue('DONE');
     const id = await runBackgroundAgent('fail task', '/project', callAI);
 
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 30));
 
     const agents = getBgAgents();
     const agent = agents.find(a => a.id === id);
@@ -170,7 +170,7 @@ describe('runBackgroundAgent — lifecycle', () => {
     mockParseActions.mockReturnValue([]);
 
     const id = await runBackgroundAgent('abort task', '/project', callAI);
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 30));
 
     // Should not throw, agent ends gracefully
     const agents = getBgAgents();
@@ -189,11 +189,11 @@ describe('abortBgAgent — active agent', () => {
 
     // slow AI so we can abort mid-run
     const callAI = vi.fn().mockImplementation(
-      () => new Promise(r => setTimeout(() => r('not done'), 500))
+      () => new Promise(r => setTimeout(() => r('not done'), 100))
     );
 
     const id = await runBackgroundAgent('slow task', '/project', callAI);
-    await new Promise(r => setTimeout(r, 20)); // let it start
+    await new Promise(r => setTimeout(r, 10)); // let it start
 
     abortBgAgent(id);
 
@@ -223,7 +223,7 @@ describe('mergeBackgroundAgent — conflict', () => {
     mockParseActions.mockReturnValue([]);
 
     const id = await runBackgroundAgent('conflict task', '/project', callAI);
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 30));
 
     const agents = getBgAgents();
     const agent = agents.find(a => a.id === id);
