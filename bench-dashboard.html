@@ -4,747 +4,335 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>yuyu · bench</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,700;1,300&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0a0f;--bg2:#130f17;--bg3:#1a1420;--bg4:#201929;
-  --pink:#ec4899;--pink2:#be185d;--pink3:#f9a8d4;
-  --pink-dim:rgba(236,72,153,.08);--pink-brd:rgba(236,72,153,.18);--pink-glow:rgba(236,72,153,.3);
-  --text:#f5f0f8;--sec:#b8adc4;--mute:rgba(184,173,196,.35);
-  --green:#4ade80;--red:#f87171;--yellow:#fbbf24;
-  --mono:'JetBrains Mono',monospace;
-  --serif:'Instrument Serif',serif;
+  --bg:#0d0a0f;--bg2:#131108;--bg3:#1a1420;
+  --pk:#ec4899;--pk2:#be185d;--pk3:#f9a8d4;
+  --pkd:rgba(236,72,153,.08);--pkb:rgba(236,72,153,.16);--pkg:rgba(236,72,153,.28);
+  --tx:#f5f0f8;--sc:#b8adc4;--mu:rgba(184,173,196,.32);
+  --gn:#4ade80;--rd:#f87171;--yw:#fbbf24;
+  --fn:'JetBrains Mono','Cascadia Code','Fira Code',ui-monospace,monospace;
 }
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.6;min-height:100vh;padding-bottom:80px}
-
-/* scanlines */
-body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.05) 3px,rgba(0,0,0,.05) 4px);pointer-events:none;z-index:9999}
-
-/* ambient orb */
-.orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0}
-.orb1{width:50vw;height:50vw;background:rgba(236,72,153,.06);right:-10%;top:10%}
-.orb2{width:35vw;height:35vw;background:rgba(139,92,246,.04);left:-8%;bottom:20%}
-
-/* topbar */
-.topbar{
-  position:sticky;top:0;z-index:100;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:12px 20px;
-  background:rgba(13,10,15,.92);backdrop-filter:blur(12px);
-  border-bottom:1px solid rgba(236,72,153,.08);
-}
-.topbar-left{display:flex;align-items:center;gap:10px}
-.pulse{width:7px;height:7px;border-radius:50%;background:var(--pink);box-shadow:0 0 8px var(--pink-glow);animation:pulse 2.5s ease-in-out infinite}
+body{background:var(--bg);color:var(--tx);font-family:var(--fn);font-size:13px;line-height:1.6;min-height:100vh;padding-bottom:80px}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.055) 3px,rgba(0,0,0,.055) 4px);pointer-events:none;z-index:9999}
+.orb{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
+.o1{width:50vw;height:50vw;background:rgba(236,72,153,.055);right:-10%;top:10%}
+.o2{width:35vw;height:35vw;background:rgba(139,92,246,.035);left:-8%;bottom:20%}
+.tb{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:rgba(13,10,15,.94);backdrop-filter:blur(14px);border-bottom:1px solid rgba(236,72,153,.07)}
+.tb-l{display:flex;align-items:center;gap:10px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--pk);box-shadow:0 0 8px var(--pkg);animation:pulse 2.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
-.topbar-brand{font-size:12px;color:var(--sec);letter-spacing:.05em}
-.topbar-brand b{color:var(--pink);font-weight:700}
-.topbar-meta{font-size:10px;color:var(--mute);text-align:right;line-height:1.6}
-.topbar-meta a{color:var(--pink);text-decoration:none;opacity:.5;transition:opacity .2s}
-.topbar-meta a:hover{opacity:1}
-
-/* main container */
-.main{position:relative;z-index:1;max-width:880px;margin:0 auto;padding:32px 16px 0}
-
-/* ── FOR EVERYONE section ── */
-.everyone-intro{
-  background:linear-gradient(135deg,rgba(236,72,153,.07),rgba(139,92,246,.04));
-  border:1px solid var(--pink-brd);
-  border-radius:14px;padding:24px 28px;margin-bottom:32px;
-}
-.everyone-intro .tag{
-  display:inline-flex;align-items:center;gap:6px;
-  font-size:10px;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--pink3);margin-bottom:14px;opacity:.8;
-}
-.everyone-intro .tag::before{content:'★';font-size:9px}
-.everyone-title{
-  font-family:var(--serif);font-style:italic;
-  font-size:24px;color:var(--text);line-height:1.2;margin-bottom:8px;
-}
-.everyone-sub{font-size:12px;color:var(--sec);line-height:1.7}
-
-/* human cards */
-.human-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:40px}
-.human-card{
-  background:var(--bg2);border:1px solid rgba(255,255,255,.04);
-  border-radius:12px;padding:18px;
-  display:flex;flex-direction:column;gap:8px;
-  transition:border-color .2s,transform .15s;position:relative;overflow:hidden;
-}
-.human-card:hover{border-color:var(--pink-brd);transform:translateY(-1px)}
-.human-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(236,72,153,.2),transparent)}
-.human-icon{font-size:22px;line-height:1}
-.human-label{font-size:11px;color:var(--sec);font-weight:400}
-.human-headline{font-family:var(--serif);font-size:17px;color:var(--text);line-height:1.3}
-.human-headline b{color:var(--pink)}
-.human-detail{font-size:10px;color:var(--mute);line-height:1.6}
-.human-relevance{font-size:10px;color:rgba(236,72,153,.55);line-height:1.5;margin-top:4px;font-style:italic}
-.human-note{font-size:9px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.15);border-radius:4px;padding:4px 7px;color:rgba(251,191,36,.7);line-height:1.5;margin-top:6px}
-
-/* ── SECTION DIVIDER ── */
-.section-divider{
-  display:flex;align-items:center;gap:14px;
-  margin:40px 0 28px;
-}
-.section-divider .sd-label{
-  font-size:10px;letter-spacing:.14em;text-transform:uppercase;
-  white-space:nowrap;
-}
-.section-divider .sd-line{flex:1;height:1px}
-.sd-for-all .sd-label{color:var(--pink);opacity:.7}
-.sd-for-all .sd-line{background:linear-gradient(90deg,var(--pink-brd),transparent)}
-.sd-pro .sd-label{color:var(--mute)}
-.sd-pro .sd-line{background:rgba(255,255,255,.04)}
-
-/* ── PRO section ── */
-.stat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:28px}
-.stat{
-  background:var(--bg2);border:1px solid rgba(255,255,255,.04);
-  border-radius:8px;padding:12px 14px;
-  transition:border-color .15s;position:relative;overflow:hidden;
-}
-.stat:hover{border-color:var(--pink-brd)}
-.stat-name{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stat-val{font-size:20px;font-weight:700;color:var(--text);line-height:1}
-.stat-unit{font-size:9px;color:var(--mute);margin-top:2px}
-.stat-delta{font-size:10px;margin-top:4px}
-.up{color:var(--green)}.dn{color:var(--red)}.fl{color:var(--mute)}
-
-/* charts */
-.charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:28px}
-.chart-card{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:10px;padding:16px}
-.chart-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
-.chart-name{font-size:10px;color:var(--sec)}
-.chart-val{font-size:12px;font-weight:700;color:var(--pink)}
-.chart-card canvas{max-height:70px}
-
-/* history table */
-.tbl-wrap{overflow-x:auto;border:1px solid rgba(255,255,255,.04);border-radius:10px;margin-bottom:28px}
+.brand{font-size:12px;color:var(--sc);letter-spacing:.05em}
+.brand b{color:var(--pk);font-weight:700}
+.meta{font-size:10px;color:var(--mu);text-align:right;line-height:1.6}
+.meta a{color:var(--pk);text-decoration:none;opacity:.5}
+.meta a:hover{opacity:1}
+.main{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:28px 16px 0}
+.sl{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.sl-t{font-size:10px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
+.sl-t.pk{color:var(--pk);opacity:.75}
+.sl-t.mu{color:var(--mu)}
+.sl-l{flex:1;height:1px}
+.sl-l.pk{background:linear-gradient(90deg,var(--pkb),transparent)}
+.sl-l.mu{background:rgba(255,255,255,.04)}
+.intro{background:linear-gradient(135deg,rgba(236,72,153,.07),rgba(139,92,246,.04));border:1px solid var(--pkb);border-radius:14px;padding:22px 26px;margin-bottom:28px}
+.intro-tag{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--pk3);margin-bottom:12px;opacity:.8}
+.intro-tag::before{content:'★  '}
+.intro-h{font-size:21px;color:var(--tx);line-height:1.25;margin-bottom:8px;font-weight:400;font-style:italic}
+.intro-p{font-size:12px;color:var(--sc);line-height:1.75}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:36px}
+.hcard{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:12px;padding:16px;position:relative;overflow:hidden;transition:border-color .15s,transform .15s}
+.hcard:hover{border-color:var(--pkb);transform:translateY(-1px)}
+.hcard::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(236,72,153,.18),transparent)}
+.h-icon{font-size:20px;line-height:1;margin-bottom:6px}
+.h-lbl{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin-bottom:5px}
+.h-hl{font-size:16px;color:var(--tx);line-height:1.3;margin-bottom:6px}
+.h-hl b{color:var(--pk)}
+.h-dt{font-size:10px;color:var(--mu);line-height:1.6}
+.h-rel{font-size:10px;color:rgba(236,72,153,.5);line-height:1.5;margin-top:5px;font-style:italic}
+.h-note{font-size:9px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.14);border-radius:4px;padding:4px 7px;color:rgba(251,191,36,.65);line-height:1.5;margin-top:7px}
+.h-trend{font-size:10px;margin-top:5px}
+.up{color:var(--gn)}.dn{color:var(--rd)}.fl{color:var(--mu)}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:26px}
+.scard{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:8px;padding:12px 14px;transition:border-color .15s;position:relative;overflow:hidden}
+.scard:hover{border-color:var(--pkb)}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(236,72,153,.12),transparent)}
+.s-name{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--mu);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-val{font-size:19px;font-weight:700;color:var(--tx);line-height:1}
+.s-unit{font-size:9px;color:var(--mu);margin-top:2px}
+.s-delta{font-size:10px;margin-top:4px}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:10px;margin-bottom:26px}
+.ccard{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:10px;padding:14px;position:relative}
+.chead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.cname{font-size:10px;color:var(--sc)}
+.cval{font-size:12px;font-weight:700;color:var(--pk)}
+.ccard canvas{display:block;width:100%;height:72px}
+.tw{overflow-x:auto;border:1px solid rgba(255,255,255,.04);border-radius:10px;margin-bottom:28px}
 table{width:100%;border-collapse:collapse;font-size:11px}
-th{padding:9px 12px;text-align:left;color:var(--mute);font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:400;border-bottom:1px solid rgba(255,255,255,.04);white-space:nowrap}
-td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.025);color:var(--sec);white-space:nowrap}
+th{padding:9px 12px;text-align:left;color:var(--mu);font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:400;border-bottom:1px solid rgba(255,255,255,.04);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.025);color:var(--sc);white-space:nowrap}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--bg3)}
-.hash{color:var(--pink);opacity:.65;font-style:italic}
-.v{color:var(--text);font-weight:700}
-
-/* regression badge */
-.badge{display:inline-block;font-size:9px;padding:1px 6px;border-radius:4px;font-weight:700}
-.badge-ok{background:rgba(74,222,128,.1);color:var(--green)}
-.badge-warn{background:rgba(248,113,113,.1);color:var(--red)}
-.badge-new{background:rgba(236,72,153,.1);color:var(--pink3)}
-
-/* footer */
-footer{border-top:1px solid rgba(255,255,255,.04);padding:20px 16px 0;max-width:880px;margin:0 auto;font-size:10px;color:var(--mute);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
-footer a{color:var(--pink);opacity:.5;text-decoration:none}
+.hash{color:var(--pk);opacity:.65;font-style:italic}
+.v{color:var(--tx);font-weight:700}
+footer{border-top:1px solid rgba(255,255,255,.04);padding:20px 16px 0;max-width:900px;margin:0 auto;font-size:10px;color:var(--mu);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+footer a{color:var(--pk);opacity:.5;text-decoration:none}
 footer a:hover{opacity:1}
-
-/* loading / error */
 .spin{display:flex;align-items:center;justify-content:center;padding:80px;gap:5px}
-.spin span{width:5px;height:5px;border-radius:50%;background:var(--pink);animation:blink 1s infinite}
+.spin span{width:5px;height:5px;border-radius:50%;background:var(--pk);animation:blink 1s infinite}
 .spin span:nth-child(2){animation-delay:.15s}.spin span:nth-child(3){animation-delay:.3s}
 @keyframes blink{0%,80%,100%{opacity:.1;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
-.err{margin:40px auto;max-width:400px;text-align:center;padding:24px;border:1px solid rgba(248,113,113,.15);border-radius:10px;background:rgba(248,113,113,.04);color:var(--red);font-size:12px;line-height:1.8}
-
-@media(max-width:540px){
-  .everyone-title{font-size:19px}
-  .human-grid{grid-template-columns:1fr}
-  .charts-grid{grid-template-columns:1fr}
-}
+.err{margin:40px auto;max-width:400px;text-align:center;padding:24px;border:1px solid rgba(248,113,113,.15);border-radius:10px;background:rgba(248,113,113,.04);color:var(--rd);font-size:12px;line-height:1.8}
+.ctip{position:absolute;background:#1a1420;border:1px solid rgba(236,72,153,.25);border-radius:6px;padding:5px 10px;font-size:11px;color:#f5f0f8;pointer-events:none;display:none;white-space:nowrap;z-index:10;font-family:var(--fn)}
+@media(max-width:540px){.hgrid,.cgrid{grid-template-columns:1fr}.sgrid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
-<div class="orb orb1"></div>
-<div class="orb orb2"></div>
-
-<div class="topbar">
-  <div class="topbar-left">
-    <div class="pulse"></div>
-    <div class="topbar-brand"><b>yuyu</b> · bench</div>
-  </div>
-  <div class="topbar-meta" id="meta">—</div>
+<div class="orb o1"></div><div class="orb o2"></div>
+<div class="tb">
+  <div class="tb-l"><div class="dot"></div><div class="brand"><b>yuyu</b> · bench</div></div>
+  <div class="meta" id="meta">—</div>
 </div>
-
-<div class="main" id="root">
-  <div class="spin"><span></span><span></span><span></span></div>
-</div>
-
+<div class="main" id="root"><div class="spin"><span></span><span></span><span></span></div></div>
 <footer>
-  <span>Built on a ~$130 phone · Oppo A77s × GitHub Actions</span>
+  <span>Built on a ~$130 phone · Oppo A77s × GitHub Actions · MIT</span>
   <span><a href="https://github.com/Liveiciee/yuyucode" target="_blank">github.com/Liveiciee/yuyucode</a></span>
 </footer>
-
 <script>
-// ── human-readable explanations per bench ────────────────────────────────────
-// Each entry: icon, label, headline(v,fmt), detail, relevance?, note?
-// relevance = why this metric matters to users/devs
-// note      = when the number needs extra context (e.g. "0 ops/sec is expected")
-const EXPLAIN = {
+// ── Zero-dependency micro chart renderer ──────────────────────────────────────
+function drawChart(canvas,values,labels){
+  const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,H=72;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  const valid=values.filter(v=>v!==null&&v>0);
+  if(valid.length<2)return;
+  const min=Math.min(...valid)*.92,max=Math.max(...valid)*1.05;
+  const pad={t:6,r:6,b:18,l:6},cW=W-pad.l-pad.r,cH=H-pad.t-pad.b,n=values.length;
+  const px=i=>pad.l+(i/(n-1))*cW;
+  const py=v=>pad.t+cH-((v-min)/(max-min))*cH;
+  // grid
+  ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+  [.25,.5,.75,1].forEach(t=>{const y=pad.t+cH*(1-t);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke()});
+  const pts=values.map((v,i)=>[px(i),v>0?py(v):null]);
+  // gradient fill
+  const grad=ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,'rgba(236,72,153,.22)');grad.addColorStop(1,'rgba(236,72,153,.01)');
+  ctx.beginPath();let started=false;
+  pts.forEach(([x,y])=>{if(y===null)return;if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)});
+  const lv=[...pts].reverse().find(([,y])=>y!==null),fv=pts.find(([,y])=>y!==null);
+  if(lv&&fv){ctx.lineTo(lv[0],H-pad.b);ctx.lineTo(fv[0],H-pad.b);ctx.closePath()}
+  ctx.fillStyle=grad;ctx.fill();
+  // line
+  ctx.beginPath();started=false;
+  pts.forEach(([x,y])=>{if(y===null)return;if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)});
+  ctx.strokeStyle='#ec4899';ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
+  // dots
+  pts.forEach(([x,y])=>{if(y===null)return;
+    ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle='#ec4899';ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,1.5,0,Math.PI*2);ctx.fillStyle='#0d0a0f';ctx.fill()});
+  // x labels
+  ctx.fillStyle='rgba(184,173,196,.35)';ctx.font=`9px ${getComputedStyle(document.body).fontFamily}`;ctx.textAlign='center';
+  const step=Math.max(1,Math.floor(n/4));
+  for(let i=0;i<n;i+=step)ctx.fillText(labels[i]||'',pts[i][0],H-3);
+}
 
-  // ── Language detection ────────────────────────────────────────────────────
-  'single call — jsx': { icon:'⚡', label:'Language detection',
-    headline:(v,fmt)=>`Detects file type in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Every file open triggers this — identifies language instantly so syntax highlighting, autocomplete, and tooling activate automatically.',
-    relevance:'Bottleneck here = laggy editor startup on every file open.' },
-  'single call — ts': { icon:'⚡', label:'TypeScript detection',
-    headline:(v,fmt)=>`Identifies TypeScript in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'TS-specific features (type-checking, IntelliSense) activate the moment you open a .ts or .tsx file.',
-    relevance:'Slow detection delays the entire type-check pipeline for TS users.' },
-  '10 mixed extensions': { icon:'⚡', label:'Batch language scan',
-    headline:(v,fmt)=>`Scans 10 mixed files in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Workspace load scan — all file types detected at once when you open a project folder.',
-    relevance:'Felt on project load. Slow here = sluggish startup.' },
-  '10 mixed': { icon:'⚡', label:'Batch detection',
-    headline:(v,fmt)=>`Processes 10 files in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Batch detection pass across mixed file types.',
-    relevance:'Scales linearly with project size.' },
-  '500 mixed files (stress)': { icon:'🔥', label:'Stress: 500-file project',
-    headline:(v,fmt)=>`Scans 500 files in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Worst-case project scan — 500 mixed file types in one pass. Large monorepo simulation.',
-    relevance:'Confirms YuyuCode stays fast at real-world project scale.',
-    note:'Stress test — not typical, validates scalability.' },
+function addTooltip(canvas,values,labels){
+  const tip=document.createElement('div');tip.className='ctip';
+  canvas.parentElement.appendChild(tip);
+  canvas.addEventListener('mousemove',e=>{
+    const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,n=values.length;
+    const idx=Math.max(0,Math.min(n-1,Math.round((x/r.width)*(n-1))));
+    const v=values[idx];
+    if(!v){tip.style.display='none';return}
+    tip.innerHTML=`<span style="color:var(--pk)">${labels[idx]}</span>  ${fmt(v)} ops/sec`;
+    tip.style.display='block';tip.style.left=Math.min(x,r.width-120)+'px';tip.style.top='-32px';
+  });
+  canvas.addEventListener('mouseleave',()=>{tip.style.display='none'});
+}
 
-  // ── Tab management ────────────────────────────────────────────────────────
-  'empty tabs': { icon:'📑', label:'New tab speed',
-    headline:(v,fmt)=>`Opens blank tab in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Zero wait on new tab. The editor is ready before your finger lifts.',
-    relevance:'Happens every new file. This is how responsive the UI feels.' },
-  'open 1 tab (Array spread)': { icon:'🗂️', label:'Tab open',
-    headline:(v,fmt)=>`Opens tab in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Core tab-open using immutable array spread — safe, predictable state updates.',
-    relevance:'Every file open triggers this. Should be imperceptible — it is.' },
-  'close middle tab from 10': { icon:'🗂️', label:'Tab close',
-    headline:(v,fmt)=>`Closes tab in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Closes from middle of 10 open files — filters array, recalculates active tab.',
-    relevance:'Heavy users keep 10+ tabs. Slow close = perceptible UI lag.' },
-  'find active tab from 20': { icon:'🗂️', label:'Tab lookup',
-    headline:(v,fmt)=>`Finds active tab in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Linear scan to find active tab among 20 — runs on every render cycle.',
-    relevance:'Called constantly. Slow here = the whole editor renders sluggishly.' },
-  'open 50 tabs sequentially': { icon:'🗂️', label:'Stress: 50 tabs',
-    headline:(v,fmt)=>`Opens 50 tabs in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Sequential opens with immutable spreads — O(n²) total, intentional tradeoff for safe state.',
-    relevance:'Power users. Confirms tab management stays usable at 50 tabs.',
-    note:'O(n²) by design — immutability over raw mutation.' },
-  'open 200 tabs sequentially': { icon:'🔥', label:'Stress: 200 tabs',
-    headline:(v,fmt)=>`Opens 200 tabs in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Extreme stress — shows where the O(n²) cost becomes visible.',
-    relevance:'Nobody opens 200 tabs normally, but this reveals the scaling curve.',
-    note:'Intentional stress — real UX limit is ~50 tabs anyway.' },
-  'find dirty tab from 200': { icon:'🗂️', label:'Find unsaved (200 tabs)',
-    headline:(v,fmt)=>`Finds unsaved tab in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Scans 200 tabs for unsaved changes — drives the "●" indicator in tab headers.',
-    relevance:'The unsaved dot must always be accurate and instant.' },
-  'close all dirty tabs from 200': { icon:'🗂️', label:'Mass close unsaved',
-    headline:(v,fmt)=>`Clears all unsaved tabs in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Filter pass across 200 tabs removing all dirty state.',
-    relevance:'Batch close operations on large tab sets.' },
-  'reorder — move last to first (200 tabs)': { icon:'🗂️', label:'Tab reorder (worst case)',
-    headline:(v,fmt)=>`Reorders 200 tabs in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Moves last→first across 200 tabs — worst case for drag-and-drop reorder.',
-    relevance:'Slow here = janky drag animation.' },
-
-  // ── Live preview ──────────────────────────────────────────────────────────
-  'js only': { icon:'👁️', label:'Live preview (JS)',
-    headline:(v,fmt)=>`Builds JS preview in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Generates iframe srcdoc for JS-only project — runs on every keypress in preview mode.',
-    relevance:'Preview refreshes as you type. Slow = preview lags your code.' },
-  'html + css + js': { icon:'👁️', label:'Live preview (full)',
-    headline:(v,fmt)=>`Builds full preview in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Combines HTML + CSS + JS into iframe srcdoc — most common preview case.',
-    relevance:'The expensive preview path. Still fast enough for real-time updates.' },
-  'giant JS (500 lines)': { icon:'👁️', label:'Preview: 500-line file',
-    headline:(v,fmt)=>`Previews 500-line file in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Live preview stress test — large JS file piped into iframe.',
-    relevance:'Confirms preview stays real-time even on large files.' },
-  '20 tabs (only first html/css/js matter)': { icon:'👁️', label:'Preview with 20 tabs',
-    headline:(v,fmt)=>`Scans 20 tabs for preview in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Finds HTML/CSS/JS among 20 open tabs — only first match of each used.',
-    relevance:'Many tabs open, preview only cares about 3.' },
-  'unicode content': { icon:'🌐', label:'Preview: unicode',
-    headline:(v,fmt)=>`Builds unicode preview in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Preview with emoji, CJK, RTL, zero-width chars in source.',
-    relevance:'International code — any language, same speed.' },
-
-  // ── Diff ──────────────────────────────────────────────────────────────────
-  'small diff (4 lines)': { icon:'🔍', label:'Diff review (small)',
-    headline:(v,fmt)=>`Computes change in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Myers diff on a 4-line AI edit — visual diff card appears before you finish blinking.',
-    relevance:'Most AI edits are small. This is the common case.' },
-  'large diff (500 lines, many changes)': { icon:'🔍', label:'Diff review (large)',
-    headline:(v,fmt)=>v<10?`~<b>${(1000/Math.max(v,0.01)).toFixed(0)}ms</b> per diff`:` <b>${fmt(v)} ops/sec</b>`,
-    detail:'Myers on 500 lines with many scattered changes — worst-case pattern. Brief pause is the algorithm working, not a bug.',
-    relevance:'Large refactors. The pause is honest and expected.',
-    note:'Myers O(ND): N=lines, D=differences. Large D on large N is expensive by design.' },
-  'identical (no diff)': { icon:'🔍', label:'Diff: no changes',
-    headline:(v,fmt)=>`Confirms no changes in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Myers still does one full pass to confirm nothing changed — no shortcut exists.',
-    relevance:'Happens when AI produces the same result as current code.' },
-  'unicode diff': { icon:'🌐', label:'Diff: unicode',
-    headline:(v,fmt)=>`Diffs unicode content in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Myers diff with emoji, CJK, RTL — validates correctness for international code.',
-    relevance:'Global developers use non-ASCII identifiers and comments.' },
-  'empty → 500 lines (insert everything)': { icon:'🔍', label:'Diff: full insert',
-    headline:(v,fmt)=>`Diffs empty→500 lines in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'All 500 lines are additions — the initial AI write case.',
-    relevance:'Creating a new file via AI. All-green diff.' },
-  '500 lines → empty (delete everything)': { icon:'🔍', label:'Diff: full delete',
-    headline:(v,fmt)=>`Diffs 500→empty in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Every line deleted — symmetric to full insert.',
-    relevance:'Clearing or replacing a whole file.' },
-  '5000 lines identical (no diff — best case)': { icon:'🔥', label:'Stress diff: 5000 identical',
-    headline:(v,fmt)=>`Confirms no diff in 5000 lines in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Best case at 5000 lines — still must scan the whole file to confirm.',
-    relevance:'Large files with no AI changes. Best case scales well.',
-    note:'10x larger than production worst-case — stress only.' },
-  '5000 lines all changed (worst case Myers)': { icon:'💀', label:'Worst case: Myers diff',
-    headline:(v,fmt)=>v<1?`~<b>${(1000/Math.max(v,0.001)).toFixed(0)}ms</b> per diff — expected`:` <b>${fmt(v)} ops/sec</b>`,
-    detail:'Every line changed across 5000 lines — theoretical worst case O(ND) where N=D=5000. Not a bug.',
-    relevance:'You'll never hit this in real usage — AI edits are targeted. This shows the algorithm's honest limit.',
-    note:'⚠️ 0–3 ops/sec is correct and expected. For bulk rewrites, a different algorithm (Wu, histogram) would be chosen.' },
-
-  // ── Symbol extraction ──────────────────────────────────────────────────────
-  'small file (4 lines)': { icon:'🧠', label:'Symbol scan (small)',
-    headline:(v,fmt)=>`Extracts symbols in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Extracts exports from a 4-line file — the typical small component.',
-    relevance:'Small files are the common case in the project map.' },
-  'realistic component (~50 lines)': { icon:'🧠', label:'Symbol scan (typical)',
-    headline:(v,fmt)=>`Scans real component in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'50-line React hook with multiple exports — median YuyuCode file.',
-    relevance:'This is what the project map runs on most.' },
-  'large file (10 components, ~500 lines)': { icon:'🧠', label:'Symbol scan (large)',
-    headline:(v,fmt)=>`Scans 500-line file in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'500 lines, 10 components — tests parser at scale.',
-    relevance:'Large files slow the project map build.' },
-  'non-code file (early return)': { icon:'🚀', label:'Smart file skip',
-    headline:(v,fmt)=>`Skips non-code in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'CSS, JSON, images recognized immediately and skipped — no wasted parsing.',
-    relevance:'Projects are 30–50% non-JS. This saves significant total scan time.' },
-  '5000 line file': { icon:'🔥', label:'Stress: 5000-line file',
-    headline:(v,fmt)=>v<100?`~<b>${(1000/Math.max(v,0.1)).toFixed(0)}ms</b> per scan`:` <b>${fmt(1e9/v,true)}</b>`,
-    detail:'10x the typical worst case — tests parser at extreme file sizes.',
-    relevance:'Auto-generated or bundled code. Confirms no crash at extremes.',
-    note:'Stress test — files this large would normally be excluded from the project map.' },
-  'deeply nested (50 levels)': { icon:'🔥', label:'Adversarial: 50 nesting levels',
-    headline:(v,fmt)=>`Handles 50-level nesting in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'50 levels of function nesting — adversarial input for recursive parsers.',
-    relevance:'Real code rarely exceeds 5–6 levels. Tests parser stability.',
-    note:'Adversarial test — validates robustness against pathological input.' },
-  '200 unique symbols': { icon:'🔥', label:'Stress: 200 exports',
-    headline:(v,fmt)=>`Extracts 200 symbols in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'File with 200 uniquely named exports — tests symbol table construction at scale.',
-    relevance:'Large utility or auto-generated type files.' },
-
-  // ── Compression ───────────────────────────────────────────────────────────
-  'large file (500 lines)': { icon:'🗜️', label:'Context compression',
-    headline:(v,fmt)=>`Compresses 500-line file in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Strips comments and whitespace to fit more files into the AI's context window.',
-    relevance:'AI has a token limit. Compression = AI sees more = smarter responses.' },
-  'large component (10x realistic, ~500 lines)': { icon:'🗜️', label:'Compression: complex file',
-    headline:(v,fmt)=>`Compresses 10-component file in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Complex multi-component file — harder to compress than flat code.',
-    relevance:'Component-heavy codebases have higher compression cost.' },
-  '200 unique symbol names (compression resistant)': { icon:'🔥', label:'Stress: compression-resistant',
-    headline:(v,fmt)=>`Handles 200 unique names in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'200 unique long identifiers — worst case for repetition-based compression.',
-    relevance:'Auto-generated code with unique names resists compression.',
-    note:'High-entropy files compress poorly by nature — expected behavior.' },
-  'single line (1 char)': { icon:'🛡️', label:'Edge: 1-char file',
-    headline:(v,fmt)=>`Handles 1-char input in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Smallest possible input — edge case validation.',
-    relevance:'Empty or near-empty new files must never crash.',
-    note:'Robustness test — validates correctness, not performance.' },
-
-  // ── Import analysis ───────────────────────────────────────────────────────
-  'small file — 1 import': { icon:'📦', label:'Import analysis',
-    headline:(v,fmt)=>`Maps 1 dependency in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Extracts import statements to build the dependency graph.',
-    relevance:'Every file in the project has imports scanned for the AI context map.' },
-  'realistic component — 3 imports': { icon:'📦', label:'Import analysis (typical)',
-    headline:(v,fmt)=>`Maps 3 dependencies in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Typical React component — 3 imports is the average for YuyuCode files.',
-    relevance:'The median production case.' },
-  'no imports': { icon:'📦', label:'Import scan: no deps',
-    headline:(v,fmt)=>`Confirms no deps in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'File with no imports — parser must read the whole file to confirm.',
-    relevance:'Utility files, constants. No magic shortcut.' },
-  '50 imports': { icon:'🔥', label:'Stress: 50 imports',
-    headline:(v,fmt)=>`Extracts 50 imports in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Extreme import count — barrel files (index.js re-exports) can have 50+.',
-    relevance:'Auto-generated barrel files. Confirms parsing stays fast.',
-    note:'Stress — typical files have 1–10 imports.' },
-  'unicode import paths': { icon:'🌐', label:'Import: unicode paths',
-    headline:(v,fmt)=>`Parses unicode paths in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Non-ASCII file paths — emoji, accented chars, CJK in module names.',
-    relevance:'Internationalized projects must have correct path parsing.',
-    note:'Edge case — validates correctness, not common path.' },
-  'malformed import (no from)': { icon:'🛡️', label:'Robustness: bad import',
-    headline:(v,fmt)=>`Handles malformed import in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Import without "from" clause — invalid JS the parser must handle gracefully.',
-    relevance:'WIP code, partial edits, AI-generated syntax errors — must never crash.',
-    note:'Robustness test — validates graceful failure.' },
-
-  // ── AI response parsing ───────────────────────────────────────────────────
-  'no action blocks': { icon:'🤖', label:'AI parsing: plain text',
-    headline:(v,fmt)=>`Processes plain reply in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Pure text AI response — fastest parser path. Runs thousands of times per session.',
-    relevance:'Most AI replies are conversational. This is the real hot path.' },
-  '1 action block': { icon:'🤖', label:'AI parsing: 1 action',
-    headline:(v,fmt)=>`Parses 1 action in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Single file operation (read/write/exec) — typical single-edit response.',
-    relevance:'Median agentic operation.' },
-  '5 action blocks': { icon:'🤖', label:'AI parsing: 5 actions',
-    headline:(v,fmt)=>`Parses 5 actions in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Multi-step response — 5 file ops. Typical for "implement this feature".',
-    relevance:'Complex tasks generate 5–10 actions. Parse speed affects when work begins.' },
-  'mixed — valid + invalid + non-action blocks': { icon:'🤖', label:'AI parsing: real-world',
-    headline:(v,fmt)=>`Handles messy AI reply in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Valid actions + invalid JSON + code examples + plain text — real-world AI output.',
-    relevance:'AI responses are messy. Parser must handle every combo without false positives.' },
-  '100 fake action blocks (all invalid JSON)': { icon:'🛡️', label:'Robustness: 100 bad blocks',
-    headline:(v,fmt)=>`Rejects 100 bad blocks in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'100 action-like blocks with invalid JSON — adversarial hallucinated AI output.',
-    relevance:'Malformed AI output must be rejected gracefully without crashing.',
-    note:'Adversarial test — validates parser robustness against bad AI output.' },
-  '20 valid action blocks': { icon:'🤖', label:'AI parsing: 20 actions',
-    headline:(v,fmt)=>`Parses 20 actions in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'20 valid ops in one response — "set up the whole project" level task.',
-    relevance:'Large agentic tasks. Slow parsing delays the start of each action.' },
-  '10MB-ish text — no actions': { icon:'🛡️', label:'Robustness: giant response',
-    headline:(v,fmt)=>`Scans 100K chars in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'100,000-character response with no actions — tests for regex catastrophic backtracking.',
-    relevance:'Runaway AI responses. Parser must not freeze.',
-    note:'Safety test — validates no catastrophic backtracking on huge input.' },
-
-  // ── Salience ──────────────────────────────────────────────────────────────
-  '20 pre-built file data objects': { icon:'🗺️', label:'Project map scoring',
-    headline:(v,fmt)=>`Scores 20 files in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Calculates file importance for AI context — based on import count, recency, size.',
-    relevance:'Better scoring = AI sees the right files = smarter responses.' },
-  '200 files with cross-imports': { icon:'🔥', label:'Stress: 200-file project map',
-    headline:(v,fmt)=>`Scores 200 cross-linked files in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Dense dependency graph — all 200 files import each other.',
-    relevance:'Real projects have complex deps. Confirms scorer scales.',
-    note:'O(n²) dependency scan by design — scales to ~500 files before needing optimization.' },
-
-  // ── Concurrent ───────────────────────────────────────────────────────────
-  '10 extractSymbols in parallel (Promise.all)': { icon:'⚡', label:'Concurrent symbol scan',
-    headline:(v,fmt)=>`10 scans concurrently in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'10 files indexed simultaneously — simulates project load parallelism.',
-    relevance:'Faster here = workspace ready sooner.',
-    note:'JS is single-threaded — Promise.all shows scheduling overhead, not true parallelism.' },
-  '10 compressSource in parallel': { icon:'⚡', label:'Concurrent compression',
-    headline:(v,fmt)=>`10 compressions concurrently in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Parallel context compression — when AI requests multiple files at once.',
-    relevance:'Multi-file AI context building.',
-    note:'CPU-bound — parallelism adds overhead in JS single-thread model.' },
-  '10 generateDiff in parallel': { icon:'⚠️', label:'Concurrent diff (intentionally slow)',
-    headline:(v,fmt)=>v<10?`~<b>${(1000/Math.max(v,0.1)).toFixed(0)}ms</b> per batch — CPU-bound`:` <b>${fmt(v)} ops/sec</b>`,
-    detail:'10 large diffs at once — demonstrates Myers diff is CPU-bound, not I/O-bound. Parallelism makes it worse.',
-    relevance:'Key architectural insight: diff scales with CPU speed, not concurrency. The fix is a better algorithm, not more workers.',
-    note:'⚠️ Low ops/sec is expected and correct — this is a CPU saturation demonstration.' },
-  '50 parseActions in parallel': { icon:'🤖', label:'Concurrent AI parsing (50x)',
-    headline:(v,fmt)=>`50 parse ops concurrently in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'50 AI response parses simultaneously — simulates background agent swarm.',
-    relevance:'Multiple background agents at max load.' },
-  'mixed workload — 5 ops all types concurrently': { icon:'⚡', label:'Real-world mixed workload',
-    headline:(v,fmt)=>`5 different ops concurrently in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Symbol scan + compression + diff + action parse + import scan — all at once. Closest to actual runtime behavior.',
-    relevance:'This is what YuyuCode actually does during active editing.' },
-
-  // ── Edge cases ────────────────────────────────────────────────────────────
-  'null input': { icon:'🛡️', label:'Robustness: null',
-    headline:(v,fmt)=>`Handles null in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Null path — returns safe default, never crashes.',
-    relevance:'Race conditions and uninitialized state produce null paths.',
-    note:'Robustness test.' },
-  'undefined input': { icon:'🛡️', label:'Robustness: undefined',
-    headline:(v,fmt)=>`Handles undefined in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Most common JS runtime edge case — optional chaining gaps, missing props.',
-    relevance:'Must never crash on undefined.',
-    note:'Robustness test.' },
-  'no extension': { icon:'🛡️', label:'Edge: extensionless file',
-    headline:(v,fmt)=>`Handles Makefile-style in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Makefile, Dockerfile, Procfile — no extension, must return safe fallback.',
-    relevance:'Config files are common in real projects.' },
-  'deeply nested path': { icon:'🛡️', label:'Edge: deep path',
-    headline:(v,fmt)=>`Handles 10-level path in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Path 10 directories deep — extension extraction works at any depth.',
-    relevance:'Monorepos and nested packages have very deep paths.' },
-  'empty string': { icon:'🛡️', label:'Edge: empty input',
-    headline:(v,fmt)=>`Handles empty string in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Zero-content input — must not crash for any parser.',
-    relevance:'New files before any content is typed.',
-    note:'Robustness test.' },
-  'unicode source': { icon:'🌐', label:'Edge: unicode source',
-    headline:(v,fmt)=>`Handles unicode code in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Emoji, CJK, RTL, zero-width chars in source code.',
-    relevance:'Global developers write in their language. YuyuCode handles any Unicode.' },
-  'unicode diff': { icon:'🌐', label:'Diff: unicode',
-    headline:(v,fmt)=>`Diffs unicode content in <b>${fmt(1e9/v,true)}</b>`,
-    detail:'Myers diff on international source — correctness validation.',
-    relevance:'Global devs use non-ASCII identifiers and comments.' },
-};
-
-const DEFAULT_EXPLAIN = {
-  icon: '📊',
-  label: name => name,
-  headline: (v, fmt) => v < 1
-    ? `~<b>${(1000/Math.max(v,0.001)).toFixed(0)}ms</b> per operation`
-    : `Runs at <b>${fmt(v)} ops/sec</b>`,
-  detail: 'Core engine function — higher ops/sec means faster execution.',
-  relevance: null,
-  note: null,
-};
-
-// ── utils ────────────────────────────────────────────────────────────────────
-function fmt(n, asTime=false) {
-  if (asTime) {
-    // n = nanoseconds
-    if (n < 1000)      return n.toFixed(0) + ' ns';
-    if (n < 1_000_000) return (n/1000).toFixed(1) + ' µs';
-    return (n/1_000_000).toFixed(2) + ' ms';
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function fmt(n,asTime=false){
+  if(asTime){
+    if(n<1000)return n.toFixed(0)+' ns';
+    if(n<1e6)return (n/1000).toFixed(1)+' µs';
+    return (n/1e6).toFixed(2)+' ms';
   }
-  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  if(n>=1e9)return (n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return (n/1e6).toFixed(2)+'M';
+  if(n>=1e3)return (n/1e3).toFixed(1)+'K';
   return n.toFixed(0);
 }
-
-const fmtDate = ts => new Date(typeof ts === 'number' ? ts : ts).toLocaleString('en-GB', {
-  day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
-});
-
-function pct(a, b) { return b ? ((a - b) / b * 100) : null; }
-
-function deltaTag(d, cls=true) {
-  if (d === null) return '';
-  const c = d > 2 ? 'up' : d < -2 ? 'dn' : 'fl';
-  const sign = d > 0 ? '+' : '';
-  if (!cls) return `${sign}${d.toFixed(1)}%`;
-  return `<div class="stat-delta ${c}">${sign}${d.toFixed(1)}%</div>`;
+const fmtDate=ts=>new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+function pct(a,b){return b?((a-b)/b*100):null}
+function deltaTag(d){
+  if(d===null)return '';
+  const c=d>2?'up':d<-2?'dn':'fl',s=d>0?'+':'';
+  return `<div class="h-trend ${c}">${s}${d.toFixed(1)}% vs last push</div>`;
 }
 
-// ── load data ────────────────────────────────────────────────────────────────
-function loadData() {
-  return new Promise((ok, fail) => {
-    const s = document.createElement('script');
-    s.src = './data.js?t=' + Date.now();
-    s.onload = () => window.BENCHMARK_DATA ? ok(window.BENCHMARK_DATA) : fail(new Error('BENCHMARK_DATA not found'));
-    s.onerror = () => fail(new Error('data.js not found — CI might not have run yet'));
+// ── EXPLAIN ───────────────────────────────────────────────────────────────────
+const E={
+  'single call — jsx':{i:'⚡',l:'Language detection',h:(v,f)=>`Detects file type in <b>${f(1e9/v,true)}</b>`,d:'Every file open triggers this — identifies language instantly so syntax highlighting, autocomplete, and tooling activate automatically.',r:'Bottleneck here = laggy editor on every file open.'},
+  'single call — ts':{i:'⚡',l:'TypeScript detection',h:(v,f)=>`Identifies TypeScript in <b>${f(1e9/v,true)}</b>`,d:'TS-specific features (type-checking, IntelliSense) activate the moment you open a .ts or .tsx file.',r:'Slow detection delays the entire type-check pipeline.'},
+  '10 mixed extensions':{i:'⚡',l:'Batch language scan',h:(v,f)=>`Scans 10 mixed files in <b>${f(1e9/v,true)}</b>`,d:'Workspace load scan — all file types detected at once when opening a project folder.',r:'Felt on project load. Slow = sluggish startup.'},
+  '10 mixed':{i:'⚡',l:'Batch detection',h:(v,f)=>`Processes 10 files in <b>${f(1e9/v,true)}</b>`,d:'Batch detection pass across mixed file types.',r:'Scales linearly with project size.'},
+  '500 mixed files (stress)':{i:'🔥',l:'Stress: 500-file project',h:(v,f)=>`Scans 500 files in <b>${f(1e9/v,true)}</b>`,d:'Worst-case project scan — large monorepo simulation.',r:'Confirms YuyuCode stays fast at real project scale.',n:'Stress test — not typical, validates scalability.'},
+  'empty tabs':{i:'📑',l:'New tab speed',h:(v,f)=>`Opens blank tab in <b>${f(1e9/v,true)}</b>`,d:'Zero wait on new tab. The editor is ready before your finger lifts.',r:'Happens every new file. This is how responsive the UI feels.'},
+  'open 1 tab (Array spread)':{i:'🗂️',l:'Tab open',h:(v,f)=>`Opens tab in <b>${f(1e9/v,true)}</b>`,d:'Core tab-open using immutable array spread — safe, predictable state.',r:'Every file open triggers this. Should be imperceptible — it is.'},
+  'close middle tab from 10':{i:'🗂️',l:'Tab close',h:(v,f)=>`Closes tab in <b>${f(1e9/v,true)}</b>`,d:'Closes from middle of 10 open files — filters array, recalculates active tab.',r:'Heavy users keep 10+ tabs. Slow close = perceptible lag.'},
+  'find active tab from 20':{i:'🗂️',l:'Tab lookup',h:(v,f)=>`Finds active tab in <b>${f(1e9/v,true)}</b>`,d:'Linear scan for active tab among 20 — runs on every render cycle.',r:'Called constantly. Slow = whole editor renders sluggishly.'},
+  'open 50 tabs sequentially':{i:'🗂️',l:'Stress: 50 tabs',h:(v,f)=>`Opens 50 tabs in <b>${f(1e9/v,true)}</b>`,d:'Sequential opens with immutable spreads — O(n²) total, intentional tradeoff.',n:'O(n²) by design — immutability over raw mutation.'},
+  'open 200 tabs sequentially':{i:'🔥',l:'Stress: 200 tabs',h:(v,f)=>`Opens 200 tabs in <b>${f(1e9/v,true)}</b>`,d:'Extreme stress — shows where the O(n²) cost becomes visible.',n:'Intentional stress — real UX limit is ~50 tabs anyway.'},
+  'find dirty tab from 200':{i:'🗂️',l:'Find unsaved (200 tabs)',h:(v,f)=>`Finds unsaved tab in <b>${f(1e9/v,true)}</b>`,d:'Scans 200 tabs for unsaved changes — drives the "●" indicator.',r:'The unsaved dot must always be accurate and instant.'},
+  'close all dirty tabs from 200':{i:'🗂️',l:'Mass close unsaved',h:(v,f)=>`Clears unsaved tabs in <b>${f(1e9/v,true)}</b>`,d:'Filter across 200 tabs removing all dirty state.'},
+  'reorder — move last to first (200 tabs)':{i:'🗂️',l:'Tab reorder (worst case)',h:(v,f)=>`Reorders 200 tabs in <b>${f(1e9/v,true)}</b>`,d:'Moves last→first — worst case for drag-and-drop reorder.',r:'Slow = janky drag animation.'},
+  'js only':{i:'👁️',l:'Live preview (JS)',h:(v,f)=>`Builds JS preview in <b>${f(1e9/v,true)}</b>`,d:'Generates iframe srcdoc for JS-only project — runs on every keypress in preview mode.',r:'Preview refreshes as you type. Slow = preview lags your code.'},
+  'html + css + js':{i:'👁️',l:'Live preview (full)',h:(v,f)=>`Builds full preview in <b>${f(1e9/v,true)}</b>`,d:'Combines HTML + CSS + JS into iframe srcdoc — most common preview case.',r:'Still fast enough for real-time updates.'},
+  'giant JS (500 lines)':{i:'👁️',l:'Preview: 500-line file',h:(v,f)=>`Previews 500-line file in <b>${f(1e9/v,true)}</b>`,d:'Live preview stress — large JS file piped into iframe.',r:'Confirms preview stays real-time on large files.'},
+  '20 tabs (only first html/css/js matter)':{i:'👁️',l:'Preview with 20 tabs',h:(v,f)=>`Scans 20 tabs for preview in <b>${f(1e9/v,true)}</b>`,d:'Finds HTML/CSS/JS among 20 open tabs — only first match of each used.'},
+  'unicode content':{i:'🌐',l:'Preview: unicode',h:(v,f)=>`Builds unicode preview in <b>${f(1e9/v,true)}</b>`,d:'Preview with emoji, CJK, RTL, zero-width chars.',r:'International code — any language, same speed.'},
+  'small diff (4 lines)':{i:'🔍',l:'Diff review (small)',h:(v,f)=>`Computes change in <b>${f(1e9/v,true)}</b>`,d:'Myers diff on a 4-line AI edit — diff card appears before you finish blinking.',r:'Most AI edits are small. This is the common case.'},
+  'large diff (500 lines, many changes)':{i:'🔍',l:'Diff review (large)',h:(v,f)=>v<10?`~<b>${(1000/Math.max(v,.01)).toFixed(0)}ms</b> per diff`:`<b>${f(v)} ops/sec</b>`,d:'Myers on 500 lines with many changes — worst-case pattern. Brief pause is expected.',r:'Large refactors. The pause is honest — not a bug.',n:'Myers O(ND): N=lines, D=differences. Large D on large N is expensive by design.'},
+  'identical (no diff)':{i:'🔍',l:'Diff: no changes',h:(v,f)=>`Confirms no changes in <b>${f(1e9/v,true)}</b>`,d:'Myers still does one full pass to confirm nothing changed.',r:'Happens when AI produces the same result as current code.'},
+  'unicode diff':{i:'🌐',l:'Diff: unicode',h:(v,f)=>`Diffs unicode content in <b>${f(1e9/v,true)}</b>`,d:'Myers diff with emoji, CJK, RTL — validates correctness for international code.'},
+  'empty → 500 lines (insert everything)':{i:'🔍',l:'Diff: full insert',h:(v,f)=>`Diffs empty→500 lines in <b>${f(1e9/v,true)}</b>`,d:'All 500 lines are additions — the initial AI write case. All-green diff.',r:'Creating a new file via AI.'},
+  '500 lines → empty (delete everything)':{i:'🔍',l:'Diff: full delete',h:(v,f)=>`Diffs 500→empty in <b>${f(1e9/v,true)}</b>`,d:'Every line deleted — symmetric to full insert. All-red diff.',r:'Clearing or replacing a whole file.'},
+  '5000 lines identical (no diff — best case)':{i:'🔥',l:'Stress diff: 5000 identical',h:(v,f)=>`Confirms no diff in 5000 lines in <b>${f(1e9/v,true)}</b>`,d:'Best case at 5000 lines — must still scan the whole file to confirm.',n:'10x larger than production worst-case — stress only.'},
+  '5000 lines all changed (worst case Myers)':{i:'💀',l:'Worst case: Myers diff',h:(v,f)=>v<1?`~<b>${(1000/Math.max(v,.001)).toFixed(0)}ms</b> — expected & correct`:`<b>${f(v)} ops/sec</b>`,d:"Every line changed across 5000 lines — theoretical O(ND) worst case where N=D=5000. Not a bug.",r:"You'll never hit this in real usage — shows the algorithm's honest limit.",n:"⚠️ 0–3 ops/sec is correct. Myers O(ND) worst case. For bulk rewrites, a different algorithm would be chosen."},
+  'small file (4 lines)':{i:'🧠',l:'Symbol scan (small)',h:(v,f)=>`Extracts symbols in <b>${f(1e9/v,true)}</b>`,d:'Extracts exports from a 4-line file — typical small component.',r:'Small files are the common case in the project map.'},
+  'realistic component (~50 lines)':{i:'🧠',l:'Symbol scan (typical)',h:(v,f)=>`Scans real component in <b>${f(1e9/v,true)}</b>`,d:'50-line React hook with multiple exports — median YuyuCode file.',r:'This is what the project map runs on most.'},
+  'large file (10 components, ~500 lines)':{i:'🧠',l:'Symbol scan (large)',h:(v,f)=>`Scans 500-line file in <b>${f(1e9/v,true)}</b>`,d:'500 lines, 10 components — tests parser at scale.',r:'Large files slow the project map build.'},
+  'non-code file (early return)':{i:'🚀',l:'Smart file skip',h:(v,f)=>`Skips non-code in <b>${f(1e9/v,true)}</b>`,d:'CSS, JSON, images recognized immediately and skipped — no wasted parsing.',r:'Projects are 30–50% non-JS. This saves significant total scan time.'},
+  '5000 line file':{i:'🔥',l:'Stress: 5000-line file',h:(v,f)=>v<100?`~<b>${(1000/Math.max(v,.1)).toFixed(0)}ms</b> per scan`:`Scans in <b>${f(1e9/v,true)}</b>`,d:'10x the typical worst case — extreme file size test.',n:'Stress test — files this large would normally be excluded from project map.'},
+  'deeply nested (50 levels)':{i:'🔥',l:'Adversarial: 50 nesting levels',h:(v,f)=>`Handles 50-level nesting in <b>${f(1e9/v,true)}</b>`,d:'50 levels of function nesting — adversarial input for recursive parsers.',n:'Adversarial test — validates robustness against pathological input.'},
+  '200 unique symbols':{i:'🔥',l:'Stress: 200 exports',h:(v,f)=>`Extracts 200 symbols in <b>${f(1e9/v,true)}</b>`,d:'File with 200 uniquely named exports — tests symbol table at scale.'},
+  'large file (500 lines)':{i:'🗜️',l:'Context compression',h:(v,f)=>`Compresses 500-line file in <b>${f(1e9/v,true)}</b>`,d:"Strips comments and whitespace to fit more files into the AI's context window.",r:'AI has a token limit. Compression = AI sees more = smarter responses.'},
+  'large component (10x realistic, ~500 lines)':{i:'🗜️',l:'Compression: complex file',h:(v,f)=>`Compresses 10-component file in <b>${f(1e9/v,true)}</b>`,d:'Multi-component file — harder to compress than flat code.',r:'Component-heavy codebases have higher compression cost.'},
+  '200 unique symbol names (compression resistant)':{i:'🔥',l:'Stress: compression-resistant',h:(v,f)=>`Handles 200 unique names in <b>${f(1e9/v,true)}</b>`,d:'200 unique long identifiers — worst case for repetition-based compression.',n:'High-entropy files compress poorly by nature — expected behavior.'},
+  'single line (1 char)':{i:'🛡️',l:'Edge: 1-char file',h:(v,f)=>`Handles 1-char input in <b>${f(1e9/v,true)}</b>`,d:'Smallest possible input — edge case validation.',n:'Robustness test.'},
+  'small file — 1 import':{i:'📦',l:'Import analysis',h:(v,f)=>`Maps 1 dependency in <b>${f(1e9/v,true)}</b>`,d:'Extracts import statements to build the dependency graph.',r:'Every file in the project has imports scanned for the AI context map.'},
+  'realistic component — 3 imports':{i:'📦',l:'Import analysis (typical)',h:(v,f)=>`Maps 3 dependencies in <b>${f(1e9/v,true)}</b>`,d:'Typical React component — 3 imports is the average for YuyuCode files.',r:'The median production case.'},
+  'no imports':{i:'📦',l:'Import scan: no deps',h:(v,f)=>`Confirms no deps in <b>${f(1e9/v,true)}</b>`,d:'File with no imports — parser must read the whole file to confirm.'},
+  '50 imports':{i:'🔥',l:'Stress: 50 imports',h:(v,f)=>`Extracts 50 imports in <b>${f(1e9/v,true)}</b>`,d:'Extreme import count — barrel files can have 50+.',n:'Stress — typical files have 1–10 imports.'},
+  'unicode import paths':{i:'🌐',l:'Import: unicode paths',h:(v,f)=>`Parses unicode paths in <b>${f(1e9/v,true)}</b>`,d:'Non-ASCII file paths — emoji, accented chars, CJK in module names.',n:'Edge case — validates correctness, not common path.'},
+  'malformed import (no from)':{i:'🛡️',l:'Robustness: bad import',h:(v,f)=>`Handles malformed import in <b>${f(1e9/v,true)}</b>`,d:'Import without "from" clause — must handle gracefully without crashing.',n:'Robustness test — validates graceful failure.'},
+  'no action blocks':{i:'🤖',l:'AI parsing: plain text',h:(v,f)=>`Processes plain reply in <b>${f(1e9/v,true)}</b>`,d:'Pure text AI response — fastest parser path. Runs thousands of times per session.',r:'Most AI replies are conversational. This is the real hot path.'},
+  '1 action block':{i:'🤖',l:'AI parsing: 1 action',h:(v,f)=>`Parses 1 action in <b>${f(1e9/v,true)}</b>`,d:'Single file operation (read/write/exec) — typical single-edit response.',r:'Median agentic operation.'},
+  '5 action blocks':{i:'🤖',l:'AI parsing: 5 actions',h:(v,f)=>`Parses 5 actions in <b>${f(1e9/v,true)}</b>`,d:'Multi-step response — 5 file ops. Typical for "implement this feature".',r:'Complex tasks generate 5–10 actions.'},
+  'mixed — valid + invalid + non-action blocks':{i:'🤖',l:'AI parsing: real-world',h:(v,f)=>`Handles messy AI reply in <b>${f(1e9/v,true)}</b>`,d:'Valid actions + invalid JSON + code examples + plain text — real-world AI output.',r:'Parser must handle every combo without false positives.'},
+  '100 fake action blocks (all invalid JSON)':{i:'🛡️',l:'Robustness: 100 bad blocks',h:(v,f)=>`Rejects 100 bad blocks in <b>${f(1e9/v,true)}</b>`,d:'100 action-like blocks with invalid JSON — adversarial hallucinated AI output.',n:'Adversarial test — validates parser robustness.'},
+  '20 valid action blocks':{i:'🤖',l:'AI parsing: 20 actions',h:(v,f)=>`Parses 20 actions in <b>${f(1e9/v,true)}</b>`,d:'20 valid ops in one response — "set up the whole project" level task.'},
+  '10MB-ish text — no actions':{i:'🛡️',l:'Robustness: giant response',h:(v,f)=>`Scans 100K chars in <b>${f(1e9/v,true)}</b>`,d:'100,000-character response — tests for regex catastrophic backtracking.',n:'Safety test — validates no catastrophic backtracking on huge input.'},
+  '20 pre-built file data objects':{i:'🗺️',l:'Project map scoring',h:(v,f)=>`Scores 20 files in <b>${f(1e9/v,true)}</b>`,d:'Calculates file importance for AI context — based on import count, recency, size.',r:'Better scoring = AI sees the right files = smarter responses.'},
+  '200 files with cross-imports':{i:'🔥',l:'Stress: 200-file project map',h:(v,f)=>`Scores 200 cross-linked files in <b>${f(1e9/v,true)}</b>`,d:'Dense dependency graph — all 200 files import each other.',n:"O(n²) dependency scan by design — scales to ~500 files before needing optimization."},
+  '10 extractSymbols in parallel (Promise.all)':{i:'⚡',l:'Concurrent symbol scan',h:(v,f)=>`10 scans concurrently in <b>${f(1e9/v,true)}</b>`,d:'10 files indexed simultaneously — project load parallelism simulation.',n:'JS is single-threaded — Promise.all shows scheduling overhead, not true parallelism.'},
+  '10 compressSource in parallel':{i:'⚡',l:'Concurrent compression',h:(v,f)=>`10 compressions concurrently in <b>${f(1e9/v,true)}</b>`,d:'Parallel context compression — when AI requests multiple files at once.',n:'CPU-bound — parallelism adds overhead in single-thread JS.'},
+  '10 generateDiff in parallel':{i:'⚠️',l:'Concurrent diff (CPU-bound)',h:(v,f)=>v<10?`~<b>${(1000/Math.max(v,.1)).toFixed(0)}ms</b> per batch — CPU saturated`:`<b>${f(v)} ops/sec</b>`,d:"10 large diffs at once — demonstrates Myers diff is CPU-bound, not I/O-bound. Parallelism doesn't help.",r:'Key insight: diff scales with CPU speed, not concurrency. Fix = better algorithm, not more workers.',n:'⚠️ Low ops/sec is expected — CPU saturation demonstration, not a bug.'},
+  '50 parseActions in parallel':{i:'🤖',l:'Concurrent AI parsing (50x)',h:(v,f)=>`50 parse ops concurrently in <b>${f(1e9/v,true)}</b>`,d:'50 AI response parses simultaneously — background agent swarm at max load.'},
+  'mixed workload — 5 ops all types concurrently':{i:'⚡',l:'Real-world mixed workload',h:(v,f)=>`5 different ops concurrently in <b>${f(1e9/v,true)}</b>`,d:'Symbol scan + compression + diff + action parse + import scan — all at once.',r:'Closest benchmark to actual YuyuCode runtime behavior during active editing.'},
+  'null input':{i:'🛡️',l:'Robustness: null',h:(v,f)=>`Handles null in <b>${f(1e9/v,true)}</b>`,d:'Null path — returns safe default, never crashes.',n:'Robustness test.'},
+  'undefined input':{i:'🛡️',l:'Robustness: undefined',h:(v,f)=>`Handles undefined in <b>${f(1e9/v,true)}</b>`,d:'Most common JS runtime edge case.',n:'Robustness test.'},
+  'no extension':{i:'🛡️',l:'Edge: extensionless file',h:(v,f)=>`Handles Makefile-style in <b>${f(1e9/v,true)}</b>`,d:'Makefile, Dockerfile, Procfile — no extension, returns safe fallback.',r:'Config files are common in real projects.'},
+  'deeply nested path':{i:'🛡️',l:'Edge: deep path',h:(v,f)=>`Handles 10-level path in <b>${f(1e9/v,true)}</b>`,d:'Path 10 directories deep — extension extraction works at any depth.',r:'Monorepos have very deep paths.'},
+  'empty string':{i:'🛡️',l:'Edge: empty input',h:(v,f)=>`Handles empty string in <b>${f(1e9/v,true)}</b>`,d:'Zero-content input — must not crash for any parser.',n:'Robustness test.'},
+  'unicode source':{i:'🌐',l:'Edge: unicode source',h:(v,f)=>`Handles unicode code in <b>${f(1e9/v,true)}</b>`,d:'Emoji, CJK, RTL, zero-width chars in source code.',r:'Global developers write in their language. YuyuCode handles any Unicode.'},
+};
+const DEF={i:'📊',l:n=>n,h:(v,f)=>v<1?`~<b>${(1000/Math.max(v,.001)).toFixed(0)}ms</b> per operation`:`Runs at <b>${f(v)} ops/sec</b>`,d:'Core engine function — higher ops/sec means faster execution.'};
+
+// ── Load data ─────────────────────────────────────────────────────────────────
+function loadData(){
+  return new Promise((ok,fail)=>{
+    const s=document.createElement('script');
+    s.src='./data.js?t='+Date.now();
+    s.onload=()=>window.BENCHMARK_DATA?ok(window.BENCHMARK_DATA):fail(new Error('BENCHMARK_DATA not found'));
+    s.onerror=()=>fail(new Error('data.js not found — CI might not have run yet'));
     document.head.appendChild(s);
   });
 }
 
-// ── render ───────────────────────────────────────────────────────────────────
-Chart.defaults.color = 'rgba(184,173,196,.4)';
-Chart.defaults.borderColor = 'rgba(255,255,255,.04)';
-Chart.defaults.font.family = "'JetBrains Mono', monospace";
-Chart.defaults.font.size = 9;
-
-function render(data) {
-  // github-action-benchmark stores entries as:
-  // { "bench name": [{commit:{id,message}, date, benches:[{name,value,unit}]}] }
-  // Each key = one bench metric, so same commit appears N times — must group by commit id.
-  const rawEntries = data.entries || {};
-  const commitMap = {};
-
-  for (const [, runs] of Object.entries(rawEntries)) {
-    for (const run of runs) {
-      const id = (typeof run.commit === 'object')
-        ? (run.commit.id || run.commit.hash || JSON.stringify(run.commit))
-        : run.commit;
-      if (!commitMap[id]) {
-        commitMap[id] = { commit: id, date: run.date, benches: [] };
-      }
-      // Merge benches, avoid duplicates by name
-      for (const b of (run.benches || [])) {
-        if (!commitMap[id].benches.find(x => x.name === b.name)) {
-          commitMap[id].benches.push(b);
-        }
-      }
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(data){
+  const raw=data.entries||{},commitMap={};
+  for(const runs of Object.values(raw)){
+    for(const run of runs){
+      const id=typeof run.commit==='object'?(run.commit.id||run.commit.hash||''):run.commit;
+      if(!commitMap[id])commitMap[id]={commit:id,date:run.date,benches:[]};
+      for(const b of(run.benches||[])){if(!commitMap[id].benches.find(x=>x.name===b.name))commitMap[id].benches.push(b)}
     }
   }
+  const entries=Object.values(commitMap).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(!entries.length){document.getElementById('root').innerHTML='<div class="err">No data yet.<br>Push to main to trigger the first bench run.</div>';return}
 
-  // Sort by date ascending
-  const entries = Object.values(commitMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+  const last=entries[entries.length-1],prev=entries[entries.length-2]||null;
+  const names=[...new Set(entries.flatMap(e=>e.benches.map(b=>b.name)))];
 
-  if (!entries.length) {
-    document.getElementById('root').innerHTML =
-      '<div class="err">No data yet.<br>Push to main to trigger the first bench run.</div>';
-    return;
+  document.getElementById('meta').innerHTML=
+    `<a href="https://github.com/Liveiciee/yuyucode/commit/${last.commit}" target="_blank">${last.commit.slice(0,7)}</a>`+
+    ` · ${fmtDate(last.date)} · ${entries.length} run${entries.length>1?'s':''}`;
+
+  let html='';
+
+  // FOR EVERYONE
+  html+=`<div class="sl"><div class="sl-t pk">For Everyone</div><div class="sl-l pk"></div><span style="font-size:9px;background:rgba(74,222,128,.1);color:#4ade80;padding:2px 8px;border-radius:4px;white-space:nowrap">✓ All fast</span></div>`;
+  html+=`<div class="intro"><div class="intro-tag">What does this mean?</div><div class="intro-h">Your code editor, benchmarked.</div><div class="intro-p">YuyuCode runs performance tests automatically on every update — so you know the editor is always getting faster, never slower. The cards below explain what each test means for your experience, and why the number matters.</div></div>`;
+  html+='<div class="hgrid">';
+  for(const b of last.benches){
+    const ex=E[b.name]||DEF;
+    const lbl=typeof ex.l==='function'?ex.l(b.name):ex.l;
+    const hl=ex.h(b.value,fmt);
+    const p=prev?.benches.find(x=>x.name===b.name);
+    const d=p?pct(b.value,p.value):null;
+    const rel=ex.r?`<div class="h-rel">↳ ${ex.r}</div>`:'';
+    const nt=ex.n?`<div class="h-note">${ex.n}</div>`:'';
+    html+=`<div class="hcard"><div class="h-icon">${ex.i}</div><div class="h-lbl">${lbl}</div><div class="h-hl">${hl}</div><div class="h-dt">${ex.d}</div>${rel}${nt}${deltaTag(d)}</div>`;
   }
+  html+='</div>';
 
-  const last  = entries[entries.length - 1];
-  const prev  = entries[entries.length - 2] || null;
-  const names = [...new Set(entries.flatMap(e => e.benches.map(b => b.name)))];
-
-
-
-  // topbar meta
-  document.getElementById('meta').innerHTML =
-    `<a href="https://github.com/Liveiciee/yuyucode/commit/${last.commit}" target="_blank">${last.commit.slice(0,7)}</a>` +
-    ` · ${fmtDate(last.date)} · ${entries.length} run${entries.length > 1 ? 's' : ''}`;
-
-  let html = '';
-
-  // ── FOR EVERYONE ──────────────────────────────────────────────────────────
-  html += `
-  <div class="section-divider sd-for-all">
-    <div class="sd-label">For Everyone</div>
-    <div class="sd-line"></div>
-    <span class="badge badge-ok">✓ All fast</span>
-  </div>
-  <div class="everyone-intro">
-    <div class="tag">What does this mean?</div>
-    <div class="everyone-title">Your code editor, benchmarked.</div>
-    <div class="everyone-sub">
-      YuyuCode runs performance tests automatically on every update —
-      so you know the editor is always getting faster, never slower.
-      The numbers below show how fast key operations run on a real server.
-    </div>
-  </div>
-  <div class="human-grid">`;
-
-  for (const b of last.benches) {
-    const ex = EXPLAIN[b.name] || DEFAULT_EXPLAIN;
-    const label = typeof ex.label === 'function' ? ex.label(b.name) : ex.label;
-    const headline = ex.headline(b.value, fmt);
-    const p = prev?.benches.find(x => x.name === b.name);
-    const d = p ? pct(b.value, p.value) : null;
-    const trend = d === null ? '' :
-      d > 2  ? `<span class="up">↑ ${d.toFixed(1)}% faster than last push</span>` :
-      d < -2 ? `<span class="dn">↓ ${Math.abs(d).toFixed(1)}% slower than last push</span>` :
-               `<span class="fl">→ stable</span>`;
-
-    const relevance = ex.relevance ? `<div class="human-relevance">↳ ${ex.relevance}</div>` : '';
-    const noteTag   = ex.note      ? `<div class="human-note">${ex.note}</div>` : '';
-    html += `
-    <div class="human-card">
-      <div class="human-icon">${ex.icon}</div>
-      <div class="human-label">${label}</div>
-      <div class="human-headline">${headline}</div>
-      <div class="human-detail">${ex.detail}</div>
-      ${relevance}
-      ${noteTag}
-      ${trend ? `<div style="font-size:10px;margin-top:4px">${trend}</div>` : ''}
-    </div>`;
+  // TECHNICAL
+  html+=`<div class="sl" style="margin-top:8px"><div class="sl-t mu">Technical Detail</div><div class="sl-l mu"></div></div>`;
+  html+='<div class="sgrid">';
+  for(const b of last.benches){
+    const p=prev?.benches.find(x=>x.name===b.name);
+    const d=p?pct(b.value,p.value):null;
+    const dc=d===null?'':d>2?`<div class="s-delta up">+${d.toFixed(1)}%</div>`:d<-2?`<div class="s-delta dn">${d.toFixed(1)}%</div>`:`<div class="s-delta fl">→ stable</div>`;
+    html+=`<div class="scard"><div class="s-name">${b.name}</div><div class="s-val">${fmt(b.value)}</div><div class="s-unit">ops/sec · CI x86_64</div>${dc}</div>`;
   }
+  html+='</div>';
 
-  html += '</div>';
+  html+='<div class="cgrid" id="cgrid"></div>';
 
-  // ── FOR PROS ─────────────────────────────────────────────────────────────
-  html += `
-  <div class="section-divider sd-pro">
-    <div class="sd-label">Technical Detail</div>
-    <div class="sd-line"></div>
-  </div>`;
-
-  // raw stat cards
-  html += '<div class="stat-row">';
-  for (const b of last.benches) {
-    const p = prev?.benches.find(x => x.name === b.name);
-    const d = p ? pct(b.value, p.value) : null;
-    html += `
-    <div class="stat">
-      <div class="stat-name">${b.name}</div>
-      <div class="stat-val">${fmt(b.value)}</div>
-      <div class="stat-unit">ops / sec · CI x86_64</div>
-      ${deltaTag(d)}
-    </div>`;
+  // HISTORY
+  html+=`<div class="sl" style="margin-top:4px"><div class="sl-t mu">Run History</div><div class="sl-l mu"></div></div>`;
+  html+='<div class="tw"><table><thead><tr><th>commit</th><th>date</th>';
+  for(const n of names)html+=`<th title="${n}">${n.split(' ')[0].replace(/[—–]/g,'').trim().slice(0,8)}</th>`;
+  html+='</tr></thead><tbody>';
+  for(const e of [...entries].reverse()){
+    html+=`<tr><td class="hash">${e.commit.slice(0,7)}</td><td>${fmtDate(e.date)}</td>`;
+    for(const n of names){const b=e.benches.find(x=>x.name===n);html+=`<td class="v">${b?fmt(b.value):'—'}</td>`}
+    html+='</tr>';
   }
-  html += '</div>';
+  html+='</tbody></table></div>';
 
-  // charts
-  html += '<div class="charts-grid" id="charts"></div>';
+  document.getElementById('root').innerHTML=html;
 
-  // history table
-  html += '<div class="tbl-wrap"><table><thead><tr><th>commit</th><th>date</th>';
-  for (const n of names) html += `<th title="${n}">${n.split(' ')[0].replace(/[—–]/g, '').trim()}</th>`;
-  html += '</tr></thead><tbody>';
-  for (const e of [...entries].reverse()) {
-    html += `<tr><td class="hash">${e.commit.slice(0,7)}</td><td>${fmtDate(e.date)}</td>`;
-    for (const n of names) {
-      const b = e.benches.find(x => x.name === n);
-      html += `<td class="v">${b ? fmt(b.value) : '—'}</td>`;
-    }
-    html += '</tr>';
-  }
-  html += '</tbody></table></div>';
-
-  document.getElementById('root').innerHTML = html;
-
-  // render charts
-  const labels = entries.map(e => e.commit.slice(0, 7));
-  const chartsEl = document.getElementById('charts');
-
-  for (const name of names) {
-    const values = entries.map(e => e.benches.find(b => b.name === name)?.value ?? null);
-    const latestVal = values[values.length - 1];
-
-    const card = document.createElement('div');
-    card.className = 'chart-card';
-    card.innerHTML = `
-      <div class="chart-head">
-        <span class="chart-name">${name}</span>
-        <span class="chart-val">${fmt(latestVal)} ops/s</span>
-      </div>
-      <canvas></canvas>`;
-    chartsEl.appendChild(card);
-
-    const ctx = card.querySelector('canvas').getContext('2d');
-    const g = ctx.createLinearGradient(0, 0, 0, 70);
-    g.addColorStop(0, 'rgba(236,72,153,.18)');
-    g.addColorStop(1, 'rgba(236,72,153,.01)');
-
-    new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          data: values,
-          borderColor: '#ec4899',
-          backgroundColor: g,
-          borderWidth: 1.5,
-          pointBackgroundColor: '#ec4899',
-          pointBorderColor: '#0d0a0f',
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          tension: .4,
-          fill: true,
-        }],
-      },
-      options: {
-        responsive: true, animation: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#1a1420',
-            borderColor: 'rgba(236,72,153,.25)',
-            borderWidth: 1,
-            titleColor: '#ec4899',
-            bodyColor: '#f5f0f8',
-            callbacks: { label: c => ' ' + fmt(c.raw) + ' ops/sec' },
-          },
-        },
-        scales: {
-          x: { display: false },
-          y: {
-            grid: { color: 'rgba(255,255,255,.025)' },
-            ticks: { callback: v => fmt(v) },
-          },
-        },
-      },
-    });
+  // Charts
+  const labels=entries.map(e=>e.commit.slice(0,7));
+  const grid=document.getElementById('cgrid');
+  for(const name of names){
+    const values=entries.map(e=>e.benches.find(b=>b.name===name)?.value??null);
+    const latestVal=values[values.length-1];
+    const card=document.createElement('div');card.className='ccard';
+    card.innerHTML=`<div class="chead"><span class="cname">${name}</span><span class="cval">${fmt(latestVal??0)} ops/s</span></div><canvas></canvas>`;
+    grid.appendChild(card);
+    const canvas=card.querySelector('canvas');
+    requestAnimationFrame(()=>{drawChart(canvas,values,labels);addTooltip(canvas,values,labels)});
   }
 }
 
-loadData().then(render).catch(e => {
-  document.getElementById('root').innerHTML =
-    `<div class="err">Failed to load benchmark data.<br><small style="opacity:.5">${e.message}</small></div>`;
+loadData().then(render).catch(e=>{
+  document.getElementById('root').innerHTML=`<div class="err">Failed to load benchmark data.<br><small style="opacity:.5">${e.message}</small></div>`;
 });
 </script>
 </body>
