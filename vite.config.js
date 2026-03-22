@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
+      // @capacitor-community/sqlite is a native Capacitor plugin — only exists
+      // at runtime on Android/iOS. Externalize so Rollup doesn't try to bundle it.
+      external: ['@capacitor-community/sqlite'],
       output: {
         manualChunks(id) {
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom'))
