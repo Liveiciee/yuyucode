@@ -3,7 +3,6 @@
 <img src="public/banner.svg" width="880" alt="YuyuCode — A full agentic coding assistant, built entirely on an Android phone." />
 
 <br/>
-<br/>
 
 [![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
 [![Quality Gate](https://github.com/liveiciee/yuyucode/actions/workflows/quality.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
@@ -11,13 +10,6 @@
 [![Benchmark](https://github.com/liveiciee/yuyucode/actions/workflows/bench.yml/badge.svg)](https://liveiciee.github.io/yuyucode/dev/bench/)
 [![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=alert_status)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=coverage)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
-
-[![Version](https://img.shields.io/badge/version-4.2.0-c026d3?style=flat-square)](#)
-[![Tests](https://img.shields.io/badge/tests-1031%20passing-22c55e?style=flat-square)](#testing--benchmarks)
-[![License: MIT](https://img.shields.io/badge/License-MIT-a855f7?style=flat-square)](LICENSE)
-![Platform](https://img.shields.io/badge/Android%20(Termux)-3DDC84?style=flat-square&logo=android&logoColor=white)
-![Stack](https://img.shields.io/badge/React%2019%20+%20Capacitor%208-20232A?style=flat-square&logo=react&logoColor=61DAFB)
-![Editor](https://img.shields.io/badge/CodeMirror%206-full%20extension%20suite-f97316?style=flat-square)
 
 <br/>
 

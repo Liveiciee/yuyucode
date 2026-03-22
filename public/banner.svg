@@ -1,13 +1,10 @@
 <svg width="880" height="200" viewBox="0 0 880 200" xmlns="http://www.w3.org/2000/svg">
 <defs>
-  <!-- Background -->
   <linearGradient id="bgMain" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0%" stop-color="#1a0b1e"/>
     <stop offset="50%" stop-color="#0e0810"/>
     <stop offset="100%" stop-color="#120914"/>
   </linearGradient>
-
-  <!-- Petal gradients -->
   <linearGradient id="p1" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0%" stop-color="#fce7f3"/>
     <stop offset="60%" stop-color="#f472b6"/>
@@ -18,126 +15,86 @@
     <stop offset="60%" stop-color="#fbbf24"/>
     <stop offset="100%" stop-color="#b45309"/>
   </linearGradient>
-
-  <!-- Title gradient -->
   <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
     <stop offset="0%" stop-color="#f9a8d4"/>
     <stop offset="55%" stop-color="#f472b6"/>
     <stop offset="100%" stop-color="#fbbf24"/>
   </linearGradient>
-
-  <!-- Subtitle gradient -->
-  <linearGradient id="subGrad" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0%" stop-color="#e879a0"/>
-    <stop offset="100%" stop-color="#d97706"/>
+  <linearGradient id="divLine" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#f472b6" stop-opacity=".5"/>
+    <stop offset="100%" stop-color="#fbbf24" stop-opacity=".05"/>
   </linearGradient>
-
-  <!-- Ambient glow -->
-  <radialGradient id="amb1" cx="13%" cy="50%" r="28%">
-    <stop offset="0%" stop-color="#ec4899" stop-opacity=".22"/>
+  <radialGradient id="amb1" cx="13%" cy="45%" r="30%">
+    <stop offset="0%" stop-color="#ec4899" stop-opacity=".2"/>
     <stop offset="100%" stop-color="#ec4899" stop-opacity="0"/>
   </radialGradient>
-  <radialGradient id="amb2" cx="50%" cy="50%" r="60%">
-    <stop offset="0%" stop-color="#9d174d" stop-opacity=".07"/>
-    <stop offset="100%" stop-color="#9d174d" stop-opacity="0"/>
-  </radialGradient>
-  <radialGradient id="amb3" cx="90%" cy="50%" r="30%">
-    <stop offset="0%" stop-color="#d97706" stop-opacity=".10"/>
+  <radialGradient id="amb2" cx="88%" cy="55%" r="30%">
+    <stop offset="0%" stop-color="#d97706" stop-opacity=".1"/>
     <stop offset="100%" stop-color="#d97706" stop-opacity="0"/>
   </radialGradient>
-
-  <!-- Glow filters -->
+  <radialGradient id="flowerGlow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#ec4899" stop-opacity=".15"/>
+    <stop offset="100%" stop-color="#ec4899" stop-opacity="0"/>
+  </radialGradient>
   <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
     <feGaussianBlur stdDeviation="8" result="b"/>
     <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
   </filter>
   <filter id="softglow" x="-60%" y="-60%" width="220%" height="220%">
-    <feGaussianBlur stdDeviation="16" result="b"/>
+    <feGaussianBlur stdDeviation="14" result="b"/>
     <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
   </filter>
-  <filter id="textglow" x="-10%" y="-30%" width="120%" height="160%">
-    <feGaussianBlur stdDeviation="6" result="b"/>
+  <filter id="textglow" x="-10%" y="-40%" width="120%" height="180%">
+    <feGaussianBlur stdDeviation="5" result="b"/>
     <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
   </filter>
-
-  <!-- Grid pattern -->
   <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
     <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(249,168,212,0.04)" stroke-width="0.5"/>
   </pattern>
+  <clipPath id="rounded">
+    <rect width="880" height="200" rx="12"/>
+  </clipPath>
 </defs>
 
-<!-- Background -->
-<rect width="880" height="200" fill="url(#bgMain)"/>
-<rect width="880" height="200" fill="url(#grid)"/>
+<g clip-path="url(#rounded)">
+  <rect width="880" height="200" fill="url(#bgMain)"/>
+  <rect width="880" height="200" fill="url(#grid)"/>
+  <rect width="880" height="200" fill="url(#amb1)"/>
+  <rect width="880" height="200" fill="url(#amb2)"/>
+  <rect width="880" height="1.5" fill="url(#divLine)"/>
 
-<!-- Ambient blobs -->
-<rect width="880" height="200" fill="url(#amb1)"/>
-<rect width="880" height="200" fill="url(#amb2)"/>
-<rect width="880" height="200" fill="url(#amb3)"/>
-
-<!-- Subtle top edge line -->
-<line x1="0" y1="0" x2="880" y2="0" stroke="rgba(249,168,212,0.15)" stroke-width="1"/>
-<!-- Subtle bottom edge line -->
-<line x1="0" y1="199" x2="880" y2="199" stroke="rgba(249,168,212,0.08)" stroke-width="1"/>
-
-<!-- ── FLOWER ICON @ 100,100 radius ~70 ── -->
-<g transform="translate(115,100)">
-  <!-- Icon background circle glow -->
-  <circle cx="0" cy="0" r="72" fill="#1e0f20" opacity="0.8"/>
-  <circle cx="0" cy="0" r="72" fill="url(#amb1)" opacity="0.6"/>
-
-  <!-- Petals -->
-  <g filter="url(#softglow)">
-    <g transform="rotate(18)"><path d="M0 0 C-24 -22 -36 -68 0 -92 C36 -68 24 -22 0 0Z" fill="url(#p1)" opacity=".95"/></g>
-    <g transform="rotate(90)"><path d="M0 0 C-24 -22 -36 -68 0 -92 C36 -68 24 -22 0 0Z" fill="url(#p2)" opacity=".9"/></g>
-    <g transform="rotate(162)"><path d="M0 0 C-24 -22 -36 -68 0 -92 C36 -68 24 -22 0 0Z" fill="url(#p1)" opacity=".88"/></g>
-    <g transform="rotate(234)"><path d="M0 0 C-24 -22 -36 -68 0 -92 C36 -68 24 -22 0 0Z" fill="url(#p2)" opacity=".92"/></g>
-    <g transform="rotate(306)"><path d="M0 0 C-24 -22 -36 -68 0 -92 C36 -68 24 -22 0 0Z" fill="url(#p1)" opacity=".9"/></g>
+  <!-- ── FLOWER ── -->
+  <g transform="translate(115,100)">
+    <circle cx="0" cy="0" r="85" fill="url(#flowerGlow)"/>
+    <g filter="url(#softglow)">
+      <g transform="rotate(18)"><path d="M0 0 C-26 -24 -38 -74 0 -100 C38 -74 26 -24 0 0Z" fill="url(#p1)" opacity=".95"/></g>
+      <g transform="rotate(90)"><path d="M0 0 C-26 -24 -38 -74 0 -100 C38 -74 26 -24 0 0Z" fill="url(#p2)" opacity=".9"/></g>
+      <g transform="rotate(162)"><path d="M0 0 C-26 -24 -38 -74 0 -100 C38 -74 26 -24 0 0Z" fill="url(#p1)" opacity=".88"/></g>
+      <g transform="rotate(234)"><path d="M0 0 C-26 -24 -38 -74 0 -100 C38 -74 26 -24 0 0Z" fill="url(#p2)" opacity=".92"/></g>
+      <g transform="rotate(306)"><path d="M0 0 C-26 -24 -38 -74 0 -100 C38 -74 26 -24 0 0Z" fill="url(#p1)" opacity=".9"/></g>
+    </g>
+    <g transform="rotate(18)"><path d="M-8 -96 Q0 -104 8 -96" stroke="rgba(10,8,12,.55)" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+    <g transform="rotate(90)"><path d="M-8 -96 Q0 -104 8 -96" stroke="rgba(10,8,12,.55)" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+    <g transform="rotate(162)"><path d="M-8 -96 Q0 -104 8 -96" stroke="rgba(10,8,12,.55)" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+    <g transform="rotate(234)"><path d="M-8 -96 Q0 -104 8 -96" stroke="rgba(10,8,12,.55)" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+    <g transform="rotate(306)"><path d="M-8 -96 Q0 -104 8 -96" stroke="rgba(10,8,12,.55)" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+    <g transform="rotate(18)"><circle cx="0" cy="-58" r="5.5" fill="rgba(253,230,138,.75)"/></g>
+    <g transform="rotate(90)"><circle cx="0" cy="-58" r="5.5" fill="rgba(253,230,138,.75)"/></g>
+    <g transform="rotate(162)"><circle cx="0" cy="-58" r="5.5" fill="rgba(253,230,138,.75)"/></g>
+    <g transform="rotate(234)"><circle cx="0" cy="-58" r="5.5" fill="rgba(253,230,138,.75)"/></g>
+    <g transform="rotate(306)"><circle cx="0" cy="-58" r="5.5" fill="rgba(253,230,138,.75)"/></g>
+    <circle cx="0" cy="0" r="20" fill="#fde68a" filter="url(#glow)"/>
+    <circle cx="0" cy="0" r="20" fill="#fde68a"/>
+    <circle cx="-6" cy="-6" r="7" fill="rgba(255,255,255,.5)"/>
   </g>
 
-  <!-- Petal tip notches -->
-  <g transform="rotate(18)"><path d="M-8 -88 Q0 -96 8 -88" stroke="rgba(10,8,12,.55)" stroke-width="5" fill="none" stroke-linecap="round"/></g>
-  <g transform="rotate(90)"><path d="M-8 -88 Q0 -96 8 -88" stroke="rgba(10,8,12,.55)" stroke-width="5" fill="none" stroke-linecap="round"/></g>
-  <g transform="rotate(162)"><path d="M-8 -88 Q0 -96 8 -88" stroke="rgba(10,8,12,.55)" stroke-width="5" fill="none" stroke-linecap="round"/></g>
-  <g transform="rotate(234)"><path d="M-8 -88 Q0 -96 8 -88" stroke="rgba(10,8,12,.55)" stroke-width="5" fill="none" stroke-linecap="round"/></g>
-  <g transform="rotate(306)"><path d="M-8 -88 Q0 -96 8 -88" stroke="rgba(10,8,12,.55)" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+  <!-- ── TEXT ── -->
+  <text x="228" y="90" font-family="ui-monospace,'SF Mono','Cascadia Code',monospace" font-size="62" font-weight="800" letter-spacing="-2" fill="url(#titleGrad)" filter="url(#textglow)">YuyuCode</text>
+  <text x="228" y="90" font-family="ui-monospace,'SF Mono','Cascadia Code',monospace" font-size="62" font-weight="800" letter-spacing="-2" fill="url(#titleGrad)">YuyuCode</text>
 
-  <!-- Stamens -->
-  <g transform="rotate(18)"><circle cx="0" cy="-52" r="5" fill="rgba(253,230,138,.75)"/></g>
-  <g transform="rotate(90)"><circle cx="0" cy="-52" r="5" fill="rgba(253,230,138,.75)"/></g>
-  <g transform="rotate(162)"><circle cx="0" cy="-52" r="5" fill="rgba(253,230,138,.75)"/></g>
-  <g transform="rotate(234)"><circle cx="0" cy="-52" r="5" fill="rgba(253,230,138,.75)"/></g>
-  <g transform="rotate(306)"><circle cx="0" cy="-52" r="5" fill="rgba(253,230,138,.75)"/></g>
+  <text x="232" y="124" font-family="ui-monospace,'SF Mono',monospace" font-size="16" fill="rgba(249,168,212,0.82)" letter-spacing="0.3">A full agentic coding assistant.</text>
+  <text x="232" y="150" font-family="ui-monospace,'SF Mono',monospace" font-size="14" fill="rgba(251,191,36,0.6)" letter-spacing="0.2">Built entirely on an Android phone.</text>
 
-  <!-- Center -->
-  <circle cx="0" cy="0" r="18" fill="#fde68a" filter="url(#glow)"/>
-  <circle cx="0" cy="0" r="18" fill="#fde68a"/>
-  <circle cx="-6" cy="-6" r="6" fill="rgba(255,255,255,.5)"/>
+  <rect y="198.5" width="880" height="1.5" fill="rgba(249,168,212,0.07)"/>
 </g>
-
-<!-- ── TEXT BLOCK ── -->
-<!-- "YuyuCode" wordmark -->
-<text x="210" y="92" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', monospace" font-size="52" font-weight="800" letter-spacing="-1.5" fill="url(#titleGrad)" filter="url(#textglow)">YuyuCode</text>
-<text x="210" y="92" font-family="ui-monospace, 'SF Mono', 'Cascadia Code', monospace" font-size="52" font-weight="800" letter-spacing="-1.5" fill="url(#titleGrad)">YuyuCode</text>
-
-<!-- Divider line -->
-<line x1="210" y1="106" x2="820" y2="106" stroke="url(#subGrad)" stroke-width="1" opacity="0.4"/>
-
-<!-- Tagline 1 -->
-<text x="212" y="134" font-family="ui-monospace, 'SF Mono', monospace" font-size="16" font-weight="400" fill="rgba(249,168,212,0.85)" letter-spacing="0.5">A full agentic coding assistant.</text>
-
-<!-- Tagline 2 -->
-<text x="212" y="158" font-family="ui-monospace, 'SF Mono', monospace" font-size="14" font-weight="400" fill="rgba(251,191,36,0.65)" letter-spacing="0.3">Built entirely on an Android phone.</text>
-
-<!-- Small "v4.2.0" pill -->
-<rect x="212" y="170" width="62" height="18" rx="9" fill="rgba(236,72,153,0.12)" stroke="rgba(236,72,153,0.3)" stroke-width="0.5"/>
-<text x="243" y="183" font-family="ui-monospace, monospace" font-size="10" fill="rgba(249,168,212,0.7)" text-anchor="middle" letter-spacing="0.5">v4.2.0</text>
-
-<!-- "MIT" pill -->
-<rect x="282" y="170" width="38" height="18" rx="9" fill="rgba(251,191,36,0.08)" stroke="rgba(251,191,36,0.25)" stroke-width="0.5"/>
-<text x="301" y="183" font-family="ui-monospace, monospace" font-size="10" fill="rgba(251,191,36,0.6)" text-anchor="middle" letter-spacing="0.5">MIT</text>
-
-<!-- "1031 tests" pill -->
-<rect x="328" y="170" width="78" height="18" rx="9" fill="rgba(52,211,153,0.08)" stroke="rgba(52,211,153,0.2)" stroke-width="0.5"/>
-<text x="367" y="183" font-family="ui-monospace, monospace" font-size="10" fill="rgba(52,211,153,0.65)" text-anchor="middle" letter-spacing="0.5">1031 tests ✓</text>
 </svg>
