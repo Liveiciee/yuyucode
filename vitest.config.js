@@ -14,51 +14,45 @@ export default defineConfig({
     setupFiles:   './src/setupTest.js',
     pool,
     poolOptions: {
-      threads: {
-        // Atomics untuk komunikasi antar thread lebih cepat
-        useAtomics: true,
+      threads: { useAtomics: true },
+    },
+    deps: {
+      optimizer: {
+        ssr: {
+          include: [
+            'react',
+            'react-dom',
+            '@testing-library/react',
+            'lucide-react',
+          ],
+        },
       },
     },
-    // isolate: true di CI mencegah race condition mock cache antar thread
-    // isolate: false lokal untuk speed
-    isolate: isCI,
-    css:     false,
-
-    // Timeout lebih ketat — test yang lambat akan fail lebih cepat daripada hang
-    testTimeout:  5000,
-    hookTimeout:  5000,
-
-    // Matikan coverage reporter bawaan saat npx vitest run (bukan test:ci)
-    // Coverage hanya aktif via npm run test:ci
+    isolate:     false,
+    css:         false,
+    testTimeout: 5000,
+    hookTimeout: 5000,
     reporters:   process.env.CI ? ['verbose'] : ['dot'],
-
-    // Jalankan describe block secara concurrent bila aman
     sequence: {
-      concurrent: false, // tetap false — ada state global di features.js
+      concurrent: false,
       shuffle:    false,
+    },
+
+    // Persist transform cache ke filesystem — transform 7s → <1s di run ke-2+
+    experimental: {
+      fsModuleCache: true,
     },
 
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
       exclude: [
-        'yugit.cjs',
-        'yuyu-bench.cjs',
-        'yuyu-server.js',
-        'yuyu-map.cjs',
-        'public/**',
-        'android/**',
-        'patch/**',
-        'src/main.jsx',
-        'src/plugins/**',
-        'src/constants.js',
-        'src/theme.js',
-        'src/setupTest.js',
-        'src/components/**',
-        'src/App.jsx',
-        'src/themes/**',
-        '**/*.test.*',
-        '**/*.bench.*',
+        'yugit.cjs', 'yuyu-bench.cjs', 'yuyu-server.js', 'yuyu-map.cjs',
+        'public/**', 'android/**', 'patch/**',
+        'src/main.jsx', 'src/plugins/**',
+        'src/constants.js', 'src/theme.js', 'src/setupTest.js',
+        'src/components/**', 'src/App.jsx', 'src/themes/**',
+        '**/*.test.*', '**/*.bench.*',
       ],
     },
   },
