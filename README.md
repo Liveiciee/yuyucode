@@ -4,12 +4,11 @@
 
 <br/>
 
-[![Build APK](https://github.com/liveiciee/yuyucode/actions/workflows/build-apk.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
-[![Quality Gate](https://github.com/liveiciee/yuyucode/actions/workflows/quality.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
-[![CodeQL · SAST](https://github.com/liveiciee/yuyucode/actions/workflows/codeql.yml/badge.svg)](https://github.com/liveiciee/yuyucode/actions)
+[![Release](https://img.shields.io/github/v/release/liveiciee/yuyucode)](https://github.com/liveiciee/yuyucode/releases)
 [![Benchmark](https://github.com/liveiciee/yuyucode/actions/workflows/bench.yml/badge.svg)](https://liveiciee.github.io/yuyucode/dev/bench/)
-[![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=alert_status)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Liveiciee_yuyucode&metric=coverage)](https://sonarcloud.io/project/overview?id=Liveiciee_yuyucode)
+[![DeepSource](https://deepsource.io/gh/liveiciee/yuyucode.svg/)](https://deepsource.io/gh/liveiciee/yuyucode/)
+[![Last Commit](https://img.shields.io/github/last-commit/liveiciee/yuyucode)](https://github.com/liveiciee/yuyucode/commits/main)
 
 <br/>
 
