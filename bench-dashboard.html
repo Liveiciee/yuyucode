@@ -280,11 +280,31 @@ Chart.defaults.font.family = "'JetBrains Mono', monospace";
 Chart.defaults.font.size = 9;
 
 function render(data) {
-  // github-action-benchmark stores entries as object: { "Suite Name": [{commit,date,benches}] }
+  // github-action-benchmark stores entries as:
+  // { "bench name": [{commit:{id,message}, date, benches:[{name,value,unit}]}] }
+  // Each key = one bench metric, so same commit appears N times — must group by commit id.
   const rawEntries = data.entries || {};
-  const allRuns = Object.values(rawEntries).flat();
+  const commitMap = {};
+
+  for (const [, runs] of Object.entries(rawEntries)) {
+    for (const run of runs) {
+      const id = (typeof run.commit === 'object')
+        ? (run.commit.id || run.commit.hash || JSON.stringify(run.commit))
+        : run.commit;
+      if (!commitMap[id]) {
+        commitMap[id] = { commit: id, date: run.date, benches: [] };
+      }
+      // Merge benches, avoid duplicates by name
+      for (const b of (run.benches || [])) {
+        if (!commitMap[id].benches.find(x => x.name === b.name)) {
+          commitMap[id].benches.push(b);
+        }
+      }
+    }
+  }
+
   // Sort by date ascending
-  const entries = allRuns.sort((a, b) => new Date(a.date) - new Date(b.date));
+  const entries = Object.values(commitMap).sort((a, b) => new Date(a.date) - new Date(b.date));
 
   if (!entries.length) {
     document.getElementById('root').innerHTML =
@@ -294,11 +314,8 @@ function render(data) {
 
   const last  = entries[entries.length - 1];
   const prev  = entries[entries.length - 2] || null;
-  // Normalize commit: github-action-benchmark stores commit as object {id, message, ...}
-  entries.forEach(e => {
-    if (typeof e.commit === 'object') e.commit = e.commit.id || e.commit.hash || '';
-  });
   const names = [...new Set(entries.flatMap(e => e.benches.map(b => b.name)))];
+
 
 
   // topbar meta
