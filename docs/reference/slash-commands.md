@@ -9,7 +9,7 @@ All slash commands are handled in `src/hooks/useSlashCommands.js`. The full list
 | `/compact` | Summarise conversation history using `llama3.1-8b`. Warns about accuracy loss — use `/handoff` for structured sessions. |
 | `/compact force` | Skip the warning and compact immediately. |
 | `/handoff` | Generate a structured session brief (completed work, pending tasks, hot files, decisions). Saves to `.yuyu/handoff.md` and auto-loads next session. |
-| `/effort fast\|normal\|deep` | Switch effort preset. `fast`: 3 iter, 2K tokens. `normal`: 6 iter, 4K tokens. `deep`: 10 iter, 8K tokens. |
+| `/effort low\|medium\|high` | Switch effort preset. `low`: 3 iter, 1.5K tokens. `medium`: 10 iter, 2K tokens. `high`: 20 iter, 4K tokens. |
 | `/thinking on\|off` | Toggle chain-of-thought. When on, agent writes `<think>` blocks before responses. |
 | `/loop <interval> <cmd>` | Run a shell command on a repeating interval. Format: `/loop 5m git status`, `/loop 1h npm test`. Units: `s`, `m`, `h`. Auto-stops after 3 consecutive errors. `/loop stop` to halt. |
 

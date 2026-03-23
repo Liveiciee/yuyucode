@@ -136,8 +136,8 @@ Three effort presets control `maxTokens`, `maxIter`, and system prompt suffix:
 
 | Level | Max Tokens | Max Iter | Use Case |
 |-------|-----------|---------|---------|
-| `fast` | 2048 | 3 | Quick questions, one-liners |
-| `normal` | 4096 | 6 | Default — most tasks |
-| `deep` | 8192 | 10 | Complex refactors, multi-file changes |
+| `low` | 1500 | 3 | Quick questions, one-liners |
+| `medium` | 2048 | 10 | Default — most tasks |
+| `high` | 4000 | 20 | Complex refactors, multi-file changes |
 
-Switch with `/effort fast\|normal\|deep`.
+Switch with `/effort low\|medium\|high`.

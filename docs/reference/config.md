@@ -21,7 +21,7 @@ Open the config panel with `/config`. All settings persist via Capacitor `Prefer
 
 | Setting | Description |
 |---------|-------------|
-| Effort | `fast` / `normal` / `deep` — controls max tokens and iterations |
+| Effort | `low` / `medium` / `high` — controls max tokens and iterations |
 | Model | Active AI model — also cycle with `/model` |
 | Thinking | Toggle `<think>` chain-of-thought blocks |
 | Max iterations | Override per-effort default |

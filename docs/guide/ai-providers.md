@@ -35,7 +35,11 @@ Cerebras (primary)
     │
     ├── success → stream response
     │
-    ├── 429 rate limit → switch to Kimi K2 (Groq), silently
+    ├── 429 rate limit → fallback chain (silent):
+    │     Kimi K2 → Llama 3.3 70B → Llama 8B Fast
+    │     Each attempt: if 429/error → try next
+    │     On success: show ⚡ "lanjut pakai <model>" in chat
+    │     All exhausted → show countdown timer
     │
     └── 5xx error → retry 2× with 2s/4s backoff
                      → fail gracefully with error message

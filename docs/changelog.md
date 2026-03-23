@@ -1,5 +1,65 @@
 # Changelog
 
+## v4.5.4
+
+**Entry UX overhaul.**
+
+- `clearChat()` now sets `messages: []` so empty state welcome screen shows on new chat
+- Onboarding screen redirects to ProjectManager instead of manual folder input
+- Empty chat state: welcome message + 6 suggestion buttons (review, test, plan, tree, status, rules)
+- Server down guidance: `node ~/yuyu-server.js &` command shown inline in status bar
+- `useUIStore.loadUIPrefs` no longer triggers `showOnboarding` — first run handled by ProjectManager auto-open
+
+---
+
+## v4.5.3
+
+**First-run experience.**
+
+- Default folder changed from hardcoded `'yuyucode'` to `''`
+- App auto-opens ProjectManager on first launch when no `yc_folder` saved in Preferences
+- `useProjectStore.test.js` updated: initial `folder` default is now `''`
+
+---
+
+## v4.5.2
+
+**Histogram diff — performance fix.**
+
+- `generateDiff()` now uses chunked approach for files >2000 lines
+- Chunks 500 lines at a time → avoids O(n²) Myers blowup on large all-changed files
+- Worst case benchmark: `5000 lines all changed` went from **0 ops/sec → 2,482 ops/sec**
+- Files ≤2000 lines still use Myers via `diffLines` (accurate, fast)
+- Identical files exit immediately (early return before any diff computation)
+
+---
+
+## v4.5.1
+
+**Seamless rate limit fallback.**
+
+- `GROQ_FALLBACK_CHAIN` — on Cerebras 429, tries in order: Kimi K2 → Llama 3.3 70B → Llama 8B Fast
+- Each fallback attempt calls `options.onFallback?.(model)` — agent loop shows `⚡ Rate limit — lanjut pakai kimi-k2` without stopping
+- Only falls back to countdown timer if ALL Groq models are also rate-limited
+- `AppHeader.jsx` lint: `saveFolder` → `_saveFolder`
+
+---
+
+## v4.5.0
+
+**Project management.**
+
+- `panels.project.jsx` — new Project Manager panel with three tabs: Recent, Browse, New
+- Recent projects: `yc_recent_projects` Preferences key, max 10, sorted by `lastOpened`
+- Browse tab: filesystem navigation via `callServer list`, "Buka ini" button opens current dir
+- New tab: create folder + optional name, auto-opens after creation
+- `switchProject(f)` in `App.jsx`: sets folder, adds to recent, loads folder prefs, resets chat with welcome message
+- `AppHeader.jsx`: folder input replaced with `FolderOpen` button + clickable title area
+- `useProjectStore`: `recentProjects`, `addRecentProject`, `removeRecentProject`, `loadRecentProjects`
+- `useUIStore`: `showProjectManager` state added
+
+---
+
 ## v4.4.2
 
 **Fix: LivePreview + panels export.**
@@ -96,10 +156,6 @@
 - CI hardening: CodeQL SAST, Semgrep SAST, SonarCloud Quality Gate
 - Security fixes: `LivePreview` postMessage origin check, `yuyu-server` log injection fix
 - Cognitive complexity refactor: 14 files, all 27 SonarCloud issues addressed
-  - `useSlashCommands.js`: complexity 338 → 25+ extracted handler functions
-  - `useAgentLoop.js`: extracted `executePatchActions`, `executeWriteActions`, `buildIterFeedback`
-  - `api.js`: extracted `parseSSELine`, `_callGroqWithRetry`, `_callCerebrasWithFallback`
-  - `utils.js`: extracted `ACTION_DISPATCH` map, per-language highlight helpers
 - SonarCloud: Security A · Maintainability A · Coverage 70%
 
 ---

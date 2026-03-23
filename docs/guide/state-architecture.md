@@ -107,6 +107,21 @@ Messages are persisted to `yc_history` on every change (last N messages, role + 
 
 ---
 
+## useDb — SQLite Persistence
+
+`useDb.js` is a side-effect-only module (not a React hook). It exports functions used by `useChatStore` and `useProjectStore`:
+
+- `dbSaveMessages` / `dbLoadMessages` / `dbSearchMessages` (FTS5 full-text search)
+- `dbSaveMemories` / `dbLoadMemories`
+- `dbSaveCheckpoint` / `dbLoadCheckpoints`
+- `migrateFromPreferences()` — runs once on first SQLite init, copies existing Preferences data
+
+On web/emulator (non-Android), all functions silently fall back to `Capacitor.Preferences`. On Android, uses `@capacitor-community/sqlite` with WAL journal mode.
+
+SQLite persistence keys: `messages`, `messages_fts`, `memories`, `checkpoints` (all in `yuyu.db`).
+
+---
+
 ## Hook Dependencies
 
 `App.jsx` wires all hooks together. The dependency graph:
@@ -147,7 +162,7 @@ All Capacitor Preferences keys used across the app:
 | `yc_notes_<folder>` | project | Notes per project |
 | `yc_gh_token` | project | GitHub token |
 | `yc_gh_repo` | project | GitHub repo |
-| `yc_history` | chat | Last N messages |
+| `yc_history` | chat | Last N messages (Preferences fallback when SQLite unavailable) |
 | `yc_memories` | chat | Auto-extracted memories |
 | `yc_checkpoints` | chat | Conversation checkpoints |
 | `yc_xp` | growth | Total XP |

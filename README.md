@@ -23,7 +23,7 @@
 
 ---
 
-**v4.2.0** — Personal tool. Works on one phone — mine. Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). Issues welcome. Use at your own risk.
+**v4.5.4** — Personal tool. Works on one phone — mine. Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). Issues welcome. Use at your own risk.
 
 ---
 
@@ -52,6 +52,9 @@ You type a task → YuyuCode streams a response, executes file reads/writes/patc
 - ✏️ **Full mobile editor** — CodeMirror 6, Vim, AI ghost text L1+L2, TypeScript LSP, inline blame
 - 🔆 **Perceptual brightness** — Weber-Fechner compensation below 25%, zero cost above
 - 📷 **Camera-to-Code** — photo → vision model → code
+- 📁 **Project Manager** — recent projects, browse filesystem, create new — first-run ready
+- ⚡ **Rate limit fallback chain** — Cerebras → Kimi K2 → Llama 70B → Llama 8B, seamless
+- ⚡ **Histogram diff** — chunked O(n) diff for large files, 0 → 2482 ops/sec worst case
 
 → **[All features](https://liveiciee.github.io/yuyucode/features/)**
 

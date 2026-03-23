@@ -27,12 +27,12 @@
 - Code editor: CodeMirror 6
 - Terminal: xterm.js
 - File search: Fuse.js
-- Diff: `diff` library (Myers algorithm)
+- Diff: `diff` library — chunked histogram untuk file >2000 baris (O(n) worst case), Myers untuk file kecil
 - Testing: vitest@3 (bukan v4 — crash Illegal instruction di ARM64)
 
 ## Commands
 - Dev: `npm run dev` (port 5173)
-- Test: `npx vitest run` (harus 1031/1031 pass sebelum commit)
+- Test: `npx vitest run` (harus 1124/1124 pass sebelum commit)
 - Lint: `npm run lint` (harus 0 problems)
 - Bench: `npm run bench`
 - Deploy: `node yugit.cjs "feat: ..."`

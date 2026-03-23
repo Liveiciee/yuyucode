@@ -45,18 +45,15 @@ Benchmark: feature-parity with Cursor Pro ($20/month) — free, offline-capable,
 - LivePreview `TermIcon` fix
 - TicTacToe game component — agentic benchmark
 
+### v4.5
+- **Project Manager** — recent projects, browse filesystem, create new, auto-open on first run
+- **Entry UX** — empty chat welcome screen, server-down guidance, onboarding → ProjectManager
+- **Seamless rate limit fallback** — Cerebras → Kimi K2 → Llama 70B → Llama 8B chain, `⚡` notification without stopping agent
+- **Histogram diff** — chunked O(n) for large files, 5000-line worst case: 0 → 2,482 ops/sec
+
 ---
 
 ## 🔴 Tier 1 — Game Changers
-
-### Project Management (PRIORITY)
-**Gap**: YuyuCode auto-loads the yuyucode project — there's no first-run experience or project switcher.
-
-What's needed:
-- **New Project** — blank workspace, pick folder or create new, optional `/scaffold` template
-- **Open Project** — browse filesystem or type path, recent projects list
-- **Recent Projects** — persisted list of last N opened folders, one-tap switch
-- **Blank state** — no folder pre-loaded by default on first launch
 
 ### Parallel Agent Swarm v2
 **Gap vs Cursor**: Cursor runs background agents in isolated VMs. YuyuCode `/bg` is single-instance.
@@ -124,7 +121,7 @@ Interactive D3 force-directed graph of inter-file imports. Tap node → jump to 
 
 ---
 
-## Current State (v4.4.2)
+## Current State (v4.5.4)
 
 ```
 Tests:          1124 ✅
@@ -132,4 +129,6 @@ Slash commands: ~68
 CI:             CodeQL ✅ · Semgrep ✅ · SonarCloud ✅ · DeepSource ✅
 Coverage:       80%
 Platform:       Oppo A77s, Snapdragon 680, Android 14
+Diff:           Histogram chunked (O(n) large files)
+Fallback chain: Cerebras → Kimi K2 → Llama 70B → Llama 8B
 ```
