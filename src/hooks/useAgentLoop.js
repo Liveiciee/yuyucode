@@ -107,11 +107,19 @@ export function useAgentLoop({
 
   // ── callAI ──
   function callAI(msgs, onChunk, signal, imageBase64) {
-    const cfg = project.effortCfg;
+    const cfg   = project.effortCfg;
     const model = imageBase64 ? VISION_MODEL : project.model;
     return askCerebrasStream(msgs, model, onChunk, signal, {
       maxTokens: cfg.maxTokens,
       imageBase64,
+      onFallback: (fallbackModel) => {
+        const label = fallbackModel.split('/').pop().split('-').slice(0, 3).join('-');
+        chat.setMessages(m => [...m, {
+          role: 'assistant',
+          content: '⚡ Rate limit — lanjut pakai **' + label + '**',
+          actions: [],
+        }]);
+      },
     });
   }
 

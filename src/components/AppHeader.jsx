@@ -4,7 +4,7 @@ import { Menu, Command, FilePlus2, Radio, AlertTriangle, RotateCcw, FolderOpen }
 import { countTokens } from '../utils.js';
 import { UndoBar } from './SearchBar.jsx';
 
-export function AppHeader({ T, ui, project, file, chat, growth, saveFolder, undoLastEdit, haptic }) {
+export function AppHeader({ T, ui, project, file, chat, growth, _saveFolder, undoLastEdit, haptic }) {
   return (
     <>
       {project.sessionColor&&<div style={{height:'2px',background:project.sessionColor,flexShrink:0}}/>}

@@ -100,6 +100,13 @@ async function _groqOnce(messages, model, onChunk, signal, options) {
 }
 
 // ── UNIFIED AI CALL — auto-fallback Cerebras → Groq ───────────────────────────
+// Fallback chain: Cerebras → Kimi K2 → Llama 3.3 70B → Llama 8B Fast
+const GROQ_FALLBACK_CHAIN = [
+  'moonshotai/kimi-k2-instruct-0905',
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+];
+
 export async function askCerebrasStream(messages, model, onChunk, signal, options = {}, _attempt = 0) {
   if (!Array.isArray(messages) || messages.length === 0)
     throw new Error('Messages must be a non-empty array');
@@ -121,20 +128,28 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
     }
   }
 
-  // ── Cerebras model: try Cerebras, fallback Groq on rate limit ──
+  // ── Cerebras model: try Cerebras, fallback Groq chain on rate limit ──
   try {
     return await _cerebrasOnce(messages, model, onChunk, signal, options);
   } catch (e) {
     if (e.name === 'AbortError') throw e;
 
     if (e.message.startsWith('RATE_LIMIT:') && GROQ_KEY) {
-      const fallbackModel = FALLBACK_MODEL;
-      try {
-        return await _groqOnce(messages, fallbackModel, onChunk, signal, options);
-      } catch (ge) {
-        if (ge.name === 'AbortError') throw ge;
-        throw e;
+      // Try each Groq fallback model in order
+      for (const fallbackModel of GROQ_FALLBACK_CHAIN) {
+        try {
+          options.onFallback?.(fallbackModel);
+          return await _groqOnce(messages, fallbackModel, onChunk, signal, options);
+        } catch (ge) {
+          if (ge.name === 'AbortError') throw ge;
+          // If Groq also rate limits, try next model
+          if (ge.message.startsWith('RATE_LIMIT:') || ge.message.startsWith('GROQ_SERVER:')) continue;
+          // Other error (auth, etc) — stop trying
+          break;
+        }
       }
+      // All Groq fallbacks exhausted — throw original rate limit so UI shows timer
+      throw e;
     }
 
     if (_attempt < 2 && (e.message.startsWith('CEREBRAS_SERVER:') || e.message.includes('fetch'))) {
