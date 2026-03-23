@@ -2,6 +2,7 @@
 
 export { BottomSheet, CommandPalette } from './panels.base.jsx';
 export { TicTacToe } from './games/TicTacToe.jsx';
+export { ProjectManager } from './panels.project.jsx';
 export { GitComparePanel, FileHistoryPanel, GitBlamePanel, DepGraphPanel, MergeConflictPanel } from './panels.git.jsx';
 export { ElicitationPanel, SkillsPanel, BgAgentPanel } from './panels.agent.jsx';
 export { CustomActionsPanel, ShortcutsPanel, SnippetLibrary, ThemeBuilder,

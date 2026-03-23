@@ -68,6 +68,7 @@ export function useUIStore() {
 
   // ── Merge Conflict ──
   const [showMergeConflict, setShowMergeConflict] = useState(false);
+  const [showProjectManager, setShowProjectManager] = useState(false);
   const [mergeConflictData, setMergeConflictData] = useState(null);
 
   // ── Derived: T = active theme object ──
@@ -197,6 +198,7 @@ export function useUIStore() {
     elicitationData, setElicitationData,
     showMergeConflict, setShowMergeConflict,
     mergeConflictData, setMergeConflictData,
+    showProjectManager, setShowProjectManager,
     loadUIPrefs,
   };
 }

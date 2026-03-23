@@ -51,6 +51,28 @@ export function useProjectStore() {
   // ── Agent memory (cross-session user/project/local) ──
   const [agentMemory, setAgentMemory]   = useState({ user: [], project: [], local: [] });
 
+  // ── Recent projects ──
+  const [recentProjects, setRecentProjectsRaw] = useState([]);
+
+  function addRecentProject(f) {
+    const name = f.split('/').pop() || f;
+    const entry = { path: f, name, lastOpened: Date.now() };
+    setRecentProjectsRaw(prev => {
+      const filtered = prev.filter(p => p.path !== f);
+      const next = [entry, ...filtered].slice(0, 10);
+      Preferences.set({ key: 'yc_recent_projects', value: JSON.stringify(next) });
+      return next;
+    });
+  }
+
+  function removeRecentProject(f) {
+    setRecentProjectsRaw(prev => {
+      const next = prev.filter(p => p.path !== f);
+      Preferences.set({ key: 'yc_recent_projects', value: JSON.stringify(next) });
+      return next;
+    });
+  }
+
   // ── Loop / PTT ──
   const [loopActive, setLoopActive]     = useState(false);
   const [loopIntervalRef, setLoopIntervalRef] = useState(null);
@@ -147,6 +169,10 @@ export function useProjectStore() {
     if (perm)    tryJSON(perm, setPermissionsRaw);
   }
 
+  function loadRecentProjects(val) {
+    try { if (val) setRecentProjectsRaw(JSON.parse(val)); } catch (_e) {}
+  }
+
   // ── Load folder-specific prefs ──
   async function loadFolderPrefs(f) {
     const [notesR, branchR, agentsR, yuyuMdR] = await Promise.all([
@@ -225,7 +251,8 @@ export function useProjectStore() {
     fileWatcherInterval, setFileWatcherInterval,
     fileSnapshots, setFileSnapshots,
     addHistory, runHooks,
-    loadProjectPrefs, loadFolderPrefs,
+    loadProjectPrefs, loadFolderPrefs, loadRecentProjects,
+    recentProjects, addRecentProject, removeRecentProject,
     batteryLevel, setBatteryLevel,
     batteryCharging, setBatteryCharging,
   };

@@ -6,6 +6,7 @@ import { AppHeader }  from './components/AppHeader.jsx';
 import { AppSidebar } from './components/AppSidebar.jsx';
 import { AppChat }    from './components/AppChat.jsx';
 import { AppPanels }  from './components/AppPanels.jsx';
+import { ProjectManager } from './components/panels.project.jsx';
 import { useSlashCommands } from './hooks/useSlashCommands.js';
 import { useUIStore }        from './hooks/useUIStore.js';
 import { useProjectStore }   from './hooks/useProjectStore.js';
@@ -143,9 +144,12 @@ export default function App() {
       Preferences.get({key:'yc_stickyscroll'}),
       Preferences.get({key:'yc_collab'}),
       Preferences.get({key:'yc_diff_review'}),
-    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr,sc,pl,ef,tk,perm,vm,mm,gt,lt,ts,bl,mc,ss,co,dr]) => {
+      Preferences.get({key:'yc_recent_projects'}),
+    ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr,sc,pl,ef,tk,perm,vm,mm,gt,lt,ts,bl,mc,ss,co,dr,rp]) => {
       ui.loadUIPrefs({theme:th.value,fontSize:fs.value,sidebarWidth:sw.value,customTheme:ct.value,onboarded:ob.value,vim:vm.value,minimap:mm.value,ghostText:gt.value,lint:lt.value,tslsp:ts.value,blame:bl.value,multiCursor:mc.value,stickyScroll:ss.value,collab:co.value});
       project.loadProjectPrefs({folder:f.value,cmdHistory:ch.value,model:mo.value,hooks:hk.value,githubToken:ght.value,githubRepo:ghr.value,sessionColor:sc.value,plugins:pl.value,effort:ef.value,thinkingEnabled:tk.value,permissions:perm.value,diffReview:dr.value});
+      project.loadRecentProjects(rp.value);
+      if (f.value) project.addRecentProject(f.value);
       file.loadFilePrefs({pinned:pi.value,recent:re.value});
       chat.loadChatPrefs({history:h.value,memories:mem.value,checkpoints:ckp.value});
     });
@@ -235,6 +239,13 @@ export default function App() {
 
   // ── HELPERS ──
   function saveFolder(f) { project.saveFolder(f); ui.setShowFolder(false); }
+
+  async function switchProject(f) {
+    project.setFolder(f);
+    project.addRecentProject(f);
+    await project.loadFolderPrefs(f);
+    chat.setMessages([{ role: 'assistant', content: `📁 Project: **${f.split('/').pop()}**\n\nContext dimuat. Mau ngerjain apa?`, actions: [] }]);
+  }
   function undoLastEdit() { file.undoLastEdit(msg => chat.setMessages(m=>[...m,{role:'assistant',content:msg,actions:[]}])); }
   function saveCheckpoint() { chat.saveCheckpoint(project.folder, project.branch, project.notes, callServer); }
   function restoreCheckpoint(cp) {
@@ -321,6 +332,12 @@ export default function App() {
         generateCommitMsg={generateCommitMsg} haptic={haptic}
         saveCheckpoint={saveCheckpoint} restoreCheckpoint={restoreCheckpoint}
         fileInputRef={fileInputRef} handleImageAttach={handleImageAttach}/>
+
+      {ui.showProjectManager && (
+        <ProjectManager T={T} project={project}
+          onClose={() => ui.setShowProjectManager(false)}
+          onSwitchProject={switchProject}/>
+      )}
     </div>
   );
 }
