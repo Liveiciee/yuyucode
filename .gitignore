@@ -10,11 +10,11 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-ssr/
 *.local
 
-# Editor directories and files
+# Editor
 .vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
@@ -22,21 +22,23 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Env
+.env
 .env.local
+.env.*.local
+
+# Misc
 *.zip
 commit-history.txt
-🚀 YuyuGit v2 starting...
-
-📝 Changed files:
-M .gitignore
-
-📊 Staged changes:
-.gitignore | 5 +++++
- 1 file changed, 5 insertions(+)
-
-✅ Committed: [main 388fbe5] coverage/
-📡 Pushing...
-
-💡 Fix: remote punya commit yang belum ada di local.
-   Coba: git pull --rebase && node yugit.cjs "coverage/"
 coverage/
+
+# Capacitor / Android
+android/app/src/main/assets/public/
+android/.gradle/
+android/app/release/
+android/app/debug/
+
+# Yuyu internals
+.yuyu/compressed.md
+.yuyu/compressed-repomix.md
