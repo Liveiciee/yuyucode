@@ -19,7 +19,7 @@ export default defineConfig({
       { text: 'Reference', link: '/reference/slash-commands' },
       { text: 'FAQ', link: '/faq' },
       {
-        text: 'v4.2.0',
+        text: 'v4.4.2',
         items: [
           { text: 'Changelog', link: '/changelog' },
           { text: 'Roadmap', link: '/roadmap' },
