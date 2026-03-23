@@ -150,6 +150,7 @@ export default function App() {
       project.loadProjectPrefs({folder:f.value,cmdHistory:ch.value,model:mo.value,hooks:hk.value,githubToken:ght.value,githubRepo:ghr.value,sessionColor:sc.value,plugins:pl.value,effort:ef.value,thinkingEnabled:tk.value,permissions:perm.value,diffReview:dr.value});
       project.loadRecentProjects(rp.value);
       if (f.value) project.addRecentProject(f.value);
+      else ui.setShowProjectManager(true); // first run — no folder saved yet
       file.loadFilePrefs({pinned:pi.value,recent:re.value});
       chat.loadChatPrefs({history:h.value,memories:mem.value,checkpoints:ckp.value});
     });

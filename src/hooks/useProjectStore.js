@@ -10,8 +10,8 @@ export function useProjectStore() {
   const [batteryCharging, setBatteryCharging] = useState(true);
 
   // ── Project / Folder ──
-  const [folder, setFolderRaw]     = useState('yuyucode');
-  const [folderInput, setFolderInput] = useState('yuyucode');
+  const [folder, setFolderRaw]     = useState('');
+  const [folderInput, setFolderInput] = useState('');
   const [branch, setBranch]        = useState('main');
   const [notes, setNotesRaw]       = useState('');
   const [skills, setSkills]        = useState([]);

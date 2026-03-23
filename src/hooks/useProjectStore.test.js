@@ -35,7 +35,7 @@ beforeEach(() => {
 describe('useProjectStore — initial state', () => {
   it('has expected defaults', () => {
     const { result } = renderHook(() => useProjectStore());
-    expect(result.current.folder).toBe('yuyucode');
+    expect(result.current.folder).toBe('');
     expect(result.current.effort).toBe('medium');
     expect(result.current.diffReview).toBe(false);
     expect(result.current.serverOk).toBe(true);
