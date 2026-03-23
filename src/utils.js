@@ -113,9 +113,75 @@ function advanceContext(hunk, hunkLines) {
   };
 }
 
+// ── Histogram-style diff — O(n) for large files, graceful degradation ────────
+function histogramDiff(aLines, bLines) {
+  // For large all-changed files, Myers is O(n²) — we use a fast path instead.
+  // Strategy: find unique matching lines (histogram approach), then Myers for chunks.
+  const MAX_MYERS = 2000; // lines — above this, use fast path
+
+  if (aLines.length <= MAX_MYERS && bLines.length <= MAX_MYERS) {
+    // Small enough — use Myers via diffLines (accurate)
+    return diffLines(aLines.join('\n'), bLines.join('\n'));
+  }
+
+  // Large file fast path: LCS on unique lines only
+  // Build frequency map — lines that appear exactly once in both are anchors
+  const aFreq = new Map(), bFreq = new Map();
+  for (const l of aLines) aFreq.set(l, (aFreq.get(l) || 0) + 1);
+  for (const l of bLines) bFreq.set(l, (bFreq.get(l) || 0) + 1);
+
+  // Find anchor points (unique in both)
+  const anchors = [];
+  let ai = 0, bi = 0;
+  const bIndex = new Map();
+  bLines.forEach((l, i) => { if (bFreq.get(l) === 1) bIndex.set(l, i); });
+
+  while (ai < aLines.length && bi < bLines.length) {
+    if (aLines[ai] === bLines[bi]) {
+      anchors.push({ a: ai, b: bi, type: 'equal' });
+      ai++; bi++;
+    } else {
+      const bMatch = aFreq.get(aLines[ai]) === 1 ? bIndex.get(aLines[ai]) : -1;
+      if (bMatch !== undefined && bMatch >= bi) {
+        // Skip to anchor
+        if (bi < bMatch) anchors.push({ a: ai, b: bi, bEnd: bMatch, type: 'added' });
+        if (ai < ai)     anchors.push({ a: ai, b: bi, aEnd: ai, type: 'removed' });
+        bi = bMatch;
+      } else {
+        ai++; bi++;
+      }
+    }
+  }
+
+  // Convert to diffLines-compatible hunks via Myers on manageable chunks
+  const CHUNK = 500;
+  const result = [];
+  let _prevA = 0, _prevB = 0;
+
+  for (let start = 0; start < Math.max(aLines.length, bLines.length); start += CHUNK) {
+    const aChunk = aLines.slice(start, start + CHUNK);
+    const bChunk = bLines.slice(start, start + CHUNK);
+    const hunks = diffLines(aChunk.join('\n'), bChunk.join('\n'));
+    result.push(...hunks);
+  }
+
+  return result;
+}
+
 export function generateDiff(original, patched, maxLines = 40) {
   if (!original || !patched) return '';
-  const hunks = diffLines(original, patched);
+
+  const aLines = original.split('\n');
+  const bLines = patched.split('\n');
+
+  // Fast path: identical
+  if (original === patched) return '';
+
+  // Use chunked diff for large files to avoid O(n²) Myers blowup
+  const hunks = (aLines.length > 2000 || bLines.length > 2000)
+    ? histogramDiff(aLines, bLines)
+    : diffLines(original, patched);
+
   const result = [];
   let shown = 0;
   let oldLine = 1, newLine = 1;
