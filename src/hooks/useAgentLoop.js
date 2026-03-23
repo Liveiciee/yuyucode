@@ -27,9 +27,16 @@ function isExecError(a) {
 }
 
 function buildFeedback(readActions, safeActions, webSearchActions, patchActions, fullWriteActions, execActions) {
+  const FILE_FEEDBACK_LIMIT = 1200; // chars per file — cukup untuk patch, hemat token
   const fileData = [...readActions, ...safeActions]
     .filter(a => a.result?.ok && !['exec','web_search','patch_file'].includes(a.type))
-    .map(a => '=== ' + (a.path || a.type) + ' ===\n' + (a.result?.data || ''))
+    .map(a => {
+      const content = (a.result?.data || '');
+      const truncated = content.length > FILE_FEEDBACK_LIMIT
+        ? content.slice(0, FILE_FEEDBACK_LIMIT) + '\n… [+' + (content.length - FILE_FEEDBACK_LIMIT) + ' chars, baca per chunk kalau perlu]'
+        : content;
+      return '=== ' + (a.path || a.type) + ' ===\n' + truncated;
+    })
     .join('\n\n');
   const webData = webSearchActions
     .filter(a => a.result?.ok)
@@ -296,7 +303,8 @@ ${outB.slice(0, 1500)}
       ? '\n\nSkill context:\n' + selectedSkills.map(s => '## ' + s.name + '\n' + stripFrontmatter(s.content || '')).join('\n\n---\n\n')
       : '';
     const pinnedCtx   = file.pinnedFiles.length ? '\n\nPinned files: ' + file.pinnedFiles.join(', ') : '';
-    const fileCtx     = file.selectedFile && file.fileContent
+    // Inject file context only on iter 1 — subsequent iters have it in allMessages already
+    const fileCtx     = file.selectedFile && file.fileContent && (cfg._iter === undefined || cfg._iter <= 1)
       ? '\n\nFile terbuka: ' + file.selectedFile + '\n```\n' + file.fileContent.slice(0, MAX_FILE_PREVIEW) + '\n```'
       : '';
     const memPool     = chat.getRelevantMemories(txt);
@@ -405,14 +413,22 @@ ${outB.slice(0, 1500)}
         const DECISION_HINT = iter === 1
           ? '\n[ATURAN: Jawab langsung jika bisa dari context. DILARANG tanya balik. Butuh file → baca sendiri.]'
           : '';
-        const autoCtxBlock = Object.keys(autoContext).length
-          ? '\n\nAuto-loaded context:\n' + Object.entries(autoContext)
-              .map(([p, c]) => '=== ' + p + ' ===\n' + c.slice(0, 1000))
+        // Only include autoContext entries not already visible in recent messages
+        const recentContent = allMessages.slice(-4).map(m => m.content || '').join('\n');
+        const freshCtx = Object.entries(autoContext)
+          .filter(([p]) => !recentContent.includes(p))
+          .slice(0, 4); // max 4 files in context at once
+        const autoCtxBlock = freshCtx.length
+          ? '\n\nAuto-loaded context:\n' + freshCtx
+              .map(([p, cv]) => '=== ' + p + ' ===\n' + cv.slice(0, 800))
               .join('\n\n')
           : '';
 
+        const systemPromptIter = iter > 1
+          ? buildSystemPrompt(txt, { ...cfg, _iter: iter })
+          : systemPrompt;
         const groqMsgs = [
-          { role: 'system', content: systemPrompt + DECISION_HINT + autoCtxBlock },
+          { role: 'system', content: systemPromptIter + DECISION_HINT + autoCtxBlock },
           ...chat.trimHistory(allMessages).map(m => {
             const raw = Array.isArray(m.content)
               ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ')
