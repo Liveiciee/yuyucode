@@ -128,20 +128,21 @@ export function AppPanels({
 
       {ui.showThemeBuilder&&<ThemeBuilder T={T} themeKey={ui.theme} themesMap={ui.THEMES_MAP} themeKeys={ui.THEME_KEYS} onTheme={t=>ui.setTheme(t)} onClose={()=>ui.setShowThemeBuilder(false)}/>}
 
-      {/* Onboarding */}
+      {/* Onboarding → redirect ke ProjectManager */}
       {ui.showOnboarding&&(
         <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:T.bg,zIndex:100,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px'}}>
-          <div style={{fontSize:'32px',marginBottom:'12px'}}>🌸</div>
-          <div style={{fontSize:'20px',fontWeight:'700',color:T.text,marginBottom:'6px'}}>Halo Papa! Yuyu siap~</div>
-          <div style={{fontSize:'13px',color:T.textSec,marginBottom:'24px',textAlign:'center'}}>Setup cepat sebelum mulai</div>
-          <div style={{width:'100%',maxWidth:'320px',display:'flex',flexDirection:'column',gap:'10px'}}>
-            <input value={project.folderInput} onChange={e=>project.setFolderInput(e.target.value)} placeholder="contoh: yuyucode"
-              style={{background:T.bg3,border:'1px solid '+T.borderMed,borderRadius:'8px',padding:'10px 14px',color:T.text,fontSize:'14px',outline:'none',fontFamily:'monospace'}}/>
-            <div style={{background:T.bg,border:'1px solid '+T.border,borderRadius:'6px',padding:'8px 12px',fontFamily:'monospace',fontSize:'11px',color:T.success}}>node ~/yuyu-server.js &</div>
-            <button onClick={()=>{project.saveFolder(project.folderInput);ui.setShowOnboarding(false);haptic('medium');}}
-              style={{background:T.accent,border:'none',borderRadius:'10px',padding:'12px',color:'white',fontSize:'14px',cursor:'pointer',fontWeight:'600',marginTop:'8px'}}>
-              Mulai Coding!
-            </button>
+          <div style={{fontSize:'48px',marginBottom:'16px'}}>🌸</div>
+          <div style={{fontSize:'22px',fontWeight:'700',color:T.text,marginBottom:'8px'}}>Halo! Yuyu siap~</div>
+          <div style={{fontSize:'13px',color:T.textSec,marginBottom:'32px',textAlign:'center',lineHeight:'1.6',maxWidth:'280px'}}>
+            Mulai dengan membuka project folder yang ada,<br/>atau buat project baru.
+          </div>
+          <button onClick={()=>{ui.setShowOnboarding(false);ui.setShowProjectManager(true);haptic('medium');}}
+            style={{background:T.accent,border:'none',borderRadius:'12px',padding:'14px 32px',color:'white',fontSize:'15px',cursor:'pointer',fontWeight:'700',marginBottom:'16px',minWidth:'200px'}}>
+            Buka / Buat Project
+          </button>
+          <div style={{background:T.bg3,border:'1px solid '+T.border,borderRadius:'8px',padding:'10px 16px',fontFamily:'monospace',fontSize:'11px',color:T.success,maxWidth:'320px',width:'100%',marginTop:'8px'}}>
+            <div style={{color:T.textMute,fontSize:'10px',marginBottom:'4px'}}>💡 Pastikan server jalan:</div>
+            node ~/yuyu-server.js &
           </div>
         </div>
       )}

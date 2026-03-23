@@ -126,7 +126,7 @@ export function useUIStore() {
   }
 
   // ── Load from Preferences ──
-  function loadUIPrefs({ theme: t, fontSize: fs, sidebarWidth: sw, onboarded, vim: vm, minimap: mm, ghostText: gt, lint: lt, tslsp, blame, multiCursor: multiCursor_, stickyScroll: stickyScroll_, collab }) {
+  function loadUIPrefs({ theme: t, fontSize: fs, sidebarWidth: sw, onboarded: _onboarded, vim: vm, minimap: mm, ghostText: gt, lint: lt, tslsp, blame, multiCursor: multiCursor_, stickyScroll: stickyScroll_, collab }) {
     if (t && THEME_KEYS.includes(t)) setThemeKeyRaw(t);
     else if (t) setThemeKeyRaw(DEFAULT_THEME);
     if (fs) setFontSizeRaw(parseInt(fs) || 14);
@@ -140,7 +140,7 @@ export function useUIStore() {
     if (multiCursor_ === 'false') setMultiCursorRaw(false);
     if (stickyScroll_ === 'true') setStickyScrollRaw(true);
     if (collab === 'true') setCollabRaw(true);
-    if (!onboarded) setShowOnboarding(true);
+    // onboarding now handled by ProjectManager (first run auto-open)
   }
 
   return {

@@ -188,6 +188,37 @@ export function AppChat({
       {file.activeTab === 'chat' && !ui.showTerminal && (
         <div ref={chatRef} style={{ flex: 1, overflowY: 'auto', padding: '20px 0 8px' }}>
           <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 4px' }}>
+
+            {/* ── Empty state — welcome ── */}
+            {visibleMessages.length === 0 && !chat.loading && !chat.streaming && (
+              <div style={{ padding: '40px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontSize: '36px', marginBottom: '8px' }}>🌸</div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: T.text, marginBottom: '4px' }}>
+                  {project.folder ? `Project: ${project.folder.split('/').pop()}` : 'Yuyu siap~'}
+                </div>
+                <div style={{ fontSize: '12px', color: T.textMute, marginBottom: '24px', textAlign: 'center' }}>
+                  {project.folder ? 'Mau ngerjain apa hari ini?' : 'Buka project dulu lewat tombol folder di atas'}
+                </div>
+                {project.folder && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%', maxWidth: '360px' }}>
+                    {[
+                      { icon: '🔍', text: 'Review kode', msg: '/review --all' },
+                      { icon: '🧪', text: 'Jalankan test', msg: 'npx vitest run dan fix jika ada yang gagal' },
+                      { icon: '📋', text: 'Buat plan', msg: '/plan ' },
+                      { icon: '🌳', text: 'Lihat struktur', msg: '/tree' },
+                      { icon: '⚡', text: 'Status project', msg: '/status' },
+                      { icon: '📝', text: 'Edit YUYU.md', msg: '/rules' },
+                    ].map(s => (
+                      <button key={s.msg} onClick={() => sendMsg(s.msg)}
+                        style={{ background: T.bg3, border: '1px solid ' + T.border, borderRadius: '10px', padding: '10px 12px', color: T.textSec, fontSize: '12px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{s.icon}</span><span>{s.text}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {visibleMessages.map((m, i) => (
               <MsgBubble key={i} msg={m} isLast={i === chat.messages.length - 1} T={T}
                 onApprove={m.actions?.some(a => (a.type === 'write_file' || a.type === 'patch_file') && !a.executed) ? (ok, path) => handleApprove(i, ok, path) : null}

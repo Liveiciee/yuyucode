@@ -182,7 +182,7 @@ describe('useUIStore — loadUIPrefs Fase 3', () => {
   it('shows onboarding when onboarded is falsy', () => {
     const { result } = renderHook(() => useUIStore());
     act(() => { result.current.loadUIPrefs({ onboarded: null }); });
-    expect(result.current.showOnboarding).toBe(true);
+    expect(result.current.showOnboarding).toBe(false);
   });
 
   it('does not show onboarding when onboarded is set', () => {
