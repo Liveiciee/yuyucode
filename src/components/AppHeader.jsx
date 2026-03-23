@@ -4,7 +4,7 @@ import { Menu, Command, FilePlus2, Radio, AlertTriangle, RotateCcw, FolderOpen }
 import { countTokens } from '../utils.js';
 import { UndoBar } from './SearchBar.jsx';
 
-export function AppHeader({ T, ui, project, file, chat, growth, _saveFolder, undoLastEdit, haptic }) {
+export function AppHeader({ T, ui, project, file, chat, growth, _saveFolder, undoLastEdit, haptic, setShowApiKeys }) {
   return (
     <>
       {project.sessionColor&&<div style={{height:'2px',background:project.sessionColor,flexShrink:0}}/>}
@@ -44,6 +44,12 @@ export function AppHeader({ T, ui, project, file, chat, growth, _saveFolder, und
             <span style={{fontSize:'9px',color:T.accent,fontFamily:'monospace',fontWeight:'700'}}>{growth.level}</span>
             <span style={{fontSize:'9px',color:T.textMute,fontFamily:'monospace'}}>{growth.xp}xp 🔥{growth.streak}</span>
           </div>
+
+          <button onClick={()=>ui.setShowApiKeys(true)}
+            style={{background:T.bg3,border:'1px solid '+T.border,borderRadius:'10px',padding:'0',color:T.textMute,cursor:'pointer',minWidth:'40px',minHeight:'40px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>🔑</button>
+
+          <button onClick={()=>setShowApiKeys?.(true)}
+            style={{background:T.bg3,border:'1px solid '+T.border,borderRadius:'10px',padding:'0',color:T.textMute,cursor:'pointer',minWidth:'40px',minHeight:'40px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>🔑</button>
 
           <button onClick={()=>ui.setShowPalette(true)}
             style={{background:T.bg3,border:'1px solid '+T.border,borderRadius:'10px',padding:'0',color:T.textSec,cursor:'pointer',minWidth:'40px',minHeight:'40px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Command size={15}/></button>

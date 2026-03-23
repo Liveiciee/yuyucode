@@ -327,7 +327,7 @@ export default function App() {
       `}</style>
 
       <AppHeader T={T} ui={ui} project={project} file={file} chat={chat} growth={growth}
-        saveFolder={saveFolder} undoLastEdit={undoLastEdit} haptic={haptic}/>
+        saveFolder={saveFolder} undoLastEdit={undoLastEdit} setShowApiKeys={setShowApiKeys} haptic={haptic}/>
 
       <div style={{flex:1,display:'flex',overflow:'hidden',position:'relative'}}>
         <AppSidebar T={T} ui={ui} project={project} file={file} onSidebarDragStart={onSidebarDragStart}/>
