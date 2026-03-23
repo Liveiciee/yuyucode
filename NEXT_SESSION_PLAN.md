@@ -220,3 +220,4 @@ Kirim **hanya file yang disentuh** — cek `git diff --name-only HEAD`.
 - Open Project — browse/ketik path folder lain  
 - Recent Projects — list project yang pernah dibuka
 - Blank workspace state — tanpa auto-load yuyucode folder
+# Coverage milestone: 80% overall, 1124 tests
