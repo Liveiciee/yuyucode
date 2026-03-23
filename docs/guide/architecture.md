@@ -66,6 +66,7 @@ src/
 │   ├── useChatStore.js     # Messages, streaming, memories, checkpoints
 │   ├── useDevTools.js      # GitHub, deploy, commit msg, tests, browse
 │   ├── useFileStore.js     # Multi-tab EditorState
+│   ├── useDb.js            # SQLite persistence (messages, memories, checkpoints)
 │   ├── useGrowth.js        # XP, streaks, badges, learned style
 │   ├── useMediaHandlers.js # Camera, image attach, drag & drop
 │   ├── useNotifications.js # Push, haptic, TTS
@@ -93,6 +94,7 @@ Key stores:
 - **`useChatStore`** — messages, streaming state, memories, rate limit timer
 - **`useFileStore`** — open tabs, EditorState per tab, edit history for `/undo`
 - **`useUIStore`** — all panel visibility, editor feature toggles (vim, ghost text, etc.)
+- **`useDb`** — SQLite persistence layer; side-effect only hook that initialises the database on mount and migrates data from Preferences on first run
 - **`useAgentLoop`** — no persistent state; pure function that runs the agent loop
 
 ## Theme System

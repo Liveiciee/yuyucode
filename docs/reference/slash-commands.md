@@ -11,7 +11,7 @@ All slash commands are handled in `src/hooks/useSlashCommands.js`. The full list
 | `/handoff` | Generate a structured session brief (completed work, pending tasks, hot files, decisions). Saves to `.yuyu/handoff.md` and auto-loads next session. |
 | `/effort fast\|normal\|deep` | Switch effort preset. `fast`: 3 iter, 2K tokens. `normal`: 6 iter, 4K tokens. `deep`: 10 iter, 8K tokens. |
 | `/thinking on\|off` | Toggle chain-of-thought. When on, agent writes `<think>` blocks before responses. |
-| `/loop <seconds>` | Start an autonomous loop — agent runs a task every N seconds. `/loop stop` to halt. |
+| `/loop <interval> <cmd>` | Run a shell command on a repeating interval. Format: `/loop 5m git status`, `/loop 1h npm test`. Units: `s`, `m`, `h`. Auto-stops after 3 consecutive errors. `/loop stop` to halt. |
 
 ## Code & Files
 
@@ -113,7 +113,7 @@ All slash commands are handled in `src/hooks/useSlashCommands.js`. The full list
 | `/permissions` | Open the permissions panel. |
 | `/plugin <name>` | Toggle a plugin. |
 | `/skills` | Open the skills panel. |
-| `/db <query>` | Query a SQLite database in the project folder. |
+| `/db <query>` | Query a SQLite database in the project folder. Auto-detects `.db` files. Use `/db use <file.db>` to select when multiple exist. |
 | `/ptt` | Toggle push-to-talk voice input. |
 | `/watch on\|off` | Toggle file watcher — notifies agent on external file changes. |
 

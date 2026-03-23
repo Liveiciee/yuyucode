@@ -89,7 +89,7 @@ The recommended workflow after any significant change:
 
 ```bash
 # 1. Tests must pass
-npx vitest run               # 1031/1031
+npx vitest run               # 1124/1124
 
 # 2. Lint must be clean
 npm run lint                 # 0 problems

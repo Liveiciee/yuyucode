@@ -50,7 +50,7 @@ Started as a single question: *can Claude Code be replicated on a phone?*
 
 The answer was yes. Built patch by patch — from morning to past midnight — using only an Oppo A77s and a Claude chat window. Every architectural decision, every tricky bug, every refactor in this codebase was worked through at claude.ai.
 
-The agent loop, visual diff review, background agents, multi-tab editor, perceptual brightness compensation — all of it runs on a Snapdragon 680 at 1031 tests passing, SonarCloud Security A, 70% coverage.
+The agent loop, visual diff review, background agents, multi-tab editor, perceptual brightness compensation, SQLite persistence — all of it runs on a Snapdragon 680 at 1124 tests passing, SonarCloud Security A, 80% coverage.
 
 **It's not a polished product. It's proof that the constraints were never the hardware.**
 

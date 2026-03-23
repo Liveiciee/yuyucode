@@ -24,7 +24,7 @@ Benchmark: feature-parity with Cursor Pro ($20/month) — free, offline-capable,
 - /review --all — batch review all files changed vs HEAD, severity grading
 - Contextual slash suggestions — fuzzy match + context boost
 
-### v4.2 (current)
+### v4.2
 - 1031 tests passing (from 546)
 - Branch coverage infrastructure — 363 new tests targeting SonarCloud conditions
 - Property-based tests via fast-check
@@ -32,9 +32,31 @@ Benchmark: feature-parity with Cursor Pro ($20/month) — free, offline-capable,
 - SonarCloud: Security A · Maintainability A · Coverage 70%
 - /review --all, /search, /pin, /undo N, /diff, /ask aliases
 
+### v4.3
+- Test infrastructure hardening — mock isolation fixed, `resetAllMocks` pattern
+- `useFileStore` + `useApprovalFlow` test fixes after approval flow refactor
+- `useDb` singleton isolation pattern (`loadFresh(platform)`)
+
+### v4.4
+- **SQLite persistence** — `useDb.js` with FTS5 full-text search, automatic Preferences migration
+- **useSlashCommands cognitive complexity refactor** — `pushMsg`, `stopLoop`, `makeLoopMsg`, `mcpList/Connect/Disconnect`, `reviewAll/File` extracted
+- 1124 tests passing (from 1031)
+- Coverage: **80%** (from 70%)
+- LivePreview `TermIcon` fix
+- TicTacToe game component — agentic benchmark
+
 ---
 
 ## 🔴 Tier 1 — Game Changers
+
+### Project Management (PRIORITY)
+**Gap**: YuyuCode auto-loads the yuyucode project — there's no first-run experience or project switcher.
+
+What's needed:
+- **New Project** — blank workspace, pick folder or create new, optional `/scaffold` template
+- **Open Project** — browse filesystem or type path, recent projects list
+- **Recent Projects** — persisted list of last N opened folders, one-tap switch
+- **Blank state** — no folder pre-loaded by default on first launch
 
 ### Parallel Agent Swarm v2
 **Gap vs Cursor**: Cursor runs background agents in isolated VMs. YuyuCode `/bg` is single-instance.
@@ -46,9 +68,22 @@ What's being added:
 - `/bgkill all` → abort all simultaneously
 - Auto-merge: done → show diff, one tap merge
 
+### Rate Limit Seamless Fallback
+**Gap**: Cerebras 429 shows "tunggu 60s" countdown. Should be transparent.
+
+What's needed:
+- On Cerebras rate limit → silent switch to Groq fallback mid-generation
+- No user-visible interruption
+- Partial response preserved, generation continues with fallback model
+
 ---
 
 ## 🟠 Tier 2 — Significant Upgrades
+
+### Histogram Diff Algorithm
+**Gap**: Myers diff algorithm is O(n²) worst case — benchmarks show **0 ops/sec** for 5000-line all-changed diffs. On a Snapdragon 680 editing large files, this causes visible freeze.
+
+Switch to histogram/patience diff (O(n log n)) — the same algorithm Git and VSCode use. Impact is most visible when agent applies large rewrites.
 
 ### Click-to-Edit in Live Preview
 Click an element in the iframe → popup "edit this?" → agent patches CSS/JSX directly. Inspector mode: hover → show component name + file path.
@@ -89,12 +124,12 @@ Interactive D3 force-directed graph of inter-file imports. Tap node → jump to 
 
 ---
 
-## Current State (v4.2)
+## Current State (v4.4.2)
 
 ```
-Tests:         1031 ✅
+Tests:          1124 ✅
 Slash commands: ~68
-CI:            CodeQL ✅ · Semgrep ✅ · SonarCloud ✅ · DeepSource ✅
-Coverage:      70%
-Platform:      Oppo A77s, Snapdragon 680, Android 14
+CI:             CodeQL ✅ · Semgrep ✅ · SonarCloud ✅ · DeepSource ✅
+Coverage:       80%
+Platform:       Oppo A77s, Snapdragon 680, Android 14
 ```

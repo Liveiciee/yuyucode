@@ -41,7 +41,7 @@ Cerebras (primary)
                      → fail gracefully with error message
 ```
 
-Fallback is transparent — the UI shows a rate limit timer if Cerebras throttles, but the model switch to Groq happens without user intervention.
+Fallback requires `VITE_GROQ_API_KEY` to be set and baked into the APK build. When the key is present, the switch to Groq is transparent. When the key is absent or Groq also returns an error, the UI shows a rate limit countdown timer and halts until the user waits or switches models manually with `/model`.
 
 ## Vision Routing
 

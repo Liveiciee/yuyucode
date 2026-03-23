@@ -29,7 +29,7 @@ Runs ESLint + vitest on every push:
 
 ```bash
 npm run lint    # must be 0 problems
-npx vitest run  # must be 1031/1031 pass
+npx vitest run  # must be 1124/1124 pass
 ```
 
 ### `codeql.yml` — Security Scan

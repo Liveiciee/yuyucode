@@ -2,13 +2,13 @@
 
 ## Test Suite
 
-1031 tests passing. 0 lint warnings. Runs on Termux ARM64 (Snapdragon 680).
+1124 tests passing. 0 lint warnings. Runs on Termux ARM64 (Snapdragon 680).
 
 - 50 property-based tests via `fast-check` — 100 random inputs each for `parseActions` and `resolvePath`
 - 363 branch coverage tests targeting SonarCloud condition branches across all core hooks
 
 ```bash
-npx vitest run       # run all tests
+npx vitest run       # run all tests (1124)
 npm run lint         # must be 0 problems
 ```
 
@@ -33,7 +33,7 @@ npm run lint         # must be 0 problems
 | `globalfind.test.js` | Unit — grep parser + regex + replace | 18 |
 | `yuyu-map.test.cjs` | Unit — map, symbols, compress, handoff, llms.txt | 98 |
 | `yuyu-server.test.cjs` | Integration — HTTP, read/write/patch/batch/exec | 30 |
-| `useSlashCommands.test.js` | Unit — all 68 slash command handlers | 115 |
+| `useSlashCommands.test.js` | Unit — all 68 slash command handlers | 197 |
 | `api.branch.test.js` | Branch coverage — api.js | 12 |
 | `branch.coverage.test.js` | Branch coverage — utils.js executeAction/resolvePath | 22 |
 | `features.branch.test.js` | Branch coverage — features.js | 27 |
@@ -41,6 +41,7 @@ npm run lint         # must be 0 problems
 | `useFileStore.branch.test.js` | Branch coverage — useFileStore | 14 |
 | `useAgentLoop.branch.test.js` | Branch coverage — agent loop conditions | 39 |
 | `useSlashCommands.branch.test.js` | Branch coverage — slash command handlers | 41 |
+| `useDb.test.js` | Unit — SQLite + Preferences fallback paths | 36 |
 
 ### Why vitest@3
 
@@ -94,7 +95,7 @@ npm run bench:reset  # clear baseline
 |---------|--------|--------|
 | SonarCloud | Security | A |
 | SonarCloud | Maintainability | A |
-| SonarCloud | Coverage | 70% |
+| SonarCloud | Coverage | 80% |
 | DeepSource | Active issues | tracked |
 | CodeQL | SAST | passing |
 | ESLint | Warnings | 0 |

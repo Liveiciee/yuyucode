@@ -152,7 +152,7 @@ When writing agent instructions or examples, use this format:
 
 ```bash
 npm run lint        # 0 problems
-npx vitest run      # 1031/1031 pass
+npx vitest run      # 1124/1124 pass
 node yuyu-map.cjs   # update codebase map
 node yugit.cjs "type: description"
 ```

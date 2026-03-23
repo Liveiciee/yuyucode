@@ -1,5 +1,56 @@
 # Changelog
 
+## v4.4.2
+
+**Fix: LivePreview + panels export.**
+
+- Fixed `TermIcon` not imported in `LivePreview.jsx` — caused white screen when opening iframe preview
+- Fixed literal `\n` in `panels.jsx` TicTacToe barrel export — caused Vite build failure in CI
+- Added `TicTacToe.jsx` game component — agentic benchmark for testing code generation quality
+
+---
+
+## v4.4.1
+
+**Fix: useSlashCommands cognitive complexity refactor.**
+
+- Extracted `pushMsg()` / `pushErr()` helpers — eliminated ~60 duplicate `setMessages` inline calls
+- Extracted `makeLoopMsg()` / `stopLoop()` — loop interval nesting depth: 4 → 1
+- Extracted `mcpList()` / `mcpConnect()` / `mcpDisconnect()` module-level functions
+- Extracted `reviewAll()` / `reviewFile()` — `handleReview` reduced to clean if/else dispatch
+- `handleRules` now uses lookup object instead of if/else if chain
+- `handleMcp` dispatch: 3-line lookup map
+- 197 tests for `useSlashCommands` — 94% coverage
+- Cognitive complexity: significantly reduced across all handlers
+
+---
+
+## v4.4.0
+
+**SQLite persistence via useDb.**
+
+- `useDb.js` — SQLite layer using `@capacitor-community/sqlite` v8
+- Schema: `messages`, `messages_fts` (FTS5 full-text search), `memories`, `checkpoints`
+- Graceful fallback to Capacitor `Preferences` on web/emulator
+- `migrateFromPreferences()` — one-time migration from existing Preferences data
+- `/db` slash command now routes queries to SQLite via MCP tool
+- 36 tests for `useDb` — 97% coverage (SQLite + Preferences fallback paths)
+- Overall test coverage: **62% → 80%** (+18%)
+- Total tests: **1031 → 1124 passing**
+
+---
+
+## v4.3.0
+
+**Test infrastructure hardening.**
+
+- Fixed `useFileStore.branch.test.js` — typo `vi.spyOn(utilsModule, 'utilsModule.executeAction')` → `'executeAction'`
+- Fixed `useApprovalFlow.test.js` — 5 expectations updated to match refactored implementation (`backupFiles` / `verifySyntaxBatch` now mocked directly, no longer called via `callServer`)
+- `resetAllMocks` replaces `clearAllMocks` in `useSlashCommands.test.js` — prevents mock queue leaking between tests
+- `useDb.test.js` — `vi.resetModules()` + dynamic import pattern (`loadFresh(platform)`) for proper singleton isolation between test groups
+
+---
+
 ## v4.2.0
 
 **Test suite expansion & branch coverage infrastructure.**
