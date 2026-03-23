@@ -411,8 +411,8 @@ ${outB.slice(0, 1500)}
         chat.setAgentStatus(`Iter ${iter}/${MAX_ITER}`);
 
         const DECISION_HINT = iter === 1
-          ? '\n[ATURAN: Jawab langsung jika bisa dari context. DILARANG tanya balik. Butuh file → baca sendiri.]'
-          : '';
+          ? '\n\n[WAJIB DIIKUTI — TIDAK ADA PENGECUALIAN]:\n1. LANGSUNG ACTION. Jangan tulis rencana, jangan minta konfirmasi, jangan tanya balik.\n2. Butuh file? Tulis read_file action SEKARANG, bukan bilang "aku akan baca".\n3. Tidak tahu struktur? Tulis tree action SEKARANG.\n4. Bisa jawab dari context? Jawab langsung, tidak perlu action.\n5. DILARANG KERAS: "Saya akan...", "Mari kita...", "Pertama-tama...", "Apakah kamu..."]'
+          : '\n[Lanjutkan dengan action. Jangan tanya, jangan rencana — eksekusi langsung.]';
         // Only include autoContext entries not already visible in recent messages
         const recentContent = allMessages.slice(-4).map(m => m.content || '').join('\n');
         const freshCtx = Object.entries(autoContext)
