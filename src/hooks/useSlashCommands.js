@@ -39,6 +39,7 @@ export function useSlashCommands({
   setYuyuMd: _setYuyuMd,
   setPlanSteps, setPlanTask, setAgentMemory, setSessionList,
   setShowCheckpoints, setShowMemory: _setShowMemory, setShowMCP, setShowGitHub, setShowDeploy,
+  setShowApiKeys,
   setShowSessions, setShowPermissions, setShowPlugins, setShowConfig,
   setShowCustomActions, setShowFileHistory, setShowThemeBuilder,
   setShowDepGraph,
@@ -907,6 +908,7 @@ export function useSlashCommands({
       '/ab':         async () => { const task = parts.slice(1).join(' ').trim(); if (!task) { setMessages(m => [...m, { role: 'assistant', content: 'Usage: /ab <task>\nContoh: /ab implementasi dark mode toggle\n\nOtomatis test dua model terbaik secara paralel.', actions: [] }]); return; } await abTest(task, 'qwen-3-235b-a22b-instruct-2507', 'moonshotai/kimi-k2-instruct-0905'); },
       '/xp':         () => handleXp(),
       '/test':       () => handleTest(parts),
+      '/apikeys':    () => setShowApiKeys?.(true),
     };
 
     if (handlers[base]) {
