@@ -5,6 +5,9 @@ import { ThemeEffects } from './components/ThemeEffects.jsx';
 import { AppHeader }  from './components/AppHeader.jsx';
 import { AppSidebar } from './components/AppSidebar.jsx';
 import { AppChat }    from './components/AppChat.jsx';
+import { OnboardingWizard }  from './components/OnboardingWizard.jsx';
+import { ApiKeySettings }   from './components/ApiKeySettings.jsx';
+import { loadRuntimeKeys }  from './runtimeKeys.js';
 import { AppPanels }  from './components/AppPanels.jsx';
 import { ProjectManager } from './components/panels.project.jsx';
 import { useSlashCommands } from './hooks/useSlashCommands.js';
@@ -25,6 +28,8 @@ import { useDb }            from './hooks/useDb.js';
 export default function App() {
   // ── STORES ──
   const ui      = useUIStore();
+  const [showApiKeys, setShowApiKeys] = React.useState(false);
+  const [onboarded,   setOnboarded]   = React.useState(true);
   const project = useProjectStore();
   const file    = useFileStore();
   const chat    = useChatStore();
@@ -146,6 +151,7 @@ export default function App() {
       Preferences.get({key:'yc_diff_review'}),
       Preferences.get({key:'yc_recent_projects'}),
     ]).then(([f,h,ch,mo,th,pi,re,sw,mem,ckp,hk,fs,ct,ob,ght,ghr,sc,pl,ef,tk,perm,vm,mm,gt,lt,ts,bl,mc,ss,co,dr,rp]) => {
+      if (!ob.value) setOnboarded(false);
       ui.loadUIPrefs({theme:th.value,fontSize:fs.value,sidebarWidth:sw.value,customTheme:ct.value,onboarded:ob.value,vim:vm.value,minimap:mm.value,ghostText:gt.value,lint:lt.value,tslsp:ts.value,blame:bl.value,multiCursor:mc.value,stickyScroll:ss.value,collab:co.value});
       project.loadProjectPrefs({folder:f.value,cmdHistory:ch.value,model:mo.value,hooks:hk.value,githubToken:ght.value,githubRepo:ghr.value,sessionColor:sc.value,plugins:pl.value,effort:ef.value,thinkingEnabled:tk.value,permissions:perm.value,diffReview:dr.value});
       project.loadRecentProjects(rp.value);
@@ -154,6 +160,7 @@ export default function App() {
       file.loadFilePrefs({pinned:pi.value,recent:re.value});
       chat.loadChatPrefs({history:h.value,memories:mem.value,checkpoints:ckp.value});
     });
+    loadRuntimeKeys();
     callServer({type:'ping'}).then(r => {
       project.setServerOk(r.ok);
       if (r.ok) callServer({type:'mcp_list'}).then(mr => {
@@ -185,12 +192,17 @@ export default function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const iv = setInterval(async () => {
-      const r = await callServer({type:'ping'});
+    let delay = 5000;
+    let tid;
+    async function doPing() {
+      const r = await callServer({type:'ping'}).catch(()=>({ok:false}));
       project.setServerOk(r.ok);
-      project.setReconnectTimer(t => r.ok ? 0 : t + 5);
-    }, 5000);
-    return () => clearInterval(iv);
+      if (r.ok) { delay = 5000; project.setReconnectTimer(0); }
+      else { project.setReconnectTimer(t => t + Math.round(delay/1000)); delay = Math.min(delay*2, 60000); }
+      tid = setTimeout(doPing, delay);
+    }
+    doPing();
+    return () => clearTimeout(tid);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { chat.persistMessages(chat.messages); }, [chat.messages]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -333,6 +345,9 @@ export default function App() {
         generateCommitMsg={generateCommitMsg} haptic={haptic}
         saveCheckpoint={saveCheckpoint} restoreCheckpoint={restoreCheckpoint}
         fileInputRef={fileInputRef} handleImageAttach={handleImageAttach}/>
+
+      {!onboarded && <OnboardingWizard T={T} onDone={()=>setOnboarded(true)} />}
+      {showApiKeys && <ApiKeySettings T={T} onClose={()=>setShowApiKeys(false)} />}
 
       {ui.showProjectManager && (
         <ProjectManager T={T} project={project}

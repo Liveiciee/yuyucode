@@ -1,4 +1,7 @@
 import { CEREBRAS_KEY, GROQ_KEY, YUYU_SERVER, WS_SERVER, MODELS, FALLBACK_MODEL } from './constants.js';
+import { getRuntimeCerebrasKey, getRuntimeGroqKey } from './runtimeKeys.js';
+function getCerebrasKey() { return getRuntimeCerebrasKey() || CEREBRAS_KEY; }
+function getGroqKey()     { return getRuntimeGroqKey()     || GROQ_KEY; }
 
 // ── SHARED SSE STREAM READER ───────────────────────────────────────────────────
 export async function readSSEStream(resp, onChunk, signal) {
@@ -56,7 +59,7 @@ function injectVision(messages, imageBase64) {
 async function _cerebrasOnce(messages, model, onChunk, signal, options) {
   const resp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
     method: 'POST', signal,
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CEREBRAS_KEY },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCerebrasKey() },
     body: JSON.stringify({
       model,
       messages: injectVision(messages, options.imageBase64),
@@ -78,7 +81,7 @@ async function _cerebrasOnce(messages, model, onChunk, signal, options) {
 async function _groqOnce(messages, model, onChunk, signal, options) {
   const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST', signal,
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getGroqKey() },
     body: JSON.stringify({
       model,
       messages: injectVision(messages, options.imageBase64),
@@ -134,7 +137,7 @@ export async function askCerebrasStream(messages, model, onChunk, signal, option
   } catch (e) {
     if (e.name === 'AbortError') throw e;
 
-    if (e.message.startsWith('RATE_LIMIT:') && GROQ_KEY) {
+    if (e.message.startsWith('RATE_LIMIT:') && getGroqKey()) {
       // Try each Groq fallback model in order
       for (const fallbackModel of GROQ_FALLBACK_CHAIN) {
         try {
