@@ -2,681 +2,681 @@
   {
     "name": "single call — jsx",
     "unit": "ops/sec",
-    "value": 943209.43
+    "value": 853141.08
   },
   {
     "name": "10 mixed extensions",
     "unit": "ops/sec",
-    "value": 131633.45
+    "value": 195130.61
   },
   {
     "name": "single call — jsx",
     "unit": "ops/sec",
-    "value": 943209.43
+    "value": 853141.08
   },
   {
     "name": "10 mixed extensions",
     "unit": "ops/sec",
-    "value": 131633.45
+    "value": 195130.61
   },
   {
     "name": "single call — jsx",
     "unit": "ops/sec",
-    "value": 413730.33
+    "value": 900721.05
   },
   {
     "name": "10 mixed",
     "unit": "ops/sec",
-    "value": 208932.98
+    "value": 213406.46
   },
   {
     "name": "single call — jsx",
     "unit": "ops/sec",
-    "value": 413730.33
+    "value": 900721.05
   },
   {
     "name": "10 mixed",
     "unit": "ops/sec",
-    "value": 208932.98
+    "value": 213406.46
   },
   {
     "name": "single call — ts",
     "unit": "ops/sec",
-    "value": 914591.27
+    "value": 637543.61
   },
   {
     "name": "10 mixed",
     "unit": "ops/sec",
-    "value": 205482.33
+    "value": 220940.84
   },
   {
     "name": "single call — ts",
     "unit": "ops/sec",
-    "value": 914591.27
+    "value": 637543.61
   },
   {
     "name": "10 mixed",
     "unit": "ops/sec",
-    "value": 205482.33
+    "value": 220940.84
   },
   {
     "name": "empty tabs",
     "unit": "ops/sec",
-    "value": 1458591.87
+    "value": 1400582.23
   },
   {
     "name": "js only",
     "unit": "ops/sec",
-    "value": 946112.73
+    "value": 900603.99
   },
   {
     "name": "html + css + js",
     "unit": "ops/sec",
-    "value": 313547.25
+    "value": 291714.55
   },
   {
     "name": "empty tabs",
     "unit": "ops/sec",
-    "value": 1458591.87
+    "value": 1400582.23
   },
   {
     "name": "js only",
     "unit": "ops/sec",
-    "value": 946112.73
+    "value": 900603.99
   },
   {
     "name": "html + css + js",
     "unit": "ops/sec",
-    "value": 313547.25
+    "value": 291714.55
   },
   {
     "name": "small diff (4 lines)",
     "unit": "ops/sec",
-    "value": 23510.36
+    "value": 22656.34
   },
   {
     "name": "large diff (500 lines, many changes)",
     "unit": "ops/sec",
-    "value": 4.4077
+    "value": 4.2656
   },
   {
     "name": "identical (no diff)",
     "unit": "ops/sec",
-    "value": 6209.96
+    "value": 6255.37
   },
   {
     "name": "small diff (4 lines)",
     "unit": "ops/sec",
-    "value": 23510.36
+    "value": 22656.34
   },
   {
     "name": "large diff (500 lines, many changes)",
     "unit": "ops/sec",
-    "value": 4.4077
+    "value": 4.2656
   },
   {
     "name": "identical (no diff)",
     "unit": "ops/sec",
-    "value": 6209.96
+    "value": 6255.37
   },
   {
     "name": "open 1 tab (Array spread)",
     "unit": "ops/sec",
-    "value": 1088777.09
+    "value": 1226114.85
   },
   {
     "name": "close middle tab from 10",
     "unit": "ops/sec",
-    "value": 158213.14
+    "value": 161404.09
   },
   {
     "name": "find active tab from 20",
     "unit": "ops/sec",
-    "value": 104423.1
+    "value": 104870.47
   },
   {
     "name": "open 50 tabs sequentially",
     "unit": "ops/sec",
-    "value": 32176.89
+    "value": 32259.85
   },
   {
     "name": "open 1 tab (Array spread)",
     "unit": "ops/sec",
-    "value": 1088777.09
+    "value": 1226114.85
   },
   {
     "name": "close middle tab from 10",
     "unit": "ops/sec",
-    "value": 158213.14
+    "value": 161404.09
   },
   {
     "name": "find active tab from 20",
     "unit": "ops/sec",
-    "value": 104423.1
+    "value": 104870.47
   },
   {
     "name": "open 50 tabs sequentially",
     "unit": "ops/sec",
-    "value": 32176.89
+    "value": 32259.85
   },
   {
     "name": "small file (4 lines)",
     "unit": "ops/sec",
-    "value": 112102.74
+    "value": 110331.31
   },
   {
     "name": "realistic component (~50 lines)",
     "unit": "ops/sec",
-    "value": 41973.64
+    "value": 41962.36
   },
   {
     "name": "large file (10 components, ~500 lines)",
     "unit": "ops/sec",
-    "value": 4881.44
+    "value": 4840.96
   },
   {
     "name": "non-code file (early return)",
     "unit": "ops/sec",
-    "value": 1047775.93
+    "value": 1006923.04
   },
   {
     "name": "small file (4 lines)",
     "unit": "ops/sec",
-    "value": 112102.74
+    "value": 110331.31
   },
   {
     "name": "realistic component (~50 lines)",
     "unit": "ops/sec",
-    "value": 41973.64
+    "value": 41962.36
   },
   {
     "name": "large file (10 components, ~500 lines)",
     "unit": "ops/sec",
-    "value": 4881.44
+    "value": 4840.96
   },
   {
     "name": "non-code file (early return)",
     "unit": "ops/sec",
-    "value": 1047775.93
+    "value": 1006923.04
   },
   {
     "name": "small file (4 lines)",
     "unit": "ops/sec",
-    "value": 304248.21
+    "value": 262058.88
   },
   {
     "name": "realistic component (~50 lines)",
     "unit": "ops/sec",
-    "value": 18922.25
+    "value": 18568.89
   },
   {
     "name": "large file (500 lines)",
     "unit": "ops/sec",
-    "value": 1553.87
+    "value": 1485.32
   },
   {
     "name": "large component (10x realistic, ~500 lines)",
     "unit": "ops/sec",
-    "value": 2093.02
+    "value": 2031.33
   },
   {
     "name": "non-code file (early return)",
     "unit": "ops/sec",
-    "value": 1013542.22
+    "value": 948081.25
   },
   {
     "name": "small file (4 lines)",
     "unit": "ops/sec",
-    "value": 304248.21
+    "value": 262058.88
   },
   {
     "name": "realistic component (~50 lines)",
     "unit": "ops/sec",
-    "value": 18922.25
+    "value": 18568.89
   },
   {
     "name": "large file (500 lines)",
     "unit": "ops/sec",
-    "value": 1553.87
+    "value": 1485.32
   },
   {
     "name": "large component (10x realistic, ~500 lines)",
     "unit": "ops/sec",
-    "value": 2093.02
+    "value": 2031.33
   },
   {
     "name": "non-code file (early return)",
     "unit": "ops/sec",
-    "value": 1013542.22
+    "value": 948081.25
   },
   {
     "name": "small file — 1 import",
     "unit": "ops/sec",
-    "value": 384313.99
+    "value": 384477.4
   },
   {
     "name": "realistic component — 3 imports",
     "unit": "ops/sec",
-    "value": 199199.75
+    "value": 188518.47
   },
   {
     "name": "no imports",
     "unit": "ops/sec",
-    "value": 117747.75
+    "value": 118592.16
   },
   {
     "name": "small file — 1 import",
     "unit": "ops/sec",
-    "value": 384313.99
+    "value": 384477.4
   },
   {
     "name": "realistic component — 3 imports",
     "unit": "ops/sec",
-    "value": 199199.75
+    "value": 188518.47
   },
   {
     "name": "no imports",
     "unit": "ops/sec",
-    "value": 117747.75
+    "value": 118592.16
   },
   {
     "name": "20 pre-built file data objects",
     "unit": "ops/sec",
-    "value": 70973.08
+    "value": 71923.89
   },
   {
     "name": "20 pre-built file data objects",
     "unit": "ops/sec",
-    "value": 70973.08
+    "value": 71923.89
   },
   {
     "name": "no action blocks",
     "unit": "ops/sec",
-    "value": 1441481.8
+    "value": 1388321.53
   },
   {
     "name": "1 action block",
     "unit": "ops/sec",
-    "value": 250412.88
+    "value": 297057.4
   },
   {
     "name": "5 action blocks",
     "unit": "ops/sec",
-    "value": 87305.57
+    "value": 88037.99
   },
   {
     "name": "mixed — valid + invalid + non-action blocks",
     "unit": "ops/sec",
-    "value": 17126.78
+    "value": 10853.13
   },
   {
     "name": "no action blocks",
     "unit": "ops/sec",
-    "value": 1441481.8
+    "value": 1388321.53
   },
   {
     "name": "1 action block",
     "unit": "ops/sec",
-    "value": 250412.88
+    "value": 297057.4
   },
   {
     "name": "5 action blocks",
     "unit": "ops/sec",
-    "value": 87305.57
+    "value": 88037.99
   },
   {
     "name": "mixed — valid + invalid + non-action blocks",
     "unit": "ops/sec",
-    "value": 17126.78
+    "value": 10853.13
   },
   {
     "name": "null input",
     "unit": "ops/sec",
-    "value": 1386022.44
+    "value": 1086963.61
   },
   {
     "name": "undefined input",
     "unit": "ops/sec",
-    "value": 1409466.32
+    "value": 1366134.46
   },
   {
     "name": "no extension",
     "unit": "ops/sec",
-    "value": 640692.28
+    "value": 642763.9
   },
   {
     "name": "deeply nested path",
     "unit": "ops/sec",
-    "value": 853741.75
+    "value": 814124.78
   },
   {
     "name": "500 mixed files (stress)",
     "unit": "ops/sec",
-    "value": 1243.14
+    "value": 1344.36
   },
   {
     "name": "null input",
     "unit": "ops/sec",
-    "value": 1386022.44
+    "value": 1086963.61
   },
   {
     "name": "undefined input",
     "unit": "ops/sec",
-    "value": 1409466.32
+    "value": 1366134.46
   },
   {
     "name": "no extension",
     "unit": "ops/sec",
-    "value": 640692.28
+    "value": 642763.9
   },
   {
     "name": "deeply nested path",
     "unit": "ops/sec",
-    "value": 853741.75
+    "value": 814124.78
   },
   {
     "name": "500 mixed files (stress)",
     "unit": "ops/sec",
-    "value": 1243.14
+    "value": 1344.36
   },
   {
     "name": "giant JS (500 lines)",
     "unit": "ops/sec",
-    "value": 863563.27
+    "value": 857743.97
   },
   {
     "name": "20 tabs (only first html/css/js matter)",
     "unit": "ops/sec",
-    "value": 247260.92
+    "value": 262125.71
   },
   {
     "name": "unicode content",
     "unit": "ops/sec",
-    "value": 852769.51
+    "value": 867167.55
   },
   {
     "name": "giant JS (500 lines)",
     "unit": "ops/sec",
-    "value": 863563.27
+    "value": 857743.97
   },
   {
     "name": "20 tabs (only first html/css/js matter)",
     "unit": "ops/sec",
-    "value": 247260.92
+    "value": 262125.71
   },
   {
     "name": "unicode content",
     "unit": "ops/sec",
-    "value": 852769.51
+    "value": 867167.55
   },
   {
     "name": "5000 lines identical (no diff — best case)",
     "unit": "ops/sec",
-    "value": 609.76
+    "value": 333.89
   },
   {
     "name": "5000 lines all changed (worst case Myers)",
     "unit": "ops/sec",
-    "value": 0.4108
+    "value": 0.4155
   },
   {
     "name": "unicode diff",
     "unit": "ops/sec",
-    "value": 17301.89
+    "value": 17823.42
   },
   {
     "name": "empty → 500 lines (insert everything)",
     "unit": "ops/sec",
-    "value": 1603091.96
+    "value": 1598546.55
   },
   {
     "name": "500 lines → empty (delete everything)",
     "unit": "ops/sec",
-    "value": 1524164.82
+    "value": 1575080.55
   },
   {
     "name": "5000 lines identical (no diff — best case)",
     "unit": "ops/sec",
-    "value": 609.76
+    "value": 333.89
   },
   {
     "name": "5000 lines all changed (worst case Myers)",
     "unit": "ops/sec",
-    "value": 0.4108
+    "value": 0.4155
   },
   {
     "name": "unicode diff",
     "unit": "ops/sec",
-    "value": 17301.89
+    "value": 17823.42
   },
   {
     "name": "empty → 500 lines (insert everything)",
     "unit": "ops/sec",
-    "value": 1603091.96
+    "value": 1598546.55
   },
   {
     "name": "500 lines → empty (delete everything)",
     "unit": "ops/sec",
-    "value": 1524164.82
+    "value": 1575080.55
   },
   {
     "name": "open 200 tabs sequentially",
     "unit": "ops/sec",
-    "value": 3915.91
+    "value": 4595.63
   },
   {
     "name": "find dirty tab from 200",
     "unit": "ops/sec",
-    "value": 1616271.4
+    "value": 1776987.4
   },
   {
     "name": "close all dirty tabs from 200",
     "unit": "ops/sec",
-    "value": 272341.22
+    "value": 264436.24
   },
   {
     "name": "reorder — move last to first (200 tabs)",
     "unit": "ops/sec",
-    "value": 720173.23
+    "value": 745018.32
   },
   {
     "name": "open 200 tabs sequentially",
     "unit": "ops/sec",
-    "value": 3915.91
+    "value": 4595.63
   },
   {
     "name": "find dirty tab from 200",
     "unit": "ops/sec",
-    "value": 1616271.4
+    "value": 1776987.4
   },
   {
     "name": "close all dirty tabs from 200",
     "unit": "ops/sec",
-    "value": 272341.22
+    "value": 264436.24
   },
   {
     "name": "reorder — move last to first (200 tabs)",
     "unit": "ops/sec",
-    "value": 720173.23
+    "value": 745018.32
   },
   {
     "name": "5000 line file",
     "unit": "ops/sec",
-    "value": 1.0634
+    "value": 1.0956
   },
   {
     "name": "unicode source",
     "unit": "ops/sec",
-    "value": 100206.4
+    "value": 103159.13
   },
   {
     "name": "deeply nested (50 levels)",
     "unit": "ops/sec",
-    "value": 10927.4
+    "value": 11059.99
   },
   {
     "name": "200 unique symbols",
     "unit": "ops/sec",
-    "value": 394.26
+    "value": 385.62
   },
   {
     "name": "empty string",
     "unit": "ops/sec",
-    "value": 129648.31
+    "value": 128457.63
   },
   {
     "name": "5000 line file",
     "unit": "ops/sec",
-    "value": 1.0634
+    "value": 1.0956
   },
   {
     "name": "unicode source",
     "unit": "ops/sec",
-    "value": 100206.4
+    "value": 103159.13
   },
   {
     "name": "deeply nested (50 levels)",
     "unit": "ops/sec",
-    "value": 10927.4
+    "value": 11059.99
   },
   {
     "name": "200 unique symbols",
     "unit": "ops/sec",
-    "value": 394.26
+    "value": 385.62
   },
   {
     "name": "empty string",
     "unit": "ops/sec",
-    "value": 129648.31
+    "value": 128457.63
   },
   {
     "name": "5000 line file",
     "unit": "ops/sec",
-    "value": 61.4255
+    "value": 62.4424
   },
   {
     "name": "200 unique symbol names (compression resistant)",
     "unit": "ops/sec",
-    "value": 973.62
+    "value": 971.89
   },
   {
     "name": "unicode source",
     "unit": "ops/sec",
-    "value": 119340.79
+    "value": 117902.46
   },
   {
     "name": "empty string",
     "unit": "ops/sec",
-    "value": 558758.97
+    "value": 546181.51
   },
   {
     "name": "single line (1 char)",
     "unit": "ops/sec",
-    "value": 459107.99
+    "value": 446519.54
   },
   {
     "name": "5000 line file",
     "unit": "ops/sec",
-    "value": 61.4255
+    "value": 62.4424
   },
   {
     "name": "200 unique symbol names (compression resistant)",
     "unit": "ops/sec",
-    "value": 973.62
+    "value": 971.89
   },
   {
     "name": "unicode source",
     "unit": "ops/sec",
-    "value": 119340.79
+    "value": 117902.46
   },
   {
     "name": "empty string",
     "unit": "ops/sec",
-    "value": 558758.97
+    "value": 546181.51
   },
   {
     "name": "single line (1 char)",
     "unit": "ops/sec",
-    "value": 459107.99
+    "value": 446519.54
   },
   {
     "name": "50 imports",
     "unit": "ops/sec",
-    "value": 58140.45
+    "value": 58768.4
   },
   {
     "name": "unicode import paths",
     "unit": "ops/sec",
-    "value": 580021.18
+    "value": 579825.18
   },
   {
     "name": "empty string",
     "unit": "ops/sec",
-    "value": 1028469.09
+    "value": 999174.41
   },
   {
     "name": "malformed import (no from)",
     "unit": "ops/sec",
-    "value": 891966.81
+    "value": 930668.7
   },
   {
     "name": "50 imports",
     "unit": "ops/sec",
-    "value": 58140.45
+    "value": 58768.4
   },
   {
     "name": "unicode import paths",
     "unit": "ops/sec",
-    "value": 580021.18
+    "value": 579825.18
   },
   {
     "name": "empty string",
     "unit": "ops/sec",
-    "value": 1028469.09
+    "value": 999174.41
   },
   {
     "name": "malformed import (no from)",
     "unit": "ops/sec",
-    "value": 891966.81
+    "value": 930668.7
   },
   {
     "name": "100 fake action blocks (all invalid JSON)",
     "unit": "ops/sec",
-    "value": 239.04
+    "value": 234.33
   },
   {
     "name": "20 valid action blocks",
     "unit": "ops/sec",
-    "value": 17663.27
+    "value": 19760.12
   },
   {
     "name": "empty string",
     "unit": "ops/sec",
-    "value": 1383904.51
+    "value": 1390782.92
   },
   {
     "name": "10MB-ish text — no actions",
     "unit": "ops/sec",
-    "value": 18987.63
+    "value": 16913.47
   },
   {
     "name": "100 fake action blocks (all invalid JSON)",
     "unit": "ops/sec",
-    "value": 239.04
+    "value": 234.33
   },
   {
     "name": "20 valid action blocks",
     "unit": "ops/sec",
-    "value": 17663.27
+    "value": 19760.12
   },
   {
     "name": "empty string",
     "unit": "ops/sec",
-    "value": 1383904.51
+    "value": 1390782.92
   },
   {
     "name": "10MB-ish text — no actions",
     "unit": "ops/sec",
-    "value": 18987.63
+    "value": 16913.47
   }
 ]

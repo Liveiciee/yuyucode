@@ -35,6 +35,7 @@ if (result.stderr) process.stderr.write(result.stderr);
 // "   · single call — jsx    981,449.94  0.0009  ..."
 // → name + hz
 const entries = [];
+const seenNames = new Set();
 const lineRe  = /^\s+·\s+(.+?)\s{2,}([\d,]+\.\d+)\s+[\d.]+/;
 
 for (const line of stripped.split('\n')) {
