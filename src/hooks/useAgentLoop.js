@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { askCerebrasStream, callServer } from '../api.js';
 import { parseActions, executeAction, resolvePath, generateDiff } from '../utils.js';
 import { runHooksV2, checkPermission, tokenTracker, parseElicitation, tfidfRank, selectSkills } from '../features.js';
-import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL } from '../constants.js';
+import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL, getSystemForModel } from '../constants.js';
 
 // ── Module-level helpers for sendMsg ─────────────────────────────────────────
 
@@ -322,7 +322,8 @@ ${outB.slice(0, 1500)}
     const styleCtx = growth?.learnedStyle
       ? '\n\n[Gaya coding yang dipelajari dari sesi sebelumnya]:\n' + growth.learnedStyle
       : '';
-    return BASE_SYSTEM + cfg.systemSuffix + thinkNote + styleCtx +
+    const modelSystem = getSystemForModel(cfg.model || project?.model || '');
+    return modelSystem + cfg.systemSuffix + thinkNote + styleCtx +
       '\n\nFolder aktif: ' + project.folder +
       '\nBranch: ' + project.branch +
       agentsMdCtx + yuyuMdCtx + notesCtx + skillCtx + pinnedCtx + fileCtx + memCtx + agentMemCtx + visionCtx;
@@ -368,7 +369,7 @@ ${outB.slice(0, 1500)}
 
     try {
       const cfg = project.effortCfg;
-      const systemPrompt = buildSystemPrompt(txt, cfg);
+      const systemPrompt = buildSystemPrompt(txt, { ...cfg, model: project.model });
 
       // ── Pre-load pinned files ──
       autoContextRef.current = {};
@@ -425,7 +426,7 @@ ${outB.slice(0, 1500)}
           : '';
 
         const systemPromptIter = iter > 1
-          ? buildSystemPrompt(txt, { ...cfg, _iter: iter })
+          ? buildSystemPrompt(txt, { ...cfg, _iter: iter, model: project.model })
           : systemPrompt;
         const groqMsgs = [
           { role: 'system', content: systemPromptIter + DECISION_HINT + autoCtxBlock },

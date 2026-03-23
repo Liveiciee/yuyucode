@@ -34,6 +34,7 @@ vi.mock('../features.js', () => ({
   parseElicitation: vi.fn().mockReturnValue(null),
 }));
 vi.mock('../constants.js', () => ({
+  getSystemForModel: vi.fn().mockReturnValue('SYSTEM '),
   BASE_SYSTEM:          'BASE ',
   AUTO_COMPACT_CHARS:   80000,
   AUTO_COMPACT_MIN_MSG: 12,

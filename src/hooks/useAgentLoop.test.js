@@ -35,6 +35,7 @@ vi.mock('../features.js', () => ({
 }));
 vi.mock('../constants.js', () => ({
   BASE_SYSTEM:            'BASE_SYSTEM ',
+  getSystemForModel:      vi.fn().mockReturnValue('BASE_SYSTEM '),
   AUTO_COMPACT_CHARS:     80000,
   AUTO_COMPACT_MIN_MSG:   12,
   MAX_FILE_PREVIEW:       2000,
