@@ -53,7 +53,7 @@ beforeEach(() => {
 describe('useChatStore — initial state', () => {
   it('starts with welcome message', () => {
     const { result } = renderHook(() => useChatStore());
-    expect(result.current.messages).toHaveLength(0);
+    expect(result.current.messages).toHaveLength(1);
   });
 
   it('starts with empty input and not loading', () => {
@@ -75,7 +75,7 @@ describe('useChatStore — message operations', () => {
       ]);
     });
     act(() => { result.current.deleteMessage(0); });
-    expect(result.current.messages).toHaveLength(0);
+    expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].content).toBe('hello');
   });
 
@@ -118,7 +118,7 @@ describe('useChatStore — clearChat', () => {
       ]);
     });
     act(() => { result.current.clearChat(); });
-    expect(result.current.messages).toHaveLength(0);
+    expect(result.current.messages).toHaveLength(1);
     expect(mockPreferencesRemove).toHaveBeenCalledWith({ key: 'yc_history' });
   });
 });

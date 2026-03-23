@@ -170,7 +170,7 @@ export function useChatStore() {
 
   // ── clearChat ──
   function clearChat() {
-    setMessages([]);
+    setMessages([{ role: 'assistant', content: 'Halo Papa! Yuyu siap bantu coding. Mau ngerjain apa? 🌸' }]);
     Preferences.remove({ key: 'yc_history' });
     setShowFollowUp(false);
   }
