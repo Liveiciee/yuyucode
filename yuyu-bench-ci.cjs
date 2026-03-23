@@ -14,7 +14,7 @@ const { spawnSync } = require('child_process');
 
 const ROOT     = process.cwd();
 const YUYU_DIR = path.join(ROOT, '.yuyu');
-const OUT_FILE = path.join(YUYU_DIR, 'bench-ci.json');
+const OUT_FILE = process.env.BENCH_OUTPUT || path.join(YUYU_DIR, 'bench-ci.json');
 
 if (!fs.existsSync(YUYU_DIR)) fs.mkdirSync(YUYU_DIR, { recursive: true });
 

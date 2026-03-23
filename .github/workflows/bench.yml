@@ -51,6 +51,8 @@ jobs:
           )
 
       - name: Run benchmarks
+        env:
+          BENCH_OUTPUT: /tmp/bench-ci.json
         run: node yuyu-bench-ci.cjs
 
       - name: Store benchmark result
@@ -58,7 +60,7 @@ jobs:
         with:
           name: YuyuCode Benchmark (CI · Ubuntu x86_64)
           tool: customSmallerIsBetter
-          output-file-path: .yuyu/bench-ci.json
+          output-file-path: /tmp/bench-ci.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
           alert-threshold: '150%'
