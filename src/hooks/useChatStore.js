@@ -70,20 +70,33 @@ export function useChatStore() {
     setShowFollowUp(msgs.length > 1 && msgs[msgs.length - 1]?.role === 'assistant');
   }
 
-  // ── trimHistory ──
-  function trimHistory(msgs) {
-    const MAX_CHARS = 100000;
-    if (msgs.reduce((a, m) => a + m.content.length, 0) <= MAX_CHARS) return msgs;
-    const HEAD = 4, TAIL = 12;
+  // ── trimHistory — per-model context budget ──
+  // compact (8B): ~24k chars | medium (32-70B): ~60k | full (235B+): ~100k
+  function getMaxChars(modelId) {
+    const id = modelId || '';
+    if (id.includes('8b') || id.includes('8B')) return 24000;
+    if (id.includes('32b') || id.includes('70b') || id.includes('scout')) return 60000;
+    return 100000;
+  }
+
+  function trimHistory(msgs, modelId) {
+    const MAX_CHARS = getMaxChars(modelId);
+    const total = msgs.reduce((a, m) => a + (m.content?.length || 0), 0);
+    if (total <= MAX_CHARS) return msgs;
+    // compact models get tighter window — less HEAD/TAIL to preserve more recency
+    const isCompact = MAX_CHARS <= 24000;
+    const HEAD = isCompact ? 2 : 4;
+    const TAIL = isCompact ? 8  : 12;
     if (msgs.length <= HEAD + TAIL + 1) return msgs;
     const middle = msgs.slice(HEAD + 1, -TAIL);
+    const summaryLen = isCompact ? 400 : 800;
     const summary = middle.map(m =>
       (m.role === 'user' ? 'Papa' : 'Yuyu') + ': ' +
-      m.content.replace(/```action[\s\S]*?```/g, '[action]').slice(0, 120)
+      (m.content || '').replace(/```action[\s\S]*?```/g, '[action]').slice(0, isCompact ? 60 : 120)
     ).join(' | ');
     return [
       ...msgs.slice(0, HEAD + 1),
-      { role: 'assistant', content: '[Ringkasan ' + middle.length + ' pesan: ' + summary.slice(0, 800) + ']' },
+      { role: 'assistant', content: '[Ringkasan ' + middle.length + ' pesan: ' + summary.slice(0, summaryLen) + ']' },
       ...msgs.slice(-TAIL),
     ];
   }

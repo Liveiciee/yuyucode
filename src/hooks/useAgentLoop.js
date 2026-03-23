@@ -430,7 +430,7 @@ ${outB.slice(0, 1500)}
           : systemPrompt;
         const groqMsgs = [
           { role: 'system', content: systemPromptIter + DECISION_HINT + autoCtxBlock },
-          ...chat.trimHistory(allMessages).map(m => {
+          ...chat.trimHistory(allMessages, project.model).map(m => {
             const raw = Array.isArray(m.content)
               ? m.content.filter(c => c.type === 'text').map(c => c.text).join(' ')
               : (m.content || '');

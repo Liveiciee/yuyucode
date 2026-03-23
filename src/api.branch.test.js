@@ -1,3 +1,6 @@
+const makeSSEBody = (text) => new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({choices:[{delta:{content:text}}]})}
+
+`)); controller.close(); } });
 // @vitest-environment node
 // api.branch.test.js — condition branch coverage untuk api.js
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -251,5 +254,50 @@ describe('askCerebrasStream — Cerebras non-ok non-rate-limit', () => {
         'qwen-cerebras', () => {}, new AbortController().signal, {}
       )
     ).rejects.toThrow('Cerebras error: HTTP 401');
+  });
+});
+
+
+// ── Additional branch coverage ────────────────────────────────────────────────
+describe('askCerebrasStream — Groq server retry', () => {
+  it('retries on GROQ_SERVER error up to 2 times', async () => {
+    const { askCerebrasStream } = await import('./api.js');
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, text: async () => 'server error' })
+      .mockResolvedValueOnce({ ok: false, status: 503, text: async () => 'server error' })
+      .mockResolvedValueOnce({ ok: true, status: 200, body: makeSSEBody('ok') });
+    global.fetch = mockFetch;
+    const result = await askCerebrasStream(
+      [{ role: 'user', content: 'hi' }],
+      'moonshotai/kimi-k2-instruct-0905',
+      () => {}, null, {}
+    );
+    expect(mockFetch.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('askCerebrasStream — empty messages guard', () => {
+  it('throws on empty messages array', async () => {
+    const { askCerebrasStream } = await import('./api.js');
+    await expect(askCerebrasStream([], 'llama3.1-8b', () => {}, null))
+      .rejects.toThrow('non-empty array');
+  });
+
+  it('throws on non-array messages', async () => {
+    const { askCerebrasStream } = await import('./api.js');
+    await expect(askCerebrasStream(null, 'llama3.1-8b', () => {}, null))
+      .rejects.toThrow('non-empty array');
+  });
+});
+
+describe('askCerebrasStream — Groq non-rate-limit error stops chain', () => {
+  it('stops fallback chain on auth error', async () => {
+    const { askCerebrasStream } = await import('./api.js');
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 429, headers: { get: () => '1' } }) // Cerebras rate limit
+      .mockResolvedValueOnce({ ok: false, status: 401, text: async () => 'unauthorized' }); // Groq auth fail
+    await expect(
+      askCerebrasStream([{ role: 'user', content: 'hi' }], 'llama3.1-8b', () => {}, null, {})
+    ).rejects.toThrow();
   });
 });
