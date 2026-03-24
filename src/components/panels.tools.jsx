@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { Zap, Bookmark, Check, X, Save, Shield, List, GitMerge, Plug, Key, Settings } from 'lucide-react';
 import { BottomSheet } from './panels.base.jsx';
+import { resolveTheme } from './themeUtils.js';
 
 // ─── CUSTOM ACTIONS PANEL ─────────────────────────────────────────────────────
 export function CustomActionsPanel({ folder:_folder, onRun, onClose, T }) {

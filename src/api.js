@@ -55,11 +55,11 @@ function injectVision(messages, imageBase64) {
   });
 }
 
-// ── CEREBRAS STREAMING ─────────────────────────────────────────────────────────
-async function _cerebrasOnce(messages, model, onChunk, signal, options) {
-  const resp = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+// ── SHARED AI FETCH HELPER ────────────────────────────────────────────────────
+async function _aiOnce({ url, authKey, providerLabel, serverErrorPrefix, defaultRetry, readErrBody = false, messages, model, onChunk, signal, options }) {
+  const resp = await fetch(url, {
     method: 'POST', signal,
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCerebrasKey() },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authKey },
     body: JSON.stringify({
       model,
       messages: injectVision(messages, options.imageBase64),
@@ -69,37 +69,25 @@ async function _cerebrasOnce(messages, model, onChunk, signal, options) {
     }),
   });
   if (resp.status === 429) {
-    const retry = Number.parseInt(resp.headers.get('retry-after') || '60', 10);
+    const retry = Number.parseInt(resp.headers.get('retry-after') || String(defaultRetry), 10);
     throw new Error(`RATE_LIMIT:${retry}`);
   }
-  if (resp.status >= 500) throw new Error(`CEREBRAS_SERVER:${resp.status}`);
-  if (!resp.ok) throw new Error(`Cerebras error: HTTP ${resp.status}`);
+  if (resp.status >= 500) throw new Error(`${serverErrorPrefix}:${resp.status}`);
+  if (!resp.ok) {
+    const detail = readErrBody ? ' — ' + (await resp.text()).slice(0, 100) : '';
+    throw new Error(`${providerLabel} error: HTTP ${resp.status}${detail}`);
+  }
   return readSSEStream(resp, onChunk, signal);
+}
+
+// ── CEREBRAS STREAMING ─────────────────────────────────────────────────────────
+async function _cerebrasOnce(messages, model, onChunk, signal, options) {
+  return _aiOnce({ url: 'https://api.cerebras.ai/v1/chat/completions', authKey: getCerebrasKey(), providerLabel: 'Cerebras', serverErrorPrefix: 'CEREBRAS_SERVER', defaultRetry: 60, messages, model, onChunk, signal, options });
 }
 
 // ── GROQ STREAMING ─────────────────────────────────────────────────────────────
 async function _groqOnce(messages, model, onChunk, signal, options) {
-  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST', signal,
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getGroqKey() },
-    body: JSON.stringify({
-      model,
-      messages: injectVision(messages, options.imageBase64),
-      max_tokens: options.maxTokens || 4096,
-      stream: true,
-      temperature: options.temperature || 0.3,
-    }),
-  });
-  if (resp.status === 429) {
-    const retry = Number.parseInt(resp.headers.get('retry-after') || '30', 10);
-    throw new Error(`RATE_LIMIT:${retry}`);
-  }
-  if (resp.status >= 500) throw new Error(`GROQ_SERVER:${resp.status}`);
-  if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`Groq error: HTTP ${resp.status} — ${err.slice(0, 100)}`);
-  }
-  return readSSEStream(resp, onChunk, signal);
+  return _aiOnce({ url: 'https://api.groq.com/openai/v1/chat/completions', authKey: getGroqKey(), providerLabel: 'Groq', serverErrorPrefix: 'GROQ_SERVER', defaultRetry: 30, readErrBody: true, messages, model, onChunk, signal, options });
 }
 
 // ── UNIFIED AI CALL — auto-fallback Cerebras → Groq ───────────────────────────

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Puzzle, X, Plus, Upload } from 'lucide-react';
 import { BottomSheet } from './panels.base.jsx';
+import { resolveTheme } from './themeUtils.js';
 
 export function ElicitationPanel({ data, onSubmit, onDismiss, T }) {
 

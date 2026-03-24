@@ -3,6 +3,7 @@ import * as d3 from "d3";
 import { callServer } from '../api.js';
 import { AlertTriangle, Eye, ScrollText, X, Network } from 'lucide-react';
 import { BottomSheet } from './panels.base.jsx';
+import { resolveTheme } from './themeUtils.js';
 
 export function GitComparePanel({ folder, onClose, T }) {
 

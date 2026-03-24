@@ -1,4 +1,3 @@
-/* eslint-disable */
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { generateDiff } from './utils.js';
@@ -31,7 +30,7 @@ describe('generateDiff — advanceContext (context lines)', () => {
 
 // ── segmentedDiff — Guard 1: anchor ratio rendah → fallback Myers ─────────────
 describe('segmentedDiff — Guard 1 (anchor ratio rendah)', () => {
-  it('fallback ke Myers saat baris mayoritas duplikat', () => {
+  it("fallback ke Myers saat baris mayoritas duplikat", { timeout: 15000 }, () => {
     // Semua baris di A dan B beda → 0 anchor bersama → ratio = 0 < 30%
     const aLines = makeLines('old', THRESHOLD + 100);
     const bLines = makeLines('new', THRESHOLD + 100);

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { callServer } from '../api.js';
-import { executeAction, resolvePath, verifySyntaxBatch, backupFiles } from '../utils.js';
+import { resolvePath } from '../utils.js';
+import { getWriteTargets, applyWriteBatch } from './approvalHelpers.js';
 
 export function useFileStore() {
   // ── Multi-tab state ──
@@ -158,40 +159,16 @@ export function useFileStore() {
     return paths.reduce((acc, p, i) => ({ ...acc, [p]: results[i] }), {});
   }
 
-  // ── handleApprove (write file batch with backup + rollback) ──
   async function handleApprove(idx, ok, targetPath, messages, setMessages, folder, hooks, runHooksV2, permissions) {
-    const msg     = messages[idx];
-    const targets = targetPath === '__all__'
-      ? (msg.actions || []).filter(a => a.type === 'write_file' && !a.executed)
-      : (msg.actions || []).filter(a => a.type === 'write_file' && !a.executed && (!targetPath || a.path === targetPath));
-
+    const msg = messages[idx];
+    const targets = getWriteTargets(msg, targetPath);
     if (!ok) {
       setMessages(m => m.map((x, i) => i === idx
-        ? { ...x, actions: x.actions?.map(a => targets.includes(a)
-            ? { ...a, executed: true, result: { ok: false, data: 'Dibatalkan.' } } : a) }
+        ? { ...x, actions: x.actions?.map(a => targets.includes(a) ? { ...a, executed: true, result: { ok: false, data: 'Dibatalkan.' } } : a) }
         : x));
       return;
     }
-
-    const backups = await backupFiles(targets, folder);
-    if (backups.length) setEditHistory(h => [...h.slice(-(10 - backups.length)), ...backups]);
-
-    const results = await Promise.all(targets.map(a => executeAction(a, folder)));
-    const failed  = results.filter(r => !r.ok);
-
-    if (failed.length > 0 && targets.length > 1) {
-      await Promise.all(backups.map(b => callServer({ type: 'write', path: b.path, content: b.content })));
-      setMessages(m => [...m, { role: 'assistant', content: '❌ Atomic write gagal (' + failed.length + ' file). Rollback.' }]);
-      return;
-    }
-
-    results.forEach((r, i) => { targets[i].result = r; targets[i].executed = true; });
-    setMessages(m => m.map((x, i) => i === idx ? { ...x } : x));
-    if (targets.length > 1)
-      setMessages(m => [...m, { role: 'assistant', content: '✅ ' + targets.length + ' file berhasil ditulis~', actions: [] }]);
-    await runHooksV2(hooks?.postWrite || [], targets.map(a => a.path).join(','), folder);
-
-    if (permissions?.exec) await verifySyntaxBatch(targets, folder, setMessages);
+    await applyWriteBatch({ targets, folder, idx, setEditHistory, setMessages, hooks, permissions });
   }
 
   return {
