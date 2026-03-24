@@ -18,17 +18,7 @@ export default defineConfig({
   
   build: {
     target: 'es2020', // Snapdragon 680 support ES2020
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Hapus console.log di production
-        drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace'],
-      },
-      mangle: {
-        toplevel: true, // Mangle variable names di top level
-      },
-    },
+    minify: 'esbuild', // ← GANTI ke esbuild (built-in, gak perlu install terser)
     sourcemap: false, // Matikan sourcemap di production
     chunkSizeWarningLimit: 500, // KB
     cssCodeSplit: true, // Split CSS
