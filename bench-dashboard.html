@@ -239,8 +239,14 @@ const E={
   'empty string':{i:'🛡️',l:'Edge: empty input',h:(v,f)=>`Handles empty string in <b>${f(1e9/v,true)}</b>`,d:'Zero-content input — must not crash for any parser.',n:'Robustness test.'},
   'unicode source':{i:'🌐',l:'Edge: unicode source',h:(v,f)=>`Handles unicode code in <b>${f(1e9/v,true)}</b>`,d:'Emoji, CJK, RTL, zero-width chars in source code.',r:'Global developers write in their language. YuyuCode handles any Unicode.'},
 };
-const DEF={i:'📊',l:n=>n,h:(v,f)=>v<1?`~<b>${(1000/Math.max(v,.001)).toFixed(0)}ms</b> per operation`:`Runs at <b>${f(v)} ops/sec</b>`,d:'Core engine function — higher ops/sec means faster execution.'};
-
+const DEF={
+  i:'📊',
+  l:n=>n,
+  h:(v,f)=>v<1?`~<b>${(1000/Math.max(v,.001)).toFixed(0)}ms</b> per operation`:`Runs at <b>${f(v)} ops/sec</b>`,
+  d:'Core engine function — higher ops/sec means faster execution.',
+  r:'', 
+  n:''  
+};
 // ── Load data ─────────────────────────────────────────────────────────────────
 function loadData(){
   return new Promise((ok,fail)=>{
