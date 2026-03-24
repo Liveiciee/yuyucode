@@ -27,10 +27,12 @@ const mockDbSaveMessages    = vi.hoisted(() => vi.fn().mockResolvedValue(undefin
 const mockDbSaveMemories    = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockDbSaveCheckpoint  = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockDbLoadCheckpoints = vi.hoisted(() => vi.fn().mockResolvedValue(null));
+const mockDbLoadMessages = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+const mockDbSearchMessages = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 vi.mock('./useDb.js', () => ({
   dbSaveMessages:    mockDbSaveMessages,
-  dbLoadMessages:    vi.fn().mockResolvedValue([]),
-  dbSearchMessages:  vi.fn().mockResolvedValue([]),
+  dbLoadMessages:    mockDbLoadMessages,
+  dbSearchMessages:  mockDbSearchMessages,
   dbSaveMemories:    mockDbSaveMemories,
   dbLoadMemories:    vi.fn().mockResolvedValue([]),
   dbSaveCheckpoint:  mockDbSaveCheckpoint,
@@ -348,4 +350,10 @@ describe('useChatStore — exportChat', () => {
     expect(global.URL.createObjectURL).toHaveBeenCalled();
     vi.restoreAllMocks();
   });
+});
+
+// Debug: check mock
+beforeEach(() => {
+  console.log('mockDbLoadMessages:', mockDbLoadMessages);
+  console.log('mockDbSearchMessages:', mockDbSearchMessages);
 });
