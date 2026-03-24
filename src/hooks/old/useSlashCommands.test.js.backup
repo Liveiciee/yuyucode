@@ -47,7 +47,7 @@ import { Preferences } from '@capacitor/preferences';
 import { callServer, askCerebrasStream } from '../api.js';
 import { saveSession, loadSessions } from '../features.js';
 import * as featuresModule from '../features.js';
-import { useSlashCommands } from './useSlashCommands.js';
+import { useSlashCommands } from './useSlashCommands';
 
 // ── Default props factory ──────────────────────────────────────────────────────
 function makeProps(overrides = {}) {
