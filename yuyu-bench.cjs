@@ -82,12 +82,13 @@ function batteryInfo() {
 
 /** ③ Parse rme per bench dari raw vitest output */
 function parseRme(stripped) {
-  // Format line: "   · name   123,456.78  0.001  0.002  0.001  ...  ±1.23%  1234"
   const rmeMap = {};
-  const rmeRe  = /·\s+(.+?)\s+[\d,]+\.\d+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+±([\d.]+)%/;
-  for (const line of stripped.split('\n')) {
-    const m = line.match(rmeRe);
-    if (m) rmeMap[m[1].trim()] = parseFloat(m[2]);
+  const rmeRe = /·\s+(.+?)\s+(?:\d[.,\d]*\s+){5,}±\s*([\d.]+)%/g;  // ← FIX
+  let match;
+  while ((match = rmeRe.exec(stripped)) !== null) {
+    const name = match[1].trim();
+    const rmeValue = parseFloat(match[2]);
+    rmeMap[name] = rmeValue;
   }
   return rmeMap;
 }
