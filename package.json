@@ -10,7 +10,7 @@
     "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "test": "vitest",
-    "test:ci": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=lcov --coverage.reporter=text",
+    "test:ci": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=lcov --coverage.reporter=text --no-isolate",
     "test:watch": "vitest --watch",
     "bench": "node yuyu-bench.cjs",
     "bench:save": "node yuyu-bench.cjs --save",
