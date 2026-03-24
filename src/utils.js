@@ -203,7 +203,7 @@ export function generateDiff(original, patched, maxLines = 40) {
     }
 
     for (const line of hunkLines) {
-      if (shown >= maxLines) { result.push('... (diff limit reached)'); return result.join('\n'); }
+      if (shown >= maxLines) { result.push('... (baris lebih)'); return result.join('\n'); }
       const fmt = formatDiffLine(hunk, line, oldLine, newLine);
       if (fmt) { result.push(fmt.text); oldLine += fmt.oldInc; newLine += fmt.newInc; shown++; }
     }
