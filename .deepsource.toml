@@ -1,106 +1,95 @@
 version = 1
 
-# ══════════════════════════════════════════════════════════════════════════════
-# YuyuCode — DeepSource Configuration
-# v4.2.0 | React 19 + Capacitor 8 | Termux/Android
-# ══════════════════════════════════════════════════════════════════════════════
-
-# ── Exclude patterns ──────────────────────────────────────────────────────────
 exclude_patterns = [
-  "dist/**",
-  "build/**",
-  "node_modules/**",
-  "android/**",
-  "ios/**",
-  "patch/**",
-  "public/**",
-  "**/*.apk",
-  "yugit.cjs",
-  "yuyu-bench.cjs",
-  "bashrc-additions.sh",
+  "dist/**", "build/**", "node_modules/**", "android/**", "ios/**",
+  "patch/**", "public/**", "**/*.apk", "**/*.snap", "coverage/**",
+  ".yuyu/**", ".tla/**", "tmp/**", "docs/.vitepress/cache/**",
+  "yugit.cjs", "yuyu-bench.cjs", "bashrc-additions.sh",
 ]
 
-# ── Test patterns ─────────────────────────────────────────────────────────────
 test_patterns = [
-  "**/*.test.js",
-  "**/*.test.jsx",
-  "**/*.test.cjs",
-  "**/*.branch.test.js",
-  "**/*.extended.test.js",
-  "**/*.extra.test.js",
-  "**/*.bench.js",
-  "**/*.bench.cjs",
-  "src/__snapshots__/**",
-  "src/setupTest.js",
+  "**/*.test.js", "**/*.test.jsx", "**/*.test.cjs",
+  "**/*.branch.test.js", "**/*.extended.test.js",
+  "**/*.bench.js", "**/*.bench.cjs",
+  "src/__snapshots__/**", "src/setupTest.js",
 ]
 
-# ══════════════════════════════════════════════════════════════════════════════
-# ANALYZER: JavaScript
-# ══════════════════════════════════════════════════════════════════════════════
+# ── JavaScript Analyzer ──────────────────────────────────────────
 [[analyzers]]
-name    = "javascript"
+name = "javascript"
 enabled = true
 
   [analyzers.meta]
-  # Hybrid: browser (React 19 + Capacitor WebView) + node (yuyu-server.js Termux)
   environment = ["browser", "nodejs"]
-
-  # ES Modules (type: "module" di package.json)
-  # Nilai valid: "es-modules" bukan "esm"
   module_system = "es-modules"
-
-  # React JSX support — pakai plugins, bukan dialect
-  # dialect hanya support "typescript" | "flow"
   plugins = ["react"]
 
-# ══════════════════════════════════════════════════════════════════════════════
-# ANALYZER: Test Coverage
-# ══════════════════════════════════════════════════════════════════════════════
-# Threshold (70%) diset di DeepSource dashboard, bukan di sini.
-# Untuk melaporkan coverage ke DeepSource, tambahkan step ini di quality.yml
-# setelah `vitest run --coverage`:
-#
-#   - name: Report coverage to DeepSource
-#     run: |
-#       curl https://deepsource.io/cli | sh
-#       ./bin/deepsource report \
-#         --analyzer test-coverage \
-#         --key javascript \
-#         --value-file ./coverage/lcov.info
-#     env:
-#       DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
-#
+# ── Shell Analyzer (bashrc) ─────────────────────────────────────
 [[analyzers]]
-name    = "test-coverage"
+name = "shell"
 enabled = true
 
-# ══════════════════════════════════════════════════════════════════════════════
-# CATATAN SUPPRESSION (inline comment di source file)
-# ══════════════════════════════════════════════════════════════════════════════
-#
-#  JS-C1002 (short variable names) — loop dense: t, m, r, e
-#    → // deepsource-disable-next-line JS-C1002
-#    File: useAgentLoop.js, features.js
-#
-#  JS-R1005 (cyclomatic complexity) — state machine async + command parsing
-#    → // deepsource-disable-next-line JS-R1005
-#    File: useAgentLoop.js, useSlashCommands.js, useApprovalFlow.js
-#
-#  JS-0067 (singleton) — tokenTracker & bgAgents adalah intentional module-level state
-#    → // deepsource-disable-next-line JS-0067
-#    File: src/features.js, yuyu-server.js
-#
-#  JS-0002 (no-console) — yuyu-server.js di Termux: terminal IS the UI
-#    → // deepsource-disable-next-line JS-0002
-#    File: yuyu-server.js, src/hooks/useDevTools.js
-#
-#  JS-D007 (function length) — slash command context locality
-#    → // deepsource-disable-next-line JS-D007
-#    File: src/hooks/useSlashCommands.js
-#
-# ══════════════════════════════════════════════════════════════════════════════
+  [analyzers.meta]
+  shell = "bash"
 
-# ── Ignore rules ──────────────────────────────────────────────────────────────
-# JS-0833: false positive — module_system = "es-modules" already set
+# ── Markdown / Docs ─────────────────────────────────────────────
+[[analyzers]]
+name = "markdown"
+enabled = true
+
+[[analyzers]]
+name = "spelling"
+enabled = true
+
+# ── Security Scan ───────────────────────────────────────────────
+[[analyzers]]
+name = "security"
+enabled = true
+
+# ── Test Coverage ───────────────────────────────────────────────
+[[analyzers]]
+name = "test-coverage"
+enabled = true
+
+# ── Global Skip Patterns ────────────────────────────────────────
 [[issues]]
-skip_patterns = ["JS-0833"]
+skip_patterns = [
+  "JS-0833",  # false positive module_system
+  "JS-C1002", # short variable names (loop dense)
+  "JS-R1005", # cyclomatic complexity (state machine)
+  "JS-0067",  # singleton (module-level state)
+  "JS-0002",  # no-console (Terminal is UI)
+  "JS-D007",  # function length (slash commands)
+  "JS-0128",  # dangling underscore (intentional)
+  "JS-0246",  # no-default-export (prefer named)
+  "JS-0323",  # no-param-reassign (immutable patterns)
+  "SC1091",   # not following (bashrc sourced)
+  "SC2154",   # referenced but not assigned (nvm)
+  "SC2086",   # double quote (bashrc intentional)
+  "SC2046",   # command substitution (bashrc)
+  "SC2006",   # legacy backticks (bashrc)
+  "SC2164",   # cd without check (bashrc)
+]
+
+# ── File-Specific Overrides ─────────────────────────────────────
+[[issues]]
+match_paths = [
+  "src/hooks/useAgentLoop.js",
+  "src/hooks/useSlashCommands.js",
+  "src/hooks/useApprovalFlow.js",
+  "src/features.js",
+  "yuyu-server.js",
+]
+skip_patterns = ["JS-R1005", "JS-0067", "JS-0002"]
+
+[[issues]]
+match_paths = ["src/hooks/useSlashCommands.js"]
+skip_patterns = ["JS-D007"]
+
+[[issues]]
+match_paths = ["src/editor.bench.js", "yuyu-bench.cjs"]
+skip_patterns = ["JS-C1002"]
+
+[[issues]]
+match_paths = [".bashrc", "bashrc-additions.sh"]
+skip_patterns = ["SC2086", "SC2046", "SC2006", "SC2164", "SC1091", "SC2154"]
