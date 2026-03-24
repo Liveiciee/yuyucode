@@ -1,11 +1,11 @@
 // useSlashCommands/index.js — main entry point
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { simpleResponse } from './helpers/simpleResponse.js';
 import * as handlers from './handlers/index.js';
 
 export function useSlashCommands(props) {
-  // Map of simple actions (no complex logic)
-  const simpleActions = {
+  // Map of simple actions (no complex logic) — wrapped in useMemo
+  const simpleActions = useMemo(() => ({
     '/checkpoint': () => props.saveCheckpoint?.(),
     '/restore':    () => props.setShowCheckpoints?.(true),
     '/export':     () => props.exportChat?.(),
@@ -31,12 +31,11 @@ export function useSlashCommands(props) {
     '/bgstatus':   () => props.setShowBgAgents?.(true),
     '/ptt':        () => handlers.handlePtt({ pushToTalk: props.pushToTalk, setPushToTalk: props.setPushToTalk, setMessages: props.setMessages }),
     '/open':       () => handlers.handleOpen({ parts: props.parts, setMessages: props.setMessages }),
-  };
+  }), [props]);
 
   const handleSlashCommand = useCallback(async (cmd) => {
     const parts = cmd.trim().split(' ');
     const base = parts[0];
-    const context = { ...props, parts, sendMsg: props.sendMsg, setMessages: props.setMessages };
 
     // Simple actions
     if (simpleActions[base]) {
@@ -51,7 +50,7 @@ export function useSlashCommands(props) {
       '/thinking':   () => handlers.handleThinking({ thinkingEnabled: props.thinkingEnabled, setThinkingEnabled: props.setThinkingEnabled, setMessages: props.setMessages }),
       '/compact':    () => handlers.handleCompact({ parts, compactContext: props.compactContext, setMessages: props.setMessages }),
       '/handoff':    () => handlers.handleHandoff({ folder: props.folder, messages: props.messages, setLoading: props.setLoading, setMessages: props.setMessages }),
-      '/clear':      () => handlers.handleClear({ parts, messages: props.messages, setMessages: props.setMessages, setGracefulStop: props.setGracefulStop, loading: props.loading }),
+      '/clear':      () => handlers.handleClear({ parts, messages: props.messages, setMessages: props.setMessages }),
       '/stop':       () => handlers.handleStop({ loading: props.loading, setGracefulStop: props.setGracefulStop, setMessages: props.setMessages }),
       '/save':       () => handlers.handleSave({ parts, sessionName: props.sessionName, messages: props.messages, folder: props.folder, branch: props.branch, setSessionName: props.setSessionName, setMessages: props.setMessages }),
       '/rewind':     () => handlers.handleRewind({ parts, messages: props.messages, setMessages: props.setMessages }),
@@ -105,7 +104,7 @@ export function useSlashCommands(props) {
     } else {
       simpleResponse(props.setMessages, '❓ Command tidak dikenal: ' + base);
     }
-  }, [props]);
+  }, [props, simpleActions]);
 
   return { handleSlashCommand };
 }

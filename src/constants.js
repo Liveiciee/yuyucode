@@ -37,7 +37,7 @@ export const MODELS = [
 ];
 
 // ── ARM64 detection for dynamic system prompt ─────────────────────────────────
-const isArm64 = /arm64|arm|aarch64/i.test(navigator?.platform || '') || /aarch64/i.test(navigator?.userAgent || '');
+const _isArm64 = /arm64|arm|aarch64/i.test(navigator?.platform || '') || /aarch64/i.test(navigator?.userAgent || '');
 
 // ── System Prompts by Model Tier ──────────────────────────────────────────────
 // Compact model (8B) → minimal prompt, fewer tokens

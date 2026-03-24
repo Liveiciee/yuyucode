@@ -3,7 +3,7 @@ import { callServer } from '../../../api.js';
 import { withLoading } from '../helpers/withLoading.js';
 import { simpleResponse } from '../helpers/simpleResponse.js';
 
-export function handlePin({ parts, folder, selectedFile, pinnedFiles, togglePin, setMessages }) {
+export function handlePin({ parts, folder, _selectedFile, pinnedFiles, togglePin, setMessages }) {
   const target = parts.slice(1).join(' ').trim();
   if (!target) {
     const pins = (pinnedFiles || []);
@@ -19,8 +19,8 @@ export function handlePin({ parts, folder, selectedFile, pinnedFiles, togglePin,
   }
 }
 
-export function handleUnpin({ parts, folder, selectedFile, togglePin, setMessages }) {
-  const target = parts.slice(1).join(' ').trim() || selectedFile;
+export function handleUnpin({ parts, folder, _selectedFile, togglePin, setMessages }) {
+  const target = parts.slice(1).join(' ').trim() || _selectedFile;
   if (target) {
     togglePin(target.startsWith('/') ? target : folder + '/' + target);
     simpleResponse(setMessages, '📌 Unpinned: `' + target + '`');
@@ -49,8 +49,8 @@ export function handleTree({ parts, folder, setLoading, setMessages }) {
   });
 }
 
-export function handleHistory({ selectedFile, setShowFileHistory, setMessages }) {
-  if (!selectedFile) {
+export function handleHistory({ _selectedFile, setShowFileHistory, setMessages }) {
+  if (!_selectedFile) {
     simpleResponse(setMessages, 'Buka file dulu Papa~');
     return;
   }

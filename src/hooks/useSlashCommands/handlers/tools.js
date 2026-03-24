@@ -3,7 +3,7 @@ import { callServer } from '../../../api.js';
 import { withLoading } from '../helpers/withLoading.js';
 import { simpleResponse } from '../helpers/simpleResponse.js';
 
-let activeDbRef = {};
+const activeDbRef = {};
 
 export function handleMcp({ parts, setShowMCP, setLoading, setMessages }) {
   const sub = parts[1]?.toLowerCase();

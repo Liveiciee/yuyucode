@@ -1,11 +1,11 @@
 // chat.js — handlers untuk /clear, /save, /restore, /rewind, /stop, /compact, /handoff
 import { Preferences } from '@capacitor/preferences';
 import { callServer, askCerebrasStream } from '../../../api.js';
-import { tokenTracker, saveSession, rewindMessages } from '../../../features.js';
+import { saveSession, rewindMessages } from '../../../features.js';
 import { withLoading } from '../helpers/withLoading.js';
 import { simpleResponse } from '../helpers/simpleResponse.js';
 
-export function handleClear({ parts, messages, setMessages, setGracefulStop, loading }) {
+export function handleClear({ parts, messages, setMessages }) {
   const force = parts[1] === 'force';
   if (!force && messages.length > 3) {
     simpleResponse(setMessages, '🗑 **Mau clear chat?**\n\n- `/save` dulu untuk simpan sesi ini\n- `/clear force` untuk langsung hapus tanpa simpan\n\n_Ketik salah satu atau lanjut ngobrol._');
