@@ -1,3 +1,10 @@
+// ============================================================
+// FILE: yuyu-bench.cjs
+// ============================================================
+// Benchmark regression detector v4
+// ARM64 optimized, CI mode, trend graphs, memory profiling
+// ============================================================
+
 #!/usr/bin/env node
 // yuyu-bench.cjs — Benchmark regression detector v4
 //
@@ -53,15 +60,12 @@ const BENCH_TIMEOUT = isArm64 ? 180000 : 120000; // 3 minutes on ARM64
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Hilangkan ANSI escape codes */
-const stripAnsi = s => s.replace(/\x1b\[[\d;]*[a-zA-Z]/g, '');
+function stripAnsi(s) { return s.replace(/\x1b\[[\d;]*[a-zA-Z]/g, ''); }
 
-/** Baca satu baris dari file /sys (Android sysfs), return null kalau gagal */
 function readSys(filePath) {
   try { return fs.readFileSync(filePath, 'utf8').trim(); } catch { return null; }
 }
 
-/** ① Sparkline ASCII dari array angka */
 function sparkline(values) {
   if (!values || values.length === 0) return '';
   const bars  = '▁▂▃▄▅▆▇█';
@@ -71,14 +75,12 @@ function sparkline(values) {
   return values.map(v => bars[Math.round(((v - min) / range) * (bars.length - 1))]).join('');
 }
 
-/** ② Ambil git short hash; return 'no-git' kalau bukan repo */
 function gitHash() {
   try {
     return execSync('git rev-parse --short HEAD 2>/dev/null', { cwd: ROOT, encoding: 'utf8' }).trim() || 'no-git';
   } catch { return 'no-git'; }
 }
 
-/** ⑤ Baca battery info dari Android sysfs (Termux-friendly) */
 function batteryInfo() {
   const base = '/sys/class/power_supply/battery';
   const pct  = parseInt(readSys(`${base}/capacity`))  || null;
@@ -89,7 +91,6 @@ function batteryInfo() {
   return { pct, charging, status: stat, tempC };
 }
 
-/** ③ Parse rme per bench dari raw vitest output */
 function parseRme(stripped) {
   const rmeMap = {};
   const rmeRe = /·\s+(.+?)\s+(?:\d[.,\d]*\s+){5,}±\s*([\d.]+)%/g;
@@ -102,15 +103,12 @@ function parseRme(stripped) {
   return rmeMap;
 }
 
-/** ⑧ Ambil heap usage dalam MB */
 function heapMb() {
   return Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 10) / 10;
 }
 
-/** Pad kanan dengan spasi */
 const padR = (s, n) => String(s).slice(0, n).padEnd(n);
 
-/** Format waktu */
 function formatTime(ms) {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
@@ -197,11 +195,9 @@ function runBench() {
   const startTime = Date.now();
   console.log('🏃 Running benchmarks...\n');
 
-  // ② git hash sebelum run
   const commit  = gitHash();
-
-  // ⑤ Battery info + temperature
   const batt    = batteryInfo();
+  
   if (batt.pct !== null) {
     const icon = batt.charging ? '🔌' : '🔋';
     console.log(`${icon} Battery: ${batt.pct}%${batt.charging ? ' (charging)' : ''}${batt.tempC ? `  🌡️ ${batt.tempC}°C` : ''}`);
@@ -215,7 +211,6 @@ function runBench() {
   console.log(`🔀 Commit: ${commit}`);
   console.log(`📱 Platform: ${isArm64 ? 'ARM64 (Snapdragon 680)' : 'x86_64'}\n`);
 
-  // ⑧ Memory sebelum
   const memBefore = heapMb();
 
   const result = spawnSync(
@@ -232,14 +227,11 @@ function runBench() {
   const raw      = result.stdout || '';
   if (!CI_MODE) process.stdout.write(raw);
 
-  // ⑧ Memory sesudah
   const memAfter  = heapMb();
   const memDelta  = Math.round((memAfter - memBefore) * 10) / 10;
   const elapsed = Date.now() - startTime;
 
   const stripped  = stripAnsi(raw);
-
-  // ③ Parse rme map
   const rmeMap   = parseRme(stripped);
 
   // ── Parse scores dari BENCH Summary ─────────────────────────────────────────
@@ -276,7 +268,7 @@ function runBench() {
   console.log(`\n📊 ${names.length} benches parsed from summary`);
   console.log(`⏱️  Duration: ${formatTime(elapsed)}  |  💾 Memory: ${memDelta >= 0 ? '+' : ''}${memDelta} MB (${memBefore} → ${memAfter} MB heap)`);
 
-  // ③ Thermal warning per bench
+  // Thermal warning per bench
   const thermalWarnings = [];
   for (const [name, rme] of Object.entries(rmeMap)) {
     if (rme > RME_THERMAL) thermalWarnings.push({ name, rme });
@@ -362,7 +354,7 @@ function runBench() {
   if (!CI_MODE) console.log('💡 --save  update baseline  |  --reset  clear history  |  --trend  lihat grafik  |  --compare a.json b.json');
 }
 
-// ── ⑥ --watch mode ───────────────────────────────────────────────────────────
+// ── --watch mode ─────────────────────────────────────────────────────────────
 if (WATCH) {
   const SRC_DIR = path.join(ROOT, 'src');
   if (!fs.existsSync(SRC_DIR)) {

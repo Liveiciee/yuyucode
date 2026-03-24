@@ -1,3 +1,10 @@
+// ============================================================
+// FILE: yuyu-server.js
+// ============================================================
+// YuyuServer v6 — HTTP :8765, WS :8766
+// ARM64 optimized, cache invalidation, rate limiting
+// ============================================================
+
 // yuyu-server.js — v6
 // Run dari ~: node ~/yuyu-server.js &
 // Flags: --verbose (log every request)
@@ -10,11 +17,10 @@ const VERBOSE    = process.argv.includes('--verbose');
 const START_TIME = Date.now();
 
 // ── Simple read cache — TTL 10s ──────────────────────────────────────────────
-// Prevents duplicate reads of same file in same agent loop iteration.
-const _readCache = new Map(); // path → { data, meta, ts }
-const READ_CACHE_TTL = 10_000; // 10 seconds
+const _readCache = new Map();
+const READ_CACHE_TTL = 10_000;
 const MAX_CACHE_SIZE = 50;
-const MAX_CACHE_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_CACHE_FILE_SIZE = 5 * 1024 * 1024;
 
 function getCached(filePath) {
   const e = _readCache.get(filePath);
@@ -24,10 +30,8 @@ function getCached(filePath) {
 }
 
 function setCache(filePath, data, meta) {
-  // Skip caching files > 5MB
   if (data.length > MAX_CACHE_FILE_SIZE) return;
   _readCache.set(filePath, { data, meta, ts: Date.now() });
-  // Limit cache size
   if (_readCache.size > MAX_CACHE_SIZE) _readCache.delete(_readCache.keys().next().value);
 }
 
@@ -35,12 +39,10 @@ function invalidateCache(filePath) {
   _readCache.delete(resolvePath(filePath));
 }
 
-// ── Simple in-memory rate limiter ─────────────────────────────────────────────
-// Prevents runaway agent loops from hammering the server.
-// Default: 120 requests/minute per IP (generous for normal use).
-const RATE_LIMIT    = 120;   // max requests per window
-const RATE_WINDOW   = 60_000; // 1 minute
-const _rateCounts   = new Map(); // ip → { count, windowStart }
+// ── Rate limiter with cleanup ─────────────────────────────────────────────────
+const RATE_LIMIT    = 120;
+const RATE_WINDOW   = 60_000;
+const _rateCounts   = new Map();
 
 function checkRateLimit(ip) {
   const now  = Date.now();
@@ -53,7 +55,6 @@ function checkRateLimit(ip) {
   return data.count <= RATE_LIMIT;
 }
 
-// Cleanup old rate limit entries every hour
 setInterval(() => {
   const now = Date.now();
   for (const [ip, data] of _rateCounts) {
@@ -78,9 +79,7 @@ const MCP_TOOLS = {
   system:     { desc:'Info sistem dan proses',             actions:['disk','memory','processes','env'] },
 };
 
-// ── External MCP Servers — loaded from ~/.yuyu/mcp-servers.json ──────────────
-// Format: [{ name, url, description, actions: [] }]
-// Agent can call: { type: 'mcp', tool: '<name>', action: '<action>', params: {} }
+// ── External MCP Servers ──────────────────────────────────────────────────────
 let EXTERNAL_MCP = [];
 const EXTERNAL_MCP_PATH = path.join(HOME, '.yuyu', 'mcp-servers.json');
 
@@ -115,7 +114,6 @@ async function callExternalMCP(server, action, params) {
 }
 
 loadExternalMCP();
-// Watch for changes to mcp-servers.json
 try {
   fs.watch(path.dirname(EXTERNAL_MCP_PATH), (event, filename) => {
     if (filename === 'mcp-servers.json') loadExternalMCP();
@@ -129,8 +127,6 @@ function resolvePath(filePath) {
   return path.join(HOME, filePath);
 }
 
-// Shell-safe escaping untuk string yang diinterpolasi ke command.
-// Escape: null bytes, backslash, double quote, backtick, $() substitution.
 function shellEsc(str) {
   if (typeof str !== 'string') return '';
   return str
@@ -141,7 +137,6 @@ function shellEsc(str) {
     .replace(/\$\(/g, '\\$(');
 }
 
-// Whitelist type yang diizinkan — cegah remote property injection
 const ALLOWED_TYPES = new Set([
   'ping', 'batch', 'mcp', 'mcp_list', 'index',
   'read', 'read_many', 'write', 'append', 'patch', 'delete', 'move', 'mkdir',
@@ -158,19 +153,17 @@ function execSafe(command, cwd, timeoutMs = 60000) {
     return { ok: true, data: out || '(selesai)' };
   } catch(e) {
     const errMsg = `${e.stdout || ''}${e.stderr || ''}` || e.message;
-    // Better ARM64 error detection
     if (errMsg.includes('Illegal instruction')) {
-      return { ok: false, data: '⚠️ Illegal instruction — possible ARM64 incompatibility. Check if command uses x86-specific instructions.' };
+      return { ok: false, data: '⚠️ Illegal instruction — possible ARM64 incompatibility.' };
     }
     if (errMsg.includes('cannot allocate memory')) {
-      return { ok: false, data: '⚠️ Out of memory — try reducing workload or closing other apps.' };
+      return { ok: false, data: '⚠️ Out of memory — try reducing workload.' };
     }
     return { ok: false, data: errMsg.slice(0, 3000) };
   }
 }
 
-// ── PATCH ─────────────────────────────────────────────────────────────────────
-// find-and-replace dengan fallback whitespace normalization
+// ── PATCH with fallbacks ──────────────────────────────────────────────────────
 function applyPatch(filePath, oldStr, newStr) {
   if (!filePath || !oldStr) return { ok: false, data: 'path dan old_str diperlukan' };
   const full = resolvePath(filePath);
@@ -179,14 +172,12 @@ function applyPatch(filePath, oldStr, newStr) {
   catch (_e) { return { ok: false, data: `File tidak ditemukan: ${filePath}` }; }
   const replacement = newStr !== undefined ? newStr : '';
 
-  // Exact match
   if (content.includes(oldStr)) {
     fs.writeFileSync(full, content.replace(oldStr, replacement), 'utf8');
     invalidateCache(full);
     return { ok: true, data: `✅ Patch OK: ${filePath}` };
   }
 
-  // Whitespace-normalized fallback
   const normalize = s => s.replace(/\r\n/g, '\n').replace(/\t/g, '  ');
   const normContent = normalize(content);
   const normOld     = normalize(oldStr);
@@ -196,7 +187,6 @@ function applyPatch(filePath, oldStr, newStr) {
     return { ok: true, data: `✅ Patch (whitespace-norm) OK: ${filePath}` };
   }
 
-  // Trim-lines fallback (untuk trailing space)
   const trimLines  = s => s.split('\n').map(l => l.trimEnd()).join('\n');
   const trimContent = trimLines(normContent);
   const trimOld     = trimLines(normOld);
@@ -206,7 +196,6 @@ function applyPatch(filePath, oldStr, newStr) {
     return { ok: true, data: `✅ Patch (trimmed) OK: ${filePath}` };
   }
 
-  // Not found: return context around closest match for debugging
   const oldLines = normOld.split('\n');
   const firstLine = oldLines[0].trim();
   const fileLines = normContent.split('\n');
@@ -216,7 +205,7 @@ function applyPatch(filePath, oldStr, newStr) {
     : '';
   return {
     ok: false,
-    data: `⚠ old_str tidak ditemukan di ${filePath}. Pastikan exact match (case-sensitive, spasi, baris baru).${ctx}`,
+    data: `⚠ old_str tidak ditemukan di ${filePath}. Pastikan exact match.${ctx}`,
   };
 }
 
@@ -264,11 +253,8 @@ function walkSync(dir) {
 
 function extractSigs(src, _filePath) {
   const sigs = [];
-  // export function / async function
   const re1 = /^export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]{0,120})\)/gm;
-  // export const = arrow
   const re2 = /^export\s+const\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]{0,80})\)\s*=>/gm;
-  // function Component / function useHook
   const re3 = /^(?:export\s+)?(?:default\s+)?function\s+([A-Za-z]\w+)\s*\(([^)]{0,80})\)/gm;
   for (const re of [re1, re2, re3]) {
     let m;
@@ -284,75 +270,43 @@ function extractSigs(src, _filePath) {
 
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 function handle(payload) {
-  const {
-    type, path: filePath, content, command, from, to, url,
-    query, dbPath, token, tool, action, params,
-    paths, depth,
-  } = payload;
+  const { type, path: filePath, content, command, from, to, url, query, dbPath, token, tool, action, params, paths, depth } = payload;
   const full = resolvePath(filePath);
 
-  // Validate type against whitelist — prevent remote property injection
-  if (type && !ALLOWED_TYPES.has(type)) {
-    return { ok: false, data: 'Unknown type: ' + type };
-  }
-
-  if (type === 'ping') {
-    return { ok: true, data: 'YuyuServer ' + VERSION + ' aktif!', mcp: Object.keys(MCP_TOOLS), version: VERSION };
-  }
-
-  // ── BATCH — run multiple actions in one request ────────────────────────────
+  if (type && !ALLOWED_TYPES.has(type)) return { ok: false, data: 'Unknown type: ' + type };
+  if (type === 'ping') return { ok: true, data: 'YuyuServer ' + VERSION + ' aktif!', mcp: Object.keys(MCP_TOOLS), version: VERSION };
   if (type === 'batch') {
     const actions = Array.isArray(payload.actions) ? payload.actions : [];
     if (actions.length === 0) return { ok: false, data: 'batch requires actions array' };
-    const results = actions.map(a => {
-      try { return handle(a); }
-      catch (e) { return { ok: false, data: e.message }; }
-    });
-    const allOk = results.every(r => r.ok);
-    return { ok: allOk, results };
+    const results = actions.map(a => { try { return handle(a); } catch (e) { return { ok: false, data: e.message }; } });
+    return { ok: results.every(r => r.ok), results };
   }
-
-  if (type === 'mcp')      return handleMCP(tool, action, params || payload);
+  if (type === 'mcp') return handleMCP(tool, action, params || payload);
   if (type === 'mcp_list') return { ok: true, data: { ...MCP_TOOLS, ...Object.fromEntries(EXTERNAL_MCP.map(s => [s.name, { desc: s.description || s.url, actions: s.actions || [] }])) } };
 
-  // ── CODEBASE INDEX — real-time symbol extraction ──────────────────────────
   if (type === 'index') {
     const srcPath = filePath ? resolvePath(filePath) : path.join(HOME, 'yuyucode', 'src');
     if (!fs.existsSync(srcPath)) return { ok: false, data: 'Path tidak ada: ' + srcPath };
-
     const files = walkSync(srcPath);
     const result = [];
     let totalSymbols = 0;
-
     for (const f of files) {
       try {
-        const src  = fs.readFileSync(f, 'utf8');
-        const rel  = f.replace(HOME + '/', '');
+        const src = fs.readFileSync(f, 'utf8');
+        const rel = f.replace(HOME + '/', '');
         const sigs = extractSigs(src, f);
         const lines = src.split('\n').length;
         if (sigs.length === 0 && lines < 15) continue;
         totalSymbols += sigs.length;
-        result.push({
-          file: rel,
-          lines,
-          symbols: sigs,
-        });
+        result.push({ file: rel, lines, symbols: sigs });
       } catch (_) {}
     }
-
-    // Format as compact markdown
-    const md = result.map(r =>
-      '`' + r.file + '` (' + r.lines + 'L)' +
-      (r.symbols.length ? '\n' + r.symbols.map(s => '  ' + s.icon + ' `' + s.name + s.sig + '`').join('\n') : '')
-    ).join('\n\n');
-
+    const md = result.map(r => '`' + r.file + '` (' + r.lines + 'L)' + (r.symbols.length ? '\n' + r.symbols.map(s => '  ' + s.icon + ' `' + s.name + s.sig + '`').join('\n') : '')).join('\n\n');
     return { ok: true, data: md, meta: { files: files.length, symbols: totalSymbols } };
   }
 
-  // ── FILE OPS ──
   if (type === 'read') {
     if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath };
-    // Use cache for full reads (no from/to) — saves disk I/O in agent loops
     if (!from && !to) {
       const cached = getCached(full);
       if (cached) return { ok: true, data: cached.data, meta: cached.meta, cached: true };
@@ -370,19 +324,12 @@ function handle(payload) {
     return { ok: true, data, meta: { totalLines, totalChars } };
   }
 
-  // ── BATCH READ ──
   if (type === 'read_many') {
     const pathList = Array.isArray(paths) ? paths : [];
     const results = {};
     for (const p of pathList) {
       const abs = resolvePath(p);
-      try {
-        if (fs.existsSync(abs)) {
-          results[p] = fs.readFileSync(abs, 'utf8');
-        } else {
-          results[p] = null;
-        }
-      } catch(_e) { results[p] = null; }
+      try { results[p] = fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : null; } catch(_e) { results[p] = null; }
     }
     return { ok: true, data: results };
   }
@@ -407,9 +354,7 @@ function handle(payload) {
   }
 
   if (type === 'delete') {
-    try { fs.unlinkSync(full); }
-    catch (_e) { return { ok: false, data: 'File tidak ada: ' + filePath }; }
-    invalidateCache(full);
+    try { fs.unlinkSync(full); invalidateCache(full); } catch (_e) { return { ok: false, data: 'File tidak ada: ' + filePath }; }
     return { ok: true, data: '🗑 Dihapus: ' + filePath };
   }
 
@@ -417,60 +362,40 @@ function handle(payload) {
     const fromFull = resolvePath(payload.from || filePath);
     const toFull   = resolvePath(payload.to || content);
     fs.mkdirSync(path.dirname(toFull), { recursive: true });
-    try { fs.renameSync(fromFull, toFull); }
-    catch (_e) { return { ok: false, data: 'Source tidak ada: ' + (payload.from || filePath) }; }
-    invalidateCache(fromFull);
-    invalidateCache(toFull);
+    try { fs.renameSync(fromFull, toFull); invalidateCache(fromFull); invalidateCache(toFull); } catch (_e) { return { ok: false, data: 'Source tidak ada: ' + (payload.from || filePath) }; }
     return { ok: true, data: '✅ Dipindah: ' + (payload.from || filePath) + ' → ' + (payload.to || content) };
   }
 
-  if (type === 'mkdir') {
-    fs.mkdirSync(full, { recursive: true });
-    return { ok: true, data: '✅ Dibuat: ' + filePath };
-  }
-
+  if (type === 'mkdir') { fs.mkdirSync(full, { recursive: true }); return { ok: true, data: '✅ Dibuat: ' + filePath }; }
   if (type === 'list') {
-    let files;
-    try { files = fs.readdirSync(full, { withFileTypes: true }); }
-    catch (_e) { return { ok: false, data: 'Path tidak ada: ' + filePath }; }
-    const data  = files.map(f => ({
-      name: f.name, isDir: f.isDirectory(),
-      size: f.isFile() ? fs.statSync(path.join(full, f.name)).size : 0,
-    }));
-    return { ok: true, data };
+    let files; try { files = fs.readdirSync(full, { withFileTypes: true }); } catch (_e) { return { ok: false, data: 'Path tidak ada: ' + filePath }; }
+    return { ok: true, data: files.map(f => ({ name: f.name, isDir: f.isDirectory(), size: f.isFile() ? fs.statSync(path.join(full, f.name)).size : 0 })) };
   }
-
   if (type === 'tree') {
     const maxDepth = parseInt(depth) || 3;
     if (!fs.existsSync(full)) return { ok: false, data: 'Path tidak ada: ' + filePath };
     const tree = (filePath || '.') + '/\n' + buildTree(full, 1, maxDepth, '');
     return { ok: true, data: tree || '(kosong)' };
   }
-
   if (type === 'info') {
     if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath };
-    const stat  = fs.statSync(full);
+    const stat = fs.statSync(full);
     const lines = stat.isFile() ? fs.readFileSync(full, 'utf8').split('\n').length : 0;
     return { ok: true, data: { size: stat.size, lines, isFile: stat.isFile(), modified: stat.mtime } };
   }
-
-  // ── SEARCH (ripgrep → grep fallback) ──
   if (type === 'search') {
     const searchPath = full || HOME;
     const q = shellEsc((content || '').slice(0, 500));
-    // try rg first (faster, respects .gitignore)
     const rgCheck = execSafe('which rg 2>/dev/null', HOME, 2000);
     if (rgCheck.ok && rgCheck.data.trim()) {
       const ext = (payload.ext || 'jsx,js,ts,tsx,json,md,py,sh').split(',').map(e => '-g "**/*.'+e+'"').join(' ');
       const r = execSafe(`rg -n --color=never ${ext} "${q}" "${searchPath}" 2>/dev/null | head -100`, HOME, 15000);
       return { ok: true, data: r.data.trim() || 'Tidak ditemukan' };
     }
-    // grep fallback
     const exts = '--include="*.jsx" --include="*.js" --include="*.ts" --include="*.tsx" --include="*.json" --include="*.md" --include="*.py" --include="*.sh"';
     const r = execSafe(`grep -rn "${q}" "${searchPath}" ${exts} 2>/dev/null | head -100 || echo ""`, HOME, 15000);
     return { ok: true, data: r.data.trim() || 'Tidak ditemukan' };
   }
-
   if (type === 'web_search') {
     const q = (query || '').trim();
     if (!q) return { ok: false, data: 'Query diperlukan' };
@@ -483,39 +408,28 @@ function handle(payload) {
     try {
       const d = JSON.parse(r.data);
       if (d.error) return { ok: false, data: 'Tavily: ' + d.error };
-      const lines = (d.results || []).slice(0, 5).map((item, i) =>
-        (i+1) + '. **' + item.title + '**\n' + (item.content || '').slice(0, 300) + '\n🔗 ' + item.url
-      );
+      const lines = (d.results || []).slice(0, 5).map((item, i) => (i+1) + '. **' + item.title + '**\n' + (item.content || '').slice(0, 300) + '\n🔗 ' + item.url);
       return { ok: true, data: lines.join('\n\n') || 'Tidak ada hasil' };
     } catch(e) { return { ok: false, data: 'Parse error: ' + e.message }; }
   }
-
   if (type === 'exec') {
     const cwd = filePath ? resolvePath(filePath) : HOME;
     return execSafe(command, cwd);
   }
-
   if (type === 'browse') {
     const target = url || filePath;
     if (!target) return { ok: false, data: 'URL diperlukan' };
-    const r = execSafe(
-      `curl -sL --max-time 15 -A "Mozilla/5.0" "${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$/d' | head -200`,
-      HOME, 20000
-    );
-    return r;
+    return execSafe(`curl -sL --max-time 15 -A "Mozilla/5.0" "${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$/d' | head -200`, HOME, 20000);
   }
-
   if (type === 'fetch_json') {
     const target = url || filePath;
     const headers = token ? `-H "Authorization: Bearer ${shellEsc(token)}"` : '';
     return execSafe(`curl -sL --max-time 15 ${headers} "${target}"`, HOME, 20000);
   }
-
   if (type === 'sqlite') {
     const db = resolvePath(dbPath || filePath);
     return execSafe(`sqlite3 "${shellEsc(db)}" "${shellEsc(query || '')}"`, HOME);
   }
-
   return { ok: false, data: 'Unknown type: ' + type };
 }
 
@@ -525,29 +439,18 @@ function handleMCP(tool, action, params) {
 
   if (tool === 'git') {
     const cwd  = p ? resolvePath(p) : HOME;
-    const cmds = {
-      status: 'git status --short',
-      log:    'git log --oneline -20',
-      diff:   'git diff HEAD',
-      blame:  `git blame "${p || '.'}" 2>/dev/null | head -50`,
-      branch: 'git branch -a',
-      stash:  'git stash list',
-    };
+    const cmds = { status: 'git status --short', log: 'git log --oneline -20', diff: 'git diff HEAD', blame: `git blame "${p || '.'}" 2>/dev/null | head -50`, branch: 'git branch -a', stash: 'git stash list' };
     if (!cmds[action]) return { ok: false, data: 'Unknown git action: ' + action };
     return execSafe(cmds[action], cwd);
   }
-
   if (tool === 'fetch') {
     const target = url || p;
-    if (action === 'browse' || action === 'fetch') {
-      return execSafe(`curl -sL --max-time 15 -A "Mozilla/5.0" "${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$/d' | head -300`, HOME, 25000);
-    }
+    if (action === 'browse' || action === 'fetch') return execSafe(`curl -sL --max-time 15 -A "Mozilla/5.0" "${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$/d' | head -300`, HOME, 25000);
     if (action === 'fetch_json') {
       const headers = token ? `-H "Authorization: Bearer ${shellEsc(token)}"` : '';
       return execSafe(`curl -sL --max-time 15 ${headers} "${target}"`, HOME, 20000);
     }
   }
-
   if (tool === 'sqlite') {
     const db = resolvePath(dbPath || p);
     if (action === 'tables') return execSafe(`sqlite3 "${db}" ".tables"`, HOME);
@@ -555,7 +458,6 @@ function handleMCP(tool, action, params) {
     if (action === 'query')  return execSafe(`sqlite3 "${db}" "${(query||'').replace(/"/g, '\\"')}"`, HOME);
     return { ok: false, data: 'Unknown sqlite action: ' + action };
   }
-
   if (tool === 'github') {
     const ghToken = token || process.env.GITHUB_TOKEN || '';
     if (!ghToken) return { ok: false, data: 'GitHub token diperlukan. Set GITHUB_TOKEN env.' };
@@ -569,7 +471,6 @@ function handleMCP(tool, action, params) {
     }
     return { ok: false, data: 'Unknown github action: ' + action };
   }
-
   if (tool === 'system') {
     if (action === 'disk')      return execSafe('df -h', HOME);
     if (action === 'memory')    return execSafe('free -h 2>/dev/null || cat /proc/meminfo | head -5', HOME);
@@ -577,15 +478,11 @@ function handleMCP(tool, action, params) {
     if (action === 'env')       return { ok: true, data: JSON.stringify(process.env, null, 2).slice(0, 2000) };
     return { ok: false, data: 'Unknown system action: ' + action };
   }
-
   if (tool === 'filesystem') {
     return handle({ type: action, path: p, content: params.content, from: params.from, to: params.to, old_str: params.old_str, new_str: params.new_str });
   }
-
-  // ── External MCP servers ──────────────────────────────────────────────────
   const extServer = EXTERNAL_MCP.find(s => s.name === tool);
   if (extServer) return callExternalMCP(extServer, action, params);
-
   return { ok: false, data: 'Unknown MCP tool: ' + tool + '. Available: ' + [...Object.keys(MCP_TOOLS), ...EXTERNAL_MCP.map(s => s.name)].join(', ') };
 }
 
@@ -602,7 +499,6 @@ const server = http.createServer((req, res) => {
     console.log(`[${new Date().toISOString()}] ${safeMethod} ${safeUrl}`);
   }
 
-  // Rate limit — only applies to POST (action requests)
   if (req.method === 'POST') {
     const ip = req.socket.remoteAddress || 'unknown';
     if (!checkRateLimit(ip)) {
@@ -617,34 +513,19 @@ const server = http.createServer((req, res) => {
     const uptime = Math.round((Date.now() - START_TIME) / 1000);
     const memUsed = Math.round(process.memoryUsage().rss / 1024 / 1024);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      status: 'ok', uptime, version: VERSION, port: PORT,
-      memory_mb: memUsed, cache_size: _readCache.size 
-    }));
+    res.end(JSON.stringify({ status: 'ok', uptime, version: VERSION, port: PORT, memory_mb: memUsed, cache_size: _readCache.size }));
     return;
   }
-
   if (req.method === 'GET' && req.url === '/status') {
-    const uptime  = Math.round((Date.now() - START_TIME) / 1000);
+    const uptime = Math.round((Date.now() - START_TIME) / 1000);
     const memUsed = Math.round(process.memoryUsage().rss / 1024 / 1024);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'ok', uptime, version: VERSION, port: PORT,
-      memory_mb: memUsed, tools: Object.keys(MCP_TOOLS),
-      external_mcp: EXTERNAL_MCP.length,
-      cache_entries: _readCache.size,
-    }));
+    res.end(JSON.stringify({ status: 'ok', uptime, version: VERSION, port: PORT, memory_mb: memUsed, tools: Object.keys(MCP_TOOLS), external_mcp: EXTERNAL_MCP.length, cache_entries: _readCache.size }));
     return;
   }
-
   if (req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      ok: true, version: VERSION, 
-      mcp: Object.keys(MCP_TOOLS),
-      external_mcp: EXTERNAL_MCP.length,
-      endpoints: ['/health', '/status', 'POST /']
-    }));
+    res.end(JSON.stringify({ ok: true, version: VERSION, mcp: Object.keys(MCP_TOOLS), external_mcp: EXTERNAL_MCP.length, endpoints: ['/health', '/status', 'POST /'] }));
     return;
   }
 
@@ -670,13 +551,12 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`   Memory limit: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`);
 });
 
-// ── WEBSOCKET SERVER (port 8766) ──────────────────────────────────────────────
+// ── WEBSOCKET SERVER ──────────────────────────────────────────────────────────
 let WebSocketServer;
 try {
   WebSocketServer = require('ws').WebSocketServer;
 } catch {
   console.log('⚠ ws tidak tersedia — jalankan: npm install -g ws');
-  console.log('  WebSocket (file watcher + streaming exec) tidak aktif.');
 }
 
 if (WebSocketServer) {
@@ -714,25 +594,13 @@ if (WebSocketServer) {
         const { id, command, cwd } = msg;
         if (!command || !id) return;
         const workDir = cwd ? resolvePath(cwd) : HOME;
-        const proc = spawn('bash', ['-c', command], {
-          cwd: workDir, env: { ...process.env },
-        });
+        const proc = spawn('bash', ['-c', command], { cwd: workDir, env: { ...process.env } });
         execProcs.set(id, proc);
 
-        proc.stdout.on('data', d => {
-          try { ws.send(JSON.stringify({ type: 'stdout', id, data: d.toString() })); } catch {}
-        });
-        proc.stderr.on('data', d => {
-          try { ws.send(JSON.stringify({ type: 'stderr', id, data: d.toString() })); } catch {}
-        });
-        proc.on('close', code => {
-          execProcs.delete(id);
-          try { ws.send(JSON.stringify({ type: 'exit', id, code })); } catch {}
-        });
-        proc.on('error', e => {
-          execProcs.delete(id);
-          try { ws.send(JSON.stringify({ type: 'error', id, data: e.message })); } catch {}
-        });
+        proc.stdout.on('data', d => { try { ws.send(JSON.stringify({ type: 'stdout', id, data: d.toString() })); } catch {} });
+        proc.stderr.on('data', d => { try { ws.send(JSON.stringify({ type: 'stderr', id, data: d.toString() })); } catch {} });
+        proc.on('close', code => { execProcs.delete(id); try { ws.send(JSON.stringify({ type: 'exit', id, code })); } catch {} });
+        proc.on('error', e => { execProcs.delete(id); try { ws.send(JSON.stringify({ type: 'error', id, data: e.message })); } catch {} });
         return;
       }
 
@@ -785,11 +653,8 @@ if (WebSocketServer) {
   console.log(`🔌 YuyuServer WebSocket — WS :${WS_PORT} (file watch + streaming exec)`);
 }
 
-// ── ERROR GUARDS ──────────────────────────────────────────────────────────────
 process.on('uncaughtException', e => console.error('❌ Uncaught:', e.message));
 process.on('unhandledRejection', e => console.error('❌ Rejection:', e));
-
-// ── Graceful shutdown ─────────────────────────────────────────────────────────
 process.on('SIGTERM', () => {
   console.log('📴 Shutting down...');
   server.close(() => process.exit(0));

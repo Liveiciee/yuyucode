@@ -190,12 +190,28 @@ function compressSource(src, filePath) {
 // ── IMPORT EXTRACTOR ──────────────────────────────────────────────────────────
 function extractImports(src) {
   const deps = new Set();
-  const re   = /(?:import|require)\s+.*?['"]([^'"]+)['"]/g;
+  
+  // Static import/require
+  const reStatic = /(?:import|require)\s+.*?['"]([^'"]+)['"]/g;
+  // Dynamic import()
+  const reDynamic = /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+  // Import meta (import.meta.url etc) — skip
+  const reImportMeta = /import\.meta/g;
+  
   let m;
-  while ((m = re.exec(src)) !== null) {
+  
+  // Static imports
+  while ((m = reStatic.exec(src)) !== null) {
     const imp = m[1];
     if (!imp.startsWith('.')) deps.add(imp.split('/')[0]);
   }
+  
+  // Dynamic imports
+  while ((m = reDynamic.exec(src)) !== null) {
+    const imp = m[1];
+    if (!imp.startsWith('.')) deps.add(imp.split('/')[0]);
+  }
+  
   return [...deps];
 }
 

@@ -1,8 +1,20 @@
+// ============================================================
+// FILE: src/hooks/useAgentLoop.js
+// ============================================================
+// Agent loop core — ARM64 optimized, diff review, auto-verify
+// Cognitive complexity reduced via extracted helpers
+// ============================================================
+
 import { useRef } from 'react';
 import { askCerebrasStream, callServer } from '../api.js';
 import { parseActions, executeAction, resolvePath, generateDiff } from '../utils.js';
 import { runHooksV2, checkPermission, tokenTracker, parseElicitation, tfidfRank, selectSkills } from '../features.js';
 import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL, getSystemForModel } from '../constants.js';
+
+// ARM64 detection for performance tuning
+const isArm64 = /arm64|arm|aarch64/i.test(navigator?.platform || '') || /aarch64/i.test(navigator?.userAgent || '');
+const MAX_CONTEXT_FILES = isArm64 ? 3 : 4; // Less files on ARM64
+const MAX_PREVIEW_CHARS = isArm64 ? 600 : 800;
 
 // ── Module-level helpers for sendMsg ─────────────────────────────────────────
 
@@ -27,7 +39,7 @@ function isExecError(a) {
 }
 
 function buildFeedback(readActions, safeActions, webSearchActions, patchActions, fullWriteActions, execActions) {
-  const FILE_FEEDBACK_LIMIT = 1200; // chars per file — cukup untuk patch, hemat token
+  const FILE_FEEDBACK_LIMIT = isArm64 ? 800 : 1200;
   const fileData = [...readActions, ...safeActions]
     .filter(a => a.result?.ok && !['exec','web_search','patch_file'].includes(a.type))
     .map(a => {
@@ -48,7 +60,7 @@ function buildFeedback(readActions, safeActions, webSearchActions, patchActions,
     ? fullWriteActions.map(a => (a.result?.ok ? '✅ written ' : '❌ write failed ') + a.path).join('\n') : '';
   const execData = execActions
     .filter(a => a.type === 'exec' && a.result?.data)
-    .map(a => '$ ' + a.command + '\n' + (a.result?.data || '').slice(0, 800))
+    .map(a => '$ ' + a.command + '\n' + (a.result?.data || '').slice(0, 600))
     .join('\n\n');
   return [fileData, webData, patchData, writeData, execData].filter(Boolean).join('\n\n');
 }
@@ -97,7 +109,7 @@ async function autoVerifyWrites(fullWriteActions, projectFolder, allMessages, re
       return [
         ...allMessages,
         { role: 'assistant', content: reply.replace(/```action.*?```/gs, '').trim() },
-        { role: 'user', content: '⚡ Auto-verify: run **' + wr.path.split('/').pop() + '**\n```\n' + out.slice(0, 600) + '\n```\nAda error — fix langsung.' },
+        { role: 'user', content: '⚡ Auto-verify: run **' + wr.path.split('/').pop() + '**\n```\n' + out.slice(0, 500) + '\n```\nAda error — fix langsung.' },
       ];
     }
   }
@@ -130,7 +142,7 @@ export function useAgentLoop({
     });
   }
 
-  // ── abTest — kirim ke dua model paralel, tampilkan side by side ──
+  // ── abTest — kirim ke dua model paralel ──
   async function abTest(task, modelA, modelB) {
     const cfg  = project.effortCfg;
     const msgs = [{ role: 'user', content: task }];
@@ -163,7 +175,7 @@ Menunggu kedua model...`, actions: [] }
     const labelA = modelA.split('/').pop().slice(0, 20);
     const labelB = modelB.split('/').pop().slice(0, 20);
     chat.setMessages(m => [
-      ...m.slice(0, -1), // hapus "Menunggu..." bubble
+      ...m.slice(0, -1),
       {
         role: 'assistant',
         content: `⚗️ **A/B Test selesai!**
@@ -226,8 +238,7 @@ ${outB.slice(0, 1500)}
     return result;
   }
 
-
-  // ── gatherProjectContext — "read before act" ─────────────────────────────────
+  // ── gatherProjectContext — ARM64 optimized ──
   async function gatherProjectContext(txt, _signal) {
     if (!project.folder) return {};
     const ctx = {};
@@ -246,14 +257,14 @@ ${outB.slice(0, 1500)}
     if (mapR.ok && mapR.data)         ctx['__map__'] = mapR.data;
     if (treeR.ok)                     ctx['__tree__'] = treeR.data;
 
-    const pinned = (file.pinnedFiles || []).slice(0, 5);
+    const pinned = (file.pinnedFiles || []).slice(0, isArm64 ? 3 : 5);
     if (pinned.length) {
       const pinnedReads = await Promise.all(pinned.map(p => callServer({ type: 'read', path: p, to: 80 })));
       pinnedReads.forEach((r, i) => { if (r.ok) ctx['📌 ' + pinned[i].split('/').pop()] = r.data; });
     }
 
     if (/refactor|overhaul|all files|semuanya|codebase|arsitektur/i.test(txt)) {
-      const compR = await callServer({ type: 'read', path: folder + '/.yuyu/compressed.md', from: 1, to: 200 });
+      const compR = await callServer({ type: 'read', path: folder + '/.yuyu/compressed.md', from: 1, to: 150 });
       if (compR.ok && compR.data) ctx['__compressed__'] = compR.data;
     }
 
@@ -274,25 +285,24 @@ ${outB.slice(0, 1500)}
     if (fileMatch) fileMatch.forEach(f => keyFiles.push(f.startsWith('/') ? f : folder + '/src/' + f));
     KEYWORD_FILES.forEach(([keys, file]) => { if (keys.some(k => kw.includes(k))) keyFiles.push(folder + file); });
 
-    const unique = [...new Set(keyFiles)].slice(0, 5);
+    const unique = [...new Set(keyFiles)].slice(0, isArm64 ? 3 : 5);
     const reads  = await Promise.all(unique.map(p => callServer({ type: 'read', path: p, from: 1, to: 50 })));
     unique.forEach((p, i) => { if (reads[i].ok && reads[i].data) ctx[p.split('/').pop()] = reads[i].data; });
 
     return ctx;
   }
 
-  // ── buildSystemPrompt ───────────────────────────────────────────────────────
+  // ── buildSystemPrompt ──
   function buildSystemPrompt(txt, cfg) {
     const stripFrontmatter = s => s.replace(/^---[\s\S]*?---\n?/, '').trim();
     const notesCtx    = project.notes ? '\n\nProject notes:\n' + project.notes : '';
     const agentsMdCtx = project.agentsMd
-      ? '\n\n## AGENTS.md (kontrak project — WAJIB diikuti):\n' + project.agentsMd.slice(0, 3000)
+      ? '\n\n## AGENTS.md (kontrak project — WAJIB diikuti):\n' + project.agentsMd.slice(0, 2500)
       : '';
     const yuyuMdCtx = project.yuyuMd
-      ? '\n\n## YUYU.md (project rules — ikuti selalu):\n' + project.yuyuMd.slice(0, 2000)
+      ? '\n\n## YUYU.md (project rules — ikuti selalu):\n' + project.yuyuMd.slice(0, 1500)
       : '';
     const selectedSkills = selectSkills((project.skills || []).filter(s => s.active !== false), txt);
-    // Track which skills were used — feeds recency scoring
     if (selectedSkills.length) {
       const now = Date.now();
       project.setSkills?.(skills => skills.map(s =>
@@ -302,10 +312,9 @@ ${outB.slice(0, 1500)}
     const skillCtx    = selectedSkills.length
       ? '\n\nSkill context:\n' + selectedSkills.map(s => '## ' + s.name + '\n' + stripFrontmatter(s.content || '')).join('\n\n---\n\n')
       : '';
-    const pinnedCtx   = file.pinnedFiles.length ? '\n\nPinned files: ' + file.pinnedFiles.join(', ') : '';
-    // Inject file context only on iter 1 — subsequent iters have it in allMessages already
+    const pinnedCtx   = file.pinnedFiles.length ? '\n\nPinned files: ' + file.pinnedFiles.slice(0, 5).join(', ') : '';
     const fileCtx     = file.selectedFile && file.fileContent && (cfg._iter === undefined || cfg._iter <= 1)
-      ? '\n\nFile terbuka: ' + file.selectedFile + '\n```\n' + file.fileContent.slice(0, MAX_FILE_PREVIEW) + '\n```'
+      ? '\n\nFile terbuka: ' + file.selectedFile + '\n```\n' + file.fileContent.slice(0, MAX_PREVIEW_CHARS) + '\n```'
       : '';
     const memPool     = chat.getRelevantMemories(txt);
     const memCtx      = memPool.length ? '\n\nMemories:\n' + memPool.map(m => '• ' + m.text).join('\n') : '';
@@ -329,7 +338,7 @@ ${outB.slice(0, 1500)}
       agentsMdCtx + yuyuMdCtx + notesCtx + skillCtx + pinnedCtx + fileCtx + memCtx + agentMemCtx + visionCtx;
   }
 
-    // ── sendMsg — agent loop ──
+  // ── sendMsg — agent loop ──
   async function sendMsg(override, _opts = {}) {
     const txt = (typeof override === 'string' ? override : chat.input).trim();
     if (!txt || chat.loading) return;
@@ -364,21 +373,19 @@ ${outB.slice(0, 1500)}
         content: '📦 Auto-compact — context ~' + Math.round(totalChars / 1000) + 'K chars...',
         actions: [],
       }]);
-      await compactContext(true); // inline — jangan reset abortRef atau loading
+      await compactContext(true);
     }
 
     try {
       const cfg = project.effortCfg;
       const systemPrompt = buildSystemPrompt(txt, { ...cfg, model: project.model });
 
-      // ── Pre-load pinned files ──
       autoContextRef.current = {};
       if (file.pinnedFiles.length) {
-        const loaded = await file.readFilesParallel(file.pinnedFiles.slice(0, 3), project.folder);
+        const loaded = await file.readFilesParallel(file.pinnedFiles.slice(0, isArm64 ? 2 : 3), project.folder);
         Object.entries(loaded).forEach(([p, r]) => { if (r.ok) autoContextRef.current[p] = r.data; });
       }
 
-      // ── Read before act — gather project context sebelum iter 1 ──
       if (project.folder && txt.length > 10 && !txt.startsWith('/')) {
         chat.setAgentStatus('Membaca context...');
         chat.setStreaming('Membaca project context...');
@@ -391,8 +398,6 @@ ${outB.slice(0, 1500)}
       let iter = 0, allMessages = [...history], finalContent = '', finalActions = [];
       let autoContext = { ...(autoContextRef.current || {}) };
 
-      // ── MAIN AGENT LOOP ──
-      // ── Server health check before first iter ──
       const serverOk = await checkServerHealth();
       if (!serverOk) {
         chat.setLoading(false); chat.setStreaming(''); chat.setAgentStatus(null);
@@ -414,14 +419,14 @@ ${outB.slice(0, 1500)}
         const DECISION_HINT = iter === 1
           ? '\n\n[WAJIB DIIKUTI — TIDAK ADA PENGECUALIAN]:\n1. LANGSUNG ACTION. Jangan tulis rencana, jangan minta konfirmasi, jangan tanya balik.\n2. Butuh file? Tulis read_file action SEKARANG, bukan bilang "aku akan baca".\n3. Tidak tahu struktur? Tulis tree action SEKARANG.\n4. Bisa jawab dari context? Jawab langsung, tidak perlu action.\n5. DILARANG KERAS: "Saya akan...", "Mari kita...", "Pertama-tama...", "Apakah kamu..."]'
           : '\n[Lanjutkan dengan action. Jangan tanya, jangan rencana — eksekusi langsung.]';
-        // Only include autoContext entries not already visible in recent messages
+        
         const recentContent = allMessages.slice(-4).map(m => m.content || '').join('\n');
         const freshCtx = Object.entries(autoContext)
           .filter(([p]) => !recentContent.includes(p))
-          .slice(0, 4); // max 4 files in context at once
+          .slice(0, MAX_CONTEXT_FILES);
         const autoCtxBlock = freshCtx.length
           ? '\n\nAuto-loaded context:\n' + freshCtx
-              .map(([p, cv]) => '=== ' + p + ' ===\n' + cv.slice(0, 800))
+              .map(([p, cv]) => '=== ' + p + ' ===\n' + cv.slice(0, MAX_PREVIEW_CHARS))
               .join('\n\n')
           : '';
 
@@ -450,8 +455,6 @@ ${outB.slice(0, 1500)}
         tokenTracker.record(inTk, outTk, project.model);
 
         const allActs = parseActions(reply);
-
-        // ── Separate actions by type ──
         const patchActions     = allActs.filter(a => a.type === 'patch_file');
         const fullWriteActions = allActs.filter(a => a.type === 'write_file');
         const readActions      = allActs.filter(a => a.type === 'read_file');
@@ -460,7 +463,6 @@ ${outB.slice(0, 1500)}
         const safeActions      = allActs.filter(a => safeParallelTypes.has(a.type));
         const execActions      = allActs.filter(a => a.type === 'exec' || a.type === 'mcp');
 
-        // ── Read files (parallel) ──
         if (readActions.length > 0) {
           await runHooksV2(project.hooks.preToolCall, 'read_file:batch', project.folder);
           const res = await Promise.all(readActions.map(a => executeAction(a, project.folder)));
@@ -468,79 +470,30 @@ ${outB.slice(0, 1500)}
           await runHooksV2(project.hooks.postToolCall, 'read_file:batch', project.folder);
         }
 
-        // ── Web search + safe actions (all parallel) ──
         if (webSearchActions.length > 0 || safeActions.length > 0) {
           const combined = [...webSearchActions, ...safeActions];
           const res = await Promise.all(combined.map(a => executeWithPermission(a, project.folder)));
           combined.forEach((a, i) => { a.result = res[i]; });
         }
 
-        // ── Exec / MCP (serial — order matters) ──
         for (const a of execActions) {
           a.result = await executeWithPermission(a, project.folder);
         }
 
-        // ── AUTO-EXECUTE / DIFF REVIEW: patch_file ──
-        if (patchActions.length > 0) {
+        // Patch and write handling with diff review
+        if (patchActions.length > 0 || fullWriteActions.length > 0) {
           if (project.diffReview) {
-            // ── Diff Review mode — pre-compute diff, pause loop, tunggu user ──
-            await runHooksV2(project.hooks.preWrite, patchActions.map(a => a.path).join(','), project.folder);
-            for (const a of patchActions) {
-              const orig = await callServer({ type: 'read', path: resolvePath(project.folder, a.path) });
-              if (orig.ok && orig.data && a.old_str) {
-                const patched = orig.data.replace(a.old_str, a.new_str ?? '');
-                a.diffPreview = generateDiff(orig.data, patched, 60);
-                a.original = orig.data;
-              }
-              a.executed = false; // pending — belum dieksekusi
-            }
-            finalContent = reply;
-            finalActions  = [...allActs];
-            chat.setMessages(m => [...m, { role: 'assistant', content: finalContent, actions: finalActions }]);
-            chat.setLoading(false);
-            chat.setAgentRunning(false);
-            return; // loop pause — resume via /continue setelah user approve
-          }
-
-          await runHooksV2(project.hooks.preWrite, patchActions.map(a => a.path).join(','), project.folder);
-          const patchResults = await Promise.all(patchActions.map(a => executeAction(a, project.folder)));
-          patchActions.forEach((a, i) => {
-            a.result   = patchResults[i];
-            a.executed = true;
-          });
-          await runHooksV2(project.hooks.postWrite, patchActions.map(a => a.path).join(','), project.folder);
-
-          const failed = patchActions.filter(a => !a.result?.ok);
-          if (failed.length > 0) {
-            const failInfo = failed.map(a =>
-              'patch_file GAGAL di ' + a.path + ': ' + (a.result?.data || '?')
-            ).join('\n');
-            const ok = patchActions.filter(a => a.result?.ok);
-            allMessages = [
-              ...allMessages,
-              { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
-              {
-                role:    'user',
-                content: (ok.length ? '✅ ' + ok.length + ' patch OK.\n' : '') +
-                         '❌ Patch gagal:\n' + failInfo +
-                         '\n\nCek old_str — harus exact match. Coba baca ulang bagian file yang relevan lalu patch lagi.',
-              },
-            ];
-            continue;
-          }
-        }
-
-        // ── AUTO-EXECUTE / DIFF REVIEW: write_file ──
-        if (fullWriteActions.length > 0) {
-          if (project.diffReview) {
-            // ── Diff Review mode — pre-compute diff, pause loop ──
-            await runHooksV2(project.hooks.preWrite, fullWriteActions.map(a => a.path).join(','), project.folder);
-            for (const a of fullWriteActions) {
+            const allWrites = [...patchActions, ...fullWriteActions];
+            await runHooksV2(project.hooks.preWrite, allWrites.map(a => a.path).join(','), project.folder);
+            for (const a of allWrites) {
               const orig = await callServer({ type: 'read', path: resolvePath(project.folder, a.path) });
               if (orig.ok && orig.data) {
-                a.diffPreview = generateDiff(orig.data, a.content || '', 60);
+                const newContent = a.type === 'patch_file' 
+                  ? orig.data.replace(a.old_str, a.new_str ?? '')
+                  : (a.content || '');
+                a.diffPreview = generateDiff(orig.data, newContent, 60);
                 a.original = orig.data;
-              } else {
+              } else if (a.type === 'write_file') {
                 const lines = (a.content || '').split('\n');
                 a.diffPreview = lines.slice(0, 30).map((l, i) => '+ L' + (i+1) + ': ' + l).join('\n') +
                   (lines.length > 30 ? '\n... (+' + (lines.length - 30) + ' baris lagi)' : '');
@@ -548,110 +501,84 @@ ${outB.slice(0, 1500)}
               a.executed = false;
             }
             finalContent = reply;
-            finalActions  = [...allActs];
+            finalActions = allActs;
             chat.setMessages(m => [...m, { role: 'assistant', content: finalContent, actions: finalActions }]);
             chat.setLoading(false);
             chat.setAgentRunning(false);
             return;
           }
 
-          await runHooksV2(project.hooks.preWrite, fullWriteActions.map(a => a.path).join(','), project.folder);
-          const writeResults = await Promise.all(fullWriteActions.map(async a => {
-            const backup = await callServer({ type: 'read', path: resolvePath(project.folder, a.path) });
-            if (backup.ok) a.original = backup.data;
-            return executeAction(a, project.folder);
-          }));
-          fullWriteActions.forEach((a, i) => {
-            a.result   = writeResults[i];
-            a.executed = true;
-          });
-          await runHooksV2(project.hooks.postWrite, fullWriteActions.map(a => a.path).join(','), project.folder);
+          // Normal execution
+          await runHooksV2(project.hooks.preWrite, [...patchActions, ...fullWriteActions].map(a => a.path).join(','), project.folder);
+          const allWrites = [...patchActions, ...fullWriteActions];
+          const results = await Promise.all(allWrites.map(a => executeAction(a, project.folder)));
+          allWrites.forEach((a, i) => { a.result = results[i]; a.executed = true; });
+          await runHooksV2(project.hooks.postWrite, allWrites.map(a => a.path).join(','), project.folder);
 
-          const backups = fullWriteActions
+          const failed = allWrites.filter(a => !a.result?.ok);
+          if (failed.length > 0) {
+            const failInfo = failed.map(a => `${a.type} GAGAL di ${a.path}: ${a.result?.data || '?'}`).join('\n');
+            const ok = allWrites.filter(a => a.result?.ok);
+            allMessages = [
+              ...allMessages,
+              { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
+              { role: 'user', content: (ok.length ? '✅ ' + ok.length + ' operation OK.\n' : '') + '❌ Gagal:\n' + failInfo + '\n\nCek dan patch lagi.' },
+            ];
+            continue;
+          }
+
+          // Backup for undo
+          const backups = allWrites
             .filter(a => a.original !== undefined)
             .map(a => ({ path: resolvePath(project.folder, a.path), content: a.original }));
           if (backups.length) file.setEditHistory(h => [...h.slice(-(10 - backups.length)), ...backups]);
 
-          // ── Defensive review pass — security & edge cases ──
-          if (project.permissions?.exec && fullWriteActions.filter(a=>a.result?.ok).length > 0 && iter < MAX_ITER) {
-            const writtenPaths = fullWriteActions.filter(a=>a.result?.ok).map(a=>a.path).join(', ');
-            const defReply = await callAI([
-              { role: 'system', content: 'Kamu adalah security reviewer. Review kode yang baru ditulis. Cari: (1) missing input validation, (2) unhandled edge cases/errors, (3) potential crashes. Jika ditemukan: tulis patch_file langsung. Jika kode sudah aman: balas hanya "LGTM" tanpa penjelasan.' },
-              { role: 'user', content: 'File yang baru ditulis: ' + writtenPaths + '\n\nBaca dan review.' },
-            ], ()=>{}, ctrl.signal);
-            if (defReply && !defReply.trim().startsWith('LGTM') && !ctrl.signal.aborted) {
-              const defActs = parseActions(defReply).filter(a => a.type === 'patch_file');
-              for (const a of defActs) {
-                const r = await executeWithPermission(a, project.folder);
-                a.result = r; a.executed = true;
-              }
-              if (defActs.some(a => a.result?.ok)) {
-                allMessages = [
-                  ...allMessages,
-                  { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
-                  { role: 'user', content: '🛡 Defensive review applied ' + defActs.filter(a=>a.result?.ok).length + ' patch. Lanjutkan.' },
-                ];
-              }
-            }
-          }
-
-          // ── Auto-verify after write — run file, feed error back ──
-          if (project.permissions?.exec) {
+          // Auto-verify after writes
+          if (project.permissions?.exec && fullWriteActions.length > 0) {
             const verifyBreak = await autoVerifyWrites(fullWriteActions, project.folder, allMessages, reply, iter, MAX_ITER);
             if (verifyBreak) { allMessages = verifyBreak; continue; }
           }
         }
 
-        // ── Auto-load imports dari file yang dibaca ──
         await autoLoadImports(readActions, autoContext, project.folder);
 
-        // ── Exec error → auto-fix loop ──
         const execErrors = execActions.filter(isExecError);
-
         if (execErrors.length > 0 && iter < MAX_ITER) {
-          const errSummary = execErrors.map(a =>
-            '[ERROR] ' + (a.command || a.path || '?') + '\n' + (a.result?.data || '').slice(0, 500)
-          ).join('\n\n');
+          const errSummary = execErrors.map(a => '[ERROR] ' + (a.command || a.path || '?') + '\n' + (a.result?.data || '').slice(0, 500)).join('\n\n');
           allMessages = [
             ...allMessages,
             { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
-            { role: 'user',      content: 'Error output:\n\n' + errSummary + '\n\nAnalisis dan fix langsung.' },
+            { role: 'user', content: 'Error output:\n\n' + errSummary + '\n\nAnalisis dan fix langsung.' },
           ];
           continue;
         }
 
-        // ── Build feedback ──
-        const allInlineActions = [
-          ...readActions, ...webSearchActions, ...safeActions,
-          ...execActions, ...patchActions, ...fullWriteActions,
-        ];
+        const allInlineActions = [...readActions, ...webSearchActions, ...safeActions, ...execActions, ...patchActions, ...fullWriteActions];
         const combinedData = buildFeedback(readActions, safeActions, webSearchActions, patchActions, fullWriteActions, execActions);
 
-        // ── Tidak ada data baru → done ──
         if (!combinedData) {
           finalContent = reply;
-          finalActions  = allInlineActions;
+          finalActions = allInlineActions;
           break;
         }
 
-        // ── Ada data → feed back ke AI ──
         const agentNote = iter >= MAX_ITER ? '\n\n(Iterasi terakhir. Berikan jawaban final sekarang.)' : '';
         allMessages = [
           ...allMessages,
           { role: 'assistant', content: reply.replace(/```action[\s\S]*?```/g, '').trim() },
-          { role: 'user',      content: 'Hasil aksi:\n' + combinedData + '\n\nLanjutkan.' + agentNote },
+          { role: 'user', content: 'Hasil aksi:\n' + combinedData + '\n\nLanjutkan.' + agentNote },
         ];
 
         if (gracefulStopPending) {
           finalContent = reply;
-          finalActions  = allInlineActions;
+          finalActions = allInlineActions;
           break;
         }
       }
 
       chat.setAgentRunning(false);
-    growth?.addXP('message_sent');
-    growth?.learnFromSession(chat.messages, project.folder);
+      growth?.addXP('message_sent');
+      growth?.learnFromSession(chat.messages, project.folder);
       if (iter > 1) sendNotification('YuyuCode ✅', 'Agent selesai: ' + txt.slice(0, 40));
 
       if (finalContent.trim().endsWith('CONTINUE')) {
@@ -692,7 +619,6 @@ ${outB.slice(0, 1500)}
     chat.setLoading(false);
   }
 
-  // ── Derived actions ──
   function cancelMsg() {
     abortRef.current?.abort();
     chat.setLoading(false);

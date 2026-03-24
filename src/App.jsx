@@ -25,6 +25,11 @@ import { useGrowth }         from './hooks/useGrowth.js';
 import { useBrightness }     from './hooks/useBrightness.js';
 import { useDb }            from './hooks/useDb.js';
 
+// ARM64 detection for performance tuning
+const isArm64 = /arm64|arm|aarch64/i.test(navigator.platform) || /aarch64/i.test(navigator.userAgent);
+const VIRTUAL_LIMIT = isArm64 ? 40 : 60;
+const BATTERY_LOW_THRESHOLD = isArm64 ? 0.25 : 0.20;
+
 // ── FileWatcher message handler (extracted to reduce nesting depth) ────────────
 function computeFileDiff(prev, curr) {
   const prevLines = prev.split('\n'), currLines = curr.split('\n');
@@ -64,6 +69,32 @@ async function handleWatchMessage(rawData, folder, fileSnapshotsRef, setMessages
   sendNotification('YuyuCode 👁', filename + ' berubah: ' + summary);
 }
 
+// ── Error Boundary Component ───────────────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('App Error Boundary:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '20px', textAlign: 'center', color: this.props.T?.text || '#fff' }}>
+          <h3>⚠️ Something went wrong</h3>
+          <p style={{ fontSize: '12px', opacity: 0.7 }}>Reload the app to continue</p>
+          <button onClick={() => window.location.reload()} style={{ marginTop: '10px', padding: '8px 16px' }}>Reload</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   // ── STORES ──
   const ui      = useUIStore();
@@ -96,6 +127,7 @@ export default function App() {
   const handleSlashCommandRef = useRef(null);
   const wsRef                 = useRef(null);
   const fileSnapshotsRef      = useRef({});
+  const reconnectTimeoutRef   = useRef(null);
 
   // ── HOOKS ──
   const { sendNotification, haptic, speakText, stopTts } = useNotifications();
@@ -165,6 +197,13 @@ export default function App() {
   });
   useEffect(() => { handleSlashCommandRef.current = handleSlashCommand; });
 
+  // Sync file snapshots with project store
+  useEffect(() => {
+    if (project.fileSnapshots) {
+      fileSnapshotsRef.current = project.fileSnapshots;
+    }
+  }, [project.fileSnapshots]);
+
   // ── EFFECTS ──
   useEffect(() => {
     Promise.all([
@@ -196,7 +235,7 @@ export default function App() {
       project.loadProjectPrefs({folder:f.value,cmdHistory:ch.value,model:mo.value,hooks:hk.value,githubToken:ght.value,githubRepo:ghr.value,sessionColor:sc.value,plugins:pl.value,effort:ef.value,thinkingEnabled:tk.value,permissions:perm.value,diffReview:dr.value});
       project.loadRecentProjects(rp.value);
       if (f.value) project.addRecentProject(f.value);
-      else ui.setShowProjectManager(true); // first run — no folder saved yet
+      else ui.setShowProjectManager(true);
       file.loadFilePrefs({pinned:pi.value,recent:re.value});
       chat.loadChatPrefs({history:h.value,memories:mem.value,checkpoints:ckp.value});
     });
@@ -219,9 +258,13 @@ export default function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!project.batteryCharging && project.batteryLevel < 0.20 && project.effort !== 'low') {
+    if (!project.batteryCharging && project.batteryLevel < BATTERY_LOW_THRESHOLD && project.effort !== 'low') {
       project.setEffort('low');
-      chat.setMessages(m => [...m, { role: 'assistant', content: '🔋 Baterai < 20% — effort otomatis turun ke **low** untuk hemat daya.', actions: [] }]);
+      chat.setMessages(m => [...m, { 
+        role: 'assistant', 
+        content: `🔋 Baterai < ${Math.round(BATTERY_LOW_THRESHOLD * 100)}% — effort otomatis turun ke **low** untuk hemat daya${isArm64 ? ' di ARM64' : ''}.`, 
+        actions: [] 
+      }]);
     }
   }, [project.batteryLevel, project.batteryCharging]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -262,11 +305,35 @@ export default function App() {
         } catch (_e) { }
       };
       ws.onerror = () => {};
-      ws.onclose = () => { if (!dead) setTimeout(connect, 3000); };
+      ws.onclose = () => { 
+        if (!dead) {
+          if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = setTimeout(connect, 3000);
+        }
+      };
     }
     connect();
-    return () => { dead=true; if(wsRef.current){wsRef.current.onclose=null;wsRef.current.close();wsRef.current=null;} };
+    return () => { 
+      dead = true;
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
   }, [project.fileWatcherActive, project.folder]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Performance tracking in development ────────────────────────────────────
+  if (process.env.NODE_ENV === 'development') {
+    useEffect(() => {
+      performance.mark('app-render-start');
+      return () => {
+        performance.mark('app-render-end');
+        performance.measure('app-render', 'app-render-start', 'app-render-end');
+      };
+    });
+  }
 
   // ── HELPERS ──
   function saveFolder(f) { project.saveFolder(f); ui.setShowFolder(false); }
@@ -291,87 +358,88 @@ export default function App() {
     window.addEventListener('mousemove',onMove);window.addEventListener('mouseup',onEnd);window.addEventListener('touchmove',onMove,{passive:true});window.addEventListener('touchend',onEnd);
   }
 
-  const VIRTUAL_LIMIT = 60;
   const visibleMessages = chat.messages.length > VIRTUAL_LIMIT
     ? [{role:'assistant',content:`[... ${chat.messages.length-VIRTUAL_LIMIT} pesan tersembunyi. /clear untuk bersihkan]`},...chat.messages.slice(-VIRTUAL_LIMIT)]
     : chat.messages;
 
   // ── RENDER ──
   return (
-    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:ui.fontSize+'px',filter:brightnessFilter,transition:'filter .35s ease'}}
-      onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}>
+    <ErrorBoundary T={T}>
+      <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:ui.fontSize+'px',filter:brightnessFilter,transition:'filter .35s ease'}}
+        onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}>
 
-      {ui.dragOver&&<div style={{position:'absolute',inset:0,background:T.accentBg,border:'2px dashed '+T.accentBorder,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:T.accent}}>Drop file di sini~</span></div>}
+        {ui.dragOver&&<div style={{position:'absolute',inset:0,background:T.accentBg,border:'2px dashed '+T.accentBorder,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:T.accent}}>Drop file di sini~</span></div>}
 
-      <ThemeEffects T={T}/>
+        <ThemeEffects T={T}/>
 
-      {/* Brightness screen overlay — mix-blend-mode:screen, no banding */}
-      {brightnessOverlay > 0 && (
-        <div style={{
-          position:'fixed', inset:0, zIndex:2, pointerEvents:'none',
-          background: T.accent || '#ffffff',
-          opacity: brightnessOverlay,
-          mixBlendMode: 'screen',
-          backdropFilter: `blur(${(brightnessOverlay * 6).toFixed(1)}px)`,
-          WebkitBackdropFilter: `blur(${(brightnessOverlay * 6).toFixed(1)}px)`,
-        }}/>
-      )}
+        {/* Brightness screen overlay — mix-blend-mode:screen, no banding */}
+        {brightnessOverlay > 0 && (
+          <div style={{
+            position:'fixed', inset:0, zIndex:2, pointerEvents:'none',
+            background: T.accent || '#ffffff',
+            opacity: brightnessOverlay,
+            mixBlendMode: 'screen',
+            backdropFilter: `blur(${(brightnessOverlay * 6).toFixed(1)}px)`,
+            WebkitBackdropFilter: `blur(${(brightnessOverlay * 6).toFixed(1)}px)`,
+          }}/>
+        )}
 
-      {/* Badge toast */}
-      {growth.newBadge&&(
-        <div style={{position:'fixed',top:'60px',left:'50%',transform:'translateX(-50%)',background:T.bg2,border:'1px solid '+T.accentBorder,borderRadius:'14px',padding:'12px 20px',zIndex:999,display:'flex',alignItems:'center',gap:'10px',boxShadow:'0 8px 32px rgba(0,0,0,.6)',animation:'fadeUp .3s ease'}}>
-          <span style={{fontSize:'22px'}}>{growth.newBadge.label.split(' ')[0]}</span>
-          <div>
-            <div style={{fontSize:'13px',fontWeight:'700',color:T.text}}>{growth.newBadge.label}</div>
-            <div style={{fontSize:'11px',color:T.textSec}}>{growth.newBadge.desc}</div>
+        {/* Badge toast */}
+        {growth.newBadge&&(
+          <div style={{position:'fixed',top:'60px',left:'50%',transform:'translateX(-50%)',background:T.bg2,border:'1px solid '+T.accentBorder,borderRadius:'14px',padding:'12px 20px',zIndex:999,display:'flex',alignItems:'center',gap:'10px',boxShadow:'0 8px 32px rgba(0,0,0,.6)',animation:'fadeUp .3s ease'}}>
+            <span style={{fontSize:'22px'}}>{growth.newBadge.label.split(' ')[0]}</span>
+            <div>
+              <div style={{fontSize:'13px',fontWeight:'700',color:T.text}}>{growth.newBadge.label}</div>
+              <div style={{fontSize:'11px',color:T.textSec}}>{growth.newBadge.desc}</div>
+            </div>
           </div>
+        )}
+
+        <style>{`
+          *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+          ::-webkit-scrollbar{width:3px;height:3px;}
+          ::-webkit-scrollbar-track{background:transparent;}
+          ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:99px;}
+          textarea,input{scrollbar-width:none;}
+          button{transition:color .15s,background .15s,border-color .15s,opacity .15s;-webkit-tap-highlight-color:transparent;}
+          button:active{opacity:.55!important;}
+          @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+          @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+          @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+          @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+          .msg-appear{animation:fadeUp .2s cubic-bezier(.16,1,.3,1) forwards;}
+          .status-pulse{animation:pulse 1.8s ease-in-out infinite;}
+        `}</style>
+
+        <AppHeader T={T} ui={ui} project={project} file={file} chat={chat} growth={growth}
+          saveFolder={saveFolder} undoLastEdit={undoLastEdit} setShowApiKeys={setShowApiKeys} haptic={haptic}/>
+
+        <div style={{flex:1,display:'flex',overflow:'hidden',position:'relative'}}>
+          <AppSidebar T={T} ui={ui} project={project} file={file} onSidebarDragStart={onSidebarDragStart}/>
+          <AppChat T={T} ui={ui} project={project} file={file} chat={chat}
+            sendMsg={sendMsg} cancelMsg={cancelMsg} retryLast={retryLast} continueMsg={continueMsg}
+            handleApprove={handleApprove} handlePlanApprove={handlePlanApprove}
+            handleCameraCapture={handleCameraCapture} fileInputRef={fileInputRef}
+            runShortcut={runShortcut} stopTts={stopTts}
+            visibleMessages={visibleMessages}/>
         </div>
-      )}
 
-      <style>{`
-        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-        ::-webkit-scrollbar{width:3px;height:3px;}
-        ::-webkit-scrollbar-track{background:transparent;}
-        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:99px;}
-        textarea,input{scrollbar-width:none;}
-        button{transition:color .15s,background .15s,border-color .15s,opacity .15s;-webkit-tap-highlight-color:transparent;}
-        button:active{opacity:.55!important;}
-        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
-        .msg-appear{animation:fadeUp .2s cubic-bezier(.16,1,.3,1) forwards;}
-        .status-pulse{animation:pulse 1.8s ease-in-out infinite;}
-      `}</style>
+        <AppPanels T={T} ui={ui} project={project} file={file} chat={chat}
+          sendMsg={sendMsg} compactContext={compactContext} runShortcut={runShortcut}
+          fetchGitHub={fetchGitHub} runDeploy={runDeploy} runTests={runTests}
+          generateCommitMsg={generateCommitMsg} haptic={haptic}
+          saveCheckpoint={saveCheckpoint} restoreCheckpoint={restoreCheckpoint}
+          fileInputRef={fileInputRef} handleImageAttach={handleImageAttach}/>
 
-      <AppHeader T={T} ui={ui} project={project} file={file} chat={chat} growth={growth}
-        saveFolder={saveFolder} undoLastEdit={undoLastEdit} setShowApiKeys={setShowApiKeys} haptic={haptic}/>
+        {!onboarded && <OnboardingWizard T={T} onDone={()=>setOnboarded(true)} />}
+        {showApiKeys && <ApiKeySettings T={T} onClose={()=>setShowApiKeys(false)} />}
 
-      <div style={{flex:1,display:'flex',overflow:'hidden',position:'relative'}}>
-        <AppSidebar T={T} ui={ui} project={project} file={file} onSidebarDragStart={onSidebarDragStart}/>
-        <AppChat T={T} ui={ui} project={project} file={file} chat={chat}
-          sendMsg={sendMsg} cancelMsg={cancelMsg} retryLast={retryLast} continueMsg={continueMsg}
-          handleApprove={handleApprove} handlePlanApprove={handlePlanApprove}
-          handleCameraCapture={handleCameraCapture} fileInputRef={fileInputRef}
-          runShortcut={runShortcut} stopTts={stopTts}
-          visibleMessages={visibleMessages}/>
+        {ui.showProjectManager && (
+          <ProjectManager T={T} project={project}
+            onClose={() => ui.setShowProjectManager(false)}
+            onSwitchProject={switchProject}/>
+        )}
       </div>
-
-      <AppPanels T={T} ui={ui} project={project} file={file} chat={chat}
-        sendMsg={sendMsg} compactContext={compactContext} runShortcut={runShortcut}
-        fetchGitHub={fetchGitHub} runDeploy={runDeploy} runTests={runTests}
-        generateCommitMsg={generateCommitMsg} haptic={haptic}
-        saveCheckpoint={saveCheckpoint} restoreCheckpoint={restoreCheckpoint}
-        fileInputRef={fileInputRef} handleImageAttach={handleImageAttach}/>
-
-      {!onboarded && <OnboardingWizard T={T} onDone={()=>setOnboarded(true)} />}
-      {showApiKeys && <ApiKeySettings T={T} onClose={()=>setShowApiKeys(false)} />}
-
-      {ui.showProjectManager && (
-        <ProjectManager T={T} project={project}
-          onClose={() => ui.setShowProjectManager(false)}
-          onSwitchProject={switchProject}/>
-      )}
-    </div>
+    </ErrorBoundary>
   );
 }
