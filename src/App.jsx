@@ -10,7 +10,7 @@ import { ApiKeySettings }   from './components/ApiKeySettings.jsx';
 import { loadRuntimeKeys }  from './runtimeKeys.js';
 import { AppPanels }  from './components/AppPanels.jsx';
 import { ProjectManager } from './components/panels.project.jsx';
-import { useSlashCommands } from './hooks/useSlashCommands.js';
+import { useSlashCommands } from './hooks/useSlashCommands';
 import { useUIStore }        from './hooks/useUIStore.js';
 import { useProjectStore }   from './hooks/useProjectStore.js';
 import { useFileStore }      from './hooks/useFileStore.js';
@@ -324,18 +324,6 @@ export default function App() {
     };
   }, [project.fileWatcherActive, project.folder]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Performance tracking in development ────────────────────────────────────
-  if (process.env.NODE_ENV === 'development') {
-    useEffect(() => {
-      performance.mark('app-render-start');
-      return () => {
-        performance.mark('app-render-end');
-        performance.measure('app-render', 'app-render-start', 'app-render-end');
-      };
-    });
-  }
-
-  // ── HELPERS ──
   function saveFolder(f) { project.saveFolder(f); ui.setShowFolder(false); }
 
   async function switchProject(f) {
