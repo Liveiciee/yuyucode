@@ -350,8 +350,6 @@ export const SLASH_COMMANDS = [
   { cmd:'/refactor',   desc:'Rename symbol di semua file: /refactor <lama> <baru>' },
   { cmd:'/lint',       desc:'Run lint dan auto-fix errors' },
   { cmd:'/apikeys',    desc:'Ganti API key runtime tanpa rebuild APK' },
-  { cmd:'/apikeys',    desc:'Ganti API key runtime tanpa rebuild APK' },
-  { cmd:'/apikeys',    desc:'Ganti API key runtime tanpa rebuild APK' },
   { cmd:'/open',       desc:'Buka URL di browser: /open https://...' },
   { cmd:'/init',       desc:'Generate SKILL.md dari project ini otomatis' },
   { cmd:'/search',     desc:'Web search — cari di internet' },
