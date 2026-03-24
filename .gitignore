@@ -22,6 +22,8 @@ dist-ssr/
 *.njsproj
 *.sln
 *.sw?
+*.swp
+*~
 
 # Env
 .env
@@ -32,13 +34,45 @@ dist-ssr/
 *.zip
 commit-history.txt
 coverage/
+*.tgz
+*.tar.gz
 
 # Capacitor / Android
 android/app/src/main/assets/public/
 android/.gradle/
 android/app/release/
 android/app/debug/
+android/.kotlin/
+android/build/
+android/captures/
+android/.cxx/
+
+# iOS (kalau ada nanti)
+ios/
+*.xcworkspace
+*.xcuserdata
+Pods/
 
 # Yuyu internals
 .yuyu/compressed.md
 .yuyu/compressed-repomix.md
+.yuyu/handoff.md
+.yuyu/map.md
+.yuyu/*.log
+.tla/
+tmp/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Testing
+.nyc_output/
+.coverage/
+.vitest/
+__screenshots__/
+
+# Termux specific
+bashrc-additions.sh.local
+.termux/
