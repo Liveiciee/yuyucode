@@ -1,6 +1,7 @@
 // memory.js — handlers untuk /amemory, /summarize, /compact, /handoff (handoff sudah di chat.js)
+import { Preferences } from '@capacitor/preferences';
 import { askCerebrasStream } from '../../../api.js';
-import { tokenTracker } from '../../../features.js';
+import { tokenTracker, countTokens } from '../../../features.js';
 import { withLoading } from '../helpers/withLoading.js';
 import { simpleResponse } from '../helpers/simpleResponse.js';
 
@@ -66,8 +67,9 @@ export function handleUsage({ setMessages }) {
 
 export function handleTokens({ messages, setMessages }) {
   const breakdown = messages.slice(-10).map(m => { 
-    const tk = Math.round(m.content.length / 4); 
+    const tk = Math.round((m.content || '').length / 4); 
     return (m.role === 'user' ? 'Papa' : 'Yuyu') + ': ~' + tk + 'tk'; 
   }).join('\n');
-  simpleResponse(setMessages, '📓 **Token breakdown (10 pesan terakhir)**\n```\n' + breakdown + '\n```\n**Total:** ~' + countTokens(messages) + 'tk | Cerebras gratis 🎉');
+  const totalTk = countTokens ? countTokens(messages) : Math.round(messages.reduce((a, m) => a + (m.content || '').length, 0) / 4);
+  simpleResponse(setMessages, '📓 **Token breakdown (10 pesan terakhir)**\n```\n' + breakdown + '\n```\n**Total:** ~' + totalTk + 'tk | Cerebras gratis 🎉');
 }
