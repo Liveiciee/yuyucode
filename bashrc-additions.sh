@@ -1,292 +1,256 @@
-# ── YuyuCode v2.7+ .bashrc additions ─────────────────────────────────────────
-# Tambahkan snippet ini ke ~/.bashrc, lalu: source ~/.bashrc
+# ================================================
+# ~/.bashrc - YuyuCode Optimized for Snapdragon 680
+# HP $130 — RAM 8GB — Termux Best Practice
+# ================================================
 
-# ── Auto-restart server on crash ─────────────────────────────────────────────
-# Ganti baris: node ~/yuyu-server.js > /dev/null 2>&1 &
-# Dengan ini:
+export ANDROID_HOME=$HOME/android-sdk
+export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+
+# Check Android SDK
+if [ ! -d "$ANDROID_HOME" ]; then
+    echo "⚠️ Android SDK not found at $ANDROID_HOME"
+    echo "   Run: mkdir -p $ANDROID_HOME"
+fi
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+
+# ── Optimasi untuk HP Snapdragon 680 + 8GB RAM ─────────────────────
+export NODE_OPTIONS="--max-old-space-size=512"
+alias nt="npm test -- --run"          # test cepat tanpa watch mode
+alias nl="npm run lint -- --fix"
+
+# ── Server Management ──────────────────────────────────────────────
+yuyu-server-stop() {
+  pkill -f "node.*yuyu-server.js" && echo "✅ Server stopped" || echo "ℹ️ Server not running"
+}
+
 yuyu-server-start() {
+  yuyu-server-stop
   while true; do
-    node ~/yuyu-server.js > ~/.yuyu-server.log 2>&1
-    echo "⚠️  yuyu-server crashed — restarting in 2s..." >&2
+    node ~/yuyu-server.js >> ~/.yuyu-server.log 2>&1
+    echo "⚠️ yuyu-server crashed — restarting in 2s... ($(date))" >> ~/.yuyu-server.log
     sleep 2
   done &
-  echo "✅ yuyu-server running (auto-restart enabled)"
+  echo $! > ~/.yuyu-server.pid
+  echo "✅ yuyu-server running (PID: $!)"
 }
-# Untuk auto-start di setiap sesi, tambahkan di .bashrc:
-# yuyu-server-start
 
-# ── yuyu-status — overview satu command ──────────────────────────────────────
-yuyu-status() {
-  local port=8765
-  local server_status
-  if curl -sf "http://localhost:${port}/health" > /dev/null 2>&1; then
-    local health=$(curl -sf "http://localhost:${port}/health" 2>/dev/null)
-    local uptime=$(echo "$health" | python3 -c "import json,sys; d=json.load(sys.stdin); u=d.get('uptime',0); print(f'{u//3600}h {(u%3600)//60}m' if u>=3600 else f'{u//60}m {u%60}s')" 2>/dev/null || echo "?")
-    server_status="✅ running (uptime: ${uptime})"
-  else
-    server_status="❌ not running — jalankan: yuyu-server-start"
+yuyu-server-logs() {
+  tail -f ~/.yuyu-server.log
+}
+
+# Auto-start server
+yuyu-server-start
+
+# ── yuyu-apply — Apply zip dari Claude ─────────────────────────────
+yuyu-apply() {
+  local zip="${1:-yuyu-overhaul.zip}"
+  local DRY=0
+  
+  # Proper argument parsing
+  if [ "$1" = "--dry-run" ]; then
+    DRY=1
+    zip="${2:-yuyu-overhaul.zip}"
+    echo "🔍 DRY RUN mode"
+  elif [ "$2" = "--dry-run" ]; then
+    DRY=1
+    echo "🔍 DRY RUN mode"
   fi
 
-  local branch=$(git -C ~/yuyucode branch --show-current 2>/dev/null || echo "?")
-  local ahead=$(git -C ~/yuyucode rev-list @{u}..HEAD --count 2>/dev/null || echo "0")
-  local version=$(python3 -c "import json; print(json.load(open('$HOME/yuyucode/package.json'))['version'])" 2>/dev/null || echo "?")
-  local dirty=$(git -C ~/yuyucode status --short 2>/dev/null | wc -l | tr -d ' ')
-
-  echo ""
-  echo "📡 Server  : ${server_status}"
-  echo "🌿 Branch  : ${branch}$([ "$ahead" != "0" ] && echo " (${ahead} commit(s) belum push)")"
-  echo "📦 Version : v${version}"
-  echo "📝 Dirty   : ${dirty} file(s) uncommitted"
-  echo ""
-}
-
-# ── yuyu-clean — hapus artifacts ─────────────────────────────────────────────
-yuyu-clean() {
-  cd ~/yuyucode
-  echo "🧹 Cleaning build artifacts..."
-  local removed=0
-
-  [ -d "dist" ]      && rm -rf dist      && echo "  🗑  dist/"         && removed=$((removed+1))
-  [ -d "coverage" ]  && rm -rf coverage  && echo "  🗑  coverage/"     && removed=$((removed+1))
-
-  for f in .yuyu/compressed*.md; do
-    [ -f "$f" ] && rm "$f" && echo "  🗑  $f" && removed=$((removed+1))
-  done
-
-  for f in /sdcard/Download/*.zip; do
-    [ -f "$f" ] && echo "  ⚠️  Download zip found: $(basename $f) — hapus manual kalau mau"
-  done
-
-  if [ "$removed" -eq 0 ]; then
-    echo "  ✨ Already clean!"
-  else
-    echo ""
-    echo "✅ Cleaned ${removed} artifact(s)"
+  cd ~/yuyucode || { echo "❌ yuyucode directory not found"; return 1; }
+  
+  local zip_path="/sdcard/Download/$zip"
+  if [ ! -f "$zip_path" ]; then
+    echo "❌ File not found: $zip_path"
+    return 1
   fi
+
+  echo "📦 Files dalam $zip:"
+  unzip -l "$zip_path" 2>/dev/null | grep -E '^[[:space:]]+[0-9]+' | tail -n +4 | head -n -2 | awk '{print "  → " $NF}'
+
+  if [ "$DRY" = "1" ]; then
+    echo "🔍 Dry run selesai — jalankan tanpa --dry-run untuk apply"
+    return 0
+  fi
+
+  local SNAPSHOT=$(git rev-parse HEAD)
+  local STASHED=0
+  
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "⚠️ Ada perubahan lokal — stashing..."
+    git stash push -m "yuyu-apply auto-stash $(date +%Y%m%d-%H%M%S)"
+    STASHED=1
+  fi
+
+  _yuyu_rollback() {
+    echo "🔄 Rolling back..."
+    git reset --hard "$SNAPSHOT"
+    [ "$STASHED" = "1" ] && echo "💡 Run: git stash pop"
+  }
+
+  cp "$zip_path" ./ || { echo "❌ cp failed"; return 1; }
+  unzip -o "$zip" || { echo "❌ unzip failed"; _yuyu_rollback; return 1; }
+
+  echo "🧐 Running lint & test..."
+  npm run lint || { echo "❌ Lint failed"; _yuyu_rollback; return 1; }
+  npx vitest run || { echo "❌ Tests failed"; _yuyu_rollback; return 1; }
+
+  rm -f "./$zip" "$zip_path"
+  echo "✅ Semua berhasil!"
+  [ "$STASHED" = "1" ] && echo "💡 Stash masih ada: git stash pop"
 }
 
-# ── yuyu-cp v2 — support subdirectory ────────────────────────────────────────
-# Ganti fungsi yuyu-cp yang lama dengan versi ini
+# ── yuyu-cp — Copy file dari Download (support subfolder) ──────────
 yuyu-cp() {
-  local file="${1}"
-  local dest_dir="${2:-}"   # optional: target subdir relative to yuyucode root
-
+  local file="$1"
+  local dest_dir="${2:-}"
   local src="/sdcard/Download/${file}"
-  local base_dest="$HOME/yuyucode"
+  local base="$HOME/yuyucode"
 
   if [ ! -f "$src" ]; then
-    echo "❌ File '$file' tidak ditemukan di /sdcard/Download/"
-    echo "📂 Isi Download terbaru:"
-    ls -t /sdcard/Download/ | head -n 5
+    echo "❌ File tidak ditemukan di Download"
+    echo "📁 Recent files:"
+    ls -lt /sdcard/Download/ | head -n 5 | tail -n +2 | awk '{print "  → " $NF}'
     return 1
   fi
 
   if [[ "$file" == *.zip ]]; then
-    echo "📦 Zip terdeteksi — delegasi ke yuyu-apply..."
     yuyu-apply "$file"
     return $?
   fi
 
-  # Determine destination
-  # Arg ke-2 bisa berupa: subdir ("src/hooks") atau full path ("src/hooks/useX.js")
   local dest
   if [ -n "$dest_dir" ]; then
-    # Kalau arg ke-2 sudah berakhiran nama file yang sama → full path
-    if [[ "$dest_dir" == */"$file" ]] || [[ "$dest_dir" == "$file" ]]; then
-      dest="${base_dest}/${dest_dir}"
-    else
-      dest="${base_dest}/${dest_dir}/${file}"
-    fi
+    dest="${base}/${dest_dir}/${file}"
   else
-    dest="${base_dest}/${file}"
-  fi
-
-  cd ~/yuyucode
-
-  # Warn if git-tracked with uncommitted changes
-  local rel_dest="${dest#$base_dest/}"
-  if git ls-files --error-unmatch "$rel_dest" &>/dev/null 2>&1; then
-    if ! git diff --quiet "$rel_dest" 2>/dev/null; then
-      echo "⚠️  '$rel_dest' ada uncommitted changes di git."
-      echo -n "Lanjut overwrite? Tekan y/Y untuk lanjut, lainnya batal: "
-      read -s -n 1 key
-      echo ""
-      case "$key" in
-        y|Y) echo "👍 Overwriting..." ;;
-        *)   echo "✋ Dibatalkan."; return 0 ;;
-      esac
-    fi
+    dest="${base}/${file}"
   fi
 
   mkdir -p "$(dirname "$dest")"
+
+  cd "$base" || return 1
+  
+  # Check git status
+  local rel_path="${dest#$base/}"
+  if git ls-files --error-unmatch "$rel_path" &>/dev/null 2>&1; then
+    if ! git diff --quiet "$rel_path" 2>/dev/null; then
+      echo -n "⚠️ File ada perubahan. Lanjut overwrite? (y/N): "
+      read -r key
+      [[ "$key" != "y" && "$key" != "Y" ]] && echo "✋ Dibatalkan" && return 0
+    fi
+  fi
+
   if cp "$src" "$dest" && rm "$src"; then
-    echo "✅ '$file' → ${dest#$HOME/} ✓ (Download dibersihkan)"
+    echo "✅ '$file' berhasil disalin ke ${dest#$HOME/}"
   else
-    echo "⚠️  Gagal memindahkan file. Cek izin storage Termux!"
+    echo "❌ Gagal copy file"
     return 1
   fi
 }
 
-# ── Tab completions (update) ──────────────────────────────────────────────────
-_yuyu_cp_completion() {
-  local cur="${COMP_WORDS[COMP_CWORD]}"
-  local files=$(ls /sdcard/Download/ 2>/dev/null)
-  COMPREPLY=( $(compgen -W "$files" -- "$cur") )
+# ── Utility tambahan ───────────────────────────────────────────────
+yuyu-status() {
+  echo "📡 Server  : $(curl -sf http://localhost:8765/health >/dev/null 2>&1 && echo '✅ running' || echo '❌ not running')"
+  echo "🌿 Branch  : $(git -C ~/yuyucode branch --show-current 2>/dev/null || echo '?')"
+  echo "📝 Dirty   : $(git -C ~/yuyucode status --short 2>/dev/null | wc -l | tr -d ' ') file(s)"
 }
-complete -F _yuyu_cp_completion yuyu-cp
 
-# ── yuyu-unstash — pop stash, auto-resolve conflicts ke HEAD ─────────────────
-yuyu-unstash() {
+yuyu-clean() {
   cd ~/yuyucode
-
-  local stash="${1:-stash@{0}}"
-
-  # Cek ada stash
-  if ! git stash list | grep -q "stash@"; then
-    echo "✅ Tidak ada stash."
-    return 0
-  fi
-
-  echo "📦 Popping $stash..."
-  git stash pop "$stash" 2>&1 | head -20
-
-  # Cek konflik
-  local conflicts=$(git diff --name-only --diff-filter=U 2>/dev/null)
-  if [ -z "$conflicts" ]; then
-    echo "✅ Stash pop bersih, tidak ada konflik."
-    return 0
-  fi
-
-  echo ""
-  echo "⚠️  Konflik ditemukan — auto-resolve ke HEAD:"
-  for f in $conflicts; do
-    git checkout HEAD -- "$f"
-    git add "$f"
-    echo "  ✅ $f → kept HEAD"
-  done
-
-  git stash drop 2>/dev/null
-  echo ""
-  echo "✅ Selesai! Perubahan stash yang tidak konflik sudah masuk."
+  rm -rf dist coverage .yuyu/compressed*.md node_modules/.cache 2>/dev/null
+  echo "✅ Artifacts cleaned"
 }
 
-# ── YuyuCode Bench v3 commands ────────────────────────────────────────────────
-# Berdasarkan workflow: bench sebelum commit, setelah refactor, dan release.
-
-# ── yuyu-bench — shortcut utama ──────────────────────────────────────────────
-yuyu-bench() {
-  cd ~/yuyucode
-  node yuyu-bench.cjs "$@"
+# ── Bench shortcuts ────────────────────────────────────────────────
+yuyu-bench() { 
+  cd ~/yuyucode && node yuyu-bench.cjs "$@"
 }
+alias yb="yuyu-bench"
 
-# ── yuyu-bench-save — update baseline (pakai setelah refactor disengaja) ─────
-yuyu-bench-save() {
-  cd ~/yuyucode
-  echo "💾 Updating baseline..."
-  node yuyu-bench.cjs --save
-}
-
-# ── yuyu-bench-trend — lihat grafik history semua metric ─────────────────────
-yuyu-bench-trend() {
-  cd ~/yuyucode
-  node yuyu-bench.cjs --trend
-}
-
-# ── yuyu-bench-watch — auto re-run tiap file src/ berubah ────────────────────
-yuyu-bench-watch() {
-  cd ~/yuyucode
-  echo "👁  Watch mode aktif. Ctrl+C untuk berhenti."
-  node yuyu-bench.cjs --watch
-}
-
-# ── yuyu-precommit — full check sebelum node yugit.cjs ───────────────────────
-# Urutan: lint → test → bench. Berhenti kalau salah satu gagal.
-yuyu-precommit() {
-  cd ~/yuyucode
+# ── Memory monitoring ──────────────────────────────────────────────
+yuyu-mem() {
+  echo "📊 Memory Usage:"
+  free -h 2>/dev/null || echo "free command not available"
   echo ""
-  echo "═══════════════════════════════════════"
-  echo "  🚦 YuyuCode Pre-commit Check"
-  echo "═══════════════════════════════════════"
+  echo "🔋 Node processes:"
+  ps aux | grep node | grep -v grep || echo "None"
   echo ""
-
-  # 1. Lint
-  echo "① Lint..."
-  if ! npm run lint --silent 2>&1 | tail -3; then
-    echo "❌ Lint gagal — fix dulu sebelum commit."
-    return 1
-  fi
-  echo "✅ Lint OK"
-  echo ""
-
-  # 2. Test
-  echo "② Tests..."
-  local test_out
-  test_out=$(npx vitest run --reporter=verbose 2>&1 | tail -5)
-  echo "$test_out"
-  if echo "$test_out" | grep -q "failed"; then
-    echo "❌ Tests gagal — fix dulu sebelum commit."
-    return 1
-  fi
-  echo "✅ Tests OK"
-  echo ""
-
-  # 3. Bench
-  echo "③ Bench..."
-  node yuyu-bench.cjs
-  local bench_exit=$?
-  if [ $bench_exit -ne 0 ]; then
-    echo ""
-    echo "⚠️  Ada regresi bench. Tetap commit?"
-    echo -n "y = lanjut commit  |  n = batal: "
-    read -s -n 1 key
-    echo ""
-    [ "$key" != "y" ] && [ "$key" != "Y" ] && echo "✋ Commit dibatalkan." && return 1
-  fi
-
-  echo ""
-  echo "═══════════════════════════════════════"
-  echo "  ✅ Semua check passed — siap commit!"
-  echo "═══════════════════════════════════════"
-  echo ""
-  echo "💡 Jalankan: node yugit.cjs \"feat: ...\""
+  echo "💾 Max heap size: $(node -e "console.log(process.execArgv.join(' '))" 2>/dev/null | grep -o "max-old-space-size=[0-9]*" | cut -d= -f2 || echo "default") MB"
 }
 
-# ── yuyu-release-check — bench compare sebelum/sesudah refactor besar ────────
-# Usage: yuyu-release-check <tag-lama>
-# Contoh: yuyu-release-check v4.1.0
-yuyu-release-check() {
-  cd ~/yuyucode
-  local old_tag="${1}"
-  if [ -z "$old_tag" ]; then
-    echo "Usage: yuyu-release-check <git-tag>"
-    echo "Contoh: yuyu-release-check v4.1.0"
-    return 1
-  fi
-
-  echo "📊 Comparing bench: $old_tag → HEAD"
-
-  # Simpan baseline HEAD
-  node yuyu-bench.cjs --export
-  local head_snap=".yuyu/bench-export.json"
-  local old_snap=".yuyu/bench-${old_tag}.json"
-
-  # Checkout tag → run bench → export
-  git stash -q
-  git checkout -q "$old_tag" 2>/dev/null || { echo "❌ Tag '$old_tag' tidak ditemukan."; git stash pop -q; return 1; }
-  node yuyu-bench.cjs --export
-  cp "$head_snap" "$old_snap"
-
-  # Kembali ke HEAD
-  git checkout - -q 2>/dev/null
-  git stash pop -q 2>/dev/null
-
-  # Compare
-  node yuyu-bench.cjs --compare "$old_snap" "$head_snap"
+# ── Node version management ────────────────────────────────────────
+yuyu-node() {
+  local version="${1:-lts}"
+  echo "🔄 Switching to Node $version..."
+  nvm install "$version" 2>/dev/null || nvm use "$version"
+  echo "✅ Now using: $(node -v)"
+  echo "📦 Memory limit: $(node -e "console.log(process.execArgv.join(' '))" 2>/dev/null | grep -o "max-old-space-size=[0-9]*" | cut -d= -f2 || echo "default") MB"
 }
 
-# ── Tab completions ───────────────────────────────────────────────────────────
-_yuyu_bench_completion() {
-  local cur="${COMP_WORDS[COMP_CWORD]}"
-  COMPREPLY=( $(compgen -W "--save --reset --trend --watch --export --compare" -- "$cur") )
+# ── Performance profile ────────────────────────────────────────────
+yuyu-profile() {
+  echo "📱 Device: Snapdragon 680, 8GB RAM"
+  echo "⚙️  Node Options: $NODE_OPTIONS"
+  echo ""
+  echo "Current CPU Governor:"
+  cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo "N/A"
+  echo ""
+  echo "Temperature:"
+  cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1 | awk '{print $1/1000 "°C"}' || echo "N/A"
+  echo ""
+  echo "📊 Disk usage:"
+  df -h ~ | tail -1
 }
-complete -F _yuyu_bench_completion yuyu-bench
+
+# ── Aliases for common tasks ──────────────────────────────────────
+alias ylogs="tail -f ~/.yuyu-server.log"
+alias ystop="yuyu-server-stop"
+alias yrestart="yuyu-server-stop && yuyu-server-start"
+alias ytest="npm test -- --run"
+alias ylint="npm run lint -- --fix"
+alias ybuild="npm run build"
+alias ydev="npm run dev"
+alias yclean="yuyu-clean"
+alias ystat="yuyu-status"
+alias ybench="yuyu-bench"
+alias ymem="yuyu-mem"
+alias yprofile="yuyu-profile"
+alias ynode="yuyu-node"
+
+# ── Help command ──────────────────────────────────────────────────
+yuyu-help() {
+  echo "╔═══════════════════════════════════════════════════════════╗"
+  echo "║           YuyuCode Commands for Snapdragon 680            ║"
+  echo "╚═══════════════════════════════════════════════════════════╝"
+  echo ""
+  echo "📦 File Management:"
+  echo "  yuyu-cp <file> [dir]  - Copy file from Download to yuyucode"
+  echo "  yuyu-apply [zip]      - Apply zip file (with rollback on fail)"
+  echo "  yuyu-clean            - Remove build artifacts"
+  echo ""
+  echo "🖥️  Server:"
+  echo "  yuyu-server-start     - Start server with auto-restart"
+  echo "  yuyu-server-stop      - Stop server"
+  echo "  ylogs                 - Tail server logs"
+  echo "  yrestart              - Restart server"
+  echo ""
+  echo "📊 Status & Info:"
+  echo "  ystat / yuyu-status   - Show server, branch, and git status"
+  echo "  ymem / yuyu-mem       - Show memory usage"
+  echo "  yprofile              - Show device performance profile"
+  echo ""
+  echo "🛠️  Development:"
+  echo "  ytest / nt            - Run tests"
+  echo "  ylint / nl            - Run linter with fix"
+  echo "  ybuild                - Run build"
+  echo "  ydev                  - Run dev server"
+  echo "  ybench / yb           - Run benchmarks"
+  echo "  ynode [version]       - Switch Node.js version"
+  echo ""
+  echo "💡 Quick aliases: ylogs, ystop, yrestart, ytest, ylint, ystat"
+}
+
+echo "✅ ~/.bashrc YuyuCode (optimized for Snapdragon 680) telah dimuat!"
+echo "💡 Ketik 'yuyu-help' untuk melihat semua perintah"
