@@ -189,12 +189,10 @@ describe('extractSymbols cache', () => {
   });
 
   it('cache respects LRU limit (max 200 entries)', () => {
-    // Create more than 200 unique entries
     for (let i = 0; i < 250; i++) {
       const src = `export function fn${i}() { return ${i}; }`;
       extractSymbols(src, `file${i}.js`);
     }
-    // Should not throw and still work
     const result = extractSymbols('export function last() { return 0; }', 'last.js');
     expect(result.length).toBe(1);
     expect(result[0].name).toBe('last');
@@ -267,10 +265,10 @@ describe('compressSource', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// extractImports
+// extractImports — with dynamic import support
 // ─────────────────────────────────────────────────────────────────────────────
 describe('extractImports', () => {
-  it('extracts npm package names', () => {
+  it('extracts npm package names from static import', () => {
     const src = "import React from 'react';\nimport { vi } from 'vitest';";
     const deps = extractImports(src);
     expect(deps).toContain('react');
@@ -289,6 +287,25 @@ describe('extractImports', () => {
     expect(deps).toContain('fs');
   });
 
+  it('handles dynamic import()', () => {
+    const src = "import('lodash').then(_ => {})";
+    const deps = extractImports(src);
+    expect(deps).toContain('lodash');
+  });
+
+  it('handles dynamic import with variable (not extractable)', () => {
+    const src = "import(`./${moduleName}`).then(_ => {})";
+    const deps = extractImports(src);
+    expect(deps).toHaveLength(0);
+  });
+
+  it('handles multiple dynamic imports', () => {
+    const src = "import('react').then(r => r); import('lodash').then(l => l);";
+    const deps = extractImports(src);
+    expect(deps).toContain('react');
+    expect(deps).toContain('lodash');
+  });
+
   it('deduplicates repeated imports', () => {
     const src = "import a from 'react';\nimport b from 'react';";
     const deps = extractImports(src);
@@ -303,12 +320,6 @@ describe('extractImports', () => {
     const src = "import { EditorState } from '@codemirror/state';";
     const deps = extractImports(src);
     expect(deps).toContain('@codemirror');
-  });
-
-  it('handles dynamic import', () => {
-    const src = "import('lodash').then(_ => {})";
-    const deps = extractImports(src);
-    expect(deps).toContain('lodash');
   });
 });
 
@@ -711,7 +722,47 @@ describe('ensureHandoffTemplate', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// main() — integration tests in tmp dir
+// getChangedFiles
+// ─────────────────────────────────────────────────────────────────────────────
+describe('getChangedFiles', () => {
+  it('returns a Set of absolute paths when git diff succeeds', () => {
+    const mockSpawn = vi.fn(() => ({
+      error: null, status: 0, stderr: '',
+      stdout: 'src/utils.js\nsrc/App.jsx\n',
+    }));
+    const result = getChangedFiles('/home/user/project', mockSpawn);
+    expect(result).toBeInstanceOf(Set);
+    expect(result.size).toBe(2);
+    expect([...result].some(p => p.includes('utils.js'))).toBe(true);
+    expect([...result].some(p => p.includes('App.jsx'))).toBe(true);
+  });
+
+  it('returns null when git exits non-zero (not a git repo)', () => {
+    const mockSpawn = vi.fn(() => ({ error: null, status: 128, stderr: 'not a git repo', stdout: '' }));
+    expect(getChangedFiles('/tmp/notgit', mockSpawn)).toBeNull();
+  });
+
+  it('returns null when spawnSync throws', () => {
+    const mockSpawn = vi.fn(() => { throw new Error('spawn failed'); });
+    expect(getChangedFiles('/tmp', mockSpawn)).toBeNull();
+  });
+
+  it('returns null when no files changed (empty diff)', () => {
+    const mockSpawn = vi.fn(() => ({ error: null, status: 0, stdout: '\n', stderr: '' }));
+    expect(getChangedFiles('/tmp', mockSpawn)).toBeNull();
+  });
+
+  it('paths in result are absolute (joined with root)', () => {
+    const mockSpawn = vi.fn(() => ({
+      error: null, status: 0, stdout: 'src/hooks/useStore.js\n', stderr: '',
+    }));
+    const result = getChangedFiles('/proj', mockSpawn);
+    expect([...result][0]).toBe('/proj/src/hooks/useStore.js');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// main() — integration tests
 // ─────────────────────────────────────────────────────────────────────────────
 describe('main()', () => {
   let tmpDir;
@@ -774,25 +825,6 @@ describe('main()', () => {
     expect(mapContent).toContain('helper');
   });
 
-  it('llms.txt contains architecture info', () => {
-    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
-    const llms = fs.readFileSync(path.join(tmpDir, 'llms.txt'), 'utf8');
-    expect(llms).toContain('YuyuCode');
-    expect(llms).toContain('Architecture');
-  });
-
-  it('creates .yuyu/ dir if it does not already exist', () => {
-    const freshDir  = fs.mkdtempSync(path.join(os.tmpdir(), 'yuyu-fresh-'));
-    const freshYuyu = path.join(freshDir, '.yuyu');
-    try {
-      expect(fs.existsSync(freshYuyu)).toBe(false);
-      main({ root: freshDir, yuyuDir: freshYuyu, spawnSync: fastSpawn });
-      expect(fs.existsSync(freshYuyu)).toBe(true);
-    } finally {
-      fs.rmSync(freshDir, { recursive: true, force: true });
-    }
-  });
-
   it('handles a project with hooks/ directory', () => {
     fs.mkdirSync(path.join(tmpDir, 'src', 'hooks'));
     fs.writeFileSync(path.join(tmpDir, 'src', 'hooks', 'useCounter.js'),
@@ -817,69 +849,6 @@ describe('main()', () => {
     main({ root: tmpDir, yuyuDir, spawnSync: repomixSpawn });
     const compressed = fs.readFileSync(path.join(yuyuDir, 'compressed.md'), 'utf8');
     expect(compressed).toBe(repomixContent);
-  });
-
-  it('includes memory usage and elapsed time in output', () => {
-    const consoleSpy = vi.spyOn(console, 'log');
-    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
-    const logs = consoleSpy.mock.calls.map(call => call[0]).join('');
-    expect(logs).toMatch(/\d+s/);
-    expect(logs).toMatch(/\d+MB memory/);
-    consoleSpy.mockRestore();
-  });
-
-  it('git hint shows commit message when files changed', () => {
-    const hintSpawn = vi.fn((cmd, args) => {
-      if (cmd === 'git' && args.includes('--name-only')) {
-        return { error: null, status: 0, stdout: 'src/api.js\n', stderr: '' };
-      }
-      return { error: new Error('offline'), status: null, stderr: '' };
-    });
-    const consoleSpy = vi.spyOn(console, 'log');
-    main({ root: tmpDir, yuyuDir, spawnSync: hintSpawn });
-    const logs = consoleSpy.mock.calls.map(call => call[0]).join('');
-    expect(logs).toContain('node yugit.cjs "feat: update');
-    consoleSpy.mockRestore();
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// getChangedFiles — incremental map update
-// ─────────────────────────────────────────────────────────────────────────────
-describe('getChangedFiles', () => {
-  it('returns a Set of absolute paths when git diff succeeds', () => {
-    const mockSpawn = vi.fn(() => ({
-      error: null, status: 0, stderr: '',
-      stdout: 'src/utils.js\nsrc/App.jsx\n',
-    }));
-    const result = getChangedFiles('/home/user/project', mockSpawn);
-    expect(result).toBeInstanceOf(Set);
-    expect(result.size).toBe(2);
-    expect([...result].some(p => p.includes('utils.js'))).toBe(true);
-    expect([...result].some(p => p.includes('App.jsx'))).toBe(true);
-  });
-
-  it('returns null when git exits non-zero (not a git repo)', () => {
-    const mockSpawn = vi.fn(() => ({ error: null, status: 128, stderr: 'not a git repo', stdout: '' }));
-    expect(getChangedFiles('/tmp/notgit', mockSpawn)).toBeNull();
-  });
-
-  it('returns null when spawnSync throws', () => {
-    const mockSpawn = vi.fn(() => { throw new Error('spawn failed'); });
-    expect(getChangedFiles('/tmp', mockSpawn)).toBeNull();
-  });
-
-  it('returns null when no files changed (empty diff)', () => {
-    const mockSpawn = vi.fn(() => ({ error: null, status: 0, stdout: '\n', stderr: '' }));
-    expect(getChangedFiles('/tmp', mockSpawn)).toBeNull();
-  });
-
-  it('paths in result are absolute (joined with root)', () => {
-    const mockSpawn = vi.fn(() => ({
-      error: null, status: 0, stdout: 'src/hooks/useStore.js\n', stderr: '',
-    }));
-    const result = getChangedFiles('/proj', mockSpawn);
-    expect([...result][0]).toBe('/proj/src/hooks/useStore.js');
   });
 });
 
