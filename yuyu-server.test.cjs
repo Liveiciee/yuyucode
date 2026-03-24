@@ -1,5 +1,5 @@
 // @vitest-environment node
-// yuyu-server.test.cjs — Test suite untuk yuyu-server.js
+// yuyu-server.test.cjs — Test suite untuk yuyu-server.js v2
 //
 // Architecture note: yuyu-server.js uses require() (CJS) but package.json has
 // "type":"module", so Vitest (ESM-first) cannot require() it directly.
@@ -100,11 +100,11 @@ afterAll(() => { if (server) server.close(); });
 
 // ── handleForTest — mirrors yuyu-server.js handle() ──────────────────────────
 const HOME_TEST = os.tmpdir();
+const READ_CACHE = new Map();
 
 function execSafeTest(command, cwd, timeoutMs = 5000) {
   const { execSync } = require('child_process');
   try {
-    // lgtm[js/command-line-injection] — test helper only, commands are hardcoded fixtures
     const out = execSync(command + ' 2>&1', {
       cwd: cwd || HOME_TEST, encoding: 'utf8',
       timeout: timeoutMs, maxBuffer: 1024 * 1024,
@@ -128,8 +128,30 @@ function applyPatchTest(filePath, oldStr, newStr) {
   return { ok: false, data: '⚠ old_str tidak ditemukan' };
 }
 
+function buildTreeTest(dirPath, depth, maxDepth, prefix) {
+  if (depth > maxDepth) return '';
+  let entries;
+  try { entries = fs.readdirSync(dirPath, { withFileTypes: true }); }
+  catch { return ''; }
+  const skip = new Set(['.git', 'node_modules']);
+  entries = entries.filter(e => !skip.has(e.name)).sort((a, b) => {
+    if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  let out = '';
+  entries.forEach((e, i) => {
+    const last = i === entries.length - 1;
+    const branch = last ? '└── ' : '├── ';
+    const child = last ? '    ' : '│   ';
+    out += prefix + branch + e.name + (e.isDirectory() ? '/' : '') + '\n';
+    if (e.isDirectory()) {
+      out += buildTreeTest(path.join(dirPath, e.name), depth + 1, maxDepth, prefix + child);
+    }
+  });
+  return out;
+}
+
 // Note: from/to/paths/depth destructured here ARE used in the handlers below.
-// CodeQL may flag them as unused — this is a false positive due to CJS scope analysis.
 function handleForTest(payload) {
   const { type, path: filePath, content, command, from, to, paths, depth } = payload;
 
@@ -172,21 +194,25 @@ function handleForTest(payload) {
     if (!filePath) return { ok: false, data: 'path diperlukan' };
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, content || '', 'utf8');
+    READ_CACHE.delete(filePath);
     return { ok: true, data: '✅ Tersimpan' };
   }
 
   if (type === 'append') {
     if (!filePath) return { ok: false, data: 'path diperlukan' };
     fs.appendFileSync(filePath, content || '', 'utf8');
+    READ_CACHE.delete(filePath);
     return { ok: true, data: '✅ Ditambahkan' };
   }
 
   if (type === 'patch') {
-    return applyPatchTest(filePath, payload.old_str, payload.new_str);
+    const result = applyPatchTest(filePath, payload.old_str, payload.new_str);
+    if (result.ok) READ_CACHE.delete(filePath);
+    return result;
   }
 
   if (type === 'delete') {
-    try { fs.unlinkSync(filePath); }
+    try { fs.unlinkSync(filePath); READ_CACHE.delete(filePath); }
     catch (_e) { return { ok: false, data: 'File tidak ada' }; }
     return { ok: true, data: '🗑 Dihapus' };
   }
@@ -215,7 +241,7 @@ function handleForTest(payload) {
     const toPath   = payload.to;
     if (!fromPath || !toPath) return { ok: false, data: 'from dan to diperlukan' };
     fs.mkdirSync(path.dirname(toPath), { recursive: true });
-    try { fs.renameSync(fromPath, toPath); }
+    try { fs.renameSync(fromPath, toPath); READ_CACHE.delete(fromPath); READ_CACHE.delete(toPath); }
     catch (_e) { return { ok: false, data: 'Source tidak ada' }; }
     return { ok: true, data: '✅ Dipindah' };
   }
@@ -223,7 +249,8 @@ function handleForTest(payload) {
   if (type === 'tree') {
     const maxDepth = parseInt(depth) || 3;
     if (!fs.existsSync(filePath)) return { ok: false, data: 'Path tidak ada' };
-    return { ok: true, data: filePath + '/ (depth=' + maxDepth + ')' };
+    const tree = path.basename(filePath) + '/\n' + buildTreeTest(filePath, 1, maxDepth, '');
+    return { ok: true, data: tree || '(kosong)' };
   }
 
   if (type === 'exec') {
@@ -377,7 +404,7 @@ describe('patch', () => {
   });
 });
 
-describe('mkdir / list / info / move', () => {
+describe('mkdir / list / info / move / tree', () => {
   let tmpDir;
   beforeEach(() => { tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yuyu-dir-')); });
   afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
@@ -419,6 +446,17 @@ describe('mkdir / list / info / move', () => {
     expect(r.body.ok).toBe(true);
     expect(fs.existsSync(dst)).toBe(true);
     expect(fs.existsSync(src)).toBe(false);
+  });
+
+  it('tree returns directory structure', async () => {
+    fs.mkdirSync(path.join(tmpDir, 'sub'));
+    fs.writeFileSync(path.join(tmpDir, 'file.js'), '');
+    fs.writeFileSync(path.join(tmpDir, 'sub', 'nested.js'), '');
+    const r = await request(PORT, { type: 'tree', path: tmpDir, depth: 2 });
+    expect(r.body.ok).toBe(true);
+    expect(r.body.data).toContain('file.js');
+    expect(r.body.data).toContain('sub/');
+    expect(r.body.data).toContain('nested.js');
   });
 });
 
@@ -537,4 +575,61 @@ describe('invalid JSON body', () => {
     });
     expect(r.body.ok).toBe(false);
   });
+});
+
+describe('cache invalidation', () => {
+  let tmpDir, filePath;
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yuyu-cache-'));
+    filePath = path.join(tmpDir, 'cache.txt');
+    fs.writeFileSync(filePath, 'original');
+  });
+  afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
+
+  it('write invalidates cache', async () => {
+    await request(PORT, { type: 'read', path: filePath });
+    await request(PORT, { type: 'write', path: filePath, content: 'updated' });
+    const r = await request(PORT, { type: 'read', path: filePath });
+    expect(r.body.data).toBe('updated');
+  });
+
+  it('append invalidates cache', async () => {
+    await request(PORT, { type: 'read', path: filePath });
+    await request(PORT, { type: 'append', path: filePath, content: '\nappended' });
+    const r = await request(PORT, { type: 'read', path: filePath });
+    expect(r.body.data).toContain('appended');
+  });
+
+  it('delete invalidates cache', async () => {
+    await request(PORT, { type: 'read', path: filePath });
+    await request(PORT, { type: 'delete', path: filePath });
+    const r = await request(PORT, { type: 'read', path: filePath });
+    expect(r.body.ok).toBe(false);
+  });
+
+  it('patch invalidates cache', async () => {
+    await request(PORT, { type: 'read', path: filePath });
+    await request(PORT, { type: 'patch', path: filePath, old_str: 'original', new_str: 'patched' });
+    const r = await request(PORT, { type: 'read', path: filePath });
+    expect(r.body.data).toBe('patched');
+  });
+});
+
+describe('ARM64 compatibility', () => {
+  it('handles large file reads without OOM', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yuyu-large-'));
+    const filePath = path.join(tmpDir, 'large.txt');
+    // 2MB file (slightly smaller for CI)
+    const content = 'x'.repeat(2 * 1024 * 1024);
+    fs.writeFileSync(filePath, content);
+    
+    const startMem = process.memoryUsage().heapUsed;
+    const r = await request(PORT, { type: 'read', path: filePath });
+    const endMem = process.memoryUsage().heapUsed;
+    
+    expect(r.body.ok).toBe(true);
+    expect(r.body.data).toHaveLength(content.length);
+    expect(endMem - startMem).toBeLessThan(15 * 1024 * 1024); // less than 15MB increase
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }, 30000);
 });
