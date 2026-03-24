@@ -1,3 +1,10 @@
+// ============================================================
+// FILE: yuyu-bench-ci.cjs
+// ============================================================
+// CI benchmark runner — output JSON for github-action-benchmark
+// ARM64 optimized, metadata, multiple parse patterns
+// ============================================================
+
 #!/usr/bin/env node
 // yuyu-bench-ci.cjs — CI benchmark runner v2
 // Runs vitest bench dan output JSON untuk github-action-benchmark
