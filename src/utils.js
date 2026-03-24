@@ -1,27 +1,23 @@
 import { callServer } from './api.js';
 import { diffLines } from 'diff';
 
-// ── CONSTANTS ──
-const MAX_MYERS = 2000;
-
-// ── TOKEN COUNT ──
+// ── TOKEN COUNT & ICON ────────────────────────────────────────────────────────
 export function countTokens(msgs) {
   return Math.round(msgs.reduce((a, m) => a + (m.content?.length || 0), 0) / 4);
 }
 
-// ── FILE ICON ──
 export function getFileIcon(name) {
   const ext = name.split('.').pop()?.toLowerCase();
   const icons = {
-    jsx: 'jsx', tsx: 'tsx', js: 'js', ts: 'ts', json: '{}',
-    md: 'md', yml: 'yml', yaml: 'yml', css: 'css', html: 'html', sh: 'sh',
-    txt: 'txt', png: 'img', jpg: 'img', svg: 'svg', py: 'py', rb: 'rb',
-    go: 'go', rs: 'rs', java: 'java', kt: 'kt', swift: 'sw',
+    jsx:'jsx', tsx:'tsx', js:'js', ts:'ts', json:'{}',
+    md:'md', yml:'yml', yaml:'yml', css:'css', html:'html', sh:'sh',
+    txt:'txt', png:'img', jpg:'img', svg:'svg', py:'py', rb:'rb',
+    go:'go', rs:'rs', java:'java', kt:'kt', swift:'sw',
   };
   return icons[ext] || ext || '?';
 }
 
-// ── SYNTAX HIGHLIGHT ──
+// ── SYNTAX HIGHLIGHT ──────────────────────────────────────────────────────────
 export function hl(code, lang = '') {
   let s = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const L = lang.toLowerCase();
@@ -37,8 +33,8 @@ export function hl(code, lang = '') {
   }
 
   if (L === 'json') {
-    s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*")(\s*:)/g, '<span style="color:#79b8ff">$1</span>$2'));
-    s = protect(s, t => t.replace(/:\s*("(?:[^"\\]|\\.)*")/g, ': <span style="color:#98c379">$1</span>'));
+    s = protect(s, t => t.replace(/(\"(?:[^\"\\]|\\.)*\")(\s*:)/g, '<span style="color:#79b8ff">$1</span>$2'));
+    s = protect(s, t => t.replace(/:\s*(\"(?:[^\"\\]|\\.)*\")/g, ': <span style="color:#98c379">$1</span>'));
     s = protect(s, t => t.replace(/\b(true|false|null)\b/g, '<span style="color:#f97583">$1</span>'));
     s = protect(s, t => t.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span style="color:#d19a66">$1</span>'));
     return s;
@@ -46,14 +42,14 @@ export function hl(code, lang = '') {
   if (L === 'bash' || L === 'sh') {
     s = protect(s, t => t.replace(/(#.*$)/gm, '<span style="color:#6a737d">$1</span>'));
     s = protect(s, t => t.replace(/\b(echo|cd|ls|git|npm|node|export|source|if|then|fi|for|do|done|while|function|return|mkdir|cp|mv|rm|chmod|curl|wget)\b/g, '<span style="color:#c678dd">$1</span>'));
-    s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
+    s = protect(s, t => t.replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
     s = protect(s, t => t.replace(/(\$\w+|\$\{[^}]+\})/g, '<span style="color:#79b8ff">$1</span>'));
     return s;
   }
   if (L === 'python' || L === 'py') {
     s = protect(s, t => t.replace(/(#.*$)/gm, '<span style="color:#6a737d">$1</span>'));
     s = protect(s, t => t.replace(/(""".*?"""|'''.*?''')/gs, '<span style="color:#98c379">$1</span>'));
-    s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
+    s = protect(s, t => t.replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
     s = protect(s, t => t.replace(/\b(def|class|import|from|return|if|elif|else|for|while|try|except|with|as|in|not|and|or|True|False|None|lambda|yield|async|await|pass|raise|del|global|nonlocal)\b/g, '<span style="color:#c678dd">$1</span>'));
     s = protect(s, t => t.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span style="color:#d19a66">$1</span>'));
     return s;
@@ -65,24 +61,23 @@ export function hl(code, lang = '') {
     s = protect(s, t => t.replace(/:\s*([^;{]+)/g, ': <span style="color:#98c379">$1</span>'));
     return s;
   }
-  
+  // JS/JSX/TS/TSX and default
   s = protect(s, t => t.replace(/(\/\/.*$|\/\*.*?\*\/)/gms, '<span style="color:#6a737d">$1</span>'));
   s = protect(s, t => t.replace(/(`(?:[^`\\]|\\.)*`)/g, '<span style="color:#98c379">$1</span>'));
-  s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
+  s = protect(s, t => t.replace(/(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
   s = protect(s, t => t.replace(/\b(const|let|var|function|return|if|else|for|while|import|export|default|async|await|try|catch|finally|class|new|this|from|of|in|typeof|instanceof|null|undefined|true|false|throw|switch|case|break|continue|extends|super|static|get|set|type|interface|enum|as|keyof|readonly)\b/g, '<span style="color:#c678dd">$1</span>'));
   s = protect(s, t => t.replace(/\b([A-Z][a-zA-Z0-9]*)\b/g, '<span style="color:#79b8ff">$1</span>'));
   s = protect(s, t => t.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span style="color:#d19a66">$1</span>'));
   return s;
 }
 
-// ── PATH RESOLVER ──
+// ── PATH RESOLVER ─────────────────────────────────────────────────────────────
 export function resolvePath(base, p) {
   if (!p) return base;
   if (!base) return p;
   const b = base.replace(/\/$/, '');
   const q = p.replace(/^\//, '');
   if (q === b || q.startsWith(b + '/')) return q;
-  
   const baseName = b.split('/').pop();
   if (baseName && (q === baseName || q.startsWith(baseName + '/'))) {
     return b + '/' + q.slice(baseName.length).replace(/^\//, '');
@@ -91,97 +86,93 @@ export function resolvePath(base, p) {
   return b + '/' + stripped;
 }
 
-// ── ACTION PARSER ──
+// ── ACTION PARSER ─────────────────────────────────────────────────────────────
 export function parseActions(text) {
   const regex = /```action\n(.*?)```/gs;
   const actions = [];
   let m;
   while ((m = regex.exec(text)) !== null) {
-    try { 
-      actions.push(JSON.parse(m[1].trim())); 
-    } catch (_e) { 
-      // ignored
-    }
+    try { actions.push(JSON.parse(m[1].trim())); } catch (_e) { }
   }
   return actions;
 }
 
-// ── SMART DIFF ENGINE ──
-function buildFrequencyMap(lines) {
-  const map = new Map();
-  for (const l of lines) {
-    map.set(l, (map.get(l) || 0) + 1);
-  }
-  return map;
-}
+// ── DIFF ENGINE — segmentedDiff dengan Triple Guard ───────────────────────────
+// Filosofi: konservatif. Kalau ragu, fallback ke Myers murni (diffLines).
+// Guard 1: min 30% unique anchor lines sebelum boleh segmented
+// Guard 2: max chunk gap 500 baris antar anchor
+// Guard 3: validasi hasil — kalau meledak (>1.5x), fallback Myers
+const MYERS_THRESHOLD  = 2000;  // file < threshold → selalu Myers (akurat, cepat)
+const MIN_ANCHOR_RATIO = 0.3;   // (Guard 1) minimal 30% baris unik
+const MAX_CHUNK_SIZE   = 500;   // (Guard 2) max celah antar anchor
+const MAX_DIFF_RATIO   = 1.5;   // (Guard 3) max rasio hasil diff vs panjang file
 
-function findAnchors(aLines, bLines) {
-  const aFreq = buildFrequencyMap(aLines);
-  const bFreq = buildFrequencyMap(bLines);
-  const bIndex = new Map();
-  
-  bLines.forEach((l, i) => { 
-    if (bFreq.get(l) === 1) bIndex.set(l, i); 
-  });
+function findStrictAnchors(aLines, bLines) {
+  const aFreq = new Map(), bFreq = new Map();
+  for (const l of aLines) aFreq.set(l, (aFreq.get(l) || 0) + 1);
+  for (const l of bLines) bFreq.set(l, (bFreq.get(l) || 0) + 1);
+
+  const bMap = new Map();
+  bLines.forEach((l, i) => { if (bFreq.get(l) === 1) bMap.set(l, i); });
 
   const anchors = [];
   let lastB = -1;
-  
   for (let ai = 0; ai < aLines.length; ai++) {
     const line = aLines[ai];
-    if (aFreq.get(line) === 1 && bIndex.has(line)) {
-      const bi = bIndex.get(line);
-      if (bi > lastB) {
-        anchors.push({ a: ai, b: bi });
-        lastB = bi;
-      }
+    if (aFreq.get(line) === 1 && bMap.has(line)) {
+      const bi = bMap.get(line);
+      if (bi > lastB) { anchors.push({ a: ai, b: bi }); lastB = bi; }
     }
   }
   return anchors;
 }
 
 function segmentedDiff(aLines, bLines) {
-  const anchors = findAnchors(aLines, bLines);
-  if (anchors.length === 0) {
+  const maxLines = Math.max(aLines.length, bLines.length);
+  const anchors  = findStrictAnchors(aLines, bLines);
+
+  // Guard 1
+  if (anchors.length < maxLines * MIN_ANCHOR_RATIO) {
     return diffLines(aLines.join('\n'), bLines.join('\n'));
   }
 
   const result = [];
-  let prevA = 0;
-  let prevB = 0;
+  let prevA = 0, prevB = 0;
 
   for (const { a, b } of anchors) {
-    const aChunk = aLines.slice(prevA, a);
-    const bChunk = bLines.slice(prevB, b);
-    
+    // Guard 2
+    if ((a - prevA) > MAX_CHUNK_SIZE || (b - prevB) > MAX_CHUNK_SIZE) {
+      return diffLines(aLines.join('\n'), bLines.join('\n'));
+    }
+    const aChunk = aLines.slice(prevA, a), bChunk = bLines.slice(prevB, b);
     if (aChunk.length || bChunk.length) {
       result.push(...diffLines(aChunk.join('\n'), bChunk.join('\n')));
     }
-    
-    // Titik jangkar (Anchor) dianggap equal (tidak berubah)
     result.push({ value: aLines[a] + '\n', added: false, removed: false });
-    prevA = a + 1; 
-    prevB = b + 1;
+    prevA = a + 1; prevB = b + 1;
   }
 
-  const aTail = aLines.slice(prevA);
-  const bTail = bLines.slice(prevB);
-  
-  if (aTail.length || bTail.length) {
-    result.push(...diffLines(aTail.join('\n'), bTail.join('\n')));
+  const aTail = aLines.slice(prevA), bTail = bLines.slice(prevB);
+  if (aTail.length || bTail.length) result.push(...diffLines(aTail.join('\n'), bTail.join('\n')));
+
+  // Guard 3
+  if (result.length > maxLines * MAX_DIFF_RATIO) {
+    return diffLines(aLines.join('\n'), bLines.join('\n'));
   }
+
   return result;
 }
 
-// ── DIFF FORMATTERS ──
+// ── Diff line formatter helpers ───────────────────────────────────────────────
 function formatDiffLine(hunk, line, oldLine, newLine) {
   if (hunk.removed) return { text: `- L${oldLine}: ${line}`, oldInc: 1, newInc: 0 };
   if (hunk.added)   return { text: `+ L${newLine}: ${line}`, oldInc: 0, newInc: 1 };
+  /* istanbul ignore next */
   return null;
 }
 
-function advanceContext(hunk, lines) {
-  const len = lines.length;
+function advanceContext(hunk, hunkLines) {
+  const len = hunkLines.length;
   return {
     oldInc: hunk.removed ? 0 : len,
     newInc: hunk.added   ? 0 : len,
@@ -193,103 +184,56 @@ export function generateDiff(original, patched, maxLines = 40) {
 
   const aLines = original.split('\n');
   const bLines = patched.split('\n');
-  
-  const hunks = (aLines.length > MAX_MYERS || bLines.length > MAX_MYERS)
+
+  const hunks = (aLines.length > MYERS_THRESHOLD || bLines.length > MYERS_THRESHOLD)
     ? segmentedDiff(aLines, bLines)
     : diffLines(original, patched);
 
   const result = [];
-  let shown = 0;
-  let oldLine = 1;
-  let newLine = 1;
+  let shown = 0, oldLine = 1, newLine = 1;
 
   for (const hunk of hunks) {
-    const hunkLines = hunk.value.split('\n').filter((l, i, arr) => !(i === arr.length - 1 && l === ''));
+    const hunkLines = hunk.value.split('\n').filter((l, i, a) => !(i === a.length - 1 && l === ''));
 
     if (!hunk.added && !hunk.removed) {
       const adv = advanceContext(hunk, hunkLines);
-      oldLine += adv.oldInc; 
+      oldLine += adv.oldInc;
       newLine += adv.newInc;
       continue;
     }
 
     for (const line of hunkLines) {
-      if (shown >= maxLines) {
-        return result.concat('... (baris lebih)').join('\n');
-      }
+      if (shown >= maxLines) { result.push('... (diff limit reached)'); return result.join('\n'); }
       const fmt = formatDiffLine(hunk, line, oldLine, newLine);
-      if (fmt) {
-        result.push(fmt.text);
-        oldLine += fmt.oldInc; 
-        newLine += fmt.newInc;
-        shown++;
-      }
+      if (fmt) { result.push(fmt.text); oldLine += fmt.oldInc; newLine += fmt.newInc; shown++; }
     }
-    
-    if (!hunk.removed) newLine += hunkLines.length - (hunk.added ? hunkLines.length : 0);
-    if (!hunk.added)   oldLine += hunkLines.length - (hunk.removed ? hunkLines.length : 0);
   }
-  
   return result.join('\n');
 }
 
-// ── ACTION HANDLERS ──
+// ── ACTION EXECUTOR ───────────────────────────────────────────────────────────
 const ACTION_HANDLERS = {
   async read_file(action, base, cs) {
     const payload = { type: 'read', path: resolvePath(base, action.path) };
     if (action.from) payload.from = action.from;
     if (action.to)   payload.to   = action.to;
-    
     const r = await cs(payload);
     if (r.ok && r.meta) {
       r.data = `[Lines ${action.from || 1}–${action.to || r.meta.totalLines} / ${r.meta.totalLines} | ${Math.round(r.meta.totalChars / 1000)}KB]\n` + r.data;
     }
     return r;
   },
-  
-  write_file: (a, base, cs) => cs({ 
-    type: 'write', path: resolvePath(base, a.path), content: a.content 
-  }),
-  
-  append_file: (a, base, cs) => cs({ 
-    type: 'append', path: resolvePath(base, a.path), content: a.content 
-  }),
-  
-  patch_file: (a, base, cs) => cs({ 
-    type: 'patch', path: resolvePath(base, a.path), old_str: a.old_str, new_str: a.new_str ?? '' 
-  }),
-  
-  tree: (a, base, cs) => cs({ 
-    type: 'tree', path: resolvePath(base, a.path || ''), depth: a.depth || 3 
-  }),
-  
-  exec: (a, base, cs) => cs({ 
-    type: 'exec', path: base, command: a.command 
-  }),
-  
-  web_search: (a, _b, cs) => cs({ 
-    type: 'web_search', query: a.query 
-  }),
-  
-  file_info: (a, base, cs) => cs({ 
-    type: 'info', path: resolvePath(base, a.path) 
-  }),
-  
-  delete_file: (a, base, cs) => cs({ 
-    type: 'delete', path: resolvePath(base, a.path) 
-  }),
-  
-  mkdir: (a, base, cs) => cs({ 
-    type: 'mkdir', path: resolvePath(base, a.path) 
-  }),
-  
-  find_symbol: (a, base, cs) => cs({ 
-    type: 'search', path: resolvePath(base, a.path || ''), content: a.symbol 
-  }),
-  
-  mcp: (a, _b, cs) => cs({ 
-    type: 'mcp', tool: a.tool, action: a.action, params: a.params || {} 
-  }),
+  write_file:  (a, base, cs) => cs({ type: 'write',  path: resolvePath(base, a.path), content: a.content }),
+  append_file: (a, base, cs) => cs({ type: 'append', path: resolvePath(base, a.path), content: a.content }),
+  patch_file:  (a, base, cs) => cs({ type: 'patch',  path: resolvePath(base, a.path), old_str: a.old_str, new_str: a.new_str ?? '' }),
+  tree:        (a, base, cs) => cs({ type: 'tree',   path: resolvePath(base, a.path || ''), depth: a.depth || 3 }),
+  exec:        (a, base, cs) => cs({ type: 'exec',   path: base, command: a.command }),
+  web_search:  (a, _b,  cs) => cs({ type: 'web_search', query: a.query }),
+  file_info:   (a, base, cs) => cs({ type: 'info',   path: resolvePath(base, a.path) }),
+  delete_file: (a, base, cs) => cs({ type: 'delete', path: resolvePath(base, a.path) }),
+  mkdir:       (a, base, cs) => cs({ type: 'mkdir',  path: resolvePath(base, a.path) }),
+  find_symbol: (a, base, cs) => cs({ type: 'search', path: resolvePath(base, a.path || ''), content: a.symbol }),
+  mcp:         (a, _b,  cs) => cs({ type: 'mcp', tool: a.tool, action: a.action, params: a.params || {} }),
 
   async search(action, base, cs) {
     return cs({ type: 'search', path: resolvePath(base, action.path || ''), content: action.query });
@@ -298,21 +242,15 @@ const ACTION_HANDLERS = {
   async list_files(action, base, cs) {
     const r = await cs({ type: 'list', path: resolvePath(base, action.path) });
     if (r.ok && Array.isArray(r.data)) {
-      r.data = r.data.map(f => {
-        const icon = f.isDir ? '📁 ' : '📄 ';
-        const sizeInfo = f.size ? ` (${Math.round(f.size / 1024)}KB)` : '';
-        return icon + f.name + sizeInfo;
-      }).join('\n');
+      r.data = r.data
+        .map(f => (f.isDir ? '📁 ' : '📄 ') + f.name + (f.size ? ` (${Math.round(f.size / 1024)}KB)` : ''))
+        .join('\n');
     }
     return r;
   },
 
   move_file(action, base, cs) {
-    return cs({ 
-      type: 'move', 
-      from: resolvePath(base, action.from || action.path), 
-      to: resolvePath(base, action.to) 
-    });
+    return cs({ type: 'move', from: resolvePath(base, action.from || action.path), to: resolvePath(base, action.to) });
   },
 
   async create_structure(action, base, cs) {
@@ -327,65 +265,66 @@ const ACTION_HANDLERS = {
   async lint(action, base, cs) {
     const r = await cs({ type: 'read', path: resolvePath(base, action.path) });
     if (!r.ok) return r;
-    
     const issues = [];
-    const lines = r.data.split('\n');
+    const lines  = r.data.split('\n');
     let opens = 0, closes = 0;
-    
     lines.forEach((line, i) => {
-      opens += (line.match(/[{[(]/g) || []).length;
+      opens  += (line.match(/[{[(]/g) || []).length;
       closes += (line.match(/[}\])]/g) || []).length;
-      if (line.includes('console.log') && !action.allowLogs) issues.push(`Line ${i + 1}: console.log`);
-      if (line.length > 200) issues.push(`Line ${i + 1}: baris terlalu panjang (${line.length})`);
+      if (line.includes('console.log') && !action.allowLogs) issues.push('Line ' + (i + 1) + ': console.log');
+      if (line.length > 200) issues.push('Line ' + (i + 1) + ': baris terlalu panjang (' + line.length + ')');
     });
-    
-    if (opens !== closes) issues.push(`Bracket tidak balance: ${opens} buka, ${closes} tutup`);
+    if (opens !== closes) issues.push('Bracket tidak balance: ' + opens + ' buka, ' + closes + ' tutup');
     return { ok: true, data: issues.length ? issues.join('\n') : '✅ Clean' };
   },
 };
 
 export async function executeAction(action, baseFolder, _callServer = callServer) {
-  const base = baseFolder || '';
+  const base    = baseFolder || '';
   const handler = ACTION_HANDLERS[action.type];
   if (handler) return handler(action, base, _callServer);
   return { ok: false, data: 'Unknown action type: ' + action.type };
 }
 
-// ── SHARED SYNTAX CHECK ──
+// ── SHARED SYNTAX CHECK ───────────────────────────────────────────────────────
 export function getSyntaxCmd(ext, absPath) {
-  if (['js', 'cjs', 'mjs'].includes(ext)) return `node --check "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
-  if (ext === 'json') return `python3 -m json.tool "${absPath}" > /dev/null 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
-  if (ext === 'sh') return `bash -n "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  if (['js', 'cjs', 'mjs'].includes(ext))
+    return `node --check "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  if (ext === 'json')
+    return `python3 -m json.tool "${absPath}" > /dev/null 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  if (ext === 'sh')
+    return `bash -n "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
   return null;
 }
 
 export async function verifySyntaxBatch(targets, folder, setMessages, sendMsgRef = null) {
   for (const wr of targets) {
-    const ext = (wr.path || '').split('.').pop().toLowerCase();
+    const ext     = (wr.path || '').split('.').pop().toLowerCase();
     const absPath = resolvePath(folder, wr.path);
-    const cmd = getSyntaxCmd(ext, absPath);
+    const cmd     = getSyntaxCmd(ext, absPath);
     if (!cmd) continue;
-    
-    const vr = await callServer({ type: 'exec', path: folder, command: cmd });
+    const vr   = await callServer({ type: 'exec', path: folder, command: cmd });
     const vOut = (vr.data || '').trim();
     if (!vOut) continue;
-    
-    const hasError = vOut.includes('SYNTAX_ERR') || (vOut.toLowerCase().includes('error') && !vOut.includes('SYNTAX_OK'));
-    
+    const hasError = vOut.includes('SYNTAX_ERR') ||
+      (vOut.toLowerCase().includes('error') && !vOut.includes('SYNTAX_OK'));
     if (hasError) {
       const fname = (wr.path || '').split('/').pop();
-      setMessages(m => [...m, { 
-        role: 'assistant', 
-        content: `Syntax error di ${fname}:\n\`\`\`\n${vOut.slice(0, 300)}\n\`\`\``, 
-        actions: [] 
+      setMessages(m => [...m, {
+        role: 'assistant',
+        content: 'Syntax error di ' + fname + ':\n```\n' + vOut.slice(0, 300) + '\n```',
+        actions: [],
       }]);
       if (sendMsgRef) {
-        setTimeout(() => sendMsgRef.current?.(`Fix syntax error di ${wr.path}:\n\`\`\`\n${vOut.slice(0, 300)}\n\`\`\``), 700);
+        setTimeout(() => sendMsgRef.current?.(
+          'Fix syntax error di ' + wr.path + ':\n```\n' + vOut.slice(0, 300) + '\n```'
+        ), 700);
       }
     }
   }
 }
 
+// ── SHARED FILE BACKUP ────────────────────────────────────────────────────────
 export async function backupFiles(targets, folder) {
   const backups = [];
   for (const a of targets) {
