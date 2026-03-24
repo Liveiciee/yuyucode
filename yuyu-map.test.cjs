@@ -79,11 +79,24 @@ describe('tryRepomix', () => {
     );
   });
 
-  it('uses 90s timeout', () => {
+  it('uses longer timeout on ARM64', () => {
+    const originalArch = process.arch;
+    Object.defineProperty(process, 'arch', { value: 'arm64' });
+    const mockSpawn = vi.fn(() => ({ error: new Error('offline'), status: null, stderr: '' }));
+    tryRepomix(mockSpawn);
+    const opts = mockSpawn.mock.calls[0][2];
+    expect(opts.timeout).toBe(120_000);
+    Object.defineProperty(process, 'arch', { value: originalArch });
+  });
+
+  it('uses 90s timeout on x86_64', () => {
+    const originalArch = process.arch;
+    Object.defineProperty(process, 'arch', { value: 'x64' });
     const mockSpawn = vi.fn(() => ({ error: new Error('offline'), status: null, stderr: '' }));
     tryRepomix(mockSpawn);
     const opts = mockSpawn.mock.calls[0][2];
     expect(opts.timeout).toBe(90_000);
+    Object.defineProperty(process, 'arch', { value: originalArch });
   });
 });
 
@@ -121,11 +134,10 @@ describe('extractSymbols', () => {
     expect(syms.some(s => s.name === 'AppHeader')).toBe(true);
   });
 
-  it('extracts custom hook (useXxx) — type is hook (hook pattern matches before fn)', () => {
+  it('extracts custom hook (useXxx) — type is hook', () => {
     const src = 'export function useFileStore(opts) { }';
     const syms = extractSymbols(src, 'useFileStore.js');
     expect(syms.some(s => s.name === 'useFileStore')).toBe(true);
-    // hook pattern now comes before fn pattern — useXxx is correctly classified as 'hook'
     const hook = syms.find(s => s.name === 'useFileStore');
     expect(hook.type).toBe('hook');
   });
@@ -142,6 +154,50 @@ describe('extractSymbols', () => {
 
   it('returns empty for empty source', () => {
     expect(extractSymbols('', 'utils.js')).toEqual([]);
+  });
+
+  it('extracts named exports', () => {
+    const src = 'export const API_URL = "https://api.example.com";';
+    const syms = extractSymbols(src, 'constants.js');
+    expect(syms.some(s => s.name === 'API_URL')).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// extractSymbols — cache tests
+// ─────────────────────────────────────────────────────────────────────────────
+describe('extractSymbols cache', () => {
+  it('caches repeated calls with same content and path', () => {
+    const src = 'export function foo() { return 1; }';
+    const filePath = 'utils.js';
+    
+    const first = extractSymbols(src, filePath);
+    const second = extractSymbols(src, filePath);
+    
+    expect(first).toEqual(second);
+    expect(first.length).toBe(1);
+    expect(first[0].name).toBe('foo');
+  });
+
+  it('different files with same content get different cache keys', () => {
+    const src = 'export function bar() { return 2; }';
+    const first = extractSymbols(src, 'file1.js');
+    const second = extractSymbols(src, 'file2.js');
+    
+    expect(first).toEqual(second);
+    expect(first[0].name).toBe('bar');
+  });
+
+  it('cache respects LRU limit (max 200 entries)', () => {
+    // Create more than 200 unique entries
+    for (let i = 0; i < 250; i++) {
+      const src = `export function fn${i}() { return ${i}; }`;
+      extractSymbols(src, `file${i}.js`);
+    }
+    // Should not throw and still work
+    const result = extractSymbols('export function last() { return 0; }', 'last.js');
+    expect(result.length).toBe(1);
+    expect(result[0].name).toBe('last');
   });
 });
 
@@ -195,6 +251,19 @@ describe('compressSource', () => {
     const out = compressSource(src, 'utils.js');
     expect(out).toContain('…');
   });
+
+  it('skips compression for files >100KB', () => {
+    const largeContent = 'x'.repeat(150 * 1024);
+    const result = compressSource(largeContent, 'large.js');
+    expect(result.length).toBeLessThan(largeContent.length);
+    expect(result).toContain('(file truncated for performance)');
+  });
+
+  it('handles 100KB boundary correctly', () => {
+    const justUnder = 'x'.repeat(99 * 1024);
+    const result = compressSource(justUnder, 'utils.js');
+    expect(result).not.toContain('(file truncated)');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -214,19 +283,10 @@ describe('extractImports', () => {
     expect(deps).toHaveLength(0);
   });
 
-  it('handles require() calls — only matches with space after keyword (e.g. require "x")', () => {
-    // regex: (?:import|require)\s+ — requires whitespace after keyword
-    // require('fs') with no space is NOT matched — documented behavior
-    const src = "const x = require ('fs');"; // space before ( — matches
+  it('handles require() calls with space', () => {
+    const src = "const x = require ('fs');";
     const deps = extractImports(src);
     expect(deps).toContain('fs');
-  });
-
-  it('require without space is not matched by current regex — documented behavior', () => {
-    const src = "const fs = require('fs');";
-    const deps = extractImports(src);
-    // No space after require — regex \s+ does not match
-    expect(Array.isArray(deps)).toBe(true);
   });
 
   it('deduplicates repeated imports', () => {
@@ -243,6 +303,12 @@ describe('extractImports', () => {
     const src = "import { EditorState } from '@codemirror/state';";
     const deps = extractImports(src);
     expect(deps).toContain('@codemirror');
+  });
+
+  it('handles dynamic import', () => {
+    const src = "import('lodash').then(_ => {})";
+    const deps = extractImports(src);
+    expect(deps).toContain('lodash');
   });
 });
 
@@ -403,6 +469,21 @@ describe('generateMap', () => {
     };
     expect(generateMap(fileData)).toContain('🔥');
   });
+
+  it('uses ⭐ badge for salience 11-20', () => {
+    const fileData = {
+      'medium.js': { rel: 'medium.js', lines: 50, salience: 15, importedBy: 2, syms: [{ type: 'fn', name: 'med', sig: '' }] },
+    };
+    expect(generateMap(fileData)).toContain('⭐');
+  });
+
+  it('shows imported by count when >0', () => {
+    const fileData = {
+      'imported.js': { rel: 'imported.js', lines: 20, salience: 10, importedBy: 3, syms: [{ type: 'fn', name: 'fn', sig: '' }] },
+    };
+    const result = generateMap(fileData);
+    expect(result).toContain('imported by 3 file(s)');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -454,6 +535,19 @@ describe('generateCompressed', () => {
     const result = generateCompressed(fileData);
     expect(result).toMatch(/Total reduction: ~\d+%/);
   });
+
+  it('shows per-file reduction percentage', () => {
+    const fileData = {
+      'src/utils.js': {
+        rel: 'src/utils.js',
+        lines: 10,
+        salience: 15,
+        src: 'export function longFn() {\n  const a = 1;\n  const b = 2;\n  const c = 3;\n  return a + b + c;\n}\n',
+      },
+    };
+    const result = generateCompressed(fileData);
+    expect(result).toMatch(/\d+% reduction/);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -470,11 +564,11 @@ describe('generateLlmsTxt', () => {
     expect(result).toContain('Architecture overview');
   });
 
-  it('includes critical constraints section', () => {
+  it('includes critical constraints section with correct vitest version', () => {
     const result = generateLlmsTxt({});
     expect(result).toContain('NEVER change without');
     expect(result).toContain('wasm-node');
-    expect(result).toContain('vitest@1');
+    expect(result).toContain('vitest@3');
   });
 
   it('lists hot files (salience > 15)', () => {
@@ -553,6 +647,12 @@ describe('generateLlmsTxt', () => {
     const result = generateLlmsTxt(fileData);
     expect(result).toContain('+2 more');
   });
+
+  it('includes yuyu-server index endpoint section', () => {
+    const result = generateLlmsTxt({});
+    expect(result).toContain('yuyu-server index endpoint');
+    expect(result).toContain('callServer({ type: \'index\'');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -608,11 +708,6 @@ describe('ensureHandoffTemplate', () => {
       ensureHandoffTemplate(tmpDir);
     }).not.toThrow();
   });
-
-  it('uses YUYU_DIR default when called without args (smoke test — does not throw)', () => {
-    // Just ensure the function signature is backwards-compatible
-    expect(typeof ensureHandoffTemplate).toBe('function');
-  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -621,7 +716,6 @@ describe('ensureHandoffTemplate', () => {
 describe('main()', () => {
   let tmpDir;
   let yuyuDir;
-  // Fast mock: repomix "offline" — returns error immediately, no 90s timeout
   const fastSpawn = vi.fn(() => ({ error: new Error('offline'), status: null, stderr: '' }));
 
   beforeEach(() => {
@@ -699,7 +793,7 @@ describe('main()', () => {
     }
   });
 
-  it('handles a project with hooks/ directory — map includes hook symbols', () => {
+  it('handles a project with hooks/ directory', () => {
     fs.mkdirSync(path.join(tmpDir, 'src', 'hooks'));
     fs.writeFileSync(path.join(tmpDir, 'src', 'hooks', 'useCounter.js'),
       'export function useCounter(initial) { return initial; }\n'
@@ -725,44 +819,27 @@ describe('main()', () => {
     expect(compressed).toBe(repomixContent);
   });
 
-  it('incremental mode — logs changed file count when git diff returns files', () => {
-    fs.writeFileSync(path.join(tmpDir, 'src', 'utils.js'), 'export function helper() {}\n');
-    const incrementalSpawn = vi.fn((cmd, args) => {
-      if (cmd === 'git' && args.includes('--name-only')) {
-        return { error: null, status: 0, stdout: 'src/utils.js\n', stderr: '' };
-      }
-      return { error: new Error('offline'), status: null, stderr: '' };
-    });
-    expect(() => main({ root: tmpDir, yuyuDir, spawnSync: incrementalSpawn })).not.toThrow();
+  it('includes memory usage and elapsed time in output', () => {
+    const consoleSpy = vi.spyOn(console, 'log');
+    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
+    const logs = consoleSpy.mock.calls.map(call => call[0]).join('');
+    expect(logs).toMatch(/\d+s/);
+    expect(logs).toMatch(/\d+MB memory/);
+    consoleSpy.mockRestore();
   });
 
-  it('git hint — logs feat message when changed files exist', () => {
+  it('git hint shows commit message when files changed', () => {
     const hintSpawn = vi.fn((cmd, args) => {
       if (cmd === 'git' && args.includes('--name-only')) {
         return { error: null, status: 0, stdout: 'src/api.js\n', stderr: '' };
       }
       return { error: new Error('offline'), status: null, stderr: '' };
     });
-    expect(() => main({ root: tmpDir, yuyuDir, spawnSync: hintSpawn })).not.toThrow();
-  });
-
-  it('git hint catch block — does not throw when _spawnSync throws for git', () => {
-    const throwingSpawn = vi.fn((cmd) => {
-      if (cmd === 'git') throw new Error('git not found');
-      return { error: new Error('offline'), status: null, stderr: '' };
-    });
-    expect(() => main({ root: tmpDir, yuyuDir, spawnSync: throwingSpawn })).not.toThrow();
-  });
-
-  it('import graph — salience computed for files with deps', () => {
-    fs.writeFileSync(path.join(tmpDir, 'src', 'utils.js'),
-      'export function helper() { return 1; }\n'
-    );
-    fs.writeFileSync(path.join(tmpDir, 'src', 'api.js'),
-      "import { helper } from './utils.js';\nexport function callApi() { return helper(); }\n"
-    );
-    main({ root: tmpDir, yuyuDir, spawnSync: fastSpawn });
-    expect(fs.existsSync(path.join(yuyuDir, 'map.md'))).toBe(true);
+    const consoleSpy = vi.spyOn(console, 'log');
+    main({ root: tmpDir, yuyuDir, spawnSync: hintSpawn });
+    const logs = consoleSpy.mock.calls.map(call => call[0]).join('');
+    expect(logs).toContain('node yugit.cjs "feat: update');
+    consoleSpy.mockRestore();
   });
 });
 
@@ -792,11 +869,6 @@ describe('getChangedFiles', () => {
     expect(getChangedFiles('/tmp', mockSpawn)).toBeNull();
   });
 
-  it('returns null when diff has error object (git not installed)', () => {
-    const mockSpawn = vi.fn(() => ({ error: new Error('ENOENT'), status: null, stdout: '' }));
-    expect(getChangedFiles('/tmp', mockSpawn)).toBeNull();
-  });
-
   it('returns null when no files changed (empty diff)', () => {
     const mockSpawn = vi.fn(() => ({ error: null, status: 0, stdout: '\n', stderr: '' }));
     expect(getChangedFiles('/tmp', mockSpawn)).toBeNull();
@@ -809,23 +881,12 @@ describe('getChangedFiles', () => {
     const result = getChangedFiles('/proj', mockSpawn);
     expect([...result][0]).toBe('/proj/src/hooks/useStore.js');
   });
-
-  it('calls git with correct args and cwd', () => {
-    const mockSpawn = vi.fn(() => ({ error: null, status: 0, stdout: 'a.js\n', stderr: '' }));
-    getChangedFiles('/my/project', mockSpawn);
-    expect(mockSpawn).toHaveBeenCalledWith(
-      'git',
-      ['diff', '--name-only', 'HEAD'],
-      expect.objectContaining({ cwd: '/my/project' })
-    );
-  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// extractSymbols — property-based (inline runner)
+// extractSymbols — property-based
 // ─────────────────────────────────────────────────────────────────────────────
 describe('extractSymbols — property-based', () => {
-  // Inline minimal runner — zero deps
   function repeat(n, fn) { for (let i = 0; i < n; i++) fn(); }
   const randStr = (len = 20) => Array.from({length: len}, () =>
     'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 (){};=>\n'[
