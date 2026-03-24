@@ -4,7 +4,7 @@ import { rewindMessages } from '../../../features.js';
 import { withLoading } from '../helpers/withLoading.js';
 import { simpleResponse } from '../helpers/simpleResponse.js';
 
-export function handleUndo({ parts, editHistory, setEditHistory, setMessages }) {
+export function handleUndo({ parts, editHistory, setEditHistory, setLoading, setMessages }) {
   const n = parseInt(parts[1]) || 1;
   const history = editHistory || [];
   if (history.length === 0) {
@@ -12,7 +12,7 @@ export function handleUndo({ parts, editHistory, setEditHistory, setMessages }) 
     return;
   }
   
-  withLoading(async () => {
+  withLoading(setLoading, async () => {
     const toUndo = history.slice(-n);
     const undone = [];
     for (const item of toUndo) {

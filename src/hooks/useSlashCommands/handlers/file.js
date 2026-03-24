@@ -19,8 +19,8 @@ export function handlePin({ parts, folder, _selectedFile, pinnedFiles, togglePin
   }
 }
 
-export function handleUnpin({ parts, folder, _selectedFile, togglePin, setMessages }) {
-  const target = parts.slice(1).join(' ').trim() || _selectedFile;
+export function handleUnpin({ parts, folder, selectedFile, togglePin, setMessages }) {
+  const target = parts.slice(1).join(' ').trim() || selectedFile;
   if (target) {
     togglePin(target.startsWith('/') ? target : folder + '/' + target);
     simpleResponse(setMessages, '📌 Unpinned: `' + target + '`');
@@ -49,8 +49,8 @@ export function handleTree({ parts, folder, setLoading, setMessages }) {
   });
 }
 
-export function handleHistory({ _selectedFile, setShowFileHistory, setMessages }) {
-  if (!_selectedFile) {
+export function handleHistory({ selectedFile, setShowFileHistory, setMessages }) {
+  if (!selectedFile) {
     simpleResponse(setMessages, 'Buka file dulu Papa~');
     return;
   }

@@ -69,32 +69,6 @@ async function handleWatchMessage(rawData, folder, fileSnapshotsRef, setMessages
   sendNotification('YuyuCode 👁', filename + ' berubah: ' + summary);
 }
 
-// ── Error Boundary Component ───────────────────────────────────────────────────
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error, errorInfo) {
-    console.error('App Error Boundary:', error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: '20px', textAlign: 'center', color: this.props.T?.text || '#fff' }}>
-          <h3>⚠️ Something went wrong</h3>
-          <p style={{ fontSize: '12px', opacity: 0.7 }}>Reload the app to continue</p>
-          <button onClick={() => window.location.reload()} style={{ marginTop: '10px', padding: '8px 16px' }}>Reload</button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 export default function App() {
   // ── STORES ──
   const ui      = useUIStore();
@@ -352,8 +326,7 @@ export default function App() {
 
   // ── RENDER ──
   return (
-    <ErrorBoundary T={T}>
-      <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:ui.fontSize+'px',filter:brightnessFilter,transition:'filter .35s ease'}}
+    <div style={{position:'fixed',inset:0,background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',display:'flex',flexDirection:'column',fontSize:ui.fontSize+'px',filter:brightnessFilter,transition:'filter .35s ease'}}
         onDragOver={e=>{e.preventDefault();ui.setDragOver(true);}} onDragLeave={()=>ui.setDragOver(false)} onDrop={handleDrop}>
 
         {ui.dragOver&&<div style={{position:'absolute',inset:0,background:T.accentBg,border:'2px dashed '+T.accentBorder,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><span style={{fontSize:'18px',color:T.accent}}>Drop file di sini~</span></div>}
@@ -428,6 +401,5 @@ export default function App() {
             onSwitchProject={switchProject}/>
         )}
       </div>
-    </ErrorBoundary>
   );
 }

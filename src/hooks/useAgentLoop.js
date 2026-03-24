@@ -277,7 +277,7 @@ ${outB.slice(0, 1500)}
       [['server','yuyu-server','exec'],            '/yuyu-server.js'],
       [['feature','skill','plan'],                 '/src/features.js'],
       [['brightness','gamma','color'],             '/src/hooks/useBrightness.js'],
-      [['slash','command'],                        '/src/hooks/useSlashCommands.js'],
+      [['slash','command'],                        '/src/hooks/useSlashCommands/index.js'],
       [['editor','codemirror','tab'],              '/src/components/FileEditor.jsx'],
     ];
     const keyFiles = [];

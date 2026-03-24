@@ -10,12 +10,6 @@ export function useSlashCommands(props) {
     '/restore':    () => props.setShowCheckpoints?.(true),
     '/export':     () => props.exportChat?.(),
     '/actions':    () => props.setShowCustomActions?.(true),
-    '/browse':     () => handlers.handleBrowse({ parts: [], browseTo: props.browseTo, setMessages: props.setMessages }),
-    '/swarm':      () => {
-      const task = props.parts?.slice(1).join(' ') || '';
-      if (!task) simpleResponse(props.setMessages, 'Usage: /swarm <deskripsi task>');
-      else props.runAgentSwarm?.(task);
-    },
     '/theme':      () => handlers.handleTheme({ setShowThemeBuilder: props.setShowThemeBuilder, setMessages: props.setMessages }),
     '/github':     () => props.setShowGitHub?.(true),
     '/deploy':     () => props.setShowDeploy?.(true),
@@ -30,7 +24,6 @@ export function useSlashCommands(props) {
     '/config':     () => props.setShowConfig?.(true),
     '/bgstatus':   () => props.setShowBgAgents?.(true),
     '/ptt':        () => handlers.handlePtt({ pushToTalk: props.pushToTalk, setPushToTalk: props.setPushToTalk, setMessages: props.setMessages }),
-    '/open':       () => handlers.handleOpen({ parts: props.parts, setMessages: props.setMessages }),
   }), [props]);
 
   const handleSlashCommand = useCallback(async (cmd) => {
@@ -88,7 +81,7 @@ export function useSlashCommands(props) {
       '/deps':       () => handlers.handleDeps({ selectedFile: props.selectedFile, setLoading: props.setLoading, setMessages: props.setMessages, setDepGraph: props.setDepGraph, setShowDepGraph: props.setShowDepGraph }),
       '/plan':       () => handlers.handlePlan({ parts, folder: props.folder, callAI: props.callAI, setLoading: props.setLoading, setMessages: props.setMessages, setPlanSteps: props.setPlanSteps, setPlanTask: props.setPlanTask }),
       '/ask':        () => handlers.handleAsk({ parts, setMessages: props.setMessages, sendMsg: props.sendMsg }),
-      '/undo':       () => handlers.handleUndo({ parts, editHistory: props.editHistory, setEditHistory: props.setEditHistory, setMessages: props.setMessages }),
+      '/undo':       () => handlers.handleUndo({ parts, editHistory: props.editHistory, setEditHistory: props.setEditHistory, setLoading: props.setLoading, setMessages: props.setMessages }),
       '/color':      () => handlers.handleColor({ parts, sessionColor: props.sessionColor, setSessionColor: props.setSessionColor, setMessages: props.setMessages }),
       '/split':      () => handlers.handleSplit({ splitView: props.splitView, setSplitView: props.setSplitView, setMessages: props.setMessages }),
       '/watch':      () => handlers.handleWatch({ fileWatcherActive: props.fileWatcherActive, fileWatcherInterval: props.fileWatcherInterval, setFileWatcherActive: props.setFileWatcherActive, setFileWatcherInterval: props.setFileWatcherInterval, setFileSnapshots: props.setFileSnapshots, setMessages: props.setMessages }),
@@ -96,6 +89,14 @@ export function useSlashCommands(props) {
       '/font':       () => handlers.handleFont({ parts, setFontSize: props.setFontSize, setMessages: props.setMessages }),
       '/batch':      () => handlers.handleBatch({ parts, folder: props.folder, abortRef: props.abortRef, callAI: props.callAI, setLoading: props.setLoading, setMessages: props.setMessages }),
       '/search':     () => handlers.handleSearch({ parts, searchMessages: props.searchMessages, setMessages: props.setMessages }),
+      '/browse':     () => handlers.handleBrowse({ parts, browseTo: props.browseTo, setMessages: props.setMessages }),
+      '/open':       () => handlers.handleOpen({ parts, setMessages: props.setMessages }),
+      '/swarm':      () => {
+        const task = parts.slice(1).join(' ').trim();
+        if (!task) simpleResponse(props.setMessages, 'Usage: /swarm <deskripsi task>');
+        else props.runAgentSwarm?.(task);
+      },
+      '/apikeys':    () => props.setShowApiKeys?.(true),
     };
 
     const handler = handlerMap[base];

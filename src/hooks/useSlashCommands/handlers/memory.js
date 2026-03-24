@@ -1,7 +1,8 @@
 // memory.js — handlers untuk /amemory, /summarize, /compact, /handoff (handoff sudah di chat.js)
 import { Preferences } from '@capacitor/preferences';
 import { askCerebrasStream } from '../../../api.js';
-import { tokenTracker, countTokens } from '../../../features.js';
+import { tokenTracker } from '../../../features.js';
+import { countTokens } from '../../../utils.js';
 import { withLoading } from '../helpers/withLoading.js';
 import { simpleResponse } from '../helpers/simpleResponse.js';
 

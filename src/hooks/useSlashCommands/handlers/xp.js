@@ -1,5 +1,6 @@
 // xp.js — handlers untuk /xp, /usage, /cost, /debug, /tokens
-import { tokenTracker, countTokens } from '../../../features.js';
+import { tokenTracker } from '../../../features.js';
+import { countTokens } from '../../../utils.js';
 import { simpleResponse } from '../helpers/simpleResponse.js';
 
 export function handleXp({ growth, setMessages }) {
