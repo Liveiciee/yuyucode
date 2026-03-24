@@ -14,9 +14,8 @@
     "test:watch": "vitest --watch",
     "bench": "node yuyu-bench.cjs",
     "bench:save": "node yuyu-bench.cjs --save",
-    "bench:reset": "node yuyu-bench.cjs --reset"
+    "bench:reset": "node yuyu-bench.cjs --reset",
     "postinstall": "echo '✅ Dependencies installed. Run `npm run dev` to start.'"
-    }
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",
