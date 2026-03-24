@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ============================================================
-//  yuyu-map.cjs — YuyuCode Codebase Quantizer v2
+//  yuyu-map.cjs — YuyuCode Codebase Quantizer v3
 //
 //  Inspired by repomix --compress + Aider repomap patterns.
 //  Generates:
@@ -23,10 +23,16 @@ const VERBOSE       = process.argv.includes('--verbose');
 const COMPRESS_ONLY = process.argv.includes('--compress-only');
 const ROOT          = process.cwd();
 const YUYU_DIR      = path.join(ROOT, '.yuyu');
+const START_TIME    = Date.now();
+const START_MEM     = process.memoryUsage().rss;
 
-const IGNORE    = new Set(['node_modules', '.git', 'android', 'dist', '.yuyu', 'coverage', '.gradle', 'build', 'public', '__snapshots__']);
+const IGNORE    = new Set(['node_modules', '.git', 'android', 'dist', '.yuyu', 'coverage', '.gradle', 'build', 'public', '__snapshots__', 'tmp', 'patch']);
 const CODE_EXTS = new Set(['.js', '.jsx', '.ts', '.tsx']);
 const ALL_EXTS  = new Set(['.js', '.jsx', '.ts', '.tsx', '.json', '.md', '.css']);
+
+// ── CACHE for symbol extraction ───────────────────────────────────────────────
+const SYMBOL_CACHE = new Map();
+const MAX_SYMBOL_CACHE = 200;
 
 function log(...args) { if (VERBOSE) console.log(...args); }
 
@@ -45,10 +51,17 @@ function walkFiles(dir, exts) {
 
 function relPath(p) { return p.replace(ROOT + '/', ''); }
 
-// ── SYMBOL EXTRACTOR (regex-based) ────────────────────────────────────────────
+// ── SYMBOL EXTRACTOR (regex-based with cache) ─────────────────────────────────
 function extractSymbols(src, filePath) {
+  if (!CODE_EXTS.has(path.extname(filePath))) return [];
+  
+  // Cache key based on file path and content hash (last 100 chars + length)
+  const cacheKey = `${filePath}:${src.length}:${src.slice(-100)}`;
+  if (SYMBOL_CACHE.has(cacheKey)) {
+    return SYMBOL_CACHE.get(cacheKey);
+  }
+  
   const symbols = [];
-  if (!CODE_EXTS.has(path.extname(filePath))) return symbols;
 
   const patterns = [
     // Custom hooks (useXxx) — MUST come before fn patterns to avoid misclassification
@@ -74,42 +87,62 @@ function extractSymbols(src, filePath) {
       }
     }
   }
+  
+  // LRU cache management
+  if (SYMBOL_CACHE.size > MAX_SYMBOL_CACHE) {
+    const firstKey = SYMBOL_CACHE.keys().next().value;
+    SYMBOL_CACHE.delete(firstKey);
+  }
+  SYMBOL_CACHE.set(cacheKey, symbols);
+  
   return symbols;
 }
 
-// ── REPOMIX-STYLE COMPRESSOR ──────────────────────────────────────────────────
-// Strips function bodies, keeps:
-//   - JSDoc / block comments above functions
-//   - Function signatures
-//   - Import statements
-//   - Export declarations
-//   - Constants (first line only)
-// Result: ~60-75% token reduction while preserving semantic meaning
+// ── REPOMIX-STYLE COMPRESSOR (optimized) ──────────────────────────────────────
 function compressSource(src, filePath) {
   if (!CODE_EXTS.has(path.extname(filePath))) return src;
+  
+  // Skip compression for very large files (>100KB) to save memory
+  if (src.length > 100 * 1024) {
+    return src.slice(0, 50000) + '\n// ... (file truncated for performance)';
+  }
+  
   const lines  = src.split('\n');
   const out    = [];
   let i        = 0;
   let braceDepth = 0;
 
+  // Precompile regex for performance
+  const IMPORT_PATTERN = /^import\s+/;
+  const EXPORT_BRACE_PATTERN = /^export\s*{/;
+  const EXPORT_DEFAULT_PATTERN = /^export\s+default\s+/;
+  const COMMENT_PATTERN = /^\/\/\s*[─═]/;
+  const JS_DOC_PATTERN = /^\/\*\*/;
+  const JS_DOC_END_PATTERN = /^\*\//;
+  const FN_START_PATTERN = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+\w+|^(?:const|let|var)\s+\w+\s*=\s*(?:async\s*)?\(/;
+  const EXPORT_CONST_PATTERN = /^export\s+(const|let|var)\s+\w+/;
+
   while (i < lines.length) {
     const line    = lines[i];
     const trimmed = line.trim();
+    
+    // Fast path: early returns for common cases
+    if (trimmed === '' || trimmed === '}' || trimmed === '});') {
+      out.push(line);
+      i++;
+      continue;
+    }
 
     // Always keep: imports, exports (non-function), comments, blank lines
     if (
-      trimmed.startsWith('import ') ||
-      trimmed.startsWith('export {') ||
-      trimmed.startsWith('export default ') ||
+      IMPORT_PATTERN.test(trimmed) ||
+      EXPORT_BRACE_PATTERN.test(trimmed) ||
+      EXPORT_DEFAULT_PATTERN.test(trimmed) ||
+      COMMENT_PATTERN.test(trimmed) ||
       trimmed.startsWith('// ') ||
-      trimmed.startsWith('//─') ||
-      trimmed.startsWith('//═') ||
       trimmed.startsWith('* ') ||
-      trimmed.startsWith('/**') ||
-      trimmed.startsWith('*/') ||
-      trimmed === '' ||
-      trimmed === '});' ||
-      trimmed === '}'
+      JS_DOC_PATTERN.test(trimmed) ||
+      JS_DOC_END_PATTERN.test(trimmed)
     ) {
       out.push(line);
       i++;
@@ -117,26 +150,15 @@ function compressSource(src, filePath) {
     }
 
     // Detect function/method start — keep signature, strip body
-    const isFnStart = (
-      /^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+\w+/.test(trimmed) ||
-      /^(?:export\s+)?(?:async\s+)?function\s*\*?\s*\w*\s*\(/.test(trimmed) ||
-      /^(?:const|let|var)\s+\w+\s*=\s*(?:async\s*)?\(/.test(trimmed) ||
-      /^(?:export\s+)?const\s+\w+\s*=\s*(?:async\s*)?\(/.test(trimmed)
-    );
-
-    if (isFnStart) {
-      // Keep the signature line
+    if (FN_START_PATTERN.test(trimmed)) {
       out.push(line);
-
-      // Check if body starts on same line
+      
       const opens  = (line.match(/{/g) || []).length;
       const closes = (line.match(/}/g) || []).length;
       braceDepth   = opens - closes;
 
       if (braceDepth > 0) {
-        // Body starts — skip until balanced
         out.push(line.includes('{') ? line.replace(/\{[\s\S]*/, '{ … }') : '  { … }');
-        // Fast-forward through body
         i++;
         while (i < lines.length && braceDepth > 0) {
           const l = lines[i];
@@ -152,7 +174,7 @@ function compressSource(src, filePath) {
     }
 
     // Keep export const = value (first line only for long values)
-    if (/^export\s+(const|let|var)\s+\w+/.test(trimmed)) {
+    if (EXPORT_CONST_PATTERN.test(trimmed)) {
       out.push(line.length > 100 ? line.slice(0, 100) + ' …' : line);
       i++;
       continue;
@@ -317,7 +339,7 @@ Runs entirely on a phone (Oppo A77s, Snapdragon 680) via Termux. No laptop. No d
 
 ## Critical constraints — NEVER change without understanding why
 - \`"overrides": { "rollup": "npm:@rollup/wasm-node" }\` — required for ARM64 Termux build
-- \`vitest@1\` — v4 crashes silently on Termux ARM64
+- \`vitest@3\` — v4 crashes silently on Termux ARM64 (Illegal instruction)
 - Never override \`global.TextDecoder\` in tests — infinite recursion on Node 24
 - \`android/\` folder — Capacitor-managed, manual edits break sync
 
@@ -345,7 +367,7 @@ ${components}
 - Slash commands in \`useSlashCommands.js\` (~60 commands)
 - /compact is deprecated — use /handoff instead
 - Theme tokens: never hardcode colors — use \`T.colorName\` from active theme
-- Tests: \`npx vitest run\` must pass 404/404. \`npm run lint\` must be 0 errors.
+- Tests: \`npx vitest run\` must pass 1235/1235. \`npm run lint\` must be 0 errors.
 
 ## Context quantization files (auto-loaded by gatherProjectContext)
 - \`.yuyu/handoff.md\` — session handoff (run /handoff to update)
@@ -400,15 +422,13 @@ function ensureHandoffTemplate(_yuyuDir = YUYU_DIR) {
   console.log('  ✅ Created .yuyu/handoff.md (template)');
 }
 
-// ── REPOMIX RUNNER ────────────────────────────────────────────────────────────
-// Tries to run `npx repomix --compress` and write to compressed-repomix.md.
-// Returns the output string on success, null on any failure (offline, not
-// installed, non-zero exit, timeout, etc.).
+// ── REPOMIX RUNNER (with ARM64 handling) ──────────────────────────────────────
 function tryRepomix(_spawnSync = spawnSync, _outFile) {
   const outFile = _outFile || path.join(YUYU_DIR, 'compressed-repomix.md');
+  const isArm64 = process.arch === 'arm64' || process.arch === 'arm';
   const ignore  = [
     'android', 'dist', '.yuyu', 'coverage',
-    '.gradle', 'build', 'public', '__snapshots__', 'node_modules',
+    '.gradle', 'build', 'public', '__snapshots__', 'node_modules', 'tmp', 'patch',
   ].join(',');
 
   log('  🔄 Trying repomix --compress...');
@@ -424,7 +444,7 @@ function tryRepomix(_spawnSync = spawnSync, _outFile) {
       ],
       {
         cwd:      ROOT,
-        timeout:  90_000,          // 90 s — generous for slow Termux NPX
+        timeout:  isArm64 ? 120000 : 90000, // More time on ARM64
         stdio:    'pipe',
         encoding: 'utf8',
       }
@@ -453,11 +473,7 @@ function tryRepomix(_spawnSync = spawnSync, _outFile) {
   }
 }
 
-// ── MAIN ──────────────────────────────────────────────────────────────────────
-
 // ── INCREMENTAL UPDATE — git diff helper ──────────────────────────────────────
-// Returns set of absolute paths changed since last commit.
-// Falls back to null (= full scan) if git unavailable or no prior commits.
 function getChangedFiles(root, _spawnSync = spawnSync) {
   try {
     const result = _spawnSync('git', ['diff', '--name-only', 'HEAD'], {
@@ -472,12 +488,13 @@ function getChangedFiles(root, _spawnSync = spawnSync) {
   }
 }
 
+// ── MAIN ──────────────────────────────────────────────────────────────────────
 function main(_opts = {}) {
   const root       = _opts.root      || ROOT;
   const yuyuDir    = _opts.yuyuDir   || path.join(root, '.yuyu');
   const _spawnSync = _opts.spawnSync || spawnSync;
 
-  console.log('🗺  YuyuMap v2 starting...\n');
+  console.log('🗺  YuyuMap v3 starting...\n');
 
   if (!fs.existsSync(yuyuDir)) {
     fs.mkdirSync(yuyuDir, { recursive: true });
@@ -543,9 +560,13 @@ function main(_opts = {}) {
 
   const hot          = Object.values(fileData).filter(d => d.salience > 20).length;
   const totalSymbols = Object.values(fileData).reduce((n,d) => n + d.syms.length, 0);
+  const endMem = process.memoryUsage().rss;
+  const memUsed = Math.round((endMem - START_MEM) / 1024 / 1024);
+  const elapsed = Math.round((Date.now() - START_TIME) / 1000);
 
-  console.log(`\n✅ Done!`);
+  console.log(`\n✅ Done! (${elapsed}s, ${memUsed}MB memory)`);
   console.log(`   🔥 Hot files: ${hot} | ƒ Symbols: ${totalSymbols}`);
+  
   // Dynamic hint — suggest commit message based on changed files
   try {
     const diff   = _spawnSync('git', ['diff', '--name-only', 'HEAD'],     { cwd: root, encoding: 'utf8', timeout: 3000, stdio: 'pipe' });

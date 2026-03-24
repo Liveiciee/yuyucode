@@ -7,12 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "echo '🔍 Scouring the codebase...' && eslint . && echo '✨ 0 problems found! Code is pure.'",
+    "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "test": "vitest",
     "test:ci": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=lcov --coverage.reporter=text",
+    "test:watch": "vitest --watch",
     "bench": "node yuyu-bench.cjs",
     "bench:save": "node yuyu-bench.cjs --save",
-    "bench:reset": "node yuyu-bench.cjs --reset"
+    "bench:reset": "node yuyu-bench.cjs --reset",
+    "postinstall": "echo '✅ Dependencies installed. Run `npm run dev` to start.'"
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",

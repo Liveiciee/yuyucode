@@ -1,4 +1,4 @@
-// yuyu-server.js — v5
+// yuyu-server.js — v6
 // Run dari ~: node ~/yuyu-server.js &
 // Flags: --verbose (log every request)
 const http   = require('http');
@@ -13,6 +13,8 @@ const START_TIME = Date.now();
 // Prevents duplicate reads of same file in same agent loop iteration.
 const _readCache = new Map(); // path → { data, meta, ts }
 const READ_CACHE_TTL = 10_000; // 10 seconds
+const MAX_CACHE_SIZE = 50;
+const MAX_CACHE_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 function getCached(filePath) {
   const e = _readCache.get(filePath);
@@ -20,10 +22,17 @@ function getCached(filePath) {
   if (Date.now() - e.ts > READ_CACHE_TTL) { _readCache.delete(filePath); return null; }
   return e;
 }
+
 function setCache(filePath, data, meta) {
+  // Skip caching files > 5MB
+  if (data.length > MAX_CACHE_FILE_SIZE) return;
   _readCache.set(filePath, { data, meta, ts: Date.now() });
-  // Limit cache size to 50 entries
-  if (_readCache.size > 50) _readCache.delete(_readCache.keys().next().value);
+  // Limit cache size
+  if (_readCache.size > MAX_CACHE_SIZE) _readCache.delete(_readCache.keys().next().value);
+}
+
+function invalidateCache(filePath) {
+  _readCache.delete(resolvePath(filePath));
 }
 
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
@@ -44,10 +53,20 @@ function checkRateLimit(ip) {
   return data.count <= RATE_LIMIT;
 }
 
+// Cleanup old rate limit entries every hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of _rateCounts) {
+    if (now - data.windowStart > RATE_WINDOW * 2) {
+      _rateCounts.delete(ip);
+    }
+  }
+}, 3600000);
+
 const HOME    = process.env.HOME;
 const PORT    = 8765;
 const WS_PORT = 8766;
-const VERSION = 'v5';
+const VERSION = 'v6';
 
 // ── MCP TOOL REGISTRY ─────────────────────────────────────────────────────────
 const MCP_TOOLS = {
@@ -69,10 +88,10 @@ function loadExternalMCP() {
   try {
     if (fs.existsSync(EXTERNAL_MCP_PATH)) {
       EXTERNAL_MCP = JSON.parse(fs.readFileSync(EXTERNAL_MCP_PATH, 'utf8'));
-      console.log('[MCP] Loaded', EXTERNAL_MCP.length, 'external servers'); // skipcq: JS-0002
+      if (VERBOSE) console.log('[MCP] Loaded', EXTERNAL_MCP.length, 'external servers');
     }
   } catch(e) {
-    console.error('[MCP] Failed to load external servers:', e.message); // skipcq: JS-0002
+    console.error('[MCP] Failed to load external servers:', e.message);
     EXTERNAL_MCP = [];
   }
 }
@@ -139,6 +158,13 @@ function execSafe(command, cwd, timeoutMs = 60000) {
     return { ok: true, data: out || '(selesai)' };
   } catch(e) {
     const errMsg = `${e.stdout || ''}${e.stderr || ''}` || e.message;
+    // Better ARM64 error detection
+    if (errMsg.includes('Illegal instruction')) {
+      return { ok: false, data: '⚠️ Illegal instruction — possible ARM64 incompatibility. Check if command uses x86-specific instructions.' };
+    }
+    if (errMsg.includes('cannot allocate memory')) {
+      return { ok: false, data: '⚠️ Out of memory — try reducing workload or closing other apps.' };
+    }
     return { ok: false, data: errMsg.slice(0, 3000) };
   }
 }
@@ -156,6 +182,7 @@ function applyPatch(filePath, oldStr, newStr) {
   // Exact match
   if (content.includes(oldStr)) {
     fs.writeFileSync(full, content.replace(oldStr, replacement), 'utf8');
+    invalidateCache(full);
     return { ok: true, data: `✅ Patch OK: ${filePath}` };
   }
 
@@ -165,6 +192,7 @@ function applyPatch(filePath, oldStr, newStr) {
   const normOld     = normalize(oldStr);
   if (normContent.includes(normOld)) {
     fs.writeFileSync(full, normContent.replace(normOld, replacement), 'utf8');
+    invalidateCache(full);
     return { ok: true, data: `✅ Patch (whitespace-norm) OK: ${filePath}` };
   }
 
@@ -174,6 +202,7 @@ function applyPatch(filePath, oldStr, newStr) {
   const trimOld     = trimLines(normOld);
   if (trimContent.includes(trimOld)) {
     fs.writeFileSync(full, trimContent.replace(trimOld, replacement), 'utf8');
+    invalidateCache(full);
     return { ok: true, data: `✅ Patch (trimmed) OK: ${filePath}` };
   }
 
@@ -244,7 +273,7 @@ function extractSigs(src, _filePath) {
   for (const re of [re1, re2, re3]) {
     let m;
     while ((m = re.exec(src)) !== null) {
-      if (!sigs.find(s => s.name === m[1])) { // skipcq: JS-0073
+      if (!sigs.find(s => s.name === m[1])) {
         const icon = /^use[A-Z]/.test(m[1]) ? '🪝' : /^[A-Z]/.test(m[1]) ? '⚛' : 'ƒ';
         sigs.push({ name: m[1], sig: '(' + m[2].trim() + ')', icon });
       }
@@ -272,8 +301,6 @@ function handle(payload) {
   }
 
   // ── BATCH — run multiple actions in one request ────────────────────────────
-  // { type: 'batch', actions: [{type,path,...}, ...] }
-  // Returns: { ok: true, results: [{ok, data}, ...] }
   if (type === 'batch') {
     const actions = Array.isArray(payload.actions) ? payload.actions : [];
     if (actions.length === 0) return { ok: false, data: 'batch requires actions array' };
@@ -289,12 +316,9 @@ function handle(payload) {
   if (type === 'mcp_list') return { ok: true, data: { ...MCP_TOOLS, ...Object.fromEntries(EXTERNAL_MCP.map(s => [s.name, { desc: s.description || s.url, actions: s.actions || [] }])) } };
 
   // ── CODEBASE INDEX — real-time symbol extraction ──────────────────────────
-  // Returns function/component/hook signatures for entire src/ directory.
-  // No body, just signatures — low token cost, high signal.
   if (type === 'index') {
     const srcPath = filePath ? resolvePath(filePath) : path.join(HOME, 'yuyucode', 'src');
     if (!fs.existsSync(srcPath)) return { ok: false, data: 'Path tidak ada: ' + srcPath };
-
 
     const files = walkSync(srcPath);
     const result = [];
@@ -327,7 +351,7 @@ function handle(payload) {
 
   // ── FILE OPS ──
   if (type === 'read') {
-    if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath }; // existsSync intentional: check-then-read is safe for local single-user server
+    if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath };
     // Use cache for full reads (no from/to) — saves disk I/O in agent loops
     if (!from && !to) {
       const cached = getCached(full);
@@ -366,37 +390,40 @@ function handle(payload) {
   if (type === 'write') {
     fs.mkdirSync(path.dirname(full), { recursive: true });
     fs.writeFileSync(full, content, 'utf8');
-    _readCache.delete(full); // invalidate cache
+    invalidateCache(full);
     return { ok: true, data: '✅ Tersimpan: ' + filePath };
   }
 
   if (type === 'append') {
     fs.appendFileSync(full, content, 'utf8');
+    invalidateCache(full);
     return { ok: true, data: '✅ Ditambahkan ke: ' + filePath };
   }
 
-  // ── PATCH — CRITICAL FIX ──
   if (type === 'patch') {
-    return applyPatch(filePath, payload.old_str, payload.new_str);
+    const result = applyPatch(filePath, payload.old_str, payload.new_str);
+    if (result.ok) invalidateCache(full);
+    return result;
   }
 
   if (type === 'delete') {
     try { fs.unlinkSync(full); }
     catch (_e) { return { ok: false, data: 'File tidak ada: ' + filePath }; }
+    invalidateCache(full);
     return { ok: true, data: '🗑 Dihapus: ' + filePath };
   }
 
-  // ── MOVE / RENAME ──
   if (type === 'move') {
     const fromFull = resolvePath(payload.from || filePath);
     const toFull   = resolvePath(payload.to || content);
     fs.mkdirSync(path.dirname(toFull), { recursive: true });
     try { fs.renameSync(fromFull, toFull); }
     catch (_e) { return { ok: false, data: 'Source tidak ada: ' + (payload.from || filePath) }; }
+    invalidateCache(fromFull);
+    invalidateCache(toFull);
     return { ok: true, data: '✅ Dipindah: ' + (payload.from || filePath) + ' → ' + (payload.to || content) };
   }
 
-  // ── MKDIR ──
   if (type === 'mkdir') {
     fs.mkdirSync(full, { recursive: true });
     return { ok: true, data: '✅ Dibuat: ' + filePath };
@@ -413,10 +440,9 @@ function handle(payload) {
     return { ok: true, data };
   }
 
-  // ── TREE ──
   if (type === 'tree') {
     const maxDepth = parseInt(depth) || 3;
-    if (!fs.existsSync(full)) return { ok: false, data: 'Path tidak ada: ' + filePath }; // safe: immediate use
+    if (!fs.existsSync(full)) return { ok: false, data: 'Path tidak ada: ' + filePath };
     const tree = (filePath || '.') + '/\n' + buildTree(full, 1, maxDepth, '');
     return { ok: true, data: tree || '(kosong)' };
   }
@@ -431,7 +457,7 @@ function handle(payload) {
   // ── SEARCH (ripgrep → grep fallback) ──
   if (type === 'search') {
     const searchPath = full || HOME;
-    const q = shellEsc((content || '').slice(0, 500)); // limit length
+    const q = shellEsc((content || '').slice(0, 500));
     // try rg first (faster, respects .gitignore)
     const rgCheck = execSafe('which rg 2>/dev/null', HOME, 2000);
     if (rgCheck.ok && rgCheck.data.trim()) {
@@ -465,11 +491,8 @@ function handle(payload) {
   }
 
   if (type === 'exec') {
-    // lgtm[js/command-line-injection] — intentional: yuyu-server is a local-only
-    // coding assistant that executes commands on behalf of the authenticated user.
-    // Server binds to 127.0.0.1 only — not accessible from external network.
     const cwd = filePath ? resolvePath(filePath) : HOME;
-    return execSafe(command, cwd); // nosemgrep: dangerous-exec
+    return execSafe(command, cwd);
   }
 
   if (type === 'browse') {
@@ -576,7 +599,7 @@ const server = http.createServer((req, res) => {
   if (VERBOSE) {
     const safeMethod = ['GET','POST','PUT','DELETE','PATCH','OPTIONS','HEAD'].includes(req.method) ? req.method : 'UNKNOWN';
     const safeUrl = req.url ? req.url.replace(/[\r\n]/g, '') : '/';
-    console.log(`[${new Date().toISOString()}] ${safeMethod} ${safeUrl}`); // skipcq: JS-0002
+    console.log(`[${new Date().toISOString()}] ${safeMethod} ${safeUrl}`);
   }
 
   // Rate limit — only applies to POST (action requests)
@@ -585,15 +608,19 @@ const server = http.createServer((req, res) => {
     if (!checkRateLimit(ip)) {
       res.writeHead(429, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, data: 'Rate limit exceeded. Max ' + RATE_LIMIT + ' req/min.' }));
-      if (VERBOSE) console.log(`  ⚠ Rate limit hit: ${ip}`); // skipcq: JS-0002
+      if (VERBOSE) console.log(`  ⚠ Rate limit hit: ${ip}`);
       return;
     }
   }
 
   if (req.method === 'GET' && req.url === '/health') {
     const uptime = Math.round((Date.now() - START_TIME) / 1000);
+    const memUsed = Math.round(process.memoryUsage().rss / 1024 / 1024);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', uptime, version: VERSION, port: PORT }));
+    res.end(JSON.stringify({ 
+      status: 'ok', uptime, version: VERSION, port: PORT,
+      memory_mb: memUsed, cache_size: _readCache.size 
+    }));
     return;
   }
 
@@ -604,13 +631,20 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({
       status: 'ok', uptime, version: VERSION, port: PORT,
       memory_mb: memUsed, tools: Object.keys(MCP_TOOLS),
+      external_mcp: EXTERNAL_MCP.length,
+      cache_entries: _readCache.size,
     }));
     return;
   }
 
   if (req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, version: VERSION, mcp: Object.keys(MCP_TOOLS) }));
+    res.end(JSON.stringify({ 
+      ok: true, version: VERSION, 
+      mcp: Object.keys(MCP_TOOLS),
+      external_mcp: EXTERNAL_MCP.length,
+      endpoints: ['/health', '/status', 'POST /']
+    }));
     return;
   }
 
@@ -630,13 +664,13 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`🌸 YuyuServer ${VERSION} — HTTP :${PORT}`); // skipcq: JS-0002
-  console.log(`   HOME: ${HOME}`); // skipcq: JS-0002
-  console.log(`   Tools: ${Object.keys(MCP_TOOLS).join(', ')}`); // skipcq: JS-0002
+  console.log(`🌸 YuyuServer ${VERSION} — HTTP :${PORT}`);
+  console.log(`   HOME: ${HOME}`);
+  console.log(`   Tools: ${Object.keys(MCP_TOOLS).join(', ')}`);
+  console.log(`   Memory limit: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`);
 });
 
 // ── WEBSOCKET SERVER (port 8766) ──────────────────────────────────────────────
-// Dipakai untuk: (1) file watcher, (2) streaming exec (live terminal)
 let WebSocketServer;
 try {
   WebSocketServer = require('ws').WebSocketServer;
@@ -647,11 +681,7 @@ try {
 
 if (WebSocketServer) {
   const wss = new WebSocketServer({ port: WS_PORT });
-  // Map: watcherId → fs.watch instance
-  const _watchers  = new Map(); // reserved for future use
-  // Map: execId → child process
   const execProcs = new Map();
-  // Map: roomId → { version, updates, clients }
   const collabRooms = new Map();
 
   wss.on('connection', ws => {
@@ -661,7 +691,6 @@ if (WebSocketServer) {
       let msg;
       try { msg = JSON.parse(raw); } catch { return; }
 
-      // ── File Watcher ──
       if (msg.type === 'watch') {
         const watchPath = resolvePath(msg.path);
         if (!fs.existsSync(watchPath)) {
@@ -681,7 +710,6 @@ if (WebSocketServer) {
         return;
       }
 
-      // ── Streaming Exec ──
       if (msg.type === 'exec_stream') {
         const { id, command, cwd } = msg;
         if (!command || !id) return;
@@ -708,21 +736,18 @@ if (WebSocketServer) {
         return;
       }
 
-      // ── Kill Exec ──
       if (msg.type === 'kill') {
         const proc = execProcs.get(msg.id);
         if (proc) { proc.kill('SIGTERM'); execProcs.delete(msg.id); }
         return;
       }
 
-      // ── Realtime Collab ──
       if (msg.type === 'collab_join') {
         const room = msg.room || 'default';
         if (!collabRooms.has(room)) collabRooms.set(room, { version: 0, updates: [], clients: new Set() });
         const r = collabRooms.get(room);
         r.clients.add(ws);
         ws._collabRoom = room;
-        // Send current version to new client
         try { ws.send(JSON.stringify({ type: 'collab_init', version: r.version })); } catch {}
         return;
       }
@@ -732,14 +757,12 @@ if (WebSocketServer) {
         if (!room || !collabRooms.has(room)) return;
         const r = collabRooms.get(room);
         if (msg.version !== r.version) {
-          // Send current updates so client can rebase
           try { ws.send(JSON.stringify({ type: 'collab_updates', updates: r.updates.slice(msg.version), version: r.version })); } catch {}
           return;
         }
         const newUpdates = msg.updates || [];
         r.updates.push(...newUpdates);
         r.version += newUpdates.length;
-        // Broadcast to all other clients in room
         r.clients.forEach(client => {
           if (client === ws || client.readyState !== 1) return;
           try { client.send(JSON.stringify({ type: 'collab_updates', updates: newUpdates, version: r.version })); } catch {}
@@ -749,11 +772,9 @@ if (WebSocketServer) {
 
     ws.on('close', () => {
       if (clientWatcher) { try { clientWatcher.close(); } catch {} }
-      // Leave collab room
       if (ws._collabRoom && collabRooms.has(ws._collabRoom)) {
         collabRooms.get(ws._collabRoom).clients.delete(ws);
       }
-      // Kill all exec procs for this client
       for (const [id, proc] of execProcs) {
         try { proc.kill('SIGTERM'); } catch {}
         execProcs.delete(id);
@@ -761,9 +782,16 @@ if (WebSocketServer) {
     });
   });
 
-  console.log(`🔌 YuyuServer WebSocket — WS :${WS_PORT} (file watch + streaming exec)`); // skipcq: JS-0002
+  console.log(`🔌 YuyuServer WebSocket — WS :${WS_PORT} (file watch + streaming exec)`);
 }
 
 // ── ERROR GUARDS ──────────────────────────────────────────────────────────────
-process.on('uncaughtException',   e => console.error('❌ Uncaught:', e.message));
-process.on('unhandledRejection',  e => console.error('❌ Rejection:', e));
+process.on('uncaughtException', e => console.error('❌ Uncaught:', e.message));
+process.on('unhandledRejection', e => console.error('❌ Rejection:', e));
+
+// ── Graceful shutdown ─────────────────────────────────────────────────────────
+process.on('SIGTERM', () => {
+  console.log('📴 Shutting down...');
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 3000);
+});
