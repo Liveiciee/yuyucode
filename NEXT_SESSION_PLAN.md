@@ -43,9 +43,15 @@ Benchmark: feature-parity dengan Cursor Pro ($20/month) — tapi gratis, offline
   - `useFileStore.js` + `useProjectStore.js` + `Terminal.jsx` + `FileTree.jsx` + `GlobalFindReplace.jsx` + `MsgBubble.jsx` ✅
 - **README diperbarui** — test counts, badges SonarCloud, SONAR_TOKEN di secrets list ✅
 
----
+### SonarCloud High/Blocker Sprint (2026-03-24)
+- **Blocker fix** — `useDb.test.js` L113: tambah `expect(mockDb.execute).not.toHaveBeenCalled()` ✅
+- **Nesting High fix** — ekstrak helpers untuk kurangi nesting depth >4:
+  - `App.jsx` → `computeFileDiff()` + `handleWatchMessage()` (fileWatcher effect)
+  - `api.js` → `tryGroqFallbacks()` (Groq fallback chain)
+  - `AppChat.jsx` → `buildSlashSuggestions()` (onChange slash handler)
+  - `MsgBubble.jsx` → `SurgicalChunk` component (surgical edit render) ✅
 
-## 🔴 TIER 1 — Game Changers
+---
 
 ### 1.4 Parallel Agent Swarm v2 — "Background VM-style" 🔲
 **Gap vs Cursor:** Cursor jalankan background agents di isolated VM. YuyuCode /bg masih single-instance.
@@ -164,15 +170,12 @@ Benchmark: feature-parity dengan Cursor Pro ($20/month) — tapi gratis, offline
 
 ## 📋 CONTEXT UNTUK SESI BERIKUTNYA
 
-### State saat ini v4.2 (post perf sprint):
-- Version: 4.2.0
-- Tests: 1031 ✅ (+370 dari v4.1)
-- Slash commands: ~68
-- Done: YUYU.md, Visual Diff Review, Ghost Text L1+L2, reject feedback, /review --all, contextual slash
-- CI: CodeQL ✅ · Semgrep ✅ · SonarCloud Quality Gate ✅ · DeepSource ✅
-- SonarCloud: Security A · Maintainability A · Coverage 70% ✅
-- vitest@1 → vitest@3, jsdom → happy-dom, 16s → 9s ✅
-- 0 lint warnings ✅
+### State saat ini v4.5.8 (post SonarCloud High/Blocker sprint 2026-03-24):
+- Version: 4.5.8
+- Tests: 1235 ✅
+- Lint: 0 problems
+- SonarCloud: Blocker 0 · High berkurang (nesting fixes App/api/AppChat/MsgBubble) ✅
+- CI: CodeQL ✅ · Semgrep ✅ · SonarCloud A/A/A ✅ · DeepSource ✅
 
 ### Urutan wajib sesi berikutnya (tidak ada yang dilewat):
 ```

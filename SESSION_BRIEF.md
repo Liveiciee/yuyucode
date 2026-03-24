@@ -1,6 +1,6 @@
 # YuyuCode — Session Brief
 > Baca ini dulu sebelum apapun. Update tiap akhir sesi.
-> Last updated: 2026-03-23
+> Last updated: 2026-03-24
 
 ---
 
@@ -36,10 +36,13 @@
 
 ## 📍 State Sekarang
 
-- **Version:** v4.5.4
+- **Version:** v4.5.8
 - **Tests:** 1235 ✅
 - **Lint:** 0 problems
 - **CI:** CodeQL ✅ · Semgrep ✅ · SonarCloud A/A/A ✅ · DeepSource ✅
+- **SonarCloud fixes sesi ini:**
+  - Blocker: `useDb.test.js` L113 — tambah assertion `expect(mockDb.execute).not.toHaveBeenCalled()`
+  - High (nesting): `App.jsx`, `api.js`, `AppChat.jsx`, `MsgBubble.jsx` — ekstrak helper functions untuk kurangi nesting depth
 
 ---
 

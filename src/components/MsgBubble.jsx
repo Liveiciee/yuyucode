@@ -155,7 +155,7 @@ function MsgContent({ text, T }) {
 }
 
 // ── Surgical chunk toggle helper (extracted to reduce nesting depth) ───────────
-function SurgicalChunk({ chunk, index, editText, setEditText }) {
+function SurgicalChunk({ chunk, index, setEditText }) {
   const isRemoved = chunk.startsWith('~~REMOVE~~');
   const bg3 = 'rgba(255,255,255,.03)';
   const border = 'rgba(255,255,255,.07)';
