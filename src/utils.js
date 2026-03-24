@@ -1,6 +1,9 @@
 import { callServer } from './api.js';
 import { diffLines } from 'diff';
 
+// ── CONSTANTS ──
+const MAX_MYERS = 2000;
+
 // ── TOKEN COUNT ──
 export function countTokens(msgs) {
   return Math.round(msgs.reduce((a, m) => a + (m.content?.length || 0), 0) / 4);
@@ -10,10 +13,10 @@ export function countTokens(msgs) {
 export function getFileIcon(name) {
   const ext = name.split('.').pop()?.toLowerCase();
   const icons = {
-    jsx:'jsx', tsx:'tsx', js:'js', ts:'ts', json:'{}',
-    md:'md', yml:'yml', yaml:'yml', css:'css', html:'html', sh:'sh',
-    txt:'txt', png:'img', jpg:'img', svg:'svg', py:'py', rb:'rb',
-    go:'go', rs:'rs', java:'java', kt:'kt', swift:'sw',
+    jsx: 'jsx', tsx: 'tsx', js: 'js', ts: 'ts', json: '{}',
+    md: 'md', yml: 'yml', yaml: 'yml', css: 'css', html: 'html', sh: 'sh',
+    txt: 'txt', png: 'img', jpg: 'img', svg: 'svg', py: 'py', rb: 'rb',
+    go: 'go', rs: 'rs', java: 'java', kt: 'kt', swift: 'sw',
   };
   return icons[ext] || ext || '?';
 }
@@ -62,6 +65,7 @@ export function hl(code, lang = '') {
     s = protect(s, t => t.replace(/:\s*([^;{]+)/g, ': <span style="color:#98c379">$1</span>'));
     return s;
   }
+  
   s = protect(s, t => t.replace(/(\/\/.*$|\/\*.*?\*\/)/gms, '<span style="color:#6a737d">$1</span>'));
   s = protect(s, t => t.replace(/(`(?:[^`\\]|\\.)*`)/g, '<span style="color:#98c379">$1</span>'));
   s = protect(s, t => t.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span style="color:#98c379">$1</span>'));
@@ -78,6 +82,7 @@ export function resolvePath(base, p) {
   const b = base.replace(/\/$/, '');
   const q = p.replace(/^\//, '');
   if (q === b || q.startsWith(b + '/')) return q;
+  
   const baseName = b.split('/').pop();
   if (baseName && (q === baseName || q.startsWith(baseName + '/'))) {
     return b + '/' + q.slice(baseName.length).replace(/^\//, '');
@@ -92,150 +97,199 @@ export function parseActions(text) {
   const actions = [];
   let m;
   while ((m = regex.exec(text)) !== null) {
-    try { actions.push(JSON.parse(m[1].trim())); } catch (_e) { }
+    try { 
+      actions.push(JSON.parse(m[1].trim())); 
+    } catch (_e) { 
+      // ignored
+    }
   }
   return actions;
 }
 
-// ── SIMPLE DIFF GENERATOR ──
+// ── SMART DIFF ENGINE ──
+function buildFrequencyMap(lines) {
+  const map = new Map();
+  for (const l of lines) {
+    map.set(l, (map.get(l) || 0) + 1);
+  }
+  return map;
+}
+
+function findAnchors(aLines, bLines) {
+  const aFreq = buildFrequencyMap(aLines);
+  const bFreq = buildFrequencyMap(bLines);
+  const bIndex = new Map();
+  
+  bLines.forEach((l, i) => { 
+    if (bFreq.get(l) === 1) bIndex.set(l, i); 
+  });
+
+  const anchors = [];
+  let lastB = -1;
+  
+  for (let ai = 0; ai < aLines.length; ai++) {
+    const line = aLines[ai];
+    if (aFreq.get(line) === 1 && bIndex.has(line)) {
+      const bi = bIndex.get(line);
+      if (bi > lastB) {
+        anchors.push({ a: ai, b: bi });
+        lastB = bi;
+      }
+    }
+  }
+  return anchors;
+}
+
+function segmentedDiff(aLines, bLines) {
+  const anchors = findAnchors(aLines, bLines);
+  if (anchors.length === 0) {
+    return diffLines(aLines.join('\n'), bLines.join('\n'));
+  }
+
+  const result = [];
+  let prevA = 0;
+  let prevB = 0;
+
+  for (const { a, b } of anchors) {
+    const aChunk = aLines.slice(prevA, a);
+    const bChunk = bLines.slice(prevB, b);
+    
+    if (aChunk.length || bChunk.length) {
+      result.push(...diffLines(aChunk.join('\n'), bChunk.join('\n')));
+    }
+    
+    // Titik jangkar (Anchor) dianggap equal (tidak berubah)
+    result.push({ value: aLines[a] + '\n', added: false, removed: false });
+    prevA = a + 1; 
+    prevB = b + 1;
+  }
+
+  const aTail = aLines.slice(prevA);
+  const bTail = bLines.slice(prevB);
+  
+  if (aTail.length || bTail.length) {
+    result.push(...diffLines(aTail.join('\n'), bTail.join('\n')));
+  }
+  return result;
+}
+
+// ── DIFF FORMATTERS ──
 function formatDiffLine(hunk, line, oldLine, newLine) {
   if (hunk.removed) return { text: `- L${oldLine}: ${line}`, oldInc: 1, newInc: 0 };
   if (hunk.added)   return { text: `+ L${newLine}: ${line}`, oldInc: 0, newInc: 1 };
-  /* istanbul ignore next */
   return null;
 }
 
-function advanceContext(hunk, hunkLines) {
-  const len = hunkLines.length;
+function advanceContext(hunk, lines) {
+  const len = lines.length;
   return {
     oldInc: hunk.removed ? 0 : len,
     newInc: hunk.added   ? 0 : len,
   };
 }
 
-// ── Histogram-style diff — O(n) for large files, graceful degradation ────────
-function histogramDiff(aLines, bLines) {
-  // For large all-changed files, Myers is O(n²) — we use a fast path instead.
-  // Strategy: find unique matching lines (histogram approach), then Myers for chunks.
-  const MAX_MYERS = 2000; // lines — above this, use fast path
-
-  if (aLines.length <= MAX_MYERS && bLines.length <= MAX_MYERS) {
-    // Small enough — use Myers via diffLines (accurate)
-    return diffLines(aLines.join('\n'), bLines.join('\n'));
-  }
-
-  // Large file fast path: LCS on unique lines only
-  // Build frequency map — lines that appear exactly once in both are anchors
-  const aFreq = new Map(), bFreq = new Map();
-  for (const l of aLines) aFreq.set(l, (aFreq.get(l) || 0) + 1);
-  for (const l of bLines) bFreq.set(l, (bFreq.get(l) || 0) + 1);
-
-  // Find anchor points (unique in both)
-  const anchors = [];
-  let ai = 0, bi = 0;
-  const bIndex = new Map();
-  bLines.forEach((l, i) => { if (bFreq.get(l) === 1) bIndex.set(l, i); });
-
-  while (ai < aLines.length && bi < bLines.length) {
-    if (aLines[ai] === bLines[bi]) {
-      anchors.push({ a: ai, b: bi, type: 'equal' });
-      ai++; bi++;
-    } else {
-      const bMatch = aFreq.get(aLines[ai]) === 1 ? bIndex.get(aLines[ai]) : -1;
-      if (bMatch !== undefined && bMatch >= bi) {
-        // Skip to anchor
-        if (bi < bMatch) anchors.push({ a: ai, b: bi, bEnd: bMatch, type: 'added' });
-        if (ai < ai)     anchors.push({ a: ai, b: bi, aEnd: ai, type: 'removed' });
-        bi = bMatch;
-      } else {
-        ai++; bi++;
-      }
-    }
-  }
-
-  // Convert to diffLines-compatible hunks via Myers on manageable chunks
-  const CHUNK = 500;
-  const result = [];
-  let _prevA = 0, _prevB = 0;
-
-  for (let start = 0; start < Math.max(aLines.length, bLines.length); start += CHUNK) {
-    const aChunk = aLines.slice(start, start + CHUNK);
-    const bChunk = bLines.slice(start, start + CHUNK);
-    const hunks = diffLines(aChunk.join('\n'), bChunk.join('\n'));
-    result.push(...hunks);
-  }
-
-  return result;
-}
-
 export function generateDiff(original, patched, maxLines = 40) {
-  if (!original || !patched) return '';
+  if (!original || !patched || original === patched) return '';
 
   const aLines = original.split('\n');
   const bLines = patched.split('\n');
-
-  // Fast path: identical
-  if (original === patched) return '';
-
-  // Use chunked diff for large files to avoid O(n²) Myers blowup
-  const hunks = (aLines.length > 2000 || bLines.length > 2000)
-    ? histogramDiff(aLines, bLines)
+  
+  const hunks = (aLines.length > MAX_MYERS || bLines.length > MAX_MYERS)
+    ? segmentedDiff(aLines, bLines)
     : diffLines(original, patched);
 
   const result = [];
   let shown = 0;
-  let oldLine = 1, newLine = 1;
+  let oldLine = 1;
+  let newLine = 1;
 
   for (const hunk of hunks) {
-    const hunkLines = hunk.value.split('\n').filter((l, i, a) => !(i === a.length - 1 && l === ''));
+    const hunkLines = hunk.value.split('\n').filter((l, i, arr) => !(i === arr.length - 1 && l === ''));
 
     if (!hunk.added && !hunk.removed) {
       const adv = advanceContext(hunk, hunkLines);
-      oldLine += adv.oldInc;
+      oldLine += adv.oldInc; 
       newLine += adv.newInc;
       continue;
     }
 
     for (const line of hunkLines) {
-      if (shown >= maxLines) { result.push('... (baris lebih)'); return result.join('\n'); }
+      if (shown >= maxLines) {
+        return result.concat('... (baris lebih)').join('\n');
+      }
       const fmt = formatDiffLine(hunk, line, oldLine, newLine);
       if (fmt) {
         result.push(fmt.text);
-        oldLine += fmt.oldInc;
+        oldLine += fmt.oldInc; 
         newLine += fmt.newInc;
         shown++;
       }
     }
-
+    
     if (!hunk.removed) newLine += hunkLines.length - (hunk.added ? hunkLines.length : 0);
     if (!hunk.added)   oldLine += hunkLines.length - (hunk.removed ? hunkLines.length : 0);
   }
+  
   return result.join('\n');
 }
 
-// ── ACTION EXECUTOR ──
+// ── ACTION HANDLERS ──
 const ACTION_HANDLERS = {
   async read_file(action, base, cs) {
     const payload = { type: 'read', path: resolvePath(base, action.path) };
     if (action.from) payload.from = action.from;
     if (action.to)   payload.to   = action.to;
+    
     const r = await cs(payload);
     if (r.ok && r.meta) {
       r.data = `[Lines ${action.from || 1}–${action.to || r.meta.totalLines} / ${r.meta.totalLines} | ${Math.round(r.meta.totalChars / 1000)}KB]\n` + r.data;
     }
     return r;
   },
-  write_file:  (a, base, cs) => cs({ type: 'write', path: resolvePath(base, a.path), content: a.content }),
-  append_file: (a, base, cs) => cs({ type: 'append', path: resolvePath(base, a.path), content: a.content }),
-  patch_file:  (a, base, cs) => cs({ type: 'patch', path: resolvePath(base, a.path), old_str: a.old_str, new_str: a.new_str ?? '' }),
-  tree:        (a, base, cs) => cs({ type: 'tree', path: resolvePath(base, a.path || ''), depth: a.depth || 3 }),
-  exec:        (a, base, cs) => cs({ type: 'exec', path: base, command: a.command }),
-  web_search:  (a, _b, cs)  => cs({ type: 'web_search', query: a.query }),
-  file_info:   (a, base, cs) => cs({ type: 'info', path: resolvePath(base, a.path) }),
-  delete_file: (a, base, cs) => cs({ type: 'delete', path: resolvePath(base, a.path) }),
-  mkdir:       (a, base, cs) => cs({ type: 'mkdir', path: resolvePath(base, a.path) }),
-  find_symbol: (a, base, cs) => cs({ type: 'search', path: resolvePath(base, a.path || ''), content: a.symbol }),
-  mcp:         (a, _b, cs)  => cs({ type: 'mcp', tool: a.tool, action: a.action, params: a.params || {} }),
+  
+  write_file: (a, base, cs) => cs({ 
+    type: 'write', path: resolvePath(base, a.path), content: a.content 
+  }),
+  
+  append_file: (a, base, cs) => cs({ 
+    type: 'append', path: resolvePath(base, a.path), content: a.content 
+  }),
+  
+  patch_file: (a, base, cs) => cs({ 
+    type: 'patch', path: resolvePath(base, a.path), old_str: a.old_str, new_str: a.new_str ?? '' 
+  }),
+  
+  tree: (a, base, cs) => cs({ 
+    type: 'tree', path: resolvePath(base, a.path || ''), depth: a.depth || 3 
+  }),
+  
+  exec: (a, base, cs) => cs({ 
+    type: 'exec', path: base, command: a.command 
+  }),
+  
+  web_search: (a, _b, cs) => cs({ 
+    type: 'web_search', query: a.query 
+  }),
+  
+  file_info: (a, base, cs) => cs({ 
+    type: 'info', path: resolvePath(base, a.path) 
+  }),
+  
+  delete_file: (a, base, cs) => cs({ 
+    type: 'delete', path: resolvePath(base, a.path) 
+  }),
+  
+  mkdir: (a, base, cs) => cs({ 
+    type: 'mkdir', path: resolvePath(base, a.path) 
+  }),
+  
+  find_symbol: (a, base, cs) => cs({ 
+    type: 'search', path: resolvePath(base, a.path || ''), content: a.symbol 
+  }),
+  
+  mcp: (a, _b, cs) => cs({ 
+    type: 'mcp', tool: a.tool, action: a.action, params: a.params || {} 
+  }),
 
   async search(action, base, cs) {
     return cs({ type: 'search', path: resolvePath(base, action.path || ''), content: action.query });
@@ -244,15 +298,21 @@ const ACTION_HANDLERS = {
   async list_files(action, base, cs) {
     const r = await cs({ type: 'list', path: resolvePath(base, action.path) });
     if (r.ok && Array.isArray(r.data)) {
-      r.data = r.data
-        .map(f => (f.isDir ? '📁 ' : '📄 ') + f.name + (f.size ? ` (${Math.round(f.size / 1024)}KB)` : ''))
-        .join('\n');
+      r.data = r.data.map(f => {
+        const icon = f.isDir ? '📁 ' : '📄 ';
+        const sizeInfo = f.size ? ` (${Math.round(f.size / 1024)}KB)` : '';
+        return icon + f.name + sizeInfo;
+      }).join('\n');
     }
     return r;
   },
 
   move_file(action, base, cs) {
-    return cs({ type: 'move', from: resolvePath(base, action.from || action.path), to: resolvePath(base, action.to) });
+    return cs({ 
+      type: 'move', 
+      from: resolvePath(base, action.from || action.path), 
+      to: resolvePath(base, action.to) 
+    });
   },
 
   async create_structure(action, base, cs) {
@@ -267,72 +327,65 @@ const ACTION_HANDLERS = {
   async lint(action, base, cs) {
     const r = await cs({ type: 'read', path: resolvePath(base, action.path) });
     if (!r.ok) return r;
+    
     const issues = [];
-    const lines  = r.data.split('\n');
+    const lines = r.data.split('\n');
     let opens = 0, closes = 0;
+    
     lines.forEach((line, i) => {
-      opens  += (line.match(/[{[(]/g) || []).length;
+      opens += (line.match(/[{[(]/g) || []).length;
       closes += (line.match(/[}\])]/g) || []).length;
-      if (line.includes('console.log') && !action.allowLogs) issues.push('Line ' + (i + 1) + ': console.log');
-      if (line.length > 200) issues.push('Line ' + (i + 1) + ': baris terlalu panjang (' + line.length + ')');
+      if (line.includes('console.log') && !action.allowLogs) issues.push(`Line ${i + 1}: console.log`);
+      if (line.length > 200) issues.push(`Line ${i + 1}: baris terlalu panjang (${line.length})`);
     });
-    if (opens !== closes) issues.push('Bracket tidak balance: ' + opens + ' buka, ' + closes + ' tutup');
+    
+    if (opens !== closes) issues.push(`Bracket tidak balance: ${opens} buka, ${closes} tutup`);
     return { ok: true, data: issues.length ? issues.join('\n') : '✅ Clean' };
   },
 };
 
 export async function executeAction(action, baseFolder, _callServer = callServer) {
-  const base    = baseFolder || '';
+  const base = baseFolder || '';
   const handler = ACTION_HANDLERS[action.type];
   if (handler) return handler(action, base, _callServer);
   return { ok: false, data: 'Unknown action type: ' + action.type };
 }
 
-// ── SHARED SYNTAX CHECK ───────────────────────────────────────────────────────
-// Used by useApprovalFlow and useFileStore — single source of truth.
-
+// ── SHARED SYNTAX CHECK ──
 export function getSyntaxCmd(ext, absPath) {
-  if (['js', 'cjs', 'mjs'].includes(ext))
-    return `node --check "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
-  if (ext === 'json')
-    return `python3 -m json.tool "${absPath}" > /dev/null 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
-  if (ext === 'sh')
-    return `bash -n "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  if (['js', 'cjs', 'mjs'].includes(ext)) return `node --check "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  if (ext === 'json') return `python3 -m json.tool "${absPath}" > /dev/null 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
+  if (ext === 'sh') return `bash -n "${absPath}" 2>&1 && echo "SYNTAX_OK" || echo "SYNTAX_ERR"`;
   return null;
 }
 
-// verifySyntaxBatch — run syntax check on written files, post errors to chat.
-// If sendMsgRef is provided, also fires an auto-fix request to AI.
 export async function verifySyntaxBatch(targets, folder, setMessages, sendMsgRef = null) {
   for (const wr of targets) {
-    const ext     = (wr.path || '').split('.').pop().toLowerCase();
+    const ext = (wr.path || '').split('.').pop().toLowerCase();
     const absPath = resolvePath(folder, wr.path);
-    const cmd     = getSyntaxCmd(ext, absPath);
+    const cmd = getSyntaxCmd(ext, absPath);
     if (!cmd) continue;
-    const vr   = await callServer({ type: 'exec', path: folder, command: cmd });
+    
+    const vr = await callServer({ type: 'exec', path: folder, command: cmd });
     const vOut = (vr.data || '').trim();
     if (!vOut) continue;
-    const hasError = vOut.includes('SYNTAX_ERR') ||
-      (vOut.toLowerCase().includes('error') && !vOut.includes('SYNTAX_OK'));
+    
+    const hasError = vOut.includes('SYNTAX_ERR') || (vOut.toLowerCase().includes('error') && !vOut.includes('SYNTAX_OK'));
+    
     if (hasError) {
       const fname = (wr.path || '').split('/').pop();
-      setMessages(m => [...m, {
-        role: 'assistant',
-        content: 'Syntax error di ' + fname + ':\n```\n' + vOut.slice(0, 300) + '\n```',
-        actions: [],
+      setMessages(m => [...m, { 
+        role: 'assistant', 
+        content: `Syntax error di ${fname}:\n\`\`\`\n${vOut.slice(0, 300)}\n\`\`\``, 
+        actions: [] 
       }]);
       if (sendMsgRef) {
-        setTimeout(() => sendMsgRef.current?.(
-          'Fix syntax error di ' + wr.path + ':\n```\n' + vOut.slice(0, 300) + '\n```'
-        ), 700);
+        setTimeout(() => sendMsgRef.current?.(`Fix syntax error di ${wr.path}:\n\`\`\`\n${vOut.slice(0, 300)}\n\`\`\``), 700);
       }
     }
   }
 }
 
-// ── SHARED FILE BACKUP ────────────────────────────────────────────────────────
-// Reads current content of targets before overwrite, returns backup array.
-// Callers are responsible for calling setEditHistory with the result.
 export async function backupFiles(targets, folder) {
   const backups = [];
   for (const a of targets) {
