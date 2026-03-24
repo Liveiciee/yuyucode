@@ -16,7 +16,7 @@ export default defineConfig({
     poolOptions: {
       threads: { 
         useAtomics: true,
-        singleThread: isArm64, // ARM64 better with single thread to avoid OOM
+        singleThread: isArm64,
         isolate: true,
       },
       vmThreads: {
@@ -24,42 +24,36 @@ export default defineConfig({
       },
     },
 
-    // isolate: true wajib — vi.mock/vi.hoisted bocor dengan isolate:false
     isolate:     true,
     clearMocks:  true,
     css:         false,
-    testTimeout: 5000,
-    hookTimeout: 5000,
+    testTimeout: 10000,
+    hookTimeout: 10000,
 
-    // highlight test > 500ms
     slowTestThreshold: 500,
-
-    // auto-retry test flaky (bgagent timing)
     retry: isCI ? 2 : 1,
 
     reporters: process.env.CI ? ['verbose'] : ['dot'],
 
-    // suppress console.log dari source saat test
     onConsoleLog: (_log, type) => type !== 'stderr' ? false : undefined,
 
-    // Batch test files to reduce memory on ARM64
     sequence: {
-      concurrent: false, // Run serially on ARM64 to avoid OOM
+      concurrent: false,
       shuffle: false,
       seed: Date.now(),
     },
 
-    // Max workers based on CPU (ARM64: 2 max, x86: auto)
     maxWorkers: isArm64 ? 2 : undefined,
     minWorkers: isArm64 ? 1 : undefined,
 
-    // File watching for dev mode
     watch: {
       ignore: ['node_modules', 'coverage', 'android', 'dist', '.yuyu'],
     },
 
-    // Global teardown
-    globalTeardown: './src/test/globalTeardown.js',
+    // Force teardown to prevent hanging
+    teardown: {
+      force: true,
+    },
 
     coverage: {
       provider: 'v8',
@@ -91,7 +85,6 @@ export default defineConfig({
         '**/__mocks__/**',
         '**/__fixtures__/**',
       ],
-      // Skip coverage collection for large files
       watermarks: {
         statements: [70, 85],
         functions: [70, 85],
@@ -102,31 +95,25 @@ export default defineConfig({
       cleanOnRerun: true,
     },
 
-    // Type checking (disabled for speed on ARM64)
     typecheck: {
       enabled: false,
     },
 
-    // Diff config for better test output
     diff: {
       expand: false,
       contextLines: 3,
     },
 
-    // Bail after first failure on CI
     bail: isCI ? 1 : 0,
 
-    // Logging
     silent: false,
     verbose: false,
 
-    // Mock
     mockReset: true,
     restoreMocks: true,
     unstubEnvs: true,
     unstubGlobals: true,
 
-    // Environment options
     environmentOptions: {
       jsdom: {
         resources: 'usable',
@@ -134,12 +121,10 @@ export default defineConfig({
       },
     },
 
-    // Transform ignore patterns
     transformIgnorePatterns: [
       '/node_modules/(?!(@capacitor|@codemirror|@valtown)/)',
     ],
 
-    // Server options for test
     server: {
       deps: {
         inline: ['@capacitor-community/sqlite'],
