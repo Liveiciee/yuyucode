@@ -115,6 +115,7 @@ describe('dbSaveCheckpoint — Preferences fallback', () => {
     await mod.dbSaveCheckpoint({ id: '1', label: 'test' });
     // web: sqlite init runs schema but migration data should not be inserted
     // checkpoint: no db means execute not called for migration
+    expect(mockDb.execute).not.toHaveBeenCalled();
   });
 });
 
