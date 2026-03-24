@@ -396,7 +396,7 @@ ${outB.slice(0, 1500)}
 
       const MAX_ITER = cfg.maxIter || 10;
       let iter = 0, allMessages = [...history], finalContent = '', finalActions = [];
-      let autoContext = { ...(autoContextRef.current || {}) };
+      const autoContext = { ...(autoContextRef.current || {}) };
 
       const serverOk = await checkServerHealth();
       if (!serverOk) {
@@ -446,7 +446,7 @@ ${outB.slice(0, 1500)}
           }),
         ];
 
-        let reply = await callAI(groqMsgs, chat.setStreaming, ctrl.signal, iter === 1 ? chat.visionImage : null);
+        const reply = await callAI(groqMsgs, chat.setStreaming, ctrl.signal, iter === 1 ? chat.visionImage : null);
         chat.setStreaming('');
         chat.setAgentStatus('');
 

@@ -59,7 +59,7 @@ function calculateWinner(squares) {
     [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
     [0, 4, 8], [2, 4, 6]             // diagonals
   ];
-  for (let [a, b, c] of lines) {
+  for (const [a, b, c] of lines) {
     if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
       return squares[a];
     }

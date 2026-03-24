@@ -239,7 +239,7 @@ export async function migrateFromPreferences() {
     }
 
     await Preferences.set({ key: 'yc_db_migrated', value: '1' });
-    console.log('[useDb] Migration from Preferences complete');
+    console.warn('[useDb] Migration from Preferences complete');
   } catch (e) {
     console.warn('[useDb] Migration failed:', e.message);
   }

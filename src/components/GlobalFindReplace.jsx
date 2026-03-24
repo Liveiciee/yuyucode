@@ -51,7 +51,7 @@ export function GlobalFindReplace({ folder, onOpenFile, onClose, T }) {
     (r.data || '').split('\n').filter(Boolean).forEach(line => {
       const m = line.match(/^(.+?):(\d+):\s*(.*)/);
       if (!m) return;
-      let [, filePath, lineNum, content] = m;
+      const [, filePath, lineNum, content] = m;
       const rel = filePath.startsWith(folder) ? filePath.slice(folder.length + 1) : filePath;
       if (!fileMap.has(rel)) fileMap.set(rel, []);
       fileMap.get(rel).push({ line: parseInt(lineNum), text: content.trim() });
@@ -72,7 +72,7 @@ export function GlobalFindReplace({ folder, onOpenFile, onClose, T }) {
       const absPath = folder + '/' + file;
       const r = await callServer({ type: 'read', path: absPath });
       if (!r.ok) continue;
-      let content = r.data || '';
+      const content = r.data || '';
       const flags = matchCase ? 'g' : 'gi';
       const pattern = useRegex ? new RegExp(query, flags) : new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
       const newContent = content.replace(pattern, replaceStr);
