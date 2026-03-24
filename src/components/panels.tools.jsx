@@ -6,14 +6,7 @@ import { BottomSheet } from './panels.base.jsx';
 // ─── CUSTOM ACTIONS PANEL ─────────────────────────────────────────────────────
 export function CustomActionsPanel({ folder:_folder, onRun, onClose, T }) {
 
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const borderMed  = T?.borderMed  || 'rgba(255,255,255,.1)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
-  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
-  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
+  const { bg3, border, borderMed, text, textMute, accent, accentBg, accentBorder } = resolveTheme(T);
   const [actions, setActions] = useState([]);
   const [newLabel, setNewLabel] = useState('');
   const [newCmd, setNewCmd] = useState('');
@@ -75,12 +68,7 @@ export function CustomActionsPanel({ folder:_folder, onRun, onClose, T }) {
 // ─── SHORTCUTS PANEL ──────────────────────────────────────────────────────────
 export function ShortcutsPanel({ onClose, T }) {
 
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
+  const { bg3, border, text, textSec, textMute, accent } = resolveTheme(T);
   const shortcuts = [
     ['Ctrl+S', 'Save file (di editor)'],
     ['Tab', 'Indent 2 spasi (di editor)'],
@@ -116,15 +104,7 @@ export function ShortcutsPanel({ onClose, T }) {
 // ─── SNIPPET LIBRARY ──────────────────────────────────────────────────────────
 export function SnippetLibrary({ onInsert, onClose, T }) {
 
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const borderMed  = T?.borderMed  || 'rgba(255,255,255,.1)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
-  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
-  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
-  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
+  const { bg3, border, borderMed, text, textMute, accent, accentBg, accentBorder, textSec } = resolveTheme(T);
   const [snippets, setSnippets] = useState([]);
   const [newTitle, setNewTitle] = useState('');
   const [newCode, setNewCode] = useState('');
@@ -184,11 +164,7 @@ export function SnippetLibrary({ onInsert, onClose, T }) {
 
 // ─── THEME BUILDER ────────────────────────────────────────────────────────────
 export function ThemeBuilder({ onClose, themeKey, themesMap, themeKeys, onTheme, T }) {
-  const bg3      = T?.bg3      || 'rgba(255,255,255,.04)';
-  const border   = T?.border   || 'rgba(255,255,255,.06)';
-  const borderMed = T?.borderMed || 'rgba(255,255,255,.1)';
-  const text     = T?.text     || '#f0f0f0';
-  const textMute = T?.textMute || 'rgba(255,255,255,.3)';
+  const { bg3, border, borderMed, text, textMute } = resolveTheme(T);
   return (
     <BottomSheet onClose={onClose}>
       <div style={{padding:'0 16px 16px',display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
@@ -238,14 +214,7 @@ export function ThemeBuilder({ onClose, themeKey, themesMap, themeKeys, onTheme,
 
 // ── DeployPanel ───────────────────────────────────────────────────────────────
 export function DeployPanel({ deployLog, loading, onDeploy, onClose, T }) {
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
-  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
-  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
-  const bg2        = T?.bg2        || '#131108';
-  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
+  const { border, text, textMute, accent, accentBg, accentBorder, bg2, textSec } = resolveTheme(T);
   return (
     <BottomSheet onClose={onClose} T={T}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -275,9 +244,7 @@ export function DeployPanel({ deployLog, loading, onDeploy, onClose, T }) {
 // ── McpPanel ──────────────────────────────────────────────────────────────────
 export function McpPanel({ mcpTools, folder: _folder, onResult, onClose, T }) {
 
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
+  const { bg3, text, textMute } = resolveTheme(T);
   const defaultTools = [['git',['status','log','diff']],['fetch',['browse']],['sqlite',['tables']],['github',['issues','pulls']],['system',['disk','memory']],['filesystem',['list']]];
   const entries = Object.keys(mcpTools).length > 0 ? Object.entries(mcpTools) : defaultTools;
   return (
@@ -310,14 +277,7 @@ export function McpPanel({ mcpTools, folder: _folder, onResult, onClose, T }) {
 
 // ── GitHubPanel ───────────────────────────────────────────────────────────────
 export function GitHubPanel({ githubRepo, githubToken, githubData, onRepoChange, onTokenChange, onFetch, onAskYuyu, onClose, T }) {
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const borderMed  = T?.borderMed  || 'rgba(255,255,255,.1)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
-  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
-  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
+  const { bg3, border, borderMed, text, textMute, accent, accentBg, accentBorder } = resolveTheme(T);
   return (
     <BottomSheet onClose={onClose}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -351,13 +311,7 @@ export function GitHubPanel({ githubRepo, githubToken, githubData, onRepoChange,
 
 // ── SessionsPanel ─────────────────────────────────────────────────────────────
 export function SessionsPanel({ sessions, onRestore, onClose, T }) {
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
-  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
-  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
+  const { bg3, border, text, textMute, accent, accentBg, accentBorder } = resolveTheme(T);
   return (
     <BottomSheet onClose={onClose} T={T}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -387,9 +341,7 @@ export function SessionsPanel({ sessions, onRestore, onClose, T }) {
 // ── PermissionsPanel ──────────────────────────────────────────────────────────
 export function PermissionsPanel({ permissions, accentColor:_accentColor, onToggle, onReset, onClose, T }) {
 
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
+  const { border, text, textMute } = resolveTheme(T);
   return (
     <BottomSheet onClose={onClose}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -426,11 +378,7 @@ const BUILTIN_PLUGINS = [
   {id:'auto_push',   name:'Git Auto Push', desc:'Push ke remote setelah commit',       hookType:'postWrite', cmd:'node yugit.cjs "auto push"'},
 ];
 export function PluginsPanel({ activePlugins, folder, onToggle, onClose, T }) {
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const success    = T?.success    || '#4ade80';
+  const { bg3, border, text, textMute, success } = resolveTheme(T);
   return (
     <BottomSheet onClose={onClose}>
       <div style={{padding:'0 16px 8px',flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -474,16 +422,7 @@ export function ConfigPanel({
   diffReview, onDiffReview,
   onClose, T,
 }) {
-  const bg3          = T?.bg3          || 'rgba(255,255,255,.04)';
-  const border       = T?.border       || 'rgba(255,255,255,.06)';
-  const text         = T?.text         || '#f0f0f0';
-  const textMute     = T?.textMute     || 'rgba(255,255,255,.3)';
-  const accentBg     = T?.accentBg     || 'rgba(124,58,237,.1)';
-  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
-  const accent       = T?.accent       || '#a78bfa';
-  const success      = T?.success      || '#4ade80';
-  const successBg    = T?.successBg    || 'rgba(74,222,128,.1)';
-  const warning      = T?.warning      || '#fbbf24';
+  const { bg3, border, text, textMute, accentBg, accentBorder, accent, success, successBg, warning } = resolveTheme(T);
 
   const configs = [
     { label: 'Effort Level', value: effort,           options: ['low','medium','high'],        onChange: onEffort },

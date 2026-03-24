@@ -4,14 +4,7 @@ import { BottomSheet } from './panels.base.jsx';
 
 export function ElicitationPanel({ data, onSubmit, onDismiss, T }) {
 
-  const bg2        = T?.bg2        || '#131108';
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const borderMed  = T?.borderMed  || 'rgba(255,255,255,.1)';
-  const text       = T?.text       || '#f0f0f0';
-  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
+  const { bg2, bg3, border, borderMed, text, textSec, textMute, accentBorder } = resolveTheme(T);
   const [values, setValues] = useState(() => {
     const init = {};
     (data.fields || []).forEach(f => { init[f.name] = f.default || ''; });
@@ -96,14 +89,7 @@ export function SkillsPanel({ skills, onToggle, onUpload, onRemove, onAdd, onClo
   const [newContent, setNewContent] = useState('');
   const [busy, setBusy]           = useState(false);
 
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const borderMed  = T?.borderMed  || 'rgba(255,255,255,.1)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
-  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
-  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
+  const { bg3, border, borderMed, text, textMute, accent, accentBorder, accentBg } = resolveTheme(T);
   async function handleUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -229,13 +215,7 @@ function ElapsedTime({ startedAt }) {
 
 export function BgAgentPanel({ agents, onMerge, onAbort, onClose, T }) {
 
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
-  const bg2        = T?.bg2        || '#131108';
-  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
+  const { bg3, border, text, textMute, accent, bg2, textSec } = resolveTheme(T);
   const statusColor = { preparing:'#fbbf24', running:'#60a5fa', done:'#4ade80', error:'#f87171', aborted:'rgba(255,255,255,.3)', merged:'rgba(255,255,255,.2)', conflict:'#f97316' };
   const statusIcon  = { preparing:'…', running:'↻', done:'✓', error:'✗', aborted:'⏹', merged:'⇄', conflict:'!' };
 

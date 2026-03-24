@@ -6,15 +6,7 @@ import { BottomSheet } from './panels.base.jsx';
 
 export function GitComparePanel({ folder, onClose, T }) {
 
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
-  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
-  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
-  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
-  const borderMed  = T?.borderMed  || 'rgba(255,255,255,.1)';
+  const { bg3, border, text, textMute, accent, accentBorder, accentBg, textSec, borderMed } = resolveTheme(T);
   const [diff, setDiff]       = useState('');
   const [loading, setLoading] = useState(true);
   const [staged, setStaged]   = useState(false);
@@ -151,11 +143,7 @@ export function GitComparePanel({ folder, onClose, T }) {
 
 export function FileHistoryPanel({ folder, filePath, onClose, T }) {
 
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
+  const { border, text, textSec, textMute, accent } = resolveTheme(T);
   const [commits, setCommits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewing, setPreviewing] = useState(null);
@@ -235,10 +223,7 @@ export function FileHistoryPanel({ folder, filePath, onClose, T }) {
 
 export function GitBlamePanel({ folder, filePath, onClose, T }) {
 
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
+  const { bg3, border, text, textMute } = resolveTheme(T);
   const [blame, setBlame] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -283,13 +268,7 @@ export function GitBlamePanel({ folder, filePath, onClose, T }) {
 
 export function DepGraphPanel({ depGraph, onClose, T }) {
 
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const text       = T?.text       || '#f0f0f0';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
-  const accentBg   = T?.accentBg   || 'rgba(124,58,237,.1)';
-  const accentBorder = T?.accentBorder || 'rgba(124,58,237,.22)';
+  const { bg3, border, text, textMute, accent, accentBg, accentBorder } = resolveTheme(T);
   const containerRef = useRef(null);
   const [hovered, setHovered] = useState(null);
 
@@ -414,15 +393,7 @@ export function DepGraphPanel({ depGraph, onClose, T }) {
 
 export function MergeConflictPanel({ data, folder, onResolved, onAborted, onClose, T }) {
 
-  const bg3        = T?.bg3        || 'rgba(255,255,255,.04)';
-  const border     = T?.border     || 'rgba(255,255,255,.06)';
-  const textMute   = T?.textMute   || 'rgba(255,255,255,.3)';
-  const accent     = T?.accent     || '#a78bfa';
-  const error      = T?.error      || '#f87171';
-  const errorBg    = T?.errorBg    || 'rgba(248,113,113,.1)';
-  const bg2        = T?.bg2        || '#131108';
-  const text       = T?.text       || '#f0f0f0';
-  const textSec    = T?.textSec    || 'rgba(255,255,255,.55)';
+  const { bg3, border, textMute, accent, error, errorBg, bg2, text, textSec } = resolveTheme(T);
   const [resolving, setResolving] = useState(false);
   const [previews, setPreviews]   = useState({});
   const [status, setStatus]       = useState('');
