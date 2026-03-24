@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// yuyu-bench.cjs — Benchmark regression detector v3
+// yuyu-bench.cjs — Benchmark regression detector v4
 //
 // Usage:
 //   node yuyu-bench.cjs                        # run + compare ke baseline
@@ -9,6 +9,7 @@
 //   node yuyu-bench.cjs --compare a.json b.json # compare dua baseline file
 //   node yuyu-bench.cjs --trend                 # tampilkan sparkline history semua metric
 //   node yuyu-bench.cjs --export                # export history ke bench-export.json
+//   node yuyu-bench.cjs --ci                    # CI mode (exit code on regression, no color)
 //
 // Features:
 //   ① Trend graph       — ASCII sparkline dari history tiap metric
@@ -19,6 +20,8 @@
 //   ⑥ Auto-watch        — --watch: re-run tiap file src/ berubah
 //   ⑦ Baseline compare  — --compare: diff dua snapshot JSON
 //   ⑧ Memory profiling  — rekam heapUsed sebelum+sesudah vitest
+//   ⑨ CI mode           — --ci: suppress colors, exit code on regression
+//   ⑩ ARM64 detection   — lebih banyak timeout untuk Snapdragon 680
 
 'use strict';
 
@@ -41,6 +44,12 @@ const WATCH   = process.argv.includes('--watch');
 const TREND   = process.argv.includes('--trend');
 const EXPORT  = process.argv.includes('--export');
 const COMPARE = process.argv.includes('--compare');
+const CI_MODE = process.argv.includes('--ci');
+const VERBOSE = process.argv.includes('--verbose');
+
+// ARM64 detection
+const isArm64 = process.arch === 'arm64' || process.arch === 'arm';
+const BENCH_TIMEOUT = isArm64 ? 180000 : 120000; // 3 minutes on ARM64
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -71,19 +80,19 @@ function gitHash() {
 
 /** ⑤ Baca battery info dari Android sysfs (Termux-friendly) */
 function batteryInfo() {
-  // Path umum di Android kernel
   const base = '/sys/class/power_supply/battery';
   const pct  = parseInt(readSys(`${base}/capacity`))  || null;
-  const stat = readSys(`${base}/status`);              // "Charging" | "Discharging" | "Full"
-  // Beberapa kernel pakai /sys/class/power_supply/usb/present untuk detect charger
+  const stat = readSys(`${base}/status`);
   const charging = stat ? (stat === 'Charging' || stat === 'Full') : null;
-  return { pct, charging, status: stat };
+  const temp = readSys(`${base}/temp`);
+  const tempC = temp ? (parseInt(temp) / 1000).toFixed(1) : null;
+  return { pct, charging, status: stat, tempC };
 }
 
 /** ③ Parse rme per bench dari raw vitest output */
 function parseRme(stripped) {
   const rmeMap = {};
-  const rmeRe = /·\s+(.+?)\s+(?:\d[.,\d]*\s+){5,}±\s*([\d.]+)%/g;  // ← FIX
+  const rmeRe = /·\s+(.+?)\s+(?:\d[.,\d]*\s+){5,}±\s*([\d.]+)%/g;
   let match;
   while ((match = rmeRe.exec(stripped)) !== null) {
     const name = match[1].trim();
@@ -100,6 +109,12 @@ function heapMb() {
 
 /** Pad kanan dengan spasi */
 const padR = (s, n) => String(s).slice(0, n).padEnd(n);
+
+/** Format waktu */
+function formatTime(ms) {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
 
 // ── Handle --reset ────────────────────────────────────────────────────────────
 if (RESET) {
@@ -156,7 +171,7 @@ if (TREND) {
     process.exit(0);
   }
   console.log('\n📈 Score Trend (tiap karakter = 1 run, kiri = lama, kanan = terbaru)\n');
-  const W = 40;
+  const W = 45;
   for (const [name, data] of Object.entries(history).sort(([a], [b]) => a.localeCompare(b))) {
     const runs   = data.runs || [];
     const scores = runs.map(r => r.score);
@@ -179,21 +194,26 @@ if (EXPORT) {
 
 // ── Run bench (core) ──────────────────────────────────────────────────────────
 function runBench() {
+  const startTime = Date.now();
   console.log('🏃 Running benchmarks...\n');
 
   // ② git hash sebelum run
   const commit  = gitHash();
 
-  // ⑤ Battery info
+  // ⑤ Battery info + temperature
   const batt    = batteryInfo();
   if (batt.pct !== null) {
     const icon = batt.charging ? '🔌' : '🔋';
-    console.log(`${icon} Battery: ${batt.pct}%${batt.charging ? ' (charging)' : ''}`);
+    console.log(`${icon} Battery: ${batt.pct}%${batt.charging ? ' (charging)' : ''}${batt.tempC ? `  🌡️ ${batt.tempC}°C` : ''}`);
     if (!batt.charging && batt.pct < 20) {
       console.log('⚠️  Battery rendah — performa mungkin dibatasi battery saver. Hasil mungkin tidak akurat.');
     }
+    if (batt.tempC && parseFloat(batt.tempC) > 45) {
+      console.log('⚠️  Device hot — CPU mungkin throttle. Let it cool down for accurate results.');
+    }
   }
-  console.log(`🔀 Commit: ${commit}\n`);
+  console.log(`🔀 Commit: ${commit}`);
+  console.log(`📱 Platform: ${isArm64 ? 'ARM64 (Snapdragon 680)' : 'x86_64'}\n`);
 
   // ⑧ Memory sebelum
   const memBefore = heapMb();
@@ -203,18 +223,19 @@ function runBench() {
     {
       cwd:      ROOT,
       encoding: 'utf8',
-      timeout:  120_000,
+      timeout:  BENCH_TIMEOUT,
       stdio:    ['inherit', 'pipe', 'inherit'],
-      env:      { ...process.env, FORCE_COLOR: '1' },
+      env:      { ...process.env, FORCE_COLOR: CI_MODE ? '0' : '1' },
     }
   );
 
   const raw      = result.stdout || '';
-  process.stdout.write(raw);
+  if (!CI_MODE) process.stdout.write(raw);
 
   // ⑧ Memory sesudah
   const memAfter  = heapMb();
   const memDelta  = Math.round((memAfter - memBefore) * 10) / 10;
+  const elapsed = Date.now() - startTime;
 
   const stripped  = stripAnsi(raw);
 
@@ -253,15 +274,15 @@ function runBench() {
   }
 
   console.log(`\n📊 ${names.length} benches parsed from summary`);
-  console.log(`💾 Memory delta: ${memDelta >= 0 ? '+' : ''}${memDelta} MB (${memBefore} → ${memAfter} MB heap)\n`);
+  console.log(`⏱️  Duration: ${formatTime(elapsed)}  |  💾 Memory: ${memDelta >= 0 ? '+' : ''}${memDelta} MB (${memBefore} → ${memAfter} MB heap)`);
 
   // ③ Thermal warning per bench
   const thermalWarnings = [];
   for (const [name, rme] of Object.entries(rmeMap)) {
     if (rme > RME_THERMAL) thermalWarnings.push({ name, rme });
   }
-  if (thermalWarnings.length > 0) {
-    console.log('🌡  THERMAL WARNING — high variance detected (CPU mungkin throttle karena panas):');
+  if (thermalWarnings.length > 0 && !CI_MODE) {
+    console.log('\n🌡️  THERMAL WARNING — high variance detected (CPU mungkin throttle karena panas):');
     for (const { name, rme } of thermalWarnings) {
       console.log(`     ±${rme.toFixed(2)}%  →  ${name}`);
     }
@@ -275,7 +296,7 @@ function runBench() {
   const W       = 52;
 
   let regressions = 0, improvements = 0;
-  console.log('─'.repeat(W + 24));
+  if (!CI_MODE) console.log('─'.repeat(W + 24));
 
   for (const name of names.sort()) {
     const cur      = scores[name];
@@ -285,21 +306,21 @@ function runBench() {
     const fmtScore = s => `score ${s.toFixed(1)}`;
 
     if (!prev || isFirst) {
-      console.log(`  ✨ NEW   ${padR(name, W)} ${fmtScore(cur)}${spark}`);
+      if (!CI_MODE) console.log(`  ✨ NEW   ${padR(name, W)} ${fmtScore(cur)}${spark}`);
     } else {
       const ratio = cur / prev;
       if (ratio < 1 / THRESHOLD) {
-        console.log(`  🔴 SLOW  ${padR(name, W)} ${fmtScore(cur)}  (${ratio.toFixed(2)}x — was ${fmtScore(prev)})${spark}`);
+        if (!CI_MODE) console.log(`  🔴 SLOW  ${padR(name, W)} ${fmtScore(cur)}  (${ratio.toFixed(2)}x — was ${fmtScore(prev)})${spark}`);
         regressions++;
       } else if (ratio > THRESHOLD) {
-        console.log(`  🟢 FAST  ${padR(name, W)} ${fmtScore(cur)}  (${ratio.toFixed(1)}x faster)${spark}`);
+        if (!CI_MODE) console.log(`  🟢 FAST  ${padR(name, W)} ${fmtScore(cur)}  (${ratio.toFixed(1)}x faster)${spark}`);
         improvements++;
       } else {
-        console.log(`  ✅ OK    ${padR(name, W)} ${fmtScore(cur)}  (${ratio.toFixed(2)}x)${spark}`);
+        if (!CI_MODE) console.log(`  ✅ OK    ${padR(name, W)} ${fmtScore(cur)}  (${ratio.toFixed(2)}x)${spark}`);
       }
     }
   }
-  console.log('─'.repeat(W + 24));
+  if (!CI_MODE) console.log('─'.repeat(W + 24));
 
   // ── Save history ─────────────────────────────────────────────────────────────
   const newHistory = { ...history };
@@ -313,9 +334,10 @@ function runBench() {
       rme:     rmeMap[name] ?? null,
       battPct: batt.pct,
       charging: batt.charging,
+      tempC: batt.tempC ? parseFloat(batt.tempC) : null,
+      elapsedMs: elapsed,
     };
 
-    // Append ke runs array (max MAX_RUNS)
     const runs = [...(existing.runs || []), run].slice(-MAX_RUNS);
 
     if (SAVE || isFirst || !existing.baseline) {
@@ -326,18 +348,18 @@ function runBench() {
   }
   fs.writeFileSync(HIST_FILE, JSON.stringify(newHistory, null, 2));
 
-  if (SAVE || isFirst) console.log(`\n💾 ${names.length} baselines saved → .yuyu/bench-history.json`);
+  if ((SAVE || isFirst) && !CI_MODE) console.log(`\n💾 ${names.length} baselines saved → .yuyu/bench-history.json`);
 
   // ── Summary ──────────────────────────────────────────────────────────────────
-  console.log('');
+  if (!CI_MODE) console.log('');
   if (regressions > 0) {
-    console.log(`⚠️  ${regressions} regression(s)! Lihat 🔴 di atas.`);
-    console.log('   Disengaja? Update baseline: node yuyu-bench.cjs --save');
+    if (!CI_MODE) console.log(`⚠️  ${regressions} regression(s)! Lihat 🔴 di atas.`);
+    if (!CI_MODE) console.log('   Disengaja? Update baseline: node yuyu-bench.cjs --save');
     process.exitCode = 1;
-  } else if (!isFirst) {
+  } else if (!isFirst && !CI_MODE) {
     console.log(`✅ No regressions.${improvements ? ` ${improvements} improvement(s) 🎉` : ' All stable.'}`);
   }
-  console.log('💡 --save  update baseline  |  --reset  clear history  |  --trend  lihat grafik  |  --compare a.json b.json');
+  if (!CI_MODE) console.log('💡 --save  update baseline  |  --reset  clear history  |  --trend  lihat grafik  |  --compare a.json b.json');
 }
 
 // ── ⑥ --watch mode ───────────────────────────────────────────────────────────
@@ -358,10 +380,9 @@ if (WATCH) {
     debounce = setTimeout(() => {
       console.log(`\n🔄 File changed: ${filename} — re-running bench...\n`);
       runBench();
-    }, 1000); // 1s debounce
+    }, 1000);
   });
 
-  // Keep alive
   process.stdin.resume();
 } else {
   runBench();
