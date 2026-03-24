@@ -31,11 +31,7 @@ const stripped = raw.replace(/\x1b\[[\d;]*[a-zA-Z]/g, '');
 process.stdout.write(raw);
 if (result.stderr) process.stderr.write(result.stderr);
 
-// Parse tiap bench line:
-// "   · single call — jsx    981,449.94  0.0009  ..."
-// → name + hz
 const entries = [];
-const seenNames = new Set();
 const lineRe  = /^\s+·\s+(.+?)\s{2,}([\d,]+\.\d+)\s+[\d.]+/;
 
 for (const line of stripped.split('\n')) {
@@ -43,7 +39,7 @@ for (const line of stripped.split('\n')) {
   if (!m) continue;
   const name  = m[1].trim();
   const value = parseFloat(m[2].replace(/,/g, ''));
-  if (name && value > 0) {
+  if (name && value > 0 && !entries.some(e => e.name === name)) {
     entries.push({ name, unit: 'ops/sec', value });
   }
 }
