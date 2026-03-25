@@ -10,7 +10,7 @@ export function useAgentSwarm({
     setSwarmLog([]);
     const log = msg => setSwarmLog(prev => [...prev, msg]);
     const ctrl = new AbortController();
-    abortRef.current = ctrl;
+    if (abortRef) abortRef.current = ctrl;
 
     try {
       log('🏗 Architect planning...');
@@ -23,7 +23,7 @@ export function useAgentSwarm({
       const [feReply, beReply] = await Promise.all([
         callAI([
           { role: 'system', content: 'Frontend Engineer. Implementasikan UI/React. Gunakan write_file action dengan path lengkap dimulai dari ' + folder + '.' },
-          { role: 'user',   content: 'Plan:\n' + archReply + '\n\nTask: ' + task },
+          { role: 'user',   content: 'Plan:\n' + (archReply || '') + '\n\nTask: ' + task },
         ], () => {}, ctrl.signal),
         callAI([
           { role: 'system', content: 'Backend Engineer. Implementasikan server/API/logic. Gunakan write_file action dengan path lengkap dimulai dari ' + folder + '.' },
@@ -38,7 +38,7 @@ export function useAgentSwarm({
       ], () => {}, ctrl.signal);
 
       let fixedFeReply = feReply, fixedBeReply = beReply;
-      const qaBugs = qaReply.split('\n').filter(l => l.startsWith('BUG:'));
+      const qaBugs = (qaReply || '').split('\n').filter(l => l.startsWith('BUG:'));
       if (qaBugs.length > 0 && !ctrl.signal.aborted) {
         log('🔧 QA found ' + qaBugs.length + ' bug(s), running fix pass...');
         const feBugs = qaBugs.filter(l => l.includes('[FE]')).join('\n');
@@ -57,10 +57,10 @@ export function useAgentSwarm({
         }
       }
 
-      const feWrites = parseActions(fixedFeReply).filter(a => a.type === 'write_file' || a.type === 'patch_file');
-      const beWrites = parseActions(fixedBeReply).filter(a => a.type === 'write_file' || a.type === 'patch_file');
+      const feWrites = parseActions(fixedFeReply || '').filter(a => a.type === 'write_file' || a.type === 'patch_file');
+      const beWrites = parseActions(fixedBeReply || '').filter(a => a.type === 'write_file' || a.type === 'patch_file');
       const bePaths  = new Set(beWrites.map(a => a.path));
-      const dedupedWrites = [...feWrites.filter(a => !bePaths.has(a.path)), ...beWrites];
+      const dedupedWrites = [...feWrites.filter(a => !bePaths.has(a.path)), ...beWrites] || [];
 
       log('👀 ' + dedupedWrites.length + ' file siap — menunggu approval...');
       setMessages(m => [...m, {
@@ -68,7 +68,7 @@ export function useAgentSwarm({
         content:
           `🐝 **Swarm selesai!** (${dedupedWrites.length} file)` +
           (qaBugs.length > 0 ? ' — QA fixed ' + qaBugs.length + ' bug(s)' : ' — QA clean ✅') +
-          `\n\n**Plan:**\n${archReply.slice(0, 400)}\n\n**QA Notes:**\n${qaReply.slice(0, 300)}\n\nTinjau dan approve file di bawah~`,
+          `\n\n**Plan:**\n${(archReply || "").slice(0, 400)}\n\n**QA Notes:**\n${(qaReply || "").slice(0, 300)}\n\nTinjau dan approve file di bawah~`,
         actions: dedupedWrites.map(a => ({ ...a, executed: false })),
       }]);
       sendNotification('YuyuCode 🐝', 'Swarm siap! ' + dedupedWrites.length + ' file menunggu approval.');

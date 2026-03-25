@@ -1,5 +1,4 @@
 // @vitest-environment happy-dom
-// ── useAgentSwarm ─────────────────────────────────────────────────────────────
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../utils.js', () => ({
@@ -9,13 +8,14 @@ vi.mock('../utils.js', () => ({
 }));
 
 import { useAgentSwarm } from './useAgentSwarm.js';
+import { parseActions } from '../utils.js';
 
 function makeSwarmCtx(overrides = {}) {
   return {
     callAI: vi.fn()
       .mockResolvedValueOnce('1. Build UI\n2. Build API') // architect
       .mockResolvedValueOnce('```action\n{"type":"write_file","path":"src/App.jsx","content":"fe"}\n```') // FE
-      .mockResolvedValueOnce('```action\n{"type":"write_file","path":"server.js","content":"be"}\n```')  // BE
+      .mockResolvedValueOnce('```action\n{"type":"write_file","path":"server.js","content":"be"}\n```') // BE
       .mockResolvedValueOnce('NO_BUGS'), // QA
     folder: '/project',
     setSwarmRunning: vi.fn(),
@@ -28,7 +28,13 @@ function makeSwarmCtx(overrides = {}) {
   };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Reset mock to return non-empty array
+  parseActions.mockReturnValue([
+    { type: 'write_file', path: 'src/App.jsx', content: 'code' },
+  ]);
+});
 
 describe('useAgentSwarm — runAgentSwarm', () => {
   it('runs full pipeline: architect → fe+be → qa → output', async () => {
@@ -36,10 +42,14 @@ describe('useAgentSwarm — runAgentSwarm', () => {
     const { runAgentSwarm } = useAgentSwarm(ctx);
     await runAgentSwarm('build a todo app');
 
+    // Check if parseActions was called
+    console.log('parseActions called with:', parseActions.mock.calls);
+    console.log('parseActions returned:', parseActions.mock.results.map(r => r.value));
+    
     // architect + fe + be + qa = 4 AI calls
     expect(ctx.callAI).toHaveBeenCalledTimes(4);
-    expect(ctx.setMessages).toHaveBeenCalled();
-    expect(ctx.sendNotification).toHaveBeenCalled();
+    expect(ctx.setMessages).toHaveBeenCalledTimes(1);
+    expect(ctx.sendNotification).toHaveBeenCalledTimes(1);
     expect(ctx.haptic).toHaveBeenCalledWith('heavy');
     expect(ctx.setSwarmRunning).toHaveBeenCalledWith(false);
   });
@@ -57,7 +67,6 @@ describe('useAgentSwarm — runAgentSwarm', () => {
     const { runAgentSwarm } = useAgentSwarm(ctx);
     await runAgentSwarm('buggy task');
 
-    // 4 base calls + 2 fix calls = 6
     expect(ctx.callAI).toHaveBeenCalledTimes(6);
     expect(ctx.setSwarmRunning).toHaveBeenCalledWith(false);
   });

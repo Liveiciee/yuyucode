@@ -47,18 +47,39 @@ export function useChatStore() {
   // ── Load from SQLite (with Preferences fallback) ──
   function loadChatPrefs({ history, memories: mem, checkpoints: ckp }) {
     // Try SQLite first — async, falls back to Preferences data if DB unavailable
-    dbLoadMessages('default').then(msgs => {
-      if (msgs.length > 0) setMessages(msgs);
-      else if (history) { try { setMessages(JSON.parse(history)); } catch (_e) {} }
-    });
-    dbLoadMemories().then(mems => {
-      if (mems.length > 0) setMemoriesRaw(mems);
-      else if (mem) { try { setMemoriesRaw(JSON.parse(mem)); } catch (_e) {} }
-    });
-    dbLoadCheckpoints().then(cps => {
-      if (cps !== null) setCheckpointsRaw(cps);
-      else if (ckp) { try { setCheckpointsRaw(JSON.parse(ckp)); } catch (_e) {} }
-    });
+    (async () => {
+  try {
+    const msgs = (await dbLoadMessages('default')) ?? [];
+
+    if (msgs.length > 0) {
+      setMessages(msgs);
+    } else if (history) {
+      try { setMessages(JSON.parse(history)); } catch {}
+    }
+  } catch {}
+})();
+    (async () => {
+  try {
+    const mems = (await dbLoadMemories()) ?? [];
+
+    if (mems.length > 0) {
+      setMemoriesRaw(mems);
+    } else if (mem) {
+      try { setMemoriesRaw(JSON.parse(mem)); } catch {}
+    }
+  } catch {}
+})();
+    (async () => {
+  try {
+    const c = await dbLoadCheckpoints();
+
+    if (c) {
+      setCheckpoints(c);
+    } else if (ckp) {
+      try { setCheckpoints(JSON.parse(ckp)); } catch {}
+    }
+  } catch {}
+})();
   }
 
   // ── Persist messages on change (called from useEffect in App) ──
@@ -204,7 +225,7 @@ export function useChatStore() {
     searchMessages: async (q) => {
       if (!q.trim()) return [];
       // Try SQLite FTS first
-      const sqlResults = await dbSearchMessages(q, 'default');
+      const sqlResults = (await dbSearchMessages(q, 'default')) ?? [];
       if (sqlResults.length > 0) return sqlResults;
       // Fallback: in-memory search
       const lq = q.toLowerCase();

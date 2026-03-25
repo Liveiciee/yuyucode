@@ -188,8 +188,8 @@ export function useProjectStore() {
     (async () => {
       let activeMap = {};
       try { const r = await Preferences.get({ key: 'yc_skills_active_' + f }); activeMap = r.value ? JSON.parse(r.value) : {}; } catch (_e) {}
-      const loaded = await loadSkills(f, activeMap);
-      if (loaded.length) setSkills(loaded);
+      const loaded = (await loadSkills(f, activeMap)) ?? [];
+      setSkills(loaded);
     })();
   }
 
@@ -202,19 +202,18 @@ export function useProjectStore() {
   }
   async function uploadSkill(name, mdContent) {
     const r = await saveSkillFile(folder, name, mdContent);
-    if (r.ok) {
+    if (r?.ok) {
       let activeMap = {};
       try { const pr = await Preferences.get({ key: 'yc_skills_active_' + folder }); activeMap = pr.value ? JSON.parse(pr.value) : {}; } catch (_e) {}
-      const loaded = await loadSkills(folder, activeMap);
-      setSkills(loaded);
+      const loaded = (await loadSkills(folder, activeMap)) ?? [];
+      if (loaded.length > 0) setSkills(loaded);
+      else setSkills(prev => [...prev, { name, active: true }]);
     }
     return r;
   }
   async function removeSkill(name) {
     const r = await deleteSkillFile(folder, name);
-    if (r.ok) {
-      setSkills(prev => prev.filter(s => s.name !== name));
-    }
+    setSkills(prev => prev.filter(s => s.name !== name));
     return r;
   }
 

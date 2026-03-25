@@ -26,7 +26,7 @@ import { useBrightness }     from './hooks/useBrightness.js';
 import { useDb }            from './hooks/useDb.js';
 
 // ARM64 detection for performance tuning
-const isArm64 = /arm64|arm|aarch64/i.test(navigator.platform) || /aarch64/i.test(navigator.userAgent);
+const isArm64 = /arm64|arm|aarch64/i.test(navigator?.platform || '') || /aarch64/i.test(navigator?.userAgent || '');
 const VIRTUAL_LIMIT = isArm64 ? 40 : 60;
 const BATTERY_LOW_THRESHOLD = isArm64 ? 0.25 : 0.20;
 

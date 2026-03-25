@@ -159,7 +159,7 @@ export function useFileStore() {
     return paths.reduce((acc, p, i) => ({ ...acc, [p]: results[i] }), {});
   }
 
-  async function handleApprove(idx, ok, targetPath, messages, setMessages, folder, hooks, runHooksV2, permissions) {
+  async function handleApprove(idx, ok, targetPath, messages, setMessages, folder, hooks, _runHooksV2, permissions) {
     const msg = messages[idx];
     const targets = getWriteTargets(msg, targetPath);
     if (!ok) {
