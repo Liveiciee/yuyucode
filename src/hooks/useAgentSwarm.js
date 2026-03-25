@@ -60,7 +60,7 @@ export function useAgentSwarm({
       const feWrites = parseActions(fixedFeReply || '').filter(a => a.type === 'write_file' || a.type === 'patch_file');
       const beWrites = parseActions(fixedBeReply || '').filter(a => a.type === 'write_file' || a.type === 'patch_file');
       const bePaths  = new Set(beWrites.map(a => a.path));
-      const dedupedWrites = [...feWrites.filter(a => !bePaths.has(a.path)), ...beWrites] || [];
+      const dedupedWrites = [...feWrites.filter(a => !bePaths.has(a.path)), ...beWrites]  || [];
 
       log('👀 ' + dedupedWrites.length + ' file siap — menunggu approval...');
       setMessages(m => [...m, {

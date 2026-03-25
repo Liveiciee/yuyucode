@@ -10,7 +10,7 @@ export function getWriteTargets(msg, targetPath) {
 
 export async function applyWriteBatch({ targets, folder, idx, setEditHistory, setMessages, hooks, permissions, sendMsgRef }) {
   const backups = await backupFiles(targets, folder);
-  if (backups.length) setEditHistory(h => [...h.slice(-(10 - backups.length)), ...backups]);
+  if (backups && backups.length) setEditHistory(h => [...h.slice(-(10 - backups.length)), ...backups]);
 
   const results = await Promise.all(targets.map(a => executeAction(a, folder)));
   const failed  = results.filter(r => !r.ok);
