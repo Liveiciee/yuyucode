@@ -9,12 +9,12 @@ export function useFileStore() {
   const [openTabs, setOpenTabs]       = useState([]);
   const [activeTabIdx, setActiveTabIdxRaw] = useState(0);
 
-  // ── Legacy single-view state (still used for some flows) ──
-  const [activeTab, setActiveTab]     = useState('chat'); // 'chat' | 'file'
+  // ── Legacy single-view state ──
+  const [activeTab, setActiveTab]     = useState('chat');
   const [editMode, setEditMode]       = useState(false);
   const [splitView, setSplitView]     = useState(false);
 
-  // ── Derived compat ──
+  // ── Derived ──
   const selectedFile = openTabs[activeTabIdx]?.path  ?? null;
   const fileContent  = openTabs[activeTabIdx]?.content ?? null;
 
@@ -25,8 +25,8 @@ export function useFileStore() {
 
   const openTabsRef = useRef(openTabs);
   const activeTabIdxRef = useRef(activeTabIdx);
-  useEffect(() => { openTabsRef.current = openTabs; });
-  useEffect(() => { activeTabIdxRef.current = activeTabIdx; });
+  useEffect(() => { openTabsRef.current = openTabs; }, [openTabs]);
+  useEffect(() => { activeTabIdxRef.current = activeTabIdx; }, [activeTabIdx]);
 
   // ── Persisted setters ──
   function setRecentFiles(next) {
@@ -38,21 +38,17 @@ export function useFileStore() {
     Preferences.set({ key: 'yc_pinned', value: JSON.stringify(next) });
   }
 
-  // ── Load from Preferences ──
   function loadFilePrefs({ pinned, recent }) {
-    if (pinned) { try { setPinnedFilesRaw(JSON.parse(pinned)); } catch (_e) { } }
-    if (recent) { try { setRecentFilesRaw(JSON.parse(recent)); } catch (_e) { } }
+    if (pinned) { try { setPinnedFilesRaw(JSON.parse(pinned)); } catch (_) {} }
+    if (recent) { try { setRecentFilesRaw(JSON.parse(recent)); } catch (_) {} }
   }
 
-  // ── setActiveTabIdx (also switches to file tab) ──
   function setActiveTabIdx(idx) {
     setActiveTabIdxRaw(idx);
-    if (idx >= 0 && openTabsRef.current.length > 0) {
-      setActiveTab('file');
-    }
+    if (idx >= 0 && openTabsRef.current.length > 0) setActiveTab('file');
   }
 
-  // ── openFile — opens in existing tab or new tab ──
+  // ── openFile ──
   async function openFile(path) {
     const existing = openTabsRef.current.findIndex(t => t.path === path);
     if (existing >= 0) {
@@ -65,7 +61,7 @@ export function useFileStore() {
     setActiveTab('file');
     setEditMode(false);
     const r = await callServer({ type: 'read', path });
-    const content = r.ok ? r.data : ('Error: ' + r.data);
+    const content = r.ok ? r.data : ('Error: ' + (r.data || 'Unknown error'));
 
     setOpenTabs(prev => {
       const newTabs = [...prev, { path, content, dirty: false }];
@@ -77,7 +73,25 @@ export function useFileStore() {
     setRecentFiles(next);
   }
 
-  // ── closeTab ──
+  // ── saveFile — FIXED: handle r.ok === false ──
+  async function saveFile(content, onMsg) {
+    const tab = openTabsRef.current[activeTabIdxRef.current];
+    if (!tab) return;
+
+    setEditHistory(h => [...h.slice(-9), { path: tab.path, content: tab.content }]);
+
+    const r = await callServer({ type: 'write', path: tab.path, content });
+
+    if (r.ok) {
+      setOpenTabs(prev => prev.map((t, i) =>
+        i === activeTabIdxRef.current ? { ...t, content, dirty: false } : t
+      ));
+      onMsg?.('💾 Saved: ' + tab.path.split('/').pop());
+    } else {
+      onMsg?.('❌ Save failed: ' + (r.data || 'Unknown error'));
+    }
+  }
+
   function closeTab(idx) {
     const tabs = openTabsRef.current;
     if (tabs.length === 0) return;
@@ -95,32 +109,15 @@ export function useFileStore() {
     });
   }
 
-  // ── updateTabContent — marks a tab dirty (from editor changes) ──
   function updateTabContent(idx, content) {
     setOpenTabs(prev => prev.map((t, i) =>
       i === idx ? { ...t, content, dirty: true } : t
     ));
   }
 
-  // ── saveFile — saves current active tab to server ──
-  async function saveFile(content, onMsg) {
-    const tab = openTabsRef.current[activeTabIdxRef.current];
-    if (!tab) return;
-    setEditHistory(h => [...h.slice(-9), { path: tab.path, content: tab.content }]);
-    const r = await callServer({ type: 'write', path: tab.path, content });
-    if (r.ok) {
-      setOpenTabs(prev => prev.map((t, i) =>
-        i === activeTabIdxRef.current ? { ...t, content, dirty: false } : t
-      ));
-      onMsg?.('💾 Saved: ' + tab.path.split('/').pop());
-    }
-  }
-
-  // ── Backward compat setters ──
   function setSelectedFile(path) {
     if (!path) {
-      const idx = activeTabIdxRef.current;
-      if (openTabsRef.current.length > 0) closeTab(idx);
+      if (openTabsRef.current.length > 0) closeTab(activeTabIdxRef.current);
       else setActiveTab('chat');
       return;
     }
@@ -134,7 +131,6 @@ export function useFileStore() {
     }
   }
 
-  // ── togglePin ──
   function togglePin(path) {
     const next = pinnedFiles.includes(path)
       ? pinnedFiles.filter(f => f !== path)
@@ -142,7 +138,6 @@ export function useFileStore() {
     setPinnedFiles(next);
   }
 
-  // ── undoLastEdit ──
   async function undoLastEdit(onMsg) {
     const last = editHistory[editHistory.length - 1];
     if (!last) return;
@@ -151,7 +146,6 @@ export function useFileStore() {
     onMsg?.('↩ Undo: ' + last.path.split('/').pop());
   }
 
-  // ── readFilesParallel ──
   async function readFilesParallel(paths, folder) {
     const results = await Promise.all(
       paths.map(p => callServer({ type: 'read', path: resolvePath(folder, p) }))
