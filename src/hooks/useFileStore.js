@@ -61,7 +61,7 @@ export function useFileStore() {
     setActiveTab('file');
     setEditMode(false);
     const r = await callServer({ type: 'read', path });
-    const content = r.ok ? r.data : ('Error: ' + (r.data || 'Unknown error'));
+    const content = r?.ok ? r?.data : ('Error: ' + (r?.data || 'Unknown error'));
 
     setOpenTabs(prev => {
       const newTabs = [...prev, { path, content, dirty: false }];
@@ -88,7 +88,7 @@ export function useFileStore() {
       ));
       onMsg?.('💾 Saved: ' + tab.path.split('/').pop());
     } else {
-      onMsg?.('❌ Save failed: ' + (r.data || 'Unknown error'));
+      onMsg?.('❌ Save failed: ' + (r?.data || 'Unknown error'));
     }
   }
 

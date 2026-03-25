@@ -218,8 +218,8 @@ const ACTION_HANDLERS = {
     if (action.from) payload.from = action.from;
     if (action.to)   payload.to   = action.to;
     const r = await cs(payload);
-    if (r.ok && r.meta) {
-      r.data = `[Lines ${action.from || 1}–${action.to || r.meta.totalLines} / ${r.meta.totalLines} | ${Math.round(r.meta.totalChars / 1000)}KB]\n` + r.data;
+    if (r?.ok && r?.meta) {
+      if (r) r.data = `[Lines ${action.from || 1}–${action.to || r.meta.totalLines} / ${r.meta.totalLines} | ${Math.round(r.meta.totalChars / 1000)}KB]\n` + r.data;
     }
     return r;
   },
