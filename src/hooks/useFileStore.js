@@ -73,7 +73,7 @@ export function useFileStore() {
     setRecentFiles(next);
   }
 
-  // ── saveFile — FIXED: handle r.ok === false ──
+  // ── saveFile — FIXED: handle r.ok === false and r undefined ──
   async function saveFile(content, onMsg) {
     const tab = openTabsRef.current[activeTabIdxRef.current];
     if (!tab) return;
@@ -82,7 +82,8 @@ export function useFileStore() {
 
     const r = await callServer({ type: 'write', path: tab.path, content });
 
-    if (r.ok) {
+    // FIX: Check if r exists and has ok property
+    if (r && r.ok === true) {
       setOpenTabs(prev => prev.map((t, i) =>
         i === activeTabIdxRef.current ? { ...t, content, dirty: false } : t
       ));

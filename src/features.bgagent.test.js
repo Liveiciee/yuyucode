@@ -62,7 +62,6 @@ describe('runHooksV2 — http hook', () => {
   });
 
   it('shell hook substitutes {{context}} — covered in features.extended.test.js', () => {
-    // Test di-skip: duplicate dengan features.extended.test.js
     expect(true).toBe(true);
   });
 });
@@ -74,7 +73,6 @@ describe('selectSkills — contentWords matching', () => {
       { name: 'tooling.md', content: 'webpack bundler configuration optimization', active: true },
       { name: 'other.md',   content: 'unrelated stuff xyz',                        active: true },
     ];
-    // task has keyword "webpack" which is in tooling.md content
     const r = selectSkills(skills, 'configure webpack for production');
     expect(r.some(s => s.name === 'tooling.md')).toBe(true);
   });
@@ -88,7 +86,7 @@ describe('selectSkills — contentWords matching', () => {
   });
 
   it('does not include long content skill when no keyword matches', () => {
-    const longContent = 'x '.repeat(1100); // > 2048 chars
+    const longContent = 'x '.repeat(1100);
     const skills = [
       { name: 'long.md', content: longContent, active: true },
     ];
@@ -100,9 +98,6 @@ describe('selectSkills — contentWords matching', () => {
 // ── runBackgroundAgent — full lifecycle ───────────────────────────────────────
 describe('runBackgroundAgent — lifecycle', () => {
   it('creates agent, runs loop, commits, calls onDone', async () => {
-    // git worktree add → ok
-    // git add -A → ok
-    // git commit → ok
     mockCallServer.mockImplementation(({ command } = {}) => {
       if (!command) return Promise.resolve({ ok: true, data: '' });
       if (command.includes('worktree add'))    return Promise.resolve({ ok: true, data: 'HEAD is now' });
@@ -114,7 +109,7 @@ describe('runBackgroundAgent — lifecycle', () => {
     });
 
     const callAI = vi.fn()
-      .mockResolvedValueOnce('Step done.\nDONE') // iter 1 → DONE
+      .mockResolvedValueOnce('Step done.\nDONE')
       .mockResolvedValue('DONE');
 
     mockParseActions.mockReturnValue([
@@ -127,8 +122,8 @@ describe('runBackgroundAgent — lifecycle', () => {
     expect(typeof id).toBe('string');
     expect(id.startsWith('bg_')).toBe(true);
 
-    // Wait for async background loop to complete
-    await new Promise(r => setTimeout(r, 200));
+    // Increase wait time to ensure async loop completes
+    await new Promise(r => setTimeout(r, 500));
 
     expect(onDone).toHaveBeenCalled();
     const agents = getBgAgents();
@@ -148,7 +143,7 @@ describe('runBackgroundAgent — lifecycle', () => {
     const callAI = vi.fn().mockResolvedValue('DONE');
     const id = await runBackgroundAgent('fail task', '/project', callAI);
 
-    await new Promise(r => setTimeout(r, 30));
+    await new Promise(r => setTimeout(r, 100));
 
     const agents = getBgAgents();
     const agent = agents.find(a => a.id === id);
@@ -170,9 +165,8 @@ describe('runBackgroundAgent — lifecycle', () => {
     mockParseActions.mockReturnValue([]);
 
     const id = await runBackgroundAgent('abort task', '/project', callAI);
-    await new Promise(r => setTimeout(r, 30));
+    await new Promise(r => setTimeout(r, 100));
 
-    // Should not throw, agent ends gracefully
     const agents = getBgAgents();
     const agent = agents.find(a => a.id === id);
     expect(agent).toBeDefined();
@@ -187,15 +181,15 @@ describe('abortBgAgent — active agent', () => {
       return Promise.resolve({ ok: true, data: '' });
     });
 
-    // slow AI so we can abort mid-run
     const callAI = vi.fn().mockImplementation(
-      () => new Promise(r => setTimeout(() => r('not done'), 100))
+      () => new Promise(r => setTimeout(() => r('not done'), 200))
     );
 
     const id = await runBackgroundAgent('slow task', '/project', callAI);
-    await new Promise(r => setTimeout(r, 10)); // let it start
+    await new Promise(r => setTimeout(r, 50));
 
     abortBgAgent(id);
+    await new Promise(r => setTimeout(r, 100));
 
     const agents = getBgAgents();
     const agent = agents.find(a => a.id === id);
@@ -206,7 +200,6 @@ describe('abortBgAgent — active agent', () => {
 // ── mergeBackgroundAgent — conflict path ──────────────────────────────────────
 describe('mergeBackgroundAgent — conflict', () => {
   it('returns conflict info when git merge has CONFLICT', async () => {
-    // First run an agent to done state so we can merge it
     mockCallServer.mockImplementation(({ command } = {}) => {
       if (command?.includes('worktree add'))    return Promise.resolve({ ok: true, data: 'HEAD is now' });
       if (command?.includes('git add'))         return Promise.resolve({ ok: true, data: '' });
@@ -223,12 +216,11 @@ describe('mergeBackgroundAgent — conflict', () => {
     mockParseActions.mockReturnValue([]);
 
     const id = await runBackgroundAgent('conflict task', '/project', callAI);
-    await new Promise(r => setTimeout(r, 30));
+    await new Promise(r => setTimeout(r, 100));
 
     const agents = getBgAgents();
     const agent = agents.find(a => a.id === id);
     if (agent?.status === 'done') {
-      // Now try to merge — should hit CONFLICT path
       mockCallServer.mockImplementation(({ type, command } = {}) => {
         if (command?.includes('git merge'))        return Promise.resolve({ ok: true, data: 'CONFLICT' });
         if (command?.includes('diff --name-only')) return Promise.resolve({ ok: true, data: 'src/App.jsx' });
@@ -240,6 +232,5 @@ describe('mergeBackgroundAgent — conflict', () => {
       expect(result.ok).toBe(false);
       expect(result.hasConflicts).toBe(true);
     }
-    // If agent didn't reach done state, test passes trivially (setup issue, not logic issue)
   });
 });

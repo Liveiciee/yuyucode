@@ -17,6 +17,11 @@ vi.mock('./constants.js', () => ({
   ],
 }));
 
+vi.mock('./runtimeKeys.js', () => ({
+  getRuntimeCerebrasKey: () => null,
+  getRuntimeGroqKey: () => 'test-groq-key',
+}));
+
 const originalFetch = globalThis.fetch;
 beforeEach(() => { globalThis.fetch = vi.fn(); });
 afterEach(() => { globalThis.fetch = originalFetch; vi.clearAllMocks(); });
@@ -34,7 +39,6 @@ function mockJsonResponse(data, status = 200) {
 }
 
 function makeSseResponse(...chunks) {
-  const _OrigDec = globalThis.TextDecoder; // saved for potential restore
   const enc = new TextEncoder();
   const calls = chunks.map(c => ({ done: false, value: enc.encode(c) }));
   calls.push({ done: true });
@@ -49,6 +53,15 @@ function makeSseResponse(...chunks) {
         releaseLock: vi.fn(),
       }),
     },
+  };
+}
+
+function make429Response(retryAfter = 10) {
+  return {
+    ok: false,
+    status: 429,
+    headers: { get: (key) => key === 'retry-after' ? String(retryAfter) : null },
+    body: null,
   };
 }
 
@@ -163,13 +176,9 @@ describe('askCerebrasStream', () => {
   });
 
   it('falls back to Groq on Cerebras 429 rate limit', async () => {
-    // Cerebras → 429, Groq → success
     const chunk = 'data: {"choices":[{"delta":{"content":"Fallback"}}]}\n';
     globalThis.fetch
-      .mockResolvedValueOnce({
-        ok: false, status: 429,
-        headers: { get: () => '10' },
-      })
+      .mockResolvedValueOnce(make429Response(10))
       .mockResolvedValueOnce(makeSseResponse(chunk));
 
     const result = await askCerebrasStream(
@@ -219,7 +228,6 @@ describe('askCerebrasStream', () => {
       .mockResolvedValueOnce({ ok: false, status: 503, headers: { get: () => null } })
       .mockResolvedValueOnce(makeSseResponse(chunk));
 
-    // Override setTimeout to not actually wait
     vi.useFakeTimers();
     const promise = askCerebrasStream(
       [{ role: 'user', content: 'Hi' }],
