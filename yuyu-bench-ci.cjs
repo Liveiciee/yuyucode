@@ -41,20 +41,22 @@ const stripped = raw.replace(/\x1b\[[\d;]*[a-zA-Z]/g, '');
 process.stdout.write(raw);
 if (result.stderr) process.stderr.write(result.stderr);
 
-// Parse benchmark output
+// ── PARSER BARU (sudah di-update untuk output Vitest terbaru) ───────────────
 const entries = [];
+
 const patterns = [
-  /^\s*·\s+(.+?)\s+([\d,]+(?:\.\d+)?)\s+ops\/sec/,
-  /^\s*·\s+(.+?)\s+([\d.]+)\s+ops\/sec/,
+  /^\s*·\s+(.+?)\s+([\d,]+(?:\.\d+)?)/,           // format baru dengan koma
+  /^\s*·\s+(.+?)\s+([\d.]+)\s+ops\/sec/,         // format lama
 ];
 
 for (const line of stripped.split('\n')) {
-  for (const p of patterns) {
-    const m = line.match(p);
+  for (const pattern of patterns) {
+    const m = line.match(pattern);
     if (m) {
-      const name = m[1].trim();
+      let name = m[1].trim();
       let value = parseFloat(m[2].replace(/,/g, ''));
-      if (value > 0 && !entries.some(e => e.name === name)) {
+
+      if (name && value > 0 && !name.includes('BENCH') && !name.includes('Summary') && !entries.some(e => e.name === name)) {
         entries.push({ name, unit: 'ops/sec', value });
         break;
       }
@@ -63,7 +65,7 @@ for (const line of stripped.split('\n')) {
 }
 
 if (entries.length === 0) {
-  console.error('\n❌ No benchmark results parsed!');
+  console.error('\n❌ Masih gagal parse benchmark. Cek output di atas.');
   fs.writeFileSync(OUT_FILE, JSON.stringify([], null, 2));
   process.exit(1);
 }
@@ -81,4 +83,4 @@ const metadata = {
 fs.writeFileSync(METADATA_FILE, JSON.stringify(metadata, null, 2));
 fs.writeFileSync(OUT_FILE, JSON.stringify(entries, null, 2));
 
-console.log(`\n✅ ${entries.length} benchmarks → ${OUT_FILE}`);
+console.log(`\n✅ ${entries.length} benchmarks saved → ${OUT_FILE}`);
