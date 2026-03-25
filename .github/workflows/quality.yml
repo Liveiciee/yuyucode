@@ -118,7 +118,7 @@ jobs:
             -Dsonar.coverage.exclusions=**/*.test.js,**/*.bench.js,**/__snapshots__/**,src/setupTest.js
 
       - name: SonarCloud Quality Gate Check
-        uses: SonarSource/sonarqube-quality-gate-action@master
+        uses: SonarSource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
