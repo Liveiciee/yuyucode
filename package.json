@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",
+    "@capacitor-community/sqlite": "^8.0.1",
     "@capacitor/android": "^8.2.0",
     "@capacitor/camera": "^8.0.1",
     "@capacitor/core": "^8.2.0",
@@ -51,8 +52,7 @@
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "typescript": "^5.8.3",
-    "@capacitor-community/sqlite": "^8.0.1"
+    "typescript": "^5.8.3"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.2.0",

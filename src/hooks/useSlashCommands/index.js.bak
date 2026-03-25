@@ -16,7 +16,7 @@ export function useSlashCommands(props) {
     '/skills':     () => props.setShowSkills?.(true),
     '/permissions':() => props.setShowPermissions?.(true),
     '/sessions':   async () => {
-      const sessions = await import('../../features.js').then(m => m.loadSessions());
+      const sessions = await import('../../../features.js').then(m => m.loadSessions());
       props.setSessionList?.(sessions);
       props.setShowSessions?.(true);
     },
