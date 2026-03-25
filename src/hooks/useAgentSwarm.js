@@ -61,17 +61,21 @@ export function useAgentSwarm({
       const beWrites = parseActions(fixedBeReply || '').filter(a => a.type === 'write_file' || a.type === 'patch_file');
       const bePaths  = new Set(beWrites.map(a => a.path));
       const finalWrites = [...feWrites.filter(a => !bePaths.has(a.path)), ...beWrites];
-      const writesArray = writesArray.length ? finalWrites : [];
+
+      // FIX: ini yang salah sebelumnya
+      const writesArray = finalWrites.length ? finalWrites : [];
 
       log('👀 ' + writesArray.length + ' file siap — menunggu approval...');
+
       setMessages(m => [...m, {
         role: 'assistant',
         content:
           `🐝 **Swarm selesai!** (${writesArray.length} file)` +
           (qaBugs.length > 0 ? ' — QA fixed ' + qaBugs.length + ' bug(s)' : ' — QA clean ✅') +
-          `\n\n**Plan:**\n${(archReply || "").slice(0, 400)}\n\n**QA Notes:**\n${(qaReply || "").slice(0, 300)}\n\nTinjau dan approve file di bawah~`,
+          `\n\n**Plan:**\n\( {(archReply || "").slice(0, 400)}\n\n**QA Notes:**\n \){(qaReply || "").slice(0, 300)}\n\nTinjau dan approve file di bawah\~`,
         actions: writesArray.map(a => ({ ...a, executed: false })),
       }]);
+
       sendNotification('YuyuCode 🐝', 'Swarm siap! ' + writesArray.length + ' file menunggu approval.');
       haptic('heavy');
     } catch (e) {

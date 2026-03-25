@@ -118,7 +118,7 @@ jobs:
             -Dsonar.coverage.exclusions=**/*.test.js,**/*.bench.js,**/__snapshots__/**,src/setupTest.js
 
       - name: SonarCloud Quality Gate Check
-        uses: SonarSource/sonarqube-quality-gate-action@v2
+        uses: SonarSource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -213,7 +213,7 @@ jobs:
         run: node yuyu-bench-ci.cjs
 
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v2
+        uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: 'customSmallerIsBetter'
           output-file-path: .yuyu/bench-ci.json
