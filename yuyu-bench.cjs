@@ -1,10 +1,31 @@
+#!/usr/bin/env node
 // ============================================================
 // FILE: yuyu-bench.cjs
 // ============================================================
-// Benchmark regression detector v4
-// ARM64 optimized, CI mode, trend graphs, memory profiling
+// Benchmark regression detector v4                                    // ARM64 optimized, CI mode, trend graphs, memory profiling
 // ============================================================
 
+// yuyu-bench.cjs — Benchmark regression detector v4
+//
+// Usage:
+//   node yuyu-bench.cjs                        # run + compare ke baseline
+//   node yuyu-bench.cjs --save                 # force-update baseline
+//   node yuyu-bench.cjs --reset                # hapus semua history
+//   node yuyu-bench.cjs --watch                # re-run tiap ada perubahan di src/
+//   node yuyu-bench.cjs --compare a.json b.json # compare dua baseline file
+//   node yuyu-bench.cjs --trend                 # tampilkan sparkline history semua metric
+//   node yuyu-bench.cjs --export                # export history ke bench-export.json
+//   node yuyu-bench.cjs --ci                    # CI mode (exit code on regression, no color)
+//                                                                     // Features:
+//   ① Trend graph       — ASCII sparkline dari history tiap metric
+//   ② Per-commit track  — simpan git hash bareng score
+//   ③ Thermal detect    — warn kalau rme tinggi (CPU throttle karena panas)
+//   ④ In-app /bench     — dipanggil via callServer exec dari useSlashCommands
+//   ⑤ Battery-aware     — catat battery % + charging status, warn kalau saver mode
+//   ⑥ Auto-watch        — --watch: re-run tiap file src/ berubah
+//   ⑦ Baseline compare  — --compare: diff dua snapshot JSON
+//   ⑧ Memory profiling  — rekam heapUsed sebelum+sesudah vitest       //   ⑨ CI mode           — --ci: suppress colors, exit code on regression                                                                     //   ⑩ ARM64 detection   — lebih banyak timeout untuk Snapdragon 680
+                                                                       'use strict';
 #!/usr/bin/env node
 // yuyu-bench.cjs — Benchmark regression detector v4
 //

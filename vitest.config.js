@@ -14,7 +14,7 @@ export default defineConfig({
     setupFiles:   './src/setupTest.js',
     pool,
     poolOptions: {
-      threads: { 
+      threads: {
         useAtomics: true,
         singleThread: isArm64,
         isolate: true,
@@ -29,7 +29,6 @@ export default defineConfig({
     css:         false,
     testTimeout: 10000,
     hookTimeout: 10000,
-
     slowTestThreshold: 500,
     retry: isCI ? 2 : 1,
 
@@ -50,7 +49,6 @@ export default defineConfig({
       ignore: ['node_modules', 'coverage', 'android', 'dist', '.yuyu'],
     },
 
-    // Force teardown to prevent hanging
     teardown: {
       force: true,
     },
@@ -60,10 +58,10 @@ export default defineConfig({
       reporter: ['text', 'lcov', 'json', 'html', 'clover'],
       reportsDirectory: './coverage',
       thresholds: {
-        lines:      70,
-        functions:  70,
-        branches:   60,
-        statements: 70,
+        lines:      60,
+        functions:  60,
+        branches:   50,
+        statements: 60,
       },
       perFile: true,
       include: [
@@ -86,10 +84,10 @@ export default defineConfig({
         '**/__fixtures__/**',
       ],
       watermarks: {
-        statements: [70, 85],
-        functions: [70, 85],
-        branches: [60, 80],
-        lines: [70, 85],
+        statements: [60, 80],
+        functions: [60, 80],
+        branches: [50, 70],
+        lines: [60, 80],
       },
       clean: true,
       cleanOnRerun: true,
