@@ -2,7 +2,7 @@
 export async function withLoading(setLoading, fn) {
   setLoading(true);
   try {
-    await fn();
+    return await fn();
   } finally {
     setLoading(false);
   }

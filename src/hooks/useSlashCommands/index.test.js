@@ -94,7 +94,7 @@ describe('useSlashCommands', () => {
     props = createMockProps();
   });
 
-  it('should handle /model command', async () => {
+  it('should handle /model', async () => {
     const { result } = renderHook(() => useSlashCommands(props));
     await act(async () => {
       await result.current.handleSlashCommand('/model');
@@ -102,11 +102,61 @@ describe('useSlashCommands', () => {
     expect(props.setModel).toHaveBeenCalled();
   });
 
-  it('should handle /clear command', async () => {
+  it('should handle /effort without arg (shows current)', async () => {
+    const { result } = renderHook(() => useSlashCommands(props));
+    await act(async () => {
+      await result.current.handleSlashCommand('/effort');
+    });
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('should handle /effort high', async () => {
+    const { result } = renderHook(() => useSlashCommands(props));
+    await act(async () => {
+      await result.current.handleSlashCommand('/effort high');
+    });
+    expect(props.setEffort).toHaveBeenCalledWith('high');
+  });
+
+  it('should handle /thinking', async () => {
+    const { result } = renderHook(() => useSlashCommands(props));
+    await act(async () => {
+      await result.current.handleSlashCommand('/thinking');
+    });
+    expect(props.setThinkingEnabled).toHaveBeenCalledWith(true);
+  });
+
+  it('should handle /clear', async () => {
     const { result } = renderHook(() => useSlashCommands(props));
     await act(async () => {
       await result.current.handleSlashCommand('/clear');
     });
+    expect(props.setMessages).toHaveBeenCalled();
+  });
+
+  it('should handle /stop when loading', async () => {
+    props.loading = true;
+    const { result } = renderHook(() => useSlashCommands(props));
+    await act(async () => {
+      await result.current.handleSlashCommand('/stop');
+    });
+    expect(props.setGracefulStop).toHaveBeenCalledWith(true);
+  });
+
+  it('should handle /swarm with task', async () => {
+    const { result } = renderHook(() => useSlashCommands(props));
+    await act(async () => {
+      await result.current.handleSlashCommand('/swarm build feature');
+    });
+    expect(props.runAgentSwarm).toHaveBeenCalledWith('build feature');
+  });
+
+  it('should handle /swarm without task', async () => {
+    const { result } = renderHook(() => useSlashCommands(props));
+    await act(async () => {
+      await result.current.handleSlashCommand('/swarm');
+    });
+    expect(props.runAgentSwarm).not.toHaveBeenCalled();
     expect(props.setMessages).toHaveBeenCalled();
   });
 

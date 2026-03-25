@@ -6,7 +6,7 @@ import { simpleResponse } from '../helpers/simpleResponse.js';
 
 export function handleDiff({ parts, folder, setLoading, setMessages }) {
   const range = parts.slice(1).join(' ').trim();
-  withLoading(setLoading, async () => {
+  return withLoading(setLoading, async () => {
     const cmd = range ? `git diff ${range} --stat` : 'git diff HEAD --stat';
     const r = await callServer({ type: 'exec', path: folder, command: cmd });
     if (!r.ok || !r.data?.trim()) {
@@ -32,7 +32,7 @@ export function handleHistory({ selectedFile, setShowFileHistory, setMessages })
 }
 
 export function handleStatus({ folder, model, setLoading, setMessages }) {
-  withLoading(setLoading, async () => {
+  return withLoading(setLoading, async () => {
     const [ping, git, nodeV, disk] = await Promise.all([
       callServer({ type: 'ping' }),
       callServer({ type: 'exec', path: folder, command: 'git status --short 2>&1 | head -5' }),
