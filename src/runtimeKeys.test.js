@@ -4,15 +4,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ──────────────────────────────────────────────────────────────────────────────
-// FAST MODE: Mock Crypto Operations (10x faster!)
+// FAST MODE: Mock Crypto Operations (Correct way with vi.stubGlobal)
 // ──────────────────────────────────────────────────────────────────────────────
 const mockCrypto = {
   subtle: {
     importKey: vi.fn().mockResolvedValue({}),
     deriveKey: vi.fn().mockResolvedValue({}),
     encrypt: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
-    decrypt: vi.fn().mockImplementation(async (_, __, data) => {
-      // Return a simple JSON string for fast decryption
+    decrypt: vi.fn().mockImplementation(async () => {
       const mockJson = JSON.stringify({
         key: 'test-key-12345678901234567890',
         expiresAt: Date.now() + 1000000,
@@ -28,7 +27,8 @@ const mockCrypto = {
   }),
 };
 
-globalThis.crypto = mockCrypto;
+// Use vi.stubGlobal instead of direct assignment (fixes read-only crypto)
+vi.stubGlobal('crypto', mockCrypto);
 
 // ──────────────────────────────────────────────────────────────────────────────
 // MOCK CAPACITOR PREFERENCES
@@ -82,7 +82,7 @@ beforeEach(async () => {
   
   // Reset crypto mocks to fast mode
   mockCrypto.subtle.encrypt.mockResolvedValue(new ArrayBuffer(32));
-  mockCrypto.subtle.decrypt.mockImplementation(async (_, __, data) => {
+  mockCrypto.subtle.decrypt.mockImplementation(async () => {
     const mockJson = JSON.stringify({
       key: 'test-key-12345678901234567890',
       expiresAt: Date.now() + 1000000,
