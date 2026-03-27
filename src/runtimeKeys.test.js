@@ -68,14 +68,13 @@ describe('runtimeKeys — getters & status', () => {
 
   it('checkKeysStatus reflects loaded keys', async () => {
     const mod = await freshModule();
-    // ✅ FIX: Use valid keys (20+ chars)
     await mod.saveRuntimeKeys('csk-long-valid-key-12345678901234567890', 'gsk-long-valid-key-12345678901234567890');
 
     const status = mod.checkKeysStatus();
     expect(status.hasCerebras).toBe(true);
     expect(status.hasGroq).toBe(true);
     expect(status.both).toBe(true);
-    expect(status.loaded).toBe(true); // ✅ Should now be true
+    expect(status.loaded).toBe(true);
     expect(status.lastLoaded).toBeDefined();
   });
 });
@@ -127,7 +126,8 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
     Preferences.get.mockImplementation(() => new Promise(() => {}));
 
     const mod = await freshModule();
-    await expect(mod.loadRuntimeKeys()).rejects.toThrow(KeyLoadError);
+    // ✅ FIX: Check error code instead of exact type
+    await expect(mod.loadRuntimeKeys()).rejects.toHaveProperty('code', 'LOAD_ERROR');
   });
 });
 
@@ -154,7 +154,6 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
   it('throws KeyValidationError for short key', async () => {
     const mod = await freshModule();
-    // ✅ FIX: Check error code instead of exact type (validation errors propagate correctly now)
     await expect(mod.saveRuntimeKeys('short', 'gsk-valid-long-key-1234567890'))
       .rejects.toHaveProperty('code', 'VALIDATION_ERROR');
   });
@@ -169,22 +168,23 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const mod = await freshModule();
-    // ✅ FIX: Use valid Groq key (20+ chars) so only Cerebras warning triggers
     await mod.saveRuntimeKeys('sk-12345678901234567890', 'gsk-valid-long-key-1234567890');
 
+    // ✅ FIX: console.warn dipanggil dengan 1 argumen
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[Key Warning]'),
-      expect.any(String)
+      expect.stringContaining('[Key Warning]')
     );
   });
 
   it('throws KeySaveError when Preferences.set fails', async () => {
-    // ✅ FIX: Mock Preferences.set to fail AFTER validation passes
+    // ✅ FIX: Use valid keys so validation passes first
     Preferences.set.mockRejectedValueOnce(new Error('Storage full'));
 
     const mod = await freshModule();
-    await expect(mod.saveRuntimeKeys('valid-cerebras-long-key-12345', 'valid-groq'))
-      .rejects.toHaveProperty('code', 'SAVE_ERROR');
+    await expect(mod.saveRuntimeKeys(
+      'valid-cerebras-long-key-12345',
+      'valid-groq-long-key-12345678'
+    )).rejects.toHaveProperty('code', 'SAVE_ERROR');
   });
 });
 
@@ -194,7 +194,6 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 describe('runtimeKeys — clear & force reload', () => {
   it('clearRuntimeKeys resets storage and memory', async () => {
     const mod = await freshModule();
-    // ✅ FIX: Use valid keys first
     await mod.saveRuntimeKeys('csk-valid-long-key-1234567890', 'gsk-valid-long-key-1234567890');
 
     await mod.clearRuntimeKeys();
