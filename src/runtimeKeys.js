@@ -126,7 +126,7 @@ export async function loadRuntimeKeys(options = {}) {
     // Use Promise.race with timeout to prevent hanging
     const loadWithTimeout = async (key, provider) => {
       const timeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Load timeout')), CONFIG.LOAD_TIMEOUT)
+        setTimeout(() => reject(new KeyLoadError(provider, new Error('Load timeout'))), CONFIG.LOAD_TIMEOUT)
       );
       
       const storage = Preferences.get({ key });
@@ -184,6 +184,10 @@ export async function loadRuntimeKeys(options = {}) {
     
   } catch (error) {
     console.error('[RuntimeKeys] Load failed:', error.message);
+    // Don't wrap if already KeyLoadError
+    if (error instanceof KeyLoadError) {
+      throw error;
+    }
     throw new KeyLoadError('Both', error);
   }
 }
@@ -200,13 +204,13 @@ export async function saveRuntimeKeys(cerebras, groq, options = {}) {
   const { validate = true } = options;
   let saved = 0;
   
+  // ✅ FIX: Validate BEFORE try-catch so validation errors propagate correctly
+  if (validate) {
+    if (cerebras) validateApiKey(cerebras, 'Cerebras');
+    if (groq) validateApiKey(groq, 'Groq');
+  }
+  
   try {
-    // Validate before saving
-    if (validate) {
-      if (cerebras) validateApiKey(cerebras, 'Cerebras');
-      if (groq) validateApiKey(groq, 'Groq');
-    }
-    
     // Normalize keys (trim whitespace)
     const normalizedCerebras = cerebras?.trim() || '';
     const normalizedGroq = groq?.trim() || '';
@@ -220,6 +224,7 @@ export async function saveRuntimeKeys(cerebras, groq, options = {}) {
     // Update in-memory state
     _state.cerebras = normalizedCerebras;
     _state.groq = normalizedGroq;
+    _state.loaded = true; // ✅ FIX: Set loaded = true after successful save
     _state.lastLoaded = Date.now();
     
     if (normalizedCerebras) saved++;
@@ -230,6 +235,11 @@ export async function saveRuntimeKeys(cerebras, groq, options = {}) {
     return { success: true, saved };
     
   } catch (error) {
+    // ✅ FIX: Re-throw validation errors without wrapping
+    if (error instanceof KeyValidationError) {
+      throw error;
+    }
+    
     console.error('[RuntimeKeys] Save failed:', error.message);
     
     // Determine which provider failed
