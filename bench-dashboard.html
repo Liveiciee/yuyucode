@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>yuyu · performance dashboard</title>
+<title>yuyu · bench</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -12,354 +12,394 @@
   --pkd:rgba(236,72,153,.08);--pkb:rgba(236,72,153,.16);--pkg:rgba(236,72,153,.28);
   --tx:#f5f0f8;--sc:#b8adc4;--mu:rgba(184,173,196,.32);
   --gn:#4ade80;--rd:#f87171;--yw:#fbbf24;
-  --fn:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --fn-mono:'JetBrains Mono','Cascadia Code','Fira Code',ui-monospace,monospace;
+  --fn:'JetBrains Mono','Cascadia Code','Fira Code',ui-monospace,monospace;
 }
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--tx);font-family:var(--fn);font-size:14px;line-height:1.5;min-height:100vh}
+body{background:var(--bg);color:var(--tx);font-family:var(--fn);font-size:13px;line-height:1.6;min-height:100vh;padding-bottom:80px}
 body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.055) 3px,rgba(0,0,0,.055) 4px);pointer-events:none;z-index:9999}
 .orb{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
 .o1{width:50vw;height:50vw;background:rgba(236,72,153,.055);right:-10%;top:10%}
 .o2{width:35vw;height:35vw;background:rgba(139,92,246,.035);left:-8%;bottom:20%}
-.tb{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:rgba(13,10,15,.94);backdrop-filter:blur(14px);border-bottom:1px solid rgba(236,72,153,.07)}
-.tb-l{display:flex;align-items:center;gap:12px}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--pk);box-shadow:0 0 8px var(--pkg);animation:pulse 2.5s ease-in-out infinite}
+.tb{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:rgba(13,10,15,.94);backdrop-filter:blur(14px);border-bottom:1px solid rgba(236,72,153,.07)}
+.tb-l{display:flex;align-items:center;gap:10px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--pk);box-shadow:0 0 8px var(--pkg);animation:pulse 2.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
-.brand{font-size:14px;font-weight:500;letter-spacing:-0.01em}
-.brand b{color:var(--pk);font-weight:600}
-.meta{font-size:11px;color:var(--mu);text-align:right;line-height:1.5}
-.meta a{color:var(--pk);text-decoration:none;opacity:.6}
+.brand{font-size:12px;color:var(--sc);letter-spacing:.05em}
+.brand b{color:var(--pk);font-weight:700}
+.meta{font-size:10px;color:var(--mu);text-align:right;line-height:1.6}
+.meta a{color:var(--pk);text-decoration:none;opacity:.5}
 .meta a:hover{opacity:1}
-.main{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:32px 24px 0}
-.filter-bar{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-.search{flex:1;min-width:200px;position:relative}
-.search input{width:100%;background:var(--bg2);border:1px solid rgba(255,255,255,.08);border-radius:40px;padding:10px 16px;color:var(--tx);font-size:13px;font-family:var(--fn);outline:none;transition:border-color .2s}
+.main{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:28px 16px 0}
+
+/* ── Filter bar ── */
+.filter-bar{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;align-items:center}
+.search{flex:1;min-width:180px}
+.search input{width:100%;background:var(--bg2);border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:8px 14px;color:var(--tx);font-size:11px;font-family:var(--fn);outline:none;transition:border-color .2s;letter-spacing:.03em}
 .search input:focus{border-color:var(--pkb)}
 .search input::placeholder{color:var(--mu)}
-.filters{display:flex;gap:8px;flex-wrap:wrap}
-.filter-btn{background:var(--bg2);border:1px solid rgba(255,255,255,.08);border-radius:32px;padding:6px 14px;font-size:12px;color:var(--sc);cursor:pointer;transition:all .2s}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filter-btn{background:var(--bg2);border:1px solid rgba(255,255,255,.06);border-radius:4px;padding:5px 12px;font-size:10px;font-family:var(--fn);color:var(--sc);cursor:pointer;transition:all .15s;letter-spacing:.05em}
 .filter-btn:hover{border-color:var(--pkb);color:var(--pk3)}
 .filter-btn.active{background:var(--pkb);border-color:var(--pk);color:white}
-.summary-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:32px}
-.stat-card{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:16px;padding:16px;transition:all .2s}
-.stat-card:hover{border-color:var(--pkb);transform:translateY(-1px)}
-.stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);margin-bottom:6px}
-.stat-value{font-size:28px;font-weight:600;color:var(--tx);font-family:var(--fn-mono)}
-.stat-trend{font-size:12px;margin-top:4px}
-.section-title{display:flex;align-items:center;gap:12px;margin:32px 0 16px}
-.section-title h2{font-size:18px;font-weight:500;letter-spacing:-0.01em}
-.section-title .badge{background:var(--pkb);border-radius:20px;padding:2px 8px;font-size:10px;color:var(--pk3)}
-.bench-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:32px}
-.bench-card{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:20px;padding:20px;transition:all .2s;position:relative;overflow:hidden}
-.bench-card:hover{border-color:var(--pkb);transform:translateY(-2px)}
-.bench-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--pk),transparent);opacity:0;transition:opacity .2s}
-.bench-card:hover::before{opacity:.5}
-.bench-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.bench-icon{font-size:28px;line-height:1}
-.bench-name{font-size:15px;font-weight:500;color:var(--tx);flex:1}
-.bench-value{font-size:24px;font-weight:600;color:var(--pk);font-family:var(--fn-mono)}
-.bench-unit{font-size:11px;color:var(--mu);margin-left:4px}
-.bench-desc{font-size:12px;color:var(--sc);line-height:1.5;margin-bottom:12px}
-.bench-impact{display:inline-block;background:rgba(236,72,153,.12);border-radius:12px;padding:4px 10px;font-size:10px;color:var(--pk3);margin-bottom:12px}
-.bench-meta{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.04)}
-.bench-badge{font-size:10px;background:rgba(255,255,255,.04);padding:2px 8px;border-radius:12px;color:var(--mu)}
-.bench-trend{font-size:11px}
-.up{color:var(--gn)}.down{color:var(--rd)}.neutral{color:var(--mu)}
-.history-section{margin-top:32px}
-.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px}
-.history-header h3{font-size:16px;font-weight:500}
-.compare-toggle{display:flex;gap:8px;align-items:center}
-.compare-toggle label{font-size:11px;color:var(--mu);cursor:pointer}
-.compare-toggle input{cursor:pointer}
-.table-wrapper{overflow-x:auto;border:1px solid rgba(255,255,255,.04);border-radius:16px;background:var(--bg2)}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th{padding:12px 16px;text-align:left;color:var(--mu);font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;border-bottom:1px solid rgba(255,255,255,.04)}
-td{padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.02);color:var(--sc)}
+
+.sl{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.sl-t{font-size:10px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
+.sl-t.pk{color:var(--pk);opacity:.75}
+.sl-t.mu{color:var(--mu)}
+.sl-l{flex:1;height:1px}
+.sl-l.pk{background:linear-gradient(90deg,var(--pkb),transparent)}
+.sl-l.mu{background:rgba(255,255,255,.04)}
+.intro{background:linear-gradient(135deg,rgba(236,72,153,.07),rgba(139,92,246,.04));border:1px solid var(--pkb);border-radius:14px;padding:22px 26px;margin-bottom:28px}
+.intro-tag{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--pk3);margin-bottom:12px;opacity:.8}
+.intro-tag::before{content:'★  '}
+.intro-h{font-size:21px;color:var(--tx);line-height:1.25;margin-bottom:8px;font-weight:400;font-style:italic}
+.intro-p{font-size:12px;color:var(--sc);line-height:1.75}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:36px}
+.hcard{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:12px;padding:16px;position:relative;overflow:hidden;transition:border-color .15s,transform .15s}
+.hcard:hover{border-color:var(--pkb);transform:translateY(-1px)}
+.hcard::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(236,72,153,.18),transparent)}
+.h-icon{font-size:20px;line-height:1;margin-bottom:6px}
+.h-lbl{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin-bottom:5px}
+.h-hl{font-size:16px;color:var(--tx);line-height:1.3;margin-bottom:6px}
+.h-hl b{color:var(--pk)}
+.h-dt{font-size:10px;color:var(--mu);line-height:1.6}
+.h-rel{font-size:10px;color:rgba(236,72,153,.5);line-height:1.5;margin-top:5px;font-style:italic}
+.h-note{font-size:9px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.14);border-radius:4px;padding:4px 7px;color:rgba(251,191,36,.65);line-height:1.5;margin-top:7px}
+.h-trend{font-size:10px;margin-top:5px}
+.up{color:var(--gn)}.dn{color:var(--rd)}.fl{color:var(--mu)}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:26px}
+.scard{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:8px;padding:12px 14px;transition:border-color .15s;position:relative;overflow:hidden}
+.scard:hover{border-color:var(--pkb)}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(236,72,153,.12),transparent)}
+.s-name{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--mu);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-val{font-size:19px;font-weight:700;color:var(--tx);line-height:1}
+.s-unit{font-size:9px;color:var(--mu);margin-top:2px}
+.s-delta{font-size:10px;margin-top:4px}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:10px;margin-bottom:26px}
+.ccard{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:10px;padding:14px;position:relative}
+.chead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.cname{font-size:10px;color:var(--sc)}
+.cval{font-size:12px;font-weight:700;color:var(--pk)}
+.ccard canvas{display:block;width:100%;height:72px}
+.tw{overflow-x:auto;border:1px solid rgba(255,255,255,.04);border-radius:10px;margin-bottom:28px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{padding:9px 12px;text-align:left;color:var(--mu);font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:400;border-bottom:1px solid rgba(255,255,255,.04);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.025);color:var(--sc);white-space:nowrap}
+tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--bg3)}
-.commit-hash{font-family:var(--fn-mono);color:var(--pk);opacity:.7;font-size:11px}
-.value-cell{font-family:var(--fn-mono);font-weight:500;color:var(--tx)}
-.diff-cell{font-size:10px;padding-left:8px}
-footer{border-top:1px solid rgba(255,255,255,.04);padding:24px 24px 32px;max-width:1200px;margin:0 auto;font-size:11px;color:var(--mu);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:48px}
-footer a{color:var(--pk);text-decoration:none}
-footer a:hover{text-decoration:underline}
-.spin{display:flex;align-items:center;justify-content:center;padding:80px;gap:6px}
-.spin span{width:6px;height:6px;border-radius:50%;background:var(--pk);animation:blink 1s infinite}
+.hash{color:var(--pk);opacity:.65;font-style:italic}
+.v{color:var(--tx);font-weight:700}
+.empty-state{text-align:center;padding:60px;color:var(--mu);font-size:11px;letter-spacing:.08em}
+footer{border-top:1px solid rgba(255,255,255,.04);padding:20px 16px 0;max-width:900px;margin:0 auto;font-size:10px;color:var(--mu);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+footer a{color:var(--pk);opacity:.5;text-decoration:none}
+footer a:hover{opacity:1}
+.spin{display:flex;align-items:center;justify-content:center;padding:80px;gap:5px}
+.spin span{width:5px;height:5px;border-radius:50%;background:var(--pk);animation:blink 1s infinite}
 .spin span:nth-child(2){animation-delay:.15s}.spin span:nth-child(3){animation-delay:.3s}
 @keyframes blink{0%,80%,100%{opacity:.1;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
-.err{margin:40px auto;max-width:500px;text-align:center;padding:32px;border:1px solid rgba(248,113,113,.2);border-radius:20px;background:rgba(248,113,113,.04);color:var(--rd);font-size:13px}
-.empty-state{text-align:center;padding:60px;color:var(--mu)}
-.legend{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
-.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sc)}
-.legend-dot{width:8px;height:8px;border-radius:50%}
-@media(max-width:680px){.bench-grid{grid-template-columns:1fr}.main{padding:20px 16px}}
+.err{margin:40px auto;max-width:400px;text-align:center;padding:24px;border:1px solid rgba(248,113,113,.15);border-radius:10px;background:rgba(248,113,113,.04);color:var(--rd);font-size:12px;line-height:1.8}
+.ctip{position:absolute;background:#1a1420;border:1px solid rgba(236,72,153,.25);border-radius:6px;padding:5px 10px;font-size:11px;color:#f5f0f8;pointer-events:none;display:none;white-space:nowrap;z-index:10;font-family:var(--fn)}
+@media(max-width:540px){.hgrid,.cgrid{grid-template-columns:1fr}.sgrid{grid-template-columns:repeat(2,1fr)}.filter-bar{flex-direction:column;align-items:stretch}}
 </style>
 </head>
 <body>
 <div class="orb o1"></div><div class="orb o2"></div>
 <div class="tb">
-  <div class="tb-l"><div class="dot"></div><div class="brand"><b>yuyu</b> · performance dashboard</div></div>
+  <div class="tb-l"><div class="dot"></div><div class="brand"><b>yuyu</b> · bench</div></div>
   <div class="meta" id="meta">—</div>
 </div>
 <div class="main" id="root"><div class="spin"><span></span><span></span><span></span></div></div>
 <footer>
-  <span>⚡ Every change is benchmarked automatically · Snapdragon 680 · CI x86_64</span>
+  <span>Built on a ~$130 phone · Oppo A77s × GitHub Actions · MIT</span>
   <span><a href="https://github.com/Liveiciee/yuyucode" target="_blank">github.com/Liveiciee/yuyucode</a></span>
 </footer>
 <script>
-// ── Performance categories for non-technical users ──────────────────────────
-const CATEGORIES = {
-  'editor': { label: '✏️ Editor Feel', desc: 'How fast the editor responds when you type, open files, or switch tabs' },
-  'preview': { label: '👁️ Live Preview', desc: 'Speed of updating the live preview when you edit HTML/CSS/JS' },
-  'ai': { label: '🤖 AI Parsing', desc: 'How quickly Yuyu reads and understands AI responses' },
-  'diff': { label: '🔍 Diff Review', desc: 'Speed of showing changes before applying them' },
-  'map': { label: '🗺️ Project Map', desc: 'How fast Yuyu scans your codebase to understand it' },
-  'stress': { label: '🔥 Stress Tests', desc: 'Extreme cases — your project will never be this big' },
-  'robustness': { label: '🛡️ Edge Cases', desc: 'Handling weird inputs without crashing' },
-  'default': { label: '📊 Core Engine', desc: 'Low-level performance that powers everything' }
-};
+// ── Zero-dependency micro chart renderer ──────────────────────────────────────
+function drawChart(canvas,values,labels){
+  const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,H=72;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  const valid=values.filter(v=>v!==null&&v>0);
+  if(valid.length<2)return;
+  const min=Math.min(...valid)*.92,max=Math.max(...valid)*1.05;
+  const pad={t:6,r:6,b:18,l:6},cW=W-pad.l-pad.r,cH=H-pad.t-pad.b,n=values.length;
+  const px=i=>pad.l+(i/(n-1))*cW;
+  const py=v=>pad.t+cH-((v-min)/(max-min))*cH;
+  ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+  [.25,.5,.75,1].forEach(t=>{const y=pad.t+cH*(1-t);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke()});
+  const pts=values.map((v,i)=>[px(i),v>0?py(v):null]);
+  const grad=ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,'rgba(236,72,153,.22)');grad.addColorStop(1,'rgba(236,72,153,.01)');
+  ctx.beginPath();let started=false;
+  pts.forEach(([x,y])=>{if(y===null)return;if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)});
+  const lv=[...pts].reverse().find(([,y])=>y!==null),fv=pts.find(([,y])=>y!==null);
+  if(lv&&fv){ctx.lineTo(lv[0],H-pad.b);ctx.lineTo(fv[0],H-pad.b);ctx.closePath()}
+  ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();started=false;
+  pts.forEach(([x,y])=>{if(y===null)return;if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)});
+  ctx.strokeStyle='#ec4899';ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
+  pts.forEach(([x,y])=>{if(y===null)return;
+    ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle='#ec4899';ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,1.5,0,Math.PI*2);ctx.fillStyle='#0d0a0f';ctx.fill()});
+  ctx.fillStyle='rgba(184,173,196,.35)';ctx.font=`9px ${getComputedStyle(document.body).fontFamily}`;ctx.textAlign='center';
+  const step=Math.max(1,Math.floor(n/4));
+  for(let i=0;i<n;i+=step)ctx.fillText(labels[i]||'',pts[i][0],H-3);
+}
 
-const IMPACT_LEVELS = {
-  high: { label: '⚡ High Impact', color: '#fbbf24', desc: 'You feel this every time you use the editor' },
-  medium: { label: '📈 Medium Impact', color: '#4ade80', desc: 'Important for larger projects' },
-  low: { label: '🔬 Low Impact', color: '#b8adc4', desc: 'Edge cases or stress tests only' }
-};
+function addTooltip(canvas,values,labels){
+  const tip=document.createElement('div');tip.className='ctip';
+  canvas.parentElement.appendChild(tip);
+  canvas.addEventListener('mousemove',e=>{
+    const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,n=values.length;
+    const idx=Math.max(0,Math.min(n-1,Math.round((x/r.width)*(n-1))));
+    const v=values[idx];
+    if(!v){tip.style.display='none';return}
+    tip.innerHTML=`<span style="color:var(--pk)">${labels[idx]}</span>  ${fmt(v)} ops/sec`;
+    tip.style.display='block';tip.style.left=Math.min(x,r.width-120)+'px';tip.style.top='-32px';
+  });
+  canvas.addEventListener('mouseleave',()=>{tip.style.display='none'});
+}
 
-function getCategory(name) {
-  const l = name.toLowerCase();
-  if(l.includes('tab') || l.includes('open') || l.includes('close') || l.includes('reorder') || l.includes('find')) return 'editor';
-  if(l.includes('preview') || l.includes('srcdoc') || l.includes('build')) return 'preview';
-  if(l.includes('parse') || l.includes('action') || l.includes('agent')) return 'ai';
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function fmt(n,asTime=false){
+  if(asTime){
+    if(n<1000)return n.toFixed(0)+' ns';
+    if(n<1e6)return (n/1000).toFixed(1)+' µs';
+    return (n/1e6).toFixed(2)+' ms';
+  }
+  if(n>=1e9)return (n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return (n/1e6).toFixed(2)+'M';
+  if(n>=1e3)return (n/1e3).toFixed(1)+'K';
+  return n.toFixed(0);
+}
+const fmtDate=ts=>new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+function pct(a,b){return b?((a-b)/b*100):null}
+function deltaTag(d){
+  if(d===null)return '';
+  const c=d>2?'up':d<-2?'dn':'fl',s=d>0?'+':'';
+  return `<div class="h-trend ${c}">${s}${d.toFixed(1)}% vs last push</div>`;
+}
+
+// ── Category classifier (fixed) ───────────────────────────────────────────────
+function getCategory(name){
+  const l=name.toLowerCase();
+  if(l.includes('tab')||l.includes('open')||l.includes('close')||l.includes('reorder')||l.includes('find')) return 'editor';
+  if(l.includes('preview')||l.includes('srcdoc')||l.includes('build')||l==='js only'||l.includes('html + css')||l.includes('giant js')||l.includes('20 tabs (only')) return 'preview';
+  if(l.includes('parse')||l.includes('action')||l.includes('agent')||l.includes('single call')) return 'ai';
   if(l.includes('diff')) return 'diff';
-  if(l.includes('symbol') || l.includes('extract') || l.includes('compress') || l.includes('import') || l.includes('salience')) return 'map';
-  if(l.includes('stress') || l.includes('5000') || l.includes('200') || l.includes('parallel')) return 'stress';
-  if(l.includes('null') || l.includes('undefined') || l.includes('empty') || l.includes('malformed') || l.includes('unicode')) return 'robustness';
+  if(l.includes('symbol')||l.includes('compress')||l.includes('import')||l.includes('salience')||l.includes('component')||l.includes('large file')||l.includes('small file')||l.includes('non-code')||l.includes('pre-built')) return 'map';
+  if(l.includes('stress')||l.includes('5000')||l.includes('parallel')||l.includes('mixed workload')||l.includes('500 mixed')||l.includes('200 unique')||l.includes('200 files')) return 'stress';
+  if(l.includes('null')||l.includes('undefined')||l.includes('empty')||l.includes('malformed')||l.includes('unicode')||l.includes('no extension')||l.includes('deeply nested')||l.includes('single line')||l.includes('10mb')||l.includes('adversarial')) return 'robustness';
   return 'default';
 }
 
-function getImpact(name) {
-  const l = name.toLowerCase();
-  if(l.includes('single call') || l.includes('open 1 tab') || l.includes('empty tabs') || l.includes('no action')) return 'high';
-  if(l.includes('realistic') || l.includes('small diff') || l.includes('html + css')) return 'high';
-  if(l.includes('large') || l.includes('500 lines') || l.includes('50 tabs')) return 'medium';
-  if(l.includes('stress') || l.includes('parallel') || l.includes('adversarial')) return 'low';
-  return 'medium';
-}
+// ── Explanations ──────────────────────────────────────────────────────────────
+const E={
+  'single call — jsx':{i:'⚡',l:'Language detection',h:(v,f)=>`Detects file type in <b>${f(1e9/v,true)}</b>`,d:'Every file open triggers this — identifies language instantly so syntax highlighting, autocomplete, and tooling activate automatically.',r:'Bottleneck here = laggy editor on every file open.'},
+  'single call — ts':{i:'⚡',l:'TypeScript detection',h:(v,f)=>`Identifies TypeScript in <b>${f(1e9/v,true)}</b>`,d:'TS-specific features (type-checking, IntelliSense) activate the moment you open a .ts or .tsx file.',r:'Slow detection delays the entire type-check pipeline.'},
+  '10 mixed extensions':{i:'⚡',l:'Batch language scan',h:(v,f)=>`Scans 10 mixed files in <b>${f(1e9/v,true)}</b>`,d:'Workspace load scan — all file types detected at once when opening a project folder.',r:'Felt on project load. Slow = sluggish startup.'},
+  '10 mixed':{i:'⚡',l:'Batch detection',h:(v,f)=>`Processes 10 files in <b>${f(1e9/v,true)}</b>`,d:'Batch detection pass across mixed file types.',r:'Scales linearly with project size.'},
+  '500 mixed files (stress)':{i:'🔥',l:'Stress: 500-file project',h:(v,f)=>`Scans 500 files in <b>${f(1e9/v,true)}</b>`,d:'Worst-case project scan — large monorepo simulation.',r:'Confirms YuyuCode stays fast at real project scale.',n:'Stress test — not typical, validates scalability.'},
+  'empty tabs':{i:'📑',l:'New tab speed',h:(v,f)=>`Opens blank tab in <b>${f(1e9/v,true)}</b>`,d:'Zero wait on new tab. The editor is ready before your finger lifts.',r:'Happens every new file. This is how responsive the UI feels.'},
+  'open 1 tab (Array spread)':{i:'🗂️',l:'Tab open',h:(v,f)=>`Opens tab in <b>${f(1e9/v,true)}</b>`,d:'Core tab-open using immutable array spread — safe, predictable state.',r:'Every file open triggers this. Should be imperceptible — it is.'},
+  'close middle tab from 10':{i:'🗂️',l:'Tab close',h:(v,f)=>`Closes tab in <b>${f(1e9/v,true)}</b>`,d:'Closes from middle of 10 open files — filters array, recalculates active tab.',r:'Heavy users keep 10+ tabs. Slow close = perceptible lag.'},
+  'find active tab from 20':{i:'🗂️',l:'Tab lookup',h:(v,f)=>`Finds active tab in <b>${f(1e9/v,true)}</b>`,d:'Linear scan for active tab among 20 — runs on every render cycle.',r:'Called constantly. Slow = whole editor renders sluggishly.'},
+  'open 50 tabs sequentially':{i:'🗂️',l:'Stress: 50 tabs',h:(v,f)=>`Opens 50 tabs in <b>${f(1e9/v,true)}</b>`,d:'Sequential opens with immutable spreads — O(n²) total, intentional tradeoff.',n:'O(n²) by design — immutability over raw mutation.'},
+  'open 200 tabs sequentially':{i:'🔥',l:'Stress: 200 tabs',h:(v,f)=>`Opens 200 tabs in <b>${f(1e9/v,true)}</b>`,d:'Extreme stress — shows where the O(n²) cost becomes visible.',n:'Intentional stress — real UX limit is ~50 tabs anyway.'},
+  'find dirty tab from 200':{i:'🗂️',l:'Find unsaved (200 tabs)',h:(v,f)=>`Finds unsaved tab in <b>${f(1e9/v,true)}</b>`,d:'Scans 200 tabs for unsaved changes — drives the "●" indicator.',r:'The unsaved dot must always be accurate and instant.'},
+  'close all dirty tabs from 200':{i:'🗂️',l:'Mass close unsaved',h:(v,f)=>`Clears unsaved tabs in <b>${f(1e9/v,true)}</b>`,d:'Filter across 200 tabs removing all dirty state.'},
+  'reorder — move last to first (200 tabs)':{i:'🗂️',l:'Tab reorder (worst case)',h:(v,f)=>`Reorders 200 tabs in <b>${f(1e9/v,true)}</b>`,d:'Moves last→first — worst case for drag-and-drop reorder.',r:'Slow = janky drag animation.'},
+  'js only':{i:'👁️',l:'Live preview (JS)',h:(v,f)=>`Builds JS preview in <b>${f(1e9/v,true)}</b>`,d:'Generates iframe srcdoc for JS-only project — runs on every keypress in preview mode.',r:'Preview refreshes as you type. Slow = preview lags your code.'},
+  'html + css + js':{i:'👁️',l:'Live preview (full)',h:(v,f)=>`Builds full preview in <b>${f(1e9/v,true)}</b>`,d:'Combines HTML + CSS + JS into iframe srcdoc — most common preview case.',r:'Still fast enough for real-time updates.'},
+  'giant JS (500 lines)':{i:'👁️',l:'Preview: 500-line file',h:(v,f)=>`Previews 500-line file in <b>${f(1e9/v,true)}</b>`,d:'Live preview stress — large JS file piped into iframe.',r:'Confirms preview stays real-time on large files.'},
+  '20 tabs (only first html/css/js matter)':{i:'👁️',l:'Preview with 20 tabs',h:(v,f)=>`Scans 20 tabs for preview in <b>${f(1e9/v,true)}</b>`,d:'Finds HTML/CSS/JS among 20 open tabs — only first match of each used.'},
+  'unicode content':{i:'🌐',l:'Preview: unicode',h:(v,f)=>`Builds unicode preview in <b>${f(1e9/v,true)}</b>`,d:'Preview with emoji, CJK, RTL, zero-width chars.',r:'International code — any language, same speed.'},
+  'small diff (4 lines)':{i:'🔍',l:'Diff review (small)',h:(v,f)=>`Computes change in <b>${f(1e9/v,true)}</b>`,d:'Myers diff on a 4-line AI edit — diff card appears before you finish blinking.',r:'Most AI edits are small. This is the common case.'},
+  'large diff (500 lines, many changes)':{i:'🔍',l:'Diff review (large)',h:(v,f)=>v<10?`~<b>${(1000/Math.max(v,.01)).toFixed(0)}ms</b> per diff`:`<b>${f(v)} ops/sec</b>`,d:'Myers on 500 lines with many changes — worst-case pattern. Brief pause is expected.',r:'Large refactors. The pause is honest — not a bug.',n:'Myers O(ND): N=lines, D=differences. Large D on large N is expensive by design.'},
+  'identical (no diff)':{i:'🔍',l:'Diff: no changes',h:(v,f)=>`Confirms no changes in <b>${f(1e9/v,true)}</b>`,d:'Myers still does one full pass to confirm nothing changed.',r:'Happens when AI produces the same result as current code.'},
+  'unicode diff':{i:'🌐',l:'Diff: unicode',h:(v,f)=>`Diffs unicode content in <b>${f(1e9/v,true)}</b>`,d:'Myers diff with emoji, CJK, RTL — validates correctness for international code.'},
+  'empty → 500 lines (insert everything)':{i:'🔍',l:'Diff: full insert',h:(v,f)=>`Diffs empty→500 lines in <b>${f(1e9/v,true)}</b>`,d:'All 500 lines are additions — the initial AI write case. All-green diff.',r:'Creating a new file via AI.'},
+  '500 lines → empty (delete everything)':{i:'🔍',l:'Diff: full delete',h:(v,f)=>`Diffs 500→empty in <b>${f(1e9/v,true)}</b>`,d:'Every line deleted — symmetric to full insert. All-red diff.',r:'Clearing or replacing a whole file.'},
+  '5000 lines identical (no diff — best case)':{i:'🔥',l:'Stress diff: 5000 identical',h:(v,f)=>`Confirms no diff in 5000 lines in <b>${f(1e9/v,true)}</b>`,d:'Best case at 5000 lines — must still scan the whole file to confirm.',n:'10x larger than production worst-case — stress only.'},
+  '5000 lines all changed (worst case Myers)':{i:'💀',l:'Worst case: Myers diff',h:(v,f)=>v<1?`~<b>${(1000/Math.max(v,.001)).toFixed(0)}ms</b> — expected & correct`:`<b>${f(v)} ops/sec</b>`,d:"Every line changed across 5000 lines — theoretical O(ND) worst case where N=D=5000. Not a bug.",r:"You'll never hit this in real usage — shows the algorithm's honest limit.",n:"⚠️ 0–3 ops/sec is correct. Myers O(ND) worst case. For bulk rewrites, a different algorithm would be chosen."},
+  'small file (4 lines)':{i:'🧠',l:'Symbol scan (small)',h:(v,f)=>`Extracts symbols in <b>${f(1e9/v,true)}</b>`,d:'Extracts exports from a 4-line file — typical small component.',r:'Small files are the common case in the project map.'},
+  'realistic component (~50 lines)':{i:'🧠',l:'Symbol scan (typical)',h:(v,f)=>`Scans real component in <b>${f(1e9/v,true)}</b>`,d:'50-line React hook with multiple exports — median YuyuCode file.',r:'This is what the project map runs on most.'},
+  'large file (10 components, ~500 lines)':{i:'🧠',l:'Symbol scan (large)',h:(v,f)=>`Scans 500-line file in <b>${f(1e9/v,true)}</b>`,d:'500 lines, 10 components — tests parser at scale.',r:'Large files slow the project map build.'},
+  'non-code file (early return)':{i:'🚀',l:'Smart file skip',h:(v,f)=>`Skips non-code in <b>${f(1e9/v,true)}</b>`,d:'CSS, JSON, images recognized immediately and skipped — no wasted parsing.',r:'Projects are 30–50% non-JS. This saves significant total scan time.'},
+  '5000 line file':{i:'🔥',l:'Stress: 5000-line file',h:(v,f)=>v<100?`~<b>${(1000/Math.max(v,.1)).toFixed(0)}ms</b> per scan`:`Scans in <b>${f(1e9/v,true)}</b>`,d:'10x the typical worst case — extreme file size test.',n:'Stress test — files this large would normally be excluded from project map.'},
+  'deeply nested (50 levels)':{i:'🔥',l:'Adversarial: 50 nesting levels',h:(v,f)=>`Handles 50-level nesting in <b>${f(1e9/v,true)}</b>`,d:'50 levels of function nesting — adversarial input for recursive parsers.',n:'Adversarial test — validates robustness against pathological input.'},
+  '200 unique symbols':{i:'🔥',l:'Stress: 200 exports',h:(v,f)=>`Extracts 200 symbols in <b>${f(1e9/v,true)}</b>`,d:'File with 200 uniquely named exports — tests symbol table at scale.'},
+  'large file (500 lines)':{i:'🗜️',l:'Context compression',h:(v,f)=>`Compresses 500-line file in <b>${f(1e9/v,true)}</b>`,d:"Strips comments and whitespace to fit more files into the AI's context window.",r:'AI has a token limit. Compression = AI sees more = smarter responses.'},
+  'large component (10x realistic, ~500 lines)':{i:'🗜️',l:'Compression: complex file',h:(v,f)=>`Compresses 10-component file in <b>${f(1e9/v,true)}</b>`,d:'Multi-component file — harder to compress than flat code.',r:'Component-heavy codebases have higher compression cost.'},
+  '200 unique symbol names (compression resistant)':{i:'🔥',l:'Stress: compression-resistant',h:(v,f)=>`Handles 200 unique names in <b>${f(1e9/v,true)}</b>`,d:'200 unique long identifiers — worst case for repetition-based compression.',n:'High-entropy files compress poorly by nature — expected behavior.'},
+  'single line (1 char)':{i:'🛡️',l:'Edge: 1-char file',h:(v,f)=>`Handles 1-char input in <b>${f(1e9/v,true)}</b>`,d:'Smallest possible input — edge case validation.',n:'Robustness test.'},
+  'small file — 1 import':{i:'📦',l:'Import analysis',h:(v,f)=>`Maps 1 dependency in <b>${f(1e9/v,true)}</b>`,d:'Extracts import statements to build the dependency graph.',r:'Every file in the project has imports scanned for the AI context map.'},
+  'realistic component — 3 imports':{i:'📦',l:'Import analysis (typical)',h:(v,f)=>`Maps 3 dependencies in <b>${f(1e9/v,true)}</b>`,d:'Typical React component — 3 imports is the average for YuyuCode files.',r:'The median production case.'},
+  'no imports':{i:'📦',l:'Import scan: no deps',h:(v,f)=>`Confirms no deps in <b>${f(1e9/v,true)}</b>`,d:'File with no imports — parser must read the whole file to confirm.'},
+  '50 imports':{i:'🔥',l:'Stress: 50 imports',h:(v,f)=>`Extracts 50 imports in <b>${f(1e9/v,true)}</b>`,d:'Extreme import count — barrel files can have 50+.',n:'Stress — typical files have 1–10 imports.'},
+  'unicode import paths':{i:'🌐',l:'Import: unicode paths',h:(v,f)=>`Parses unicode paths in <b>${f(1e9/v,true)}</b>`,d:'Non-ASCII file paths — emoji, accented chars, CJK in module names.',n:'Edge case — validates correctness, not common path.'},
+  'malformed import (no from)':{i:'🛡️',l:'Robustness: bad import',h:(v,f)=>`Handles malformed import in <b>${f(1e9/v,true)}</b>`,d:'Import without "from" clause — must handle gracefully without crashing.',n:'Robustness test — validates graceful failure.'},
+  'no action blocks':{i:'🤖',l:'AI parsing: plain text',h:(v,f)=>`Processes plain reply in <b>${f(1e9/v,true)}</b>`,d:'Pure text AI response — fastest parser path. Runs thousands of times per session.',r:'Most AI replies are conversational. This is the real hot path.'},
+  '1 action block':{i:'🤖',l:'AI parsing: 1 action',h:(v,f)=>`Parses 1 action in <b>${f(1e9/v,true)}</b>`,d:'Single file operation (read/write/exec) — typical single-edit response.',r:'Median agentic operation.'},
+  '5 action blocks':{i:'🤖',l:'AI parsing: 5 actions',h:(v,f)=>`Parses 5 actions in <b>${f(1e9/v,true)}</b>`,d:'Multi-step response — 5 file ops. Typical for "implement this feature".',r:'Complex tasks generate 5–10 actions.'},
+  'mixed — valid + invalid + non-action blocks':{i:'🤖',l:'AI parsing: real-world',h:(v,f)=>`Handles messy AI reply in <b>${f(1e9/v,true)}</b>`,d:'Valid actions + invalid JSON + code examples + plain text — real-world AI output.',r:'Parser must handle every combo without false positives.'},
+  '100 fake action blocks (all invalid JSON)':{i:'🛡️',l:'Robustness: 100 bad blocks',h:(v,f)=>`Rejects 100 bad blocks in <b>${f(1e9/v,true)}</b>`,d:'100 action-like blocks with invalid JSON — adversarial hallucinated AI output.',n:'Adversarial test — validates parser robustness.'},
+  '20 valid action blocks':{i:'🤖',l:'AI parsing: 20 actions',h:(v,f)=>`Parses 20 actions in <b>${f(1e9/v,true)}</b>`,d:'20 valid ops in one response — "set up the whole project" level task.'},
+  '10MB-ish text — no actions':{i:'🛡️',l:'Robustness: giant response',h:(v,f)=>`Scans 100K chars in <b>${f(1e9/v,true)}</b>`,d:'100,000-character response — tests for regex catastrophic backtracking.',n:'Safety test — validates no catastrophic backtracking on huge input.'},
+  '20 pre-built file data objects':{i:'🗺️',l:'Project map scoring',h:(v,f)=>`Scores 20 files in <b>${f(1e9/v,true)}</b>`,d:'Calculates file importance for AI context — based on import count, recency, size.',r:'Better scoring = AI sees the right files = smarter responses.'},
+  '200 files with cross-imports':{i:'🔥',l:'Stress: 200-file project map',h:(v,f)=>`Scores 200 cross-linked files in <b>${f(1e9/v,true)}</b>`,d:'Dense dependency graph — all 200 files import each other.',n:"O(n²) dependency scan by design — scales to ~500 files before needing optimization."},
+  '10 extractSymbols in parallel (Promise.all)':{i:'⚡',l:'Concurrent symbol scan',h:(v,f)=>`10 scans concurrently in <b>${f(1e9/v,true)}</b>`,d:'10 files indexed simultaneously — project load parallelism simulation.',n:'JS is single-threaded — Promise.all shows scheduling overhead, not true parallelism.'},
+  '10 compressSource in parallel':{i:'⚡',l:'Concurrent compression',h:(v,f)=>`10 compressions concurrently in <b>${f(1e9/v,true)}</b>`,d:'Parallel context compression — when AI requests multiple files at once.',n:'CPU-bound — parallelism adds overhead in single-thread JS.'},
+  '10 generateDiff in parallel':{i:'⚠️',l:'Concurrent diff (CPU-bound)',h:(v,f)=>v<10?`~<b>${(1000/Math.max(v,.1)).toFixed(0)}ms</b> per batch — CPU saturated`:`<b>${f(v)} ops/sec</b>`,d:"10 large diffs at once — demonstrates Myers diff is CPU-bound, not I/O-bound. Parallelism doesn't help.",r:'Key insight: diff scales with CPU speed, not concurrency. Fix = better algorithm, not more workers.',n:'⚠️ Low ops/sec is expected — CPU saturation demonstration, not a bug.'},
+  '50 parseActions in parallel':{i:'🤖',l:'Concurrent AI parsing (50x)',h:(v,f)=>`50 parse ops concurrently in <b>${f(1e9/v,true)}</b>`,d:'50 AI response parses simultaneously — background agent swarm at max load.'},
+  'mixed workload — 5 ops all types concurrently':{i:'⚡',l:'Real-world mixed workload',h:(v,f)=>`5 different ops concurrently in <b>${f(1e9/v,true)}</b>`,d:'Symbol scan + compression + diff + action parse + import scan — all at once.',r:'Closest benchmark to actual YuyuCode runtime behavior during active editing.'},
+  'null input':{i:'🛡️',l:'Robustness: null',h:(v,f)=>`Handles null in <b>${f(1e9/v,true)}</b>`,d:'Null path — returns safe default, never crashes.',n:'Robustness test.'},
+  'undefined input':{i:'🛡️',l:'Robustness: undefined',h:(v,f)=>`Handles undefined in <b>${f(1e9/v,true)}</b>`,d:'Most common JS runtime edge case.',n:'Robustness test.'},
+  'no extension':{i:'🛡️',l:'Edge: extensionless file',h:(v,f)=>`Handles Makefile-style in <b>${f(1e9/v,true)}</b>`,d:'Makefile, Dockerfile, Procfile — no extension, returns safe fallback.',r:'Config files are common in real projects.'},
+  'deeply nested path':{i:'🛡️',l:'Edge: deep path',h:(v,f)=>`Handles 10-level path in <b>${f(1e9/v,true)}</b>`,d:'Path 10 directories deep — extension extraction works at any depth.',r:'Monorepos have very deep paths.'},
+  'empty string':{i:'🛡️',l:'Edge: empty input',h:(v,f)=>`Handles empty string in <b>${f(1e9/v,true)}</b>`,d:'Zero-content input — must not crash for any parser.',n:'Robustness test.'},
+  'unicode source':{i:'🌐',l:'Edge: unicode source',h:(v,f)=>`Handles unicode code in <b>${f(1e9/v,true)}</b>`,d:'Emoji, CJK, RTL, zero-width chars in source code.',r:'Global developers write in their language. YuyuCode handles any Unicode.'},
+};
+const DEF={i:'📊',l:n=>n,h:(v,f)=>v<1?`~<b>${(1000/Math.max(v,.001)).toFixed(0)}ms</b> per operation`:`Runs at <b>${f(v)} ops/sec</b>`,d:'Core engine function — higher ops/sec means faster execution.'};
 
-function formatValue(v, name) {
-  if(v >= 1e9) return (v/1e9).toFixed(2) + 'B';
-  if(v >= 1e6) return (v/1e6).toFixed(2) + 'M';
-  if(v >= 1e3) return (v/1e3).toFixed(1) + 'K';
-  if(v < 1 && v > 0) return (v*1000).toFixed(0) + ' ops';
-  if(v < 10 && v >= 1) return v.toFixed(1);
-  return Math.round(v).toString();
-}
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentFilter='all';
+let currentSearch='';
 
-function formatTrend(change) {
-  if(change === null) return '';
-  const sign = change > 0 ? '+' : '';
-  const cls = change > 2 ? 'up' : change < -2 ? 'down' : 'neutral';
-  const icon = change > 2 ? '↑' : change < -2 ? '↓' : '→';
-  return `<span class="${cls}">${icon} ${sign}${change.toFixed(1)}%</span>`;
-}
-
-function formatDescription(name) {
-  const descriptions = {
-    'empty tabs': 'Opening a new empty tab — should feel instant',
-    'open 1 tab (Array spread)': 'Opening a file from your project',
-    'close middle tab from 10': 'Closing a tab from a busy workspace',
-    'find active tab from 20': 'Finding which tab you\'re currently editing',
-    'js only': 'Live preview for JavaScript-only projects',
-    'html + css + js': 'Full live preview with all web technologies',
-    'small diff (4 lines)': 'Showing what changed in a small AI edit',
-    'large diff (500 lines, many changes)': 'Showing what changed in a large AI edit',
-    'no action blocks': 'Reading plain text AI responses',
-    '1 action block': 'Parsing a single AI command',
-    '5 action blocks': 'Parsing multiple AI commands at once',
-    'small file (4 lines)': 'Scanning a small file for the project map',
-    'realistic component (~50 lines)': 'Scanning a typical React component',
-    'large file (10 components, ~500 lines)': 'Scanning a large file for the project map',
-    'non-code file (early return)': 'Skipping non-code files efficiently',
-    'null input': 'Handling missing data without crashing',
-    'undefined input': 'Graceful handling of missing values'
-  };
-  return descriptions[name] || 'Core performance metric';
-}
-
-function getIcon(name) {
-  const l = name.toLowerCase();
-  if(l.includes('tab')) return '📁';
-  if(l.includes('preview') || l.includes('srcdoc')) return '👁️';
-  if(l.includes('diff')) return '🔍';
-  if(l.includes('parse') || l.includes('action')) return '🤖';
-  if(l.includes('symbol')) return '🧠';
-  if(l.includes('compress')) return '🗜️';
-  if(l.includes('import')) return '📦';
-  if(l.includes('stress')) return '🔥';
-  if(l.includes('null') || l.includes('undefined') || l.includes('empty')) return '🛡️';
-  return '⚡';
-}
-
-// ── Load and render ──────────────────────────────────────────────────────────
+// ── Load data ─────────────────────────────────────────────────────────────────
 function loadData(){
   return new Promise((ok,fail)=>{
     const s=document.createElement('script');
     s.src='./data.js?t='+Date.now();
-    s.onload=()=>window.BENCHMARK_DATA?ok(window.BENCHMARK_DATA):fail(new Error('No data'));
-    s.onerror=()=>fail(new Error('data.js not found — CI may not have run yet'));
+    s.onload=()=>window.BENCHMARK_DATA?ok(window.BENCHMARK_DATA):fail(new Error('BENCHMARK_DATA not found'));
+    s.onerror=()=>fail(new Error('data.js not found — CI might not have run yet'));
     document.head.appendChild(s);
   });
 }
 
-let currentFilter = 'all';
-let currentSearch = '';
-
+// ── Render ────────────────────────────────────────────────────────────────────
 function render(data){
-  const raw=data.entries||{};
-  const commitMap={};
+  const raw=data.entries||{},commitMap={};
   for(const runs of Object.values(raw)){
     for(const run of runs){
       const id=typeof run.commit==='object'?(run.commit.id||run.commit.hash||''):run.commit;
       if(!commitMap[id])commitMap[id]={commit:id,date:run.date,benches:[]};
-      for(const b of(run.benches||[])){
-        if(!commitMap[id].benches.find(x=>x.name===b.name))
-          commitMap[id].benches.push(b);
-      }
+      for(const b of(run.benches||[])){if(!commitMap[id].benches.find(x=>x.name===b.name))commitMap[id].benches.push(b)}
     }
   }
   const entries=Object.values(commitMap).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  if(!entries.length){
-    document.getElementById('root').innerHTML='<div class="err">📊 No benchmark data yet.<br><br>Push to main to trigger the first performance run.</div>';
+  if(!entries.length){document.getElementById('root').innerHTML='<div class="err">No data yet.<br>Push to main to trigger the first bench run.</div>';return}
+
+  const last=entries[entries.length-1],prev=entries[entries.length-2]||null;
+  const allNames=[...new Set(entries.flatMap(e=>e.benches.map(b=>b.name)))];
+
+  // Filter
+  let filteredNames=allNames;
+  if(currentFilter!=='all') filteredNames=filteredNames.filter(n=>getCategory(n)===currentFilter);
+  if(currentSearch) filteredNames=filteredNames.filter(n=>n.toLowerCase().includes(currentSearch.toLowerCase()));
+  const filteredBenches=last.benches.filter(b=>filteredNames.includes(b.name));
+
+  document.getElementById('meta').innerHTML=
+    `<a href="https://github.com/Liveiciee/yuyucode/commit/${last.commit}" target="_blank">${last.commit.slice(0,7)}</a>`+
+    ` · ${fmtDate(last.date)} · ${entries.length} run${entries.length>1?'s':''}`;
+
+  const FILTERS=[
+    {k:'all',label:'All'},
+    {k:'editor',label:'✏️ Editor'},
+    {k:'preview',label:'👁️ Preview'},
+    {k:'ai',label:'🤖 AI'},
+    {k:'diff',label:'🔍 Diff'},
+    {k:'map',label:'🗺️ Map'},
+    {k:'stress',label:'🔥 Stress'},
+    {k:'robustness',label:'🛡️ Edge Cases'},
+  ];
+
+  let html=`<div class="filter-bar">
+    <div class="search"><input type="text" id="searchInput" placeholder="search benchmarks..." value="${currentSearch.replace(/"/g,'&quot;')}"></div>
+    <div class="filters">${FILTERS.map(f=>`<button class="filter-btn${currentFilter===f.k?' active':''}" data-filter="${f.k}">${f.label}</button>`).join('')}</div>
+  </div>`;
+
+  if(filteredBenches.length===0){
+    html+=`<div class="empty-state">no benchmarks match · try a different filter</div>`;
+    document.getElementById('root').innerHTML=html;
+    bindEvents(data);
     return;
   }
 
-  const last=entries[entries.length-1];
-  const prev=entries[entries.length-2]||null;
-  const allNames=[...new Set(entries.flatMap(e=>e.benches.map(b=>b.name)))];
-  
-  // Filter logic
-  let filteredNames = allNames;
-  if(currentFilter !== 'all'){
-    filteredNames = allNames.filter(name => getCategory(name) === currentFilter);
+  // FOR EVERYONE
+  html+=`<div class="sl"><div class="sl-t pk">For Everyone</div><div class="sl-l pk"></div><span style="font-size:9px;background:rgba(74,222,128,.1);color:#4ade80;padding:2px 8px;border-radius:4px;white-space:nowrap">✓ All fast</span></div>`;
+  if(currentFilter==='all'&&!currentSearch){
+    html+=`<div class="intro"><div class="intro-tag">What does this mean?</div><div class="intro-h">Your code editor, benchmarked.</div><div class="intro-p">YuyuCode runs performance tests automatically on every update — so you know the editor is always getting faster, never slower. The cards below explain what each test means for your experience, and why the number matters.</div></div>`;
   }
-  if(currentSearch){
-    filteredNames = filteredNames.filter(name => name.toLowerCase().includes(currentSearch.toLowerCase()));
-  }
-  
-  const filteredBenches = last.benches.filter(b => filteredNames.includes(b.name));
-  
-  // Summary stats
-  const highImpact = filteredBenches.filter(b => getImpact(b.name) === 'high').length;
-  const avgSpeed = filteredBenches.reduce((sum,b) => sum + b.value, 0) / filteredBenches.length;
-  const fastest = filteredBenches.reduce((max,b) => b.value > max.value ? b : max, {value:0});
-  
-  document.getElementById('meta').innerHTML = 
-    `<a href="https://github.com/Liveiciee/yuyucode/commit/${last.commit}" target="_blank">${last.commit.slice(0,7)}</a> · ${new Date(last.date).toLocaleDateString()} · ${entries.length} runs`;
-  
-  let html = `
-    <div class="filter-bar">
-      <div class="search"><input type="text" id="searchInput" placeholder="🔍 Search benchmarks..."></div>
-      <div class="filters" id="filters">
-        <button class="filter-btn ${currentFilter==='all'?'active':''}" data-filter="all">All</button>
-        <button class="filter-btn ${currentFilter==='editor'?'active':''}" data-filter="editor">✏️ Editor</button>
-        <button class="filter-btn ${currentFilter==='preview'?'active':''}" data-filter="preview">👁️ Preview</button>
-        <button class="filter-btn ${currentFilter==='ai'?'active':''}" data-filter="ai">🤖 AI</button>
-        <button class="filter-btn ${currentFilter==='diff'?'active':''}" data-filter="diff">🔍 Diff</button>
-        <button class="filter-btn ${currentFilter==='map'?'active':''}" data-filter="map">🗺️ Map</button>
-      </div>
-    </div>
-    
-    <div class="summary-stats">
-      <div class="stat-card"><div class="stat-label">🚀 Tests in view</div><div class="stat-value">${filteredBenches.length}</div></div>
-      <div class="stat-card"><div class="stat-label">⚡ High-impact metrics</div><div class="stat-value">${highImpact}</div><div class="stat-trend">You feel these daily</div></div>
-      <div class="stat-card"><div class="stat-label">📊 Avg ops/sec</div><div class="stat-value">${formatValue(avgSpeed, '')}</div></div>
-      <div class="stat-card"><div class="stat-label">🏆 Fastest operation</div><div class="stat-value">${formatValue(fastest.value, fastest.name)}</div><div class="stat-trend">${fastest.name.slice(0,30)}</div></div>
-    </div>
-  `;
-  
-  // Group by category for display
-  const grouped = {};
+  html+='<div class="hgrid">';
   for(const b of filteredBenches){
-    const cat = getCategory(b.name);
-    if(!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(b);
+    const ex=E[b.name]||DEF;
+    const lbl=typeof ex.l==='function'?ex.l(b.name):ex.l;
+    const hl=ex.h(b.value,fmt);
+    const p=prev?.benches.find(x=>x.name===b.name);
+    const d=p?pct(b.value,p.value):null;
+    const rel=ex.r?`<div class="h-rel">↳ ${ex.r}</div>`:'';
+    const nt=ex.n?`<div class="h-note">${ex.n}</div>`:'';
+    html+=`<div class="hcard"><div class="h-icon">${ex.i}</div><div class="h-lbl">${lbl}</div><div class="h-hl">${hl}</div><div class="h-dt">${ex.d}</div>${rel}${nt}${deltaTag(d)}</div>`;
   }
-  
-  const order = ['editor', 'preview', 'ai', 'diff', 'map', 'stress', 'robustness', 'default'];
-  for(const cat of order){
-    if(!grouped[cat] || grouped[cat].length===0) continue;
-    const catInfo = CATEGORIES[cat] || CATEGORIES.default;
-    html += `
-      <div class="section-title">
-        <h2>${catInfo.label}</h2>
-        <div class="badge">${grouped[cat].length} tests</div>
-      </div>
-      <div class="bench-grid">
-    `;
-    for(const b of grouped[cat]){
-      const p = prev?.benches.find(x=>x.name===b.name);
-      const trend = p ? ((b.value - p.value) / p.value * 100) : null;
-      const impact = IMPACT_LEVELS[getImpact(b.name)] || IMPACT_LEVELS.medium;
-      html += `
-        <div class="bench-card">
-          <div class="bench-header">
-            <div class="bench-icon">${getIcon(b.name)}</div>
-            <div class="bench-name">${b.name}</div>
-            <div class="bench-value">${formatValue(b.value, b.name)}<span class="bench-unit">ops/sec</span></div>
-          </div>
-          <div class="bench-desc">${formatDescription(b.name)}</div>
-          <div class="bench-impact" style="background:${impact.color}20;color:${impact.color}">${impact.label}</div>
-          <div class="bench-meta">
-            <div class="bench-badge">${catInfo.label}</div>
-            <div class="bench-trend">${formatTrend(trend)}</div>
-          </div>
-        </div>
-      `;
-    }
-    html += `</div>`;
+  html+='</div>';
+
+  // TECHNICAL
+  html+=`<div class="sl" style="margin-top:8px"><div class="sl-t mu">Technical Detail</div><div class="sl-l mu"></div></div>`;
+  html+='<div class="sgrid">';
+  for(const b of filteredBenches){
+    const p=prev?.benches.find(x=>x.name===b.name);
+    const d=p?pct(b.value,p.value):null;
+    const dc=d===null?'':d>2?`<div class="s-delta up">+${d.toFixed(1)}%</div>`:d<-2?`<div class="s-delta dn">${d.toFixed(1)}%</div>`:`<div class="s-delta fl">→ stable</div>`;
+    html+=`<div class="scard"><div class="s-name">${b.name}</div><div class="s-val">${fmt(b.value)}</div><div class="s-unit">ops/sec · CI x86_64</div>${dc}</div>`;
   }
-  
-  // History table
-  const topBenchmarks = [...filteredBenches].sort((a,b)=>b.value - a.value).slice(0,8);
-  html += `
-    <div class="history-section">
-      <div class="history-header">
-        <h3>📈 Performance History</h3>
-        <div class="compare-toggle">
-          <label>📊 Show top 8 fastest benchmarks</label>
-        </div>
-      </div>
-      <div class="table-wrapper">
-        <table>
-          <thead><tr><th>Commit</th><th>Date</th>${topBenchmarks.map(b=>`<th title="${b.name}">${b.name.split(' ')[0].slice(0,10)}</th>`).join('')}</tr></thead>
-          <tbody>
-    `;
-  for(const e of [...entries].slice(-10).reverse()){
-    html += `<tr><td class="commit-hash">${e.commit.slice(0,7)}</td><td>${new Date(e.date).toLocaleDateString()}</td>`;
-    for(const b of topBenchmarks){
-      const val = e.benches.find(x=>x.name===b.name)?.value;
-      html += `<td class="value-cell">${val ? formatValue(val, b.name) : '—'}</td>`;
-    }
-    html += `</tr>`;
+  html+='</div>';
+
+  html+='<div class="cgrid" id="cgrid"></div>';
+
+  // HISTORY
+  html+=`<div class="sl" style="margin-top:4px"><div class="sl-t mu">Run History</div><div class="sl-l mu"></div></div>`;
+  html+='<div class="tw"><table><thead><tr><th>commit</th><th>date</th>';
+  for(const n of filteredNames)html+=`<th title="${n}">${n.split(' ')[0].replace(/[—–]/g,'').trim().slice(0,8)}</th>`;
+  html+='</tr></thead><tbody>';
+  for(const e of [...entries].reverse()){
+    html+=`<tr><td class="hash">${e.commit.slice(0,7)}</td><td>${fmtDate(e.date)}</td>`;
+    for(const n of filteredNames){const b=e.benches.find(x=>x.name===n);html+=`<td class="v">${b?fmt(b.value):'—'}</td>`}
+    html+='</tr>';
   }
-  html += `</tbody></table></div></div>`;
-  
-  document.getElementById('root').innerHTML = html;
-  
-  // Bind filters
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      currentFilter = btn.dataset.filter;
-      render(data);
-    });
-  });
-  document.getElementById('searchInput')?.addEventListener('input', (e) => {
-    currentSearch = e.target.value;
-    render(data);
-  });
+  html+='</tbody></table></div>';
+
+  document.getElementById('root').innerHTML=html;
+
+  // Charts
+  const labels=entries.map(e=>e.commit.slice(0,7));
+  const grid=document.getElementById('cgrid');
+  for(const name of filteredNames){
+    const values=entries.map(e=>e.benches.find(b=>b.name===name)?.value??null);
+    const latestVal=values[values.length-1];
+    const card=document.createElement('div');card.className='ccard';
+    card.innerHTML=`<div class="chead"><span class="cname">${name}</span><span class="cval">${fmt(latestVal??0)} ops/s</span></div><canvas></canvas>`;
+    grid.appendChild(card);
+    const canvas=card.querySelector('canvas');
+    requestAnimationFrame(()=>{drawChart(canvas,values,labels);addTooltip(canvas,values,labels)});
+  }
+
+  bindEvents(data);
 }
 
-loadData().then(render).catch(e => {
-  document.getElementById('root').innerHTML = `<div class="err">⚠️ Could not load benchmark data<br><small>${e.message}</small><br><br>Make sure CI has run at least once to generate data.js</div>`;
+function bindEvents(data){
+  document.querySelectorAll('.filter-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{currentFilter=btn.dataset.filter;render(data)});
+  });
+  const si=document.getElementById('searchInput');
+  if(si){
+    si.addEventListener('input',e=>{currentSearch=e.target.value;render(data)});
+    if(currentSearch) si.focus();
+  }
+}
+
+loadData().then(render).catch(e=>{
+  document.getElementById('root').innerHTML=`<div class="err">Failed to load benchmark data.<br><small style="opacity:.5">${e.message}</small></div>`;
 });
 </script>
 </body>
