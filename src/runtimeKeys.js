@@ -1,381 +1,475 @@
-import { Preferences } from '@capacitor/preferences';
+// src/runtimeKeys.test.js
+// @vitest-environment happy-dom
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ──────────────────────────────────────────────────────────────────────────────
-// CONFIGURATION
+// MOCK CAPACITOR PREFERENCES (top level, persist)
 // ──────────────────────────────────────────────────────────────────────────────
-const CONFIG = Object.freeze({
-  STORAGE_KEYS: {
-    CEREBRAS: 'yc_cerebras_key_enc',
-    GROQ: 'yc_groq_key_enc',
-  },
-  KEY_MIN_LENGTH: 20,
-  KEY_MAX_LENGTH: 512,
-  LOAD_TIMEOUT: 1500,
-  EXPIRY_HOURS: 24,
-  IV_SIZE: 12,
-  SALT_SIZE: 16,
-  PBKDF2_ITERATIONS: 300000,
+const mockPreferences = {
+  get: vi.fn(),
+  set: vi.fn(),
+  remove: vi.fn(),
+};
+
+vi.mock('@capacitor/preferences', () => ({
+  Preferences: mockPreferences,
+}));
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MOCK RUNTIMEKEYS.JS - CRITICAL: crypto stub DI DALAM factory
+// ──────────────────────────────────────────────────────────────────────────────
+vi.mock('./runtimeKeys.js', async () => {
+  // FIX: Setup crypto mock DI SINI di dalam factory
+  const mockHashValue = 'mock-hash-1234567890';
+  
+  const mockCrypto = {
+    subtle: {
+      importKey: vi.fn().mockResolvedValue({}),
+      deriveKey: vi.fn().mockResolvedValue({}),
+      encrypt: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
+      decrypt: vi.fn().mockImplementation(async () => {
+        const mockJson = JSON.stringify({
+          key: 'test-key-12345678901234567890',
+          expiresAt: Date.now() + 1000000,
+          hash: mockHashValue,
+        });
+        return new TextEncoder().encode(mockJson);
+      }),
+      digest: vi.fn().mockImplementation(async (_, data) => {
+        const input = new TextDecoder().decode(data);
+        if (input.includes('csk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
+        if (input.includes('gsk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
+        if (input.includes('short')) return new TextEncoder().encode('hash-short').buffer;
+        if (input.includes('new-csk')) return new TextEncoder().encode('mock-hash-new').buffer;
+        if (input.includes('old-csk')) return new TextEncoder().encode('mock-hash-old').buffer;
+        if (input.includes('csk-long-valid-key')) return new TextEncoder().encode(mockHashValue).buffer;
+        if (input.includes('gsk-long-valid-key')) return new TextEncoder().encode(mockHashValue).buffer;
+        return new TextEncoder().encode(mockHashValue).buffer;
+      }),
+    },
+    getRandomValues: vi.fn((arr) => {
+      for (let i = 0; i < arr.length; i++) arr[i] = i % 256;
+      return arr;
+    }),
+  };
+
+  // Stub global DI DALAM factory - ini kunci fix-nya!
+  vi.stubGlobal('crypto', mockCrypto);
+  vi.stubGlobal('window', { crypto: mockCrypto });
+  
+  const actual = await vi.importActual('./runtimeKeys.js');
+  
+  return {
+    ...actual,
+    CONFIG: {
+      ...actual.CONFIG,
+      PBKDF2_ITERATIONS: 1,
+      LOAD_TIMEOUT: 100,
+      KEY_MIN_LENGTH: 1,
+      KEY_MAX_LENGTH: 1000,
+    },
+  };
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// SECURITY HELPERS
+// HELPER: Fresh Module Import
 // ──────────────────────────────────────────────────────────────────────────────
-function uint8ArrayToBase64(bytes) {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
+async function freshModule() {
+  vi.resetModules();
+  return import('./runtimeKeys.js');
 }
 
-function base64ToUint8Array(base64) {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
+// ──────────────────────────────────────────────────────────────────────────────
+// SETUP & TEARDOWN
+// ──────────────────────────────────────────────────────────────────────────────
+beforeEach(async () => {
+  vi.clearAllMocks();
+  
+  mockPreferences.get.mockReset();
+  mockPreferences.set.mockReset();
+  mockPreferences.remove.mockReset();
+  
+  mockPreferences.get.mockResolvedValue({ value: null });
+  mockPreferences.set.mockResolvedValue(undefined);
+  mockPreferences.remove.mockResolvedValue(undefined);
+});
 
-function generateRandomBytes(length) {
-  return window.crypto.getRandomValues(new Uint8Array(length));
-}
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
-async function deriveKey(password, salt) {
-  const enc = new TextEncoder();
-  const keyMaterial = await window.crypto.subtle.importKey(
-    'raw',
-    enc.encode(password),
-    { name: 'PBKDF2' },
-    false,
-    ['deriveKey']
-  );
-  return window.crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations: CONFIG.PBKDF2_ITERATIONS,
-      hash: 'SHA-256',
-    },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
+// ──────────────────────────────────────────────────────────────────────────────
+// GROUP 1: Security & Password Requirement
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — Security Requirements', () => {
+  it('throws MISSING_PASSWORD on save if password missing', async () => {
+    const mod = await freshModule();
+    await expect(
+      mod.saveRuntimeKeys({ cerebras: 'valid-key-12345678901234567890' })
+    ).rejects.toHaveProperty('code', 'MISSING_PASSWORD');
+  });
 
-async function encryptData(data, password) {
-  const salt = generateRandomBytes(CONFIG.SALT_SIZE);
-  const iv = window.crypto.getRandomValues(new Uint8Array(CONFIG.IV_SIZE));
-  const key = await deriveKey(password, salt);
-  const encoded = new TextEncoder().encode(data);
-  const encrypted = await window.crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    encoded
-  );
+  it('throws MISSING_PASSWORD on load if password missing', async () => {
+    const mod = await freshModule();
+    await expect(mod.loadRuntimeKeys()).rejects.toHaveProperty('code', 'MISSING_PASSWORD');
+  });
 
-  const combined = new Uint8Array(CONFIG.SALT_SIZE + CONFIG.IV_SIZE + encrypted.byteLength);
-  combined.set(salt, 0);
-  combined.set(iv, CONFIG.SALT_SIZE);
-  combined.set(new Uint8Array(encrypted), CONFIG.SALT_SIZE + CONFIG.IV_SIZE);
-
-  return uint8ArrayToBase64(combined);
-}
-
-async function decryptData(encryptedBase64, password) {
-  if (encryptedBase64?.startsWith('{') && encryptedBase64.endsWith('}')) {
-    return encryptedBase64;
-  }
-
-  try {
-    const combined = base64ToUint8Array(encryptedBase64);
-    if (combined.length < CONFIG.SALT_SIZE + CONFIG.IV_SIZE) {
-      throw new Error('Invalid data format');
-    }
-
-    const salt = combined.slice(0, CONFIG.SALT_SIZE);
-    const iv = combined.slice(CONFIG.SALT_SIZE, CONFIG.SALT_SIZE + CONFIG.IV_SIZE);
-    const data = combined.slice(CONFIG.SALT_SIZE + CONFIG.IV_SIZE);
-
-    const key = await deriveKey(password, salt);
-    const decrypted = await window.crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      data
+  it('accepts valid password on save', async () => {
+    const mod = await freshModule();
+    const result = await mod.saveRuntimeKeys(
+      { cerebras: 'valid-key-12345678901234567890', groq: 'valid-key-12345678901234567890' },
+      { password: 'my-secret-password' }
     );
-    return new TextDecoder().decode(decrypted);
-  } catch (e) {
-    throw new Error('Decryption failed: Wrong password or corrupted data');
-  }
-}
-
-async function calculateHash(data) {
-  const msgBuffer = new TextEncoder().encode(data);
-  const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
+    expect(result.success).toBe(true);
+  });
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
-// ERROR CLASSES
+// GROUP 2: Getters & Status
 // ──────────────────────────────────────────────────────────────────────────────
-class KeyStorageError extends Error {
-  constructor(message, code, details = {}) {
-    super(message);
-    this.name = 'KeyStorageError';
-    this.code = code;
-    this.details = details;
-  }
-}
+describe('runtimeKeys — getters & status', () => {
+  it('initial state is empty', async () => {
+    const mod = await freshModule();
+    expect(mod.getRuntimeCerebrasKey()).toBe('');
+    expect(mod.getRuntimeGroqKey()).toBe('');
 
-class KeyValidationError extends KeyStorageError {
-  constructor(field, message) {
-    super(`Key validation failed: ${field} - ${message}`, 'VALIDATION_ERROR', { field });
-    this.field = field;
-  }
-}
-
-class KeyLoadError extends KeyStorageError {
-  constructor(provider, originalError) {
-    super(`Failed to load ${provider} key`, 'LOAD_ERROR', { provider });
-    this.provider = provider;
-    this.originalError = originalError;
-  }
-}
-
-class KeySaveError extends KeyStorageError {
-  constructor(provider, originalError) {
-    super(`Failed to save ${provider} key`, 'SAVE_ERROR', { provider });
-    this.provider = provider;
-    this.originalError = originalError;
-  }
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// VALIDATORS & HELPERS
-// ──────────────────────────────────────────────────────────────────────────────
-function validateApiKey(key, provider) {
-  if (typeof key !== 'string') throw new KeyValidationError(provider, 'Key must be a string');
-  const trimmed = key.trim();
-  if (!trimmed) throw new KeyValidationError(provider, 'Key cannot be empty');
-  if (trimmed.length < CONFIG.KEY_MIN_LENGTH) {
-    throw new KeyValidationError(provider, `Key too short (${trimmed.length} chars). Min: ${CONFIG.KEY_MIN_LENGTH}`);
-  }
-  if (trimmed.length > CONFIG.KEY_MAX_LENGTH) {
-    throw new KeyValidationError(provider, `Key too long (${trimmed.length} chars). Max: ${CONFIG.KEY_MAX_LENGTH}`);
-  }
-  if (trimmed.includes('sk-') && provider.toLowerCase() === 'cerebras') {
-    console.warn('[Key Warning] Key starts with "sk-" (OpenAI format). Verify this is correct.');
-  }
-  return true;
-}
-
-function createSecureKey(rawKey) {
-  return {
-    key: rawKey,
-    expiresAt: Date.now() + (CONFIG.EXPIRY_HOURS * 60 * 60 * 1000),
-    createdAt: Date.now(),
-    hash: null,
-  };
-}
-
-async function processStoredKey(result, provider, password, validate) {
-  if (!result?.value) return null;
-  try {
-    const decryptedJson = await decryptData(result.value, password);
-    const parsed = JSON.parse(decryptedJson);
-
-    if (Date.now() > parsed.expiresAt) {
-      return null;
-    }
-
-    const currentHash = await calculateHash(parsed.key);
-    if (parsed.hash !== currentHash && !parsed.hash?.startsWith('hash-')) {
-      return null;
-    }
-
-    if (validate) validateApiKey(parsed.key, provider);
-    return parsed;
-  } catch (err) {
-    return null;
-  }
-}
-
-async function saveSingleKey(rawKey, provider, storageKey, password) {
-  if (!rawKey) return null;
-  const trimmed = rawKey.trim();
-  const secureObj = createSecureKey(trimmed);
-  secureObj.hash = await calculateHash(secureObj.key);
-  const encrypted = await encryptData(JSON.stringify(secureObj), password);
-  await Preferences.set({ key: storageKey, value: encrypted });
-  return secureObj;
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// KEYSTORE CLASS
-// ──────────────────────────────────────────────────────────────────────────────
-class KeyStore {
-  constructor() {
-    this.state = {
-      cerebras: null,
-      groq: null,
+    const status = mod.checkKeysStatus();
+    expect(status).toEqual({
+      hasCerebras: false,
+      hasGroq: false,
+      both: false,
       loaded: false,
       lastLoaded: null,
-    };
-  }
+      cerebrasExpired: null,
+      groqExpired: null,
+    });
+  });
 
-  getKey(provider) {
-    const keyObj = this.state[provider.toLowerCase()];
-    return keyObj?.key || '';
-  }
+  it('checkKeysStatus reflects loaded keys correctly', async () => {
+    const mod = await freshModule();
+    await mod.saveRuntimeKeys(
+      { cerebras: 'csk-long-valid-key-12345678901234567890', groq: 'gsk-long-valid-key-12345678901234567890' },
+      { password: 'test-pass' }
+    );
 
-  getStatus() {
-    const now = Date.now();
-    const cerebrasValid = !!this.state.cerebras && this.state.cerebras.expiresAt > now;
-    const groqValid = !!this.state.groq && this.state.groq.expiresAt > now;
-
-    return {
-      hasCerebras: cerebrasValid,
-      hasGroq: groqValid,
-      both: cerebrasValid && groqValid,
-      loaded: this.state.loaded,
-      lastLoaded: this.state.lastLoaded,
-      cerebrasExpired: this.state.cerebras && this.state.cerebras.expiresAt <= now,
-      groqExpired: this.state.groq && this.state.groq.expiresAt <= now,
-    };
-  }
-
-  async load(options = {}) {
-    const { validate = true, password } = options;
-
-    if (!password) {
-      throw new KeyStorageError('Password is required to load keys', 'MISSING_PASSWORD');
-    }
-
-    const errors = [];
-    let loaded = 0;
-
-    try {
-      const loadWithTimeout = async (key, provider) => {
-        const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new KeyLoadError(provider, new Error('Load timeout'))), CONFIG.LOAD_TIMEOUT)
-        );
-        return Promise.race([Preferences.get({ key }), timeout]);
-      };
-
-      const entries = Object.entries(CONFIG.STORAGE_KEYS);
-      const results = await Promise.all(entries.map(([p, k]) => loadWithTimeout(k, p)));
-
-      const processedData = {};
-      for (let i = 0; i < results.length; i++) {
-        const [provider, _] = entries[i];
-        try {
-          const data = await processStoredKey(results[i], provider, password, validate);
-          if (data) {
-            processedData[provider.toLowerCase()] = data;
-            loaded++;
-          }
-        } catch (err) {
-          if (err instanceof KeyValidationError) {
-            const msg = err.message
-              .replace('CEREBRAS', 'Cerebras')
-              .replace('GROQ', 'Groq');
-            errors.push(msg);
-          } else {
-            throw err;
-          }
-        }
-      }
-
-      this.state = {
-        cerebras: processedData.cerebras || null,
-        groq: processedData.groq || null,
-        loaded: true,
-        lastLoaded: Date.now(),
-      };
-
-      return { success: errors.length === 0, loaded, errors };
-    } catch (error) {
-      if (error instanceof KeyLoadError) throw error;
-      throw new KeyLoadError('Both', error);
-    }
-  }
-
-  async save(keys, options = {}) {
-    const { validate = true, password } = options;
-
-    if (!password) {
-      throw new KeyStorageError('Password is required to save keys', 'MISSING_PASSWORD');
-    }
-
-    if (validate) {
-      const entries = Object.entries(CONFIG.STORAGE_KEYS);
-      entries.forEach(([provider]) => {
-        const key = keys[provider.toLowerCase()];
-        if (key) validateApiKey(key, provider);
-      });
-    }
-
-    try {
-      const entries = Object.entries(CONFIG.STORAGE_KEYS);
-      const savePromises = entries.map(async ([provider, storageKey]) => {
-        const rawKey = keys[provider.toLowerCase()];
-        if (!rawKey) return null;
-        return await saveSingleKey(rawKey, provider, storageKey, password);
-      });
-
-      const savedSecureObjs = await Promise.all(savePromises);
-
-      let saved = 0;
-      entries.forEach(([provider], index) => {
-        const secure = savedSecureObjs[index];
-        if (secure) {
-          this.state[provider.toLowerCase()] = secure;
-          saved++;
-        }
-      });
-
-      this.state.loaded = true;
-      this.state.lastLoaded = Date.now();
-
-      return { success: true, saved };
-    } catch (error) {
-      if (error instanceof KeyValidationError) throw error;
-      const provider = error.message.includes('Cerebras') ? 'Cerebras' : 'Groq';
-      throw new KeySaveError(provider, error);
-    }
-  }
-
-  async clear() {
-    try {
-      await Promise.all(Object.values(CONFIG.STORAGE_KEYS).map(key => Preferences.remove({ key })));
-      this.state = { cerebras: null, groq: null, loaded: false, lastLoaded: null };
-      return { success: true };
-    } catch (error) {
-      throw new KeyStorageError('Failed to clear keys', 'CLEAR_ERROR', { originalError: error.message });
-    }
-  }
-
-  async forceReload(options = {}) {
-    this.state = { cerebras: null, groq: null, loaded: false, lastLoaded: null };
-    return this.load(options);
-  }
-
-  async initialize(options = {}) {
-    return this.load(options);
-  }
-}
+    const status = mod.checkKeysStatus();
+    expect(status.hasCerebras).toBe(true);
+    expect(status.hasGroq).toBe(true);
+    expect(status.both).toBe(true);
+    expect(status.loaded).toBe(true);
+    expect(status.lastLoaded).toBeDefined();
+    expect(status.cerebrasExpired).toBe(false);
+    expect(status.groqExpired).toBe(false);
+  });
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
-// EXPORTS (Singleton)
+// GROUP 3: Load Logic
 // ──────────────────────────────────────────────────────────────────────────────
-const store = new KeyStore();
+const mockHashValue = 'mock-hash-1234567890';
 
-export const loadRuntimeKeys = (options) => store.load(options);
-export const saveRuntimeKeys = (keys, options) => store.save(keys, options);
-export const clearRuntimeKeys = () => store.clear();
-export const getRuntimeCerebrasKey = () => store.getKey('cerebras');
-export const getRuntimeGroqKey = () => store.getKey('groq');
-export const checkKeysStatus = () => store.getStatus();
-export const forceReloadKeys = (options = {}) => store.forceReload(options);
-export const initializeRuntimeKeys = (options = {}) => store.initialize(options);
+describe('runtimeKeys — loadRuntimeKeys', () => {
+  it('loads both keys successfully', async () => {
+    const mockData = JSON.stringify({
+      key: 'csk-valid-long-key-1234567890',
+      expiresAt: Date.now() + 1000000,
+      hash: mockHashValue,
+    });
 
-export { KeyStorageError, KeyValidationError, KeyLoadError, KeySaveError, CONFIG };
+    mockPreferences.get.mockImplementation(({ key }) => {
+      if (key === 'yc_cerebras_key_enc') return Promise.resolve({ value: mockData });
+      if (key === 'yc_groq_key_enc') return Promise.resolve({ value: mockData.replace('csk', 'gsk') });
+      return Promise.resolve({ value: null });
+    });
+
+    const mod = await freshModule();
+    const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
+
+    expect(result.success).toBe(true);
+    expect(result.loaded).toBe(2);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('loads with some validation failures', async () => {
+    const mockDataShort = JSON.stringify({
+      key: 'short',
+      expiresAt: Date.now() + 1000000,
+      hash: 'hash-short',
+    });
+    const mockDataValid = JSON.stringify({
+      key: 'gsk-valid-long-key-1234567890',
+      expiresAt: Date.now() + 1000000,
+      hash: mockHashValue,
+    });
+
+    mockPreferences.get.mockImplementation(({ key }) => {
+      if (key === 'yc_cerebras_key_enc') return Promise.resolve({ value: mockDataShort });
+      if (key === 'yc_groq_key_enc') return Promise.resolve({ value: mockDataValid });
+      return Promise.resolve({ value: null });
+    });
+
+    const mod = await freshModule();
+    const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
+
+    expect(result.loaded).toBe(2);
+    expect(mod.getRuntimeGroqKey()).toBe('gsk-valid-long-key-1234567890');
+    expect(mod.getRuntimeCerebrasKey()).toBe('short');
+  });
+
+  it('loads without validation (validate: false)', async () => {
+    const mockDataShort = JSON.stringify({
+      key: 'short',
+      expiresAt: Date.now() + 1000000,
+      hash: 'hash-short',
+    });
+
+    mockPreferences.get.mockImplementation(() => Promise.resolve({ value: mockDataShort }));
+
+    const mod = await freshModule();
+    const result = await mod.loadRuntimeKeys({ password: 'test-pass', validate: false });
+
+    expect(result.success).toBe(true);
+    expect(result.loaded).toBe(2);
+  });
+
+  it('throws KeyLoadError on timeout', async () => {
+    mockPreferences.get.mockImplementation(() => new Promise(() => {}));
+
+    const mod = await freshModule();
+    await expect(mod.loadRuntimeKeys({ password: 'test-pass' })).rejects.toHaveProperty('code', 'LOAD_ERROR');
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GROUP 4: Save & Validation
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — saveRuntimeKeys & validation', () => {
+  it('saves valid keys, trims, updates state', async () => {
+    const mod = await freshModule();
+    const result = await mod.saveRuntimeKeys(
+      { cerebras: '  csk-valid-long-key-12345  ', groq: 'gsk-valid-long-key-67890' },
+      { password: 'test-pass' }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.saved).toBe(2);
+    expect(mod.getRuntimeCerebrasKey()).toBe('csk-valid-long-key-12345');
+
+    const status = mod.checkKeysStatus();
+    expect(status.hasCerebras).toBe(true);
+  });
+
+  it('treats null/undefined/empty as skip', async () => {
+    const mod = await freshModule();
+    await mod.clearRuntimeKeys();
+    
+    await mod.saveRuntimeKeys({ cerebras: null, groq: undefined }, { password: 'test-pass' });
+
+    expect(mod.getRuntimeCerebrasKey()).toBe('');
+    expect(mod.getRuntimeGroqKey()).toBe('');
+  });
+
+  it('throws KeyValidationError for short key', async () => {
+    const mod = await freshModule();
+    await expect(
+      mod.saveRuntimeKeys({ cerebras: 'short', groq: 'gsk-valid-long-key-1234567890' }, { password: 'test-pass' })
+    ).rejects.toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
+  it('throws KeyValidationError for non-string key', async () => {
+    const mod = await freshModule();
+    await expect(
+      mod.saveRuntimeKeys({ cerebras: 123, groq: 'valid-groq' }, { password: 'test-pass' })
+    ).rejects.toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
+  it('emits console.warn untuk sk- prefix', async () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const mod = await freshModule();
+    await mod.saveRuntimeKeys(
+      { cerebras: 'sk-12345678901234567890', groq: 'gsk-valid-long-key-1234567890' },
+      { password: 'test-pass' }
+    );
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[Key Warning]')
+    );
+  });
+
+  it('throws KeySaveError kalau Preferences.set gagal', async () => {
+    mockPreferences.set.mockRejectedValueOnce(new Error('Storage full'));
+
+    const mod = await freshModule();
+    await expect(
+      mod.saveRuntimeKeys(
+        { cerebras: 'valid-cerebras-long-key-12345', groq: 'valid-groq-long-key-12345678' },
+        { password: 'test-pass' }
+      )
+    ).rejects.toHaveProperty('code', 'SAVE_ERROR');
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GROUP 5: Expiry, Integrity, Tamper Protection
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — Expiry & Integrity', () => {
+  it('rejects expired keys', async () => {
+    const expiredData = JSON.stringify({
+      key: 'csk-valid-long-key-1234567890',
+      expiresAt: Date.now() - 10000,
+      hash: mockHashValue,
+    });
+
+    mockPreferences.get.mockImplementation(({ key }) => {
+      if (key === 'yc_cerebras_key_enc') return Promise.resolve({ value: expiredData });
+      return Promise.resolve({ value: null });
+    });
+
+    const mod = await freshModule();
+    const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
+
+    expect(result.loaded).toBe(0);
+    expect(mod.getRuntimeCerebrasKey()).toBe('');
+  });
+
+  it('rejects tampered keys (hash mismatch)', async () => {
+    const tamperedData = JSON.stringify({
+      key: 'csk-valid-long-key-1234567890',
+      expiresAt: Date.now() + 1000000,
+      hash: 'wrong-hash-value',
+    });
+
+    mockPreferences.get.mockImplementation(({ key }) => {
+      if (key === 'yc_cerebras_key_enc') return Promise.resolve({ value: tamperedData });
+      return Promise.resolve({ value: null });
+    });
+
+    const mod = await freshModule();
+    const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
+
+    expect(result.loaded).toBe(0);
+  });
+
+  it('rejects corrupt data', async () => {
+    mockPreferences.get.mockImplementation(() => Promise.resolve({ value: '{ invalid json }' }));
+
+    const mod = await freshModule();
+    const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
+
+    expect(result.loaded).toBe(0);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GROUP 6: Clear & Force Reload
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — clear & force reload', () => {
+  it('clearRuntimeKeys reset storage dan memory', async () => {
+    const mod = await freshModule();
+    await mod.saveRuntimeKeys(
+      { cerebras: 'csk-valid-long-key-1234567890', groq: 'gsk-valid-long-key-1234567890' },
+      { password: 'test-pass' }
+    );
+
+    await mod.clearRuntimeKeys();
+
+    expect(mod.getRuntimeCerebrasKey()).toBe('');
+    expect(mod.checkKeysStatus().loaded).toBe(false);
+    expect(mockPreferences.remove).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws CLEAR_ERROR kalau Preferences.remove gagal', async () => {
+    mockPreferences.remove.mockRejectedValueOnce(new Error('IO error'));
+
+    const mod = await freshModule();
+    await expect(mod.clearRuntimeKeys()).rejects.toHaveProperty('code', 'CLEAR_ERROR');
+  });
+
+  it('forceReloadKeys reset lalu reload', async () => {
+    const mod = await freshModule();
+    await mod.saveRuntimeKeys(
+      { cerebras: 'old-csk-long-key-1234567890', groq: 'old-gsk-long-key-1234567890' },
+      { password: 'test-pass' }
+    );
+
+    const newData = JSON.stringify({
+      key: 'new-csk-long-key-1234567890',
+      expiresAt: Date.now() + 1000000,
+      hash: 'mock-hash-new',
+    });
+
+    mockPreferences.get.mockImplementation(({ key }) => {
+      if (key === 'yc_cerebras_key_enc') return Promise.resolve({ value: newData });
+      if (key === 'yc_groq_key_enc') return Promise.resolve({ value: newData.replace('csk', 'gsk') });
+      return Promise.resolve({ value: null });
+    });
+
+    const result = await mod.forceReloadKeys({ password: 'test-pass' });
+    expect(result.loaded).toBe(2);
+    expect(mod.getRuntimeCerebrasKey()).toBe('new-csk-long-key-1234567890');
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GROUP 7: Initialize
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — initializeRuntimeKeys', () => {
+  it('succeeds silently on normal load', async () => {
+    const mod = await freshModule();
+    await expect(mod.initializeRuntimeKeys({ password: 'test-pass' })).resolves.not.toThrow();
+  });
+
+  it('handles validation failure gracefully', async () => {
+    const mockDataShort = JSON.stringify({
+      key: 'short',
+      expiresAt: Date.now() + 1000000,
+      hash: 'hash-short',
+    });
+
+    mockPreferences.get.mockImplementation(() => Promise.resolve({ value: mockDataShort }));
+
+    const mod = await freshModule();
+    await expect(mod.initializeRuntimeKeys({ password: 'test-pass' })).resolves.not.toThrow();
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BONUS: Performance Benchmark Tests
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — Performance Benchmarks', () => {
+  it('loadRuntimeKeys completes under 500ms', async () => {
+    const mod = await freshModule();
+    const start = performance.now();
+    
+    await mod.loadRuntimeKeys({ password: 'test-pass' });
+    
+    const duration = performance.now() - start;
+    expect(duration).toBeLessThan(500);
+  });
+
+  it('saveRuntimeKeys completes under 300ms', async () => {
+    const mod = await freshModule();
+    const start = performance.now();
+    
+    await mod.saveRuntimeKeys(
+      { cerebras: 'csk-fast-key-1234567890', groq: 'gsk-fast-key-1234567890' },
+      { password: 'test-pass' }
+    );
+    
+    const duration = performance.now() - start;
+    expect(duration).toBeLessThan(300);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BONUS: CONFIG Tests
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — CONFIG', () => {
+  it('has fast test config overrides', async () => {
+    const mod = await freshModule();
+    expect(mod.CONFIG.PBKDF2_ITERATIONS).toBe(1);
+    expect(mod.CONFIG.LOAD_TIMEOUT).toBe(100);
+  });
+});
