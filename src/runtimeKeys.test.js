@@ -17,7 +17,7 @@ vi.mock('@capacitor/preferences', () => ({
 }));
 
 // ──────────────────────────────────────────────────────────────────────────────
-// CRYPTO MOCK - PINDAH KE SINI, JANGAN DI DALAM vi.mock factory!
+// MOCK CRYPTO - Factory function untuk fresh mock tiap panggil
 // ──────────────────────────────────────────────────────────────────────────────
 const createMockCrypto = () => {
   const mockHashValue = 'mock-hash-1234567890';
@@ -55,44 +55,50 @@ const createMockCrypto = () => {
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
-// MOCK RUNTIMEKEYS.JS - Simplified factory, tanpa crypto di dalam
+// HELPER: Create Fresh Store Instance (BUKAN singleton!)
 // ──────────────────────────────────────────────────────────────────────────────
-vi.mock('./runtimeKeys.js', async () => {
-  const actual = await vi.importActual('./runtimeKeys.js');
-  
-  return {
-    ...actual,
-    CONFIG: {
-      ...actual.CONFIG,
-      PBKDF2_ITERATIONS: 1,
-      LOAD_TIMEOUT: 100,
-      KEY_MIN_LENGTH: 1,  // Lower for testing
-      KEY_MAX_LENGTH: 1000,
-    },
-  };
-});
-
-// ──────────────────────────────────────────────────────────────────────────────
-// HELPER: Fresh Module Import dengan proper cleanup
-// ──────────────────────────────────────────────────────────────────────────────
-async function freshModule() {
-  // Reset modules
+async function createFreshStore() {
+  // Reset modules & globals
   vi.resetModules();
+  vi.unstubAllGlobals();
   
-  // Reset crypto mock global
+  // Setup fresh crypto mock
   const mockCrypto = createMockCrypto();
   vi.stubGlobal('crypto', mockCrypto);
   vi.stubGlobal('window', { crypto: mockCrypto });
   
-  // Clear any cached state in module
-  return import('./runtimeKeys.js');
+  // Import actual module dengan config override
+  const actual = await vi.importActual('./runtimeKeys.js');
+  
+  // Buat instance KeyStore baru (bukan pake singleton!)
+  const freshStore = new actual.KeyStore();
+  
+  // Override config untuk test (cepat)
+  actual.CONFIG.PBKDF2_ITERATIONS = 1;
+  actual.CONFIG.LOAD_TIMEOUT = 100;
+  actual.CONFIG.KEY_MIN_LENGTH = 1;
+  actual.CONFIG.KEY_MAX_LENGTH = 1000;
+  
+  // Return object dengan methods yang sama kayak singleton export
+  return {
+    loadRuntimeKeys: (opts) => freshStore.load(opts),
+    saveRuntimeKeys: (keys, opts) => freshStore.save(keys, opts),
+    clearRuntimeKeys: () => freshStore.clear(),
+    getRuntimeCerebrasKey: () => freshStore.getKey('cerebras'),
+    getRuntimeGroqKey: () => freshStore.getKey('groq'),
+    checkKeysStatus: () => freshStore.getStatus(),
+    forceReloadKeys: (opts = {}) => freshStore.forceReload(opts),
+    initializeRuntimeKeys: (opts = {}) => freshStore.initialize(opts),
+    CONFIG: actual.CONFIG,
+    KeyStore: actual.KeyStore,
+    _store: freshStore, // internal access untuk debug
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// SETUP & TEARDOWN - YANG PALING PENTING!
+// SETUP & TEARDOWN
 // ──────────────────────────────────────────────────────────────────────────────
-beforeEach(async () => {
-  // Clear ALL mocks
+beforeEach(() => {
   vi.clearAllMocks();
   
   // Reset mock implementations
@@ -100,15 +106,10 @@ beforeEach(async () => {
   mockPreferences.set.mockReset();
   mockPreferences.remove.mockReset();
   
-  // Default: return null (empty storage)
+  // Default: empty storage
   mockPreferences.get.mockResolvedValue({ value: null });
   mockPreferences.set.mockResolvedValue(undefined);
   mockPreferences.remove.mockResolvedValue(undefined);
-  
-  // Setup fresh crypto
-  const mockCrypto = createMockCrypto();
-  vi.stubGlobal('crypto', mockCrypto);
-  vi.stubGlobal('window', { crypto: mockCrypto });
 });
 
 afterEach(() => {
@@ -121,19 +122,19 @@ afterEach(() => {
 // ──────────────────────────────────────────────────────────────────────────────
 describe('runtimeKeys — Security Requirements', () => {
   it('throws MISSING_PASSWORD on save if password missing', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await expect(
       mod.saveRuntimeKeys({ cerebras: 'valid-key-12345678901234567890' })
     ).rejects.toHaveProperty('code', 'MISSING_PASSWORD');
   });
 
   it('throws MISSING_PASSWORD on load if password missing', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await expect(mod.loadRuntimeKeys()).rejects.toHaveProperty('code', 'MISSING_PASSWORD');
   });
 
   it('accepts valid password on save', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     const result = await mod.saveRuntimeKeys(
       { cerebras: 'valid-key-12345678901234567890', groq: 'valid-key-12345678901234567890' },
       { password: 'my-secret-password' }
@@ -147,7 +148,7 @@ describe('runtimeKeys — Security Requirements', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 describe('runtimeKeys — getters & status', () => {
   it('initial state is empty', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     expect(mod.getRuntimeCerebrasKey()).toBe('');
     expect(mod.getRuntimeGroqKey()).toBe('');
 
@@ -164,7 +165,7 @@ describe('runtimeKeys — getters & status', () => {
   });
 
   it('checkKeysStatus reflects loaded keys correctly', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await mod.saveRuntimeKeys(
       { cerebras: 'csk-long-valid-key-12345678901234567890', groq: 'gsk-long-valid-key-12345678901234567890' },
       { password: 'test-pass' }
@@ -194,14 +195,13 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
       hash: mockHashValue,
     });
 
-    // Setup mock untuk test ini SAJA
     mockPreferences.get.mockImplementation(({ key }) => {
       if (key === 'yc_cerebras_key_enc') return Promise.resolve({ value: mockData });
       if (key === 'yc_groq_key_enc') return Promise.resolve({ value: mockData.replace('csk', 'gsk') });
       return Promise.resolve({ value: null });
     });
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
 
     expect(result.success).toBe(true);
@@ -227,7 +227,7 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
       return Promise.resolve({ value: null });
     });
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
 
     expect(result.loaded).toBe(2);
@@ -244,7 +244,7 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
 
     mockPreferences.get.mockImplementation(() => Promise.resolve({ value: mockDataShort }));
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     const result = await mod.loadRuntimeKeys({ password: 'test-pass', validate: false });
 
     expect(result.success).toBe(true);
@@ -254,7 +254,7 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
   it('throws KeyLoadError on timeout', async () => {
     mockPreferences.get.mockImplementation(() => new Promise(() => {}));
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await expect(mod.loadRuntimeKeys({ password: 'test-pass' })).rejects.toHaveProperty('code', 'LOAD_ERROR');
   });
 });
@@ -264,7 +264,7 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 describe('runtimeKeys — saveRuntimeKeys & validation', () => {
   it('saves valid keys, trims, updates state', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     const result = await mod.saveRuntimeKeys(
       { cerebras: '  csk-valid-long-key-12345  ', groq: 'gsk-valid-long-key-67890' },
       { password: 'test-pass' }
@@ -279,7 +279,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
   });
 
   it('treats null/undefined/empty as skip', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await mod.clearRuntimeKeys();
     
     await mod.saveRuntimeKeys({ cerebras: null, groq: undefined }, { password: 'test-pass' });
@@ -289,14 +289,14 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
   });
 
   it('throws KeyValidationError for short key', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await expect(
       mod.saveRuntimeKeys({ cerebras: 'short', groq: 'gsk-valid-long-key-1234567890' }, { password: 'test-pass' })
     ).rejects.toHaveProperty('code', 'VALIDATION_ERROR');
   });
 
   it('throws KeyValidationError for non-string key', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await expect(
       mod.saveRuntimeKeys({ cerebras: 123, groq: 'valid-groq' }, { password: 'test-pass' })
     ).rejects.toHaveProperty('code', 'VALIDATION_ERROR');
@@ -305,7 +305,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
   it('emits console.warn untuk sk- prefix', async () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await mod.saveRuntimeKeys(
       { cerebras: 'sk-12345678901234567890', groq: 'gsk-valid-long-key-1234567890' },
       { password: 'test-pass' }
@@ -319,7 +319,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
   it('throws KeySaveError kalau Preferences.set gagal', async () => {
     mockPreferences.set.mockRejectedValueOnce(new Error('Storage full'));
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await expect(
       mod.saveRuntimeKeys(
         { cerebras: 'valid-cerebras-long-key-12345', groq: 'valid-groq-long-key-12345678' },
@@ -345,7 +345,7 @@ describe('runtimeKeys — Expiry & Integrity', () => {
       return Promise.resolve({ value: null });
     });
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
 
     expect(result.loaded).toBe(0);
@@ -364,7 +364,7 @@ describe('runtimeKeys — Expiry & Integrity', () => {
       return Promise.resolve({ value: null });
     });
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
 
     expect(result.loaded).toBe(0);
@@ -373,7 +373,7 @@ describe('runtimeKeys — Expiry & Integrity', () => {
   it('rejects corrupt data', async () => {
     mockPreferences.get.mockImplementation(() => Promise.resolve({ value: '{ invalid json }' }));
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
 
     expect(result.loaded).toBe(0);
@@ -385,7 +385,7 @@ describe('runtimeKeys — Expiry & Integrity', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 describe('runtimeKeys — clear & force reload', () => {
   it('clearRuntimeKeys reset storage dan memory', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await mod.saveRuntimeKeys(
       { cerebras: 'csk-valid-long-key-1234567890', groq: 'gsk-valid-long-key-1234567890' },
       { password: 'test-pass' }
@@ -401,12 +401,12 @@ describe('runtimeKeys — clear & force reload', () => {
   it('throws CLEAR_ERROR kalau Preferences.remove gagal', async () => {
     mockPreferences.remove.mockRejectedValueOnce(new Error('IO error'));
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await expect(mod.clearRuntimeKeys()).rejects.toHaveProperty('code', 'CLEAR_ERROR');
   });
 
   it('forceReloadKeys reset lalu reload', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await mod.saveRuntimeKeys(
       { cerebras: 'old-csk-long-key-1234567890', groq: 'old-gsk-long-key-1234567890' },
       { password: 'test-pass' }
@@ -435,7 +435,7 @@ describe('runtimeKeys — clear & force reload', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 describe('runtimeKeys — initializeRuntimeKeys', () => {
   it('succeeds silently on normal load', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await expect(mod.initializeRuntimeKeys({ password: 'test-pass' })).resolves.not.toThrow();
   });
 
@@ -448,7 +448,7 @@ describe('runtimeKeys — initializeRuntimeKeys', () => {
 
     mockPreferences.get.mockImplementation(() => Promise.resolve({ value: mockDataShort }));
 
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     await expect(mod.initializeRuntimeKeys({ password: 'test-pass' })).resolves.not.toThrow();
   });
 });
@@ -458,7 +458,7 @@ describe('runtimeKeys — initializeRuntimeKeys', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 describe('runtimeKeys — Performance Benchmarks', () => {
   it('loadRuntimeKeys completes under 500ms', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     const start = performance.now();
     
     await mod.loadRuntimeKeys({ password: 'test-pass' });
@@ -468,7 +468,7 @@ describe('runtimeKeys — Performance Benchmarks', () => {
   });
 
   it('saveRuntimeKeys completes under 300ms', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     const start = performance.now();
     
     await mod.saveRuntimeKeys(
@@ -486,7 +486,7 @@ describe('runtimeKeys — Performance Benchmarks', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 describe('runtimeKeys — CONFIG', () => {
   it('has fast test config overrides', async () => {
-    const mod = await freshModule();
+    const mod = await createFreshStore();
     expect(mod.CONFIG.PBKDF2_ITERATIONS).toBe(1);
     expect(mod.CONFIG.LOAD_TIMEOUT).toBe(100);
   });
