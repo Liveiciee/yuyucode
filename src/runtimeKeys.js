@@ -1,14 +1,12 @@
 // ============================================================
 // FILE: src/runtimeKeys.js
-// Runtime Key Store - Refactored Version
+// Runtime Key Store - GOD MODE (Encrypted + Expiry + Integrity)
 // ============================================================
-// Features:
-// - Persistent storage via Capacitor Preferences
-// - In-memory caching for fast access
-// - Input validation before save
-// - Proper error handling & logging
-// - Clear/reset functionality
-// - Key expiry tracking (optional)
+// Features Added:
+// - AES-GCM Encryption (Native Web Crypto API)
+// - SHA-256 Integrity Check
+// - Auto-Expiry (24 hours default)
+// - No external dependencies!
 // ============================================================
 
 import { Preferences } from '@capacitor/preferences';
@@ -18,20 +16,23 @@ import { Preferences } from '@capacitor/preferences';
 // ──────────────────────────────────────────────────────────────────────────────
 const CONFIG = Object.freeze({
   STORAGE_KEYS: {
-    CEREBRAS: 'yc_cerebras_key',
-    GROQ: 'yc_groq_key',
+    CEREBRAS: 'yc_cerebras_key_enc', // Changed suffix to indicate encrypted
+    GROQ: 'yc_groq_key_enc',
   },
   KEY_MIN_LENGTH: 20,
   KEY_MAX_LENGTH: 512,
   LOAD_TIMEOUT: 5000,
+  // Security Settings
+  ENCRYPTION_SALT: 'yuyu-runtime-keys-v1-salt', // Static salt for demo (In prod, derive from user PIN)
+  EXPIRY_HOURS: 24, // Auto-expire after 24h
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
 // STATE (In-Memory Cache)
 // ──────────────────────────────────────────────────────────────────────────────
 let _state = {
-  cerebras: '',
-  groq: '',
+  cerebras: null, // { key: string, expiresAt: number, hash: string }
+  groq: null,
   loaded: false,
   lastLoaded: null,
 };
@@ -72,6 +73,80 @@ class KeySaveError extends KeyStorageError {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// CRYPTO HELPERS (Native Web Crypto API)
+// ──────────────────────────────────────────────────────────────────────────────
+async function deriveKey(password) {
+  const enc = new TextEncoder();
+  const keyMaterial = await window.crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  
+  return window.crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: enc.encode(CONFIG.ENCRYPTION_SALT),
+      iterations: 100000,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptData(data, password) {
+  const key = await deriveKey(password);
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(data);
+  
+  const encrypted = await window.crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encoded
+  );
+  
+  // Combine IV + Encrypted Data for storage
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  
+  // Convert to base64 for storage
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptData(encryptedBase64, password) {
+  try {
+    const key = await deriveKey(password);
+    const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+    
+    const iv = combined.slice(0, 12);
+    const data = combined.slice(12);
+    
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      data
+    );
+    
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    throw new Error('Decryption failed: Wrong password or corrupted data');
+  }
+}
+
+async function calculateHash(data) {
+  const msgBuffer = new TextEncoder().encode(data);
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // VALIDATORS
 // ──────────────────────────────────────────────────────────────────────────────
 function validateApiKey(key, provider) {
@@ -99,7 +174,6 @@ function validateApiKey(key, provider) {
     );
   }
   
-  // Optional: Check for suspicious patterns (could indicate accidental paste of secrets)
   if (trimmed.includes('sk-') && provider === 'Cerebras') {
     console.warn('[Key Warning] Key starts with "sk-" which is typically OpenAI format. Verify this is correct.');
   }
@@ -112,246 +186,195 @@ function validateApiKey(key, provider) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Helper to create secure key object
+ */
+function createSecureKey(rawKey) {
+  const expiresAt = Date.now() + (CONFIG.EXPIRY_HOURS * 60 * 60 * 1000);
+  return {
+    key: rawKey,
+    expiresAt,
+    createdAt: Date.now(),
+    hash: null // Will be calculated later
+  };
+}
+
+/**
  * Load API keys from persistent storage
- * @param {Object} options - Configuration options
- * @param {boolean} options.validate - Whether to validate keys after loading
- * @returns {Promise<{success: boolean, loaded: number, errors: string[]}>}
  */
 export async function loadRuntimeKeys(options = {}) {
-  const { validate = true } = options;
+  const { validate = true, password = 'default-secret-password' } = options; // Default password for demo
   const errors = [];
   let loaded = 0;
   
   try {
-    // Use Promise.race with timeout to prevent hanging
     const loadWithTimeout = async (key, provider) => {
       const timeout = new Promise((_, reject) => 
         setTimeout(() => reject(new KeyLoadError(provider, new Error('Load timeout'))), CONFIG.LOAD_TIMEOUT)
       );
-      
       const storage = Preferences.get({ key });
       return Promise.race([storage, timeout]);
     };
     
-    // Load both keys in parallel
     const [cerebrasResult, groqResult] = await Promise.all([
       loadWithTimeout(CONFIG.STORAGE_KEYS.CEREBRAS, 'Cerebras'),
       loadWithTimeout(CONFIG.STORAGE_KEYS.GROQ, 'Groq'),
     ]);
     
-    // Update state
-    const cerebrasValue = cerebrasResult?.value || '';
-    const groqValue = groqResult?.value || '';
-    
-    // Validate if requested
-    if (validate) {
-      if (cerebrasValue) {
-        try {
-          validateApiKey(cerebrasValue, 'Cerebras');
-          loaded++;
-        } catch (err) {
-          errors.push(`Cerebras: ${err.message}`);
-        }
-      }
+    const processStoredKey = async (result, provider) => {
+      if (!result?.value) return null;
       
-      if (groqValue) {
-        try {
-          validateApiKey(groqValue, 'Groq');
-          loaded++;
-        } catch (err) {
-          errors.push(`Groq: ${err.message}`);
+      try {
+        // Decrypt
+        const decryptedJson = await decryptData(result.value, password);
+        const parsed = JSON.parse(decryptedJson);
+        
+        // Check Expiry
+        if (Date.now() > parsed.expiresAt) {
+          console.warn(`[${provider}] Key expired!`);
+          return null;
         }
+        
+        // Check Integrity
+        const currentHash = await calculateHash(parsed.key);
+        if (parsed.hash !== currentHash) {
+          console.error(`[${provider}] Integrity check failed! Key may be tampered.`);
+          return null;
+        }
+        
+        if (validate) {
+          validateApiKey(parsed.key, provider);
+        }
+        
+        return parsed;
+      } catch (err) {
+        console.error(`[${provider}] Load/Decrypt failed:`, err.message);
+        return null;
       }
-    } else {
-      if (cerebrasValue) loaded++;
-      if (groqValue) loaded++;
-    }
-    
-    _state = {
-      cerebras: cerebrasValue,
-      groq: groqValue,
-      loaded: true,
-      lastLoaded: Date.now(),
     };
-    
-    // Log summary (don't expose actual keys!)
-    console.log(`[RuntimeKeys] Loaded ${loaded}/2 keys`);
-    if (errors.length > 0) {
-      console.warn('[RuntimeKeys] Validation warnings:', errors);
+
+    const cerebrasData = await processStoredKey(cerebrasResult, 'Cerebras');
+    const groqData = await processStoredKey(groqResult, 'Groq');
+
+    if (cerebrasData) {
+      _state.cerebras = cerebrasData;
+      loaded++;
     }
-    
+    if (groqData) {
+      _state.groq = groqData;
+      loaded++;
+    }
+
+    _state.loaded = true;
+    _state.lastLoaded = Date.now();
+
+    console.log(`[RuntimeKeys] Loaded ${loaded}/2 keys (Encrypted & Verified)`);
     return { success: errors.length === 0, loaded, errors };
-    
+
   } catch (error) {
     console.error('[RuntimeKeys] Load failed:', error.message);
-    // Don't wrap if already KeyLoadError
-    if (error instanceof KeyLoadError) {
-      throw error;
-    }
+    if (error instanceof KeyLoadError) throw error;
     throw new KeyLoadError('Both', error);
   }
 }
 
 /**
  * Save API keys to persistent storage
- * @param {string} cerebras - Cerebras API key
- * @param {string} groq - Groq API key
- * @param {Object} options - Configuration options
- * @param {boolean} options.validate - Whether to validate keys before saving
- * @returns {Promise<{success: boolean, saved: number}>}
  */
 export async function saveRuntimeKeys(cerebras, groq, options = {}) {
-  const { validate = true } = options;
+  const { validate = true, password = 'default-secret-password' } = options;
   let saved = 0;
   
-  // ✅ FIX: Validate BEFORE try-catch so validation errors propagate correctly
   if (validate) {
     if (cerebras) validateApiKey(cerebras, 'Cerebras');
     if (groq) validateApiKey(groq, 'Groq');
   }
   
   try {
-    // Normalize keys (trim whitespace)
-    const normalizedCerebras = cerebras?.trim() || '';
-    const normalizedGroq = groq?.trim() || '';
-    
-    // Save to storage in parallel
+    const saveKey = async (rawKey, provider, storageKey) => {
+      if (!rawKey) return;
+      
+      const secureObj = createSecureKey(rawKey.trim());
+      secureObj.hash = await calculateHash(secureObj.key);
+      
+      const encrypted = await encryptData(JSON.stringify(secureObj), password);
+      await Preferences.set({ key: storageKey, value: encrypted });
+      saved++;
+    };
+
     await Promise.all([
-      Preferences.set({ key: CONFIG.STORAGE_KEYS.CEREBRAS, value: normalizedCerebras }),
-      Preferences.set({ key: CONFIG.STORAGE_KEYS.GROQ, value: normalizedGroq }),
+      saveKey(cerebras, 'Cerebras', CONFIG.STORAGE_KEYS.CEREBRAS),
+      saveKey(groq, 'Groq', CONFIG.STORAGE_KEYS.GROQ),
     ]);
+
+    // Update in-memory state (store raw key for immediate use, but mark as secure)
+    if (cerebras) _state.cerebras = createSecureKey(cerebras.trim());
+    if (groq) _state.groq = createSecureKey(groq.trim());
     
-    // Update in-memory state
-    _state.cerebras = normalizedCerebras;
-    _state.groq = normalizedGroq;
-    _state.loaded = true; // ✅ FIX: Set loaded = true after successful save
+    _state.loaded = true;
     _state.lastLoaded = Date.now();
-    
-    if (normalizedCerebras) saved++;
-    if (normalizedGroq) saved++;
-    
-    console.log(`[RuntimeKeys] Saved ${saved}/2 keys`);
-    
+
+    console.log(`[RuntimeKeys] Saved ${saved}/2 keys (Encrypted)`);
     return { success: true, saved };
-    
+
   } catch (error) {
-    // ✅ FIX: Re-throw validation errors without wrapping
-    if (error instanceof KeyValidationError) {
-      throw error;
-    }
-    
+    if (error instanceof KeyValidationError) throw error;
     console.error('[RuntimeKeys] Save failed:', error.message);
-    
-    // Determine which provider failed
-    const provider = error.message.includes('Cerebras') || error.message.includes('cerebras') 
-      ? 'Cerebras' 
-      : 'Groq';
-    
+    const provider = error.message.includes('Cerebras') ? 'Cerebras' : 'Groq';
     throw new KeySaveError(provider, error);
   }
 }
 
-/**
- * Get Cerebras API key (from memory cache)
- * @returns {string} API key or empty string
- */
+// ... (Getter functions remain mostly the same, just return the key string) ...
 export function getRuntimeCerebrasKey() {
-  return _state.cerebras || '';
+  return _state.cerebras?.key || '';
 }
 
-/**
- * Get Groq API key (from memory cache)
- * @returns {string} API key or empty string
- */
 export function getRuntimeGroqKey() {
-  return _state.groq || '';
+  return _state.groq?.key || '';
 }
 
-/**
- * Clear all stored keys (logout/reset)
- * @returns {Promise<{success: boolean}>}
- */
 export async function clearRuntimeKeys() {
   try {
     await Promise.all([
       Preferences.remove({ key: CONFIG.STORAGE_KEYS.CEREBRAS }),
       Preferences.remove({ key: CONFIG.STORAGE_KEYS.GROQ }),
     ]);
-    
-    _state = {
-      cerebras: '',
-      groq: '',
-      loaded: false,
-      lastLoaded: null,
-    };
-    
+    _state = { cerebras: null, groq: null, loaded: false, lastLoaded: null };
     console.log('[RuntimeKeys] All keys cleared');
     return { success: true };
-    
   } catch (error) {
-    console.error('[RuntimeKeys] Clear failed:', error.message);
     throw new KeyStorageError('Failed to clear keys', 'CLEAR_ERROR', { originalError: error.message });
   }
 }
 
-/**
- * Check if keys are loaded and valid
- * @returns {{hasCerebras: boolean, hasGroq: boolean, both: boolean}}
- */
 export function checkKeysStatus() {
+  const now = Date.now();
   return {
-    hasCerebras: _state.cerebras.length > 0,
-    hasGroq: _state.groq.length > 0,
-    both: _state.cerebras.length > 0 && _state.groq.length > 0,
+    hasCerebras: !!_state.cerebras && _state.cerebras.expiresAt > now,
+    hasGroq: !!_state.groq && _state.groq.expiresAt > now,
+    both: (_state.cerebras?.expiresAt > now) && (_state.groq?.expiresAt > now),
     loaded: _state.loaded,
     lastLoaded: _state.lastLoaded,
+    cerebrasExpired: _state.cerebras && _state.cerebras.expiresAt <= now,
+    groqExpired: _state.groq && _state.groq.expiresAt <= now,
   };
 }
 
-/**
- * Force reload keys from storage (bypass cache)
- * @returns {Promise<{success: boolean, loaded: number}>}
- */
 export async function forceReloadKeys() {
-  _state = {
-    cerebras: '',
-    groq: '',
-    loaded: false,
-    lastLoaded: null,
-  };
+  _state = { cerebras: null, groq: null, loaded: false, lastLoaded: null };
   return loadRuntimeKeys({ validate: true });
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// INITIALIZATION HELPER
-// ──────────────────────────────────────────────────────────────────────────────
-
-/**
- * Initialize runtime keys on app startup
- * Call this once during app initialization
- * @returns {Promise<void>}
- */
 export async function initializeRuntimeKeys() {
   try {
     const result = await loadRuntimeKeys({ validate: true });
-    
-    if (!result.success) {
-      console.warn('[RuntimeKeys] Some keys failed validation:', result.errors);
-    }
-    
-    if (result.loaded === 0) {
-      console.info('[RuntimeKeys] No keys found. User should configure API keys.');
-    }
-    
+    if (!result.success) console.warn('[RuntimeKeys] Some keys failed validation:', result.errors);
+    if (result.loaded === 0) console.info('[RuntimeKeys] No keys found.');
   } catch (error) {
     console.error('[RuntimeKeys] Initialization failed:', error.message);
-    // Don't throw - app should still work, just without AI features
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// EXPORTS
-// ──────────────────────────────────────────────────────────────────────────────
 export {
   KeyStorageError,
   KeyValidationError,
