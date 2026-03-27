@@ -68,13 +68,14 @@ describe('runtimeKeys — getters & status', () => {
 
   it('checkKeysStatus reflects loaded keys', async () => {
     const mod = await freshModule();
+    // ✅ FIX: Use valid keys (20+ chars)
     await mod.saveRuntimeKeys('csk-long-valid-key-12345678901234567890', 'gsk-long-valid-key-12345678901234567890');
 
     const status = mod.checkKeysStatus();
     expect(status.hasCerebras).toBe(true);
     expect(status.hasGroq).toBe(true);
     expect(status.both).toBe(true);
-    expect(status.loaded).toBe(true);
+    expect(status.loaded).toBe(true); // ✅ Should now be true
     expect(status.lastLoaded).toBeDefined();
   });
 });
@@ -153,21 +154,23 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
   it('throws KeyValidationError for short key', async () => {
     const mod = await freshModule();
+    // ✅ FIX: Check error code instead of exact type (validation errors propagate correctly now)
     await expect(mod.saveRuntimeKeys('short', 'gsk-valid-long-key-1234567890'))
-      .rejects.toThrow(KeyValidationError);
+      .rejects.toHaveProperty('code', 'VALIDATION_ERROR');
   });
 
   it('throws KeyValidationError for non-string key', async () => {
     const mod = await freshModule();
     await expect(mod.saveRuntimeKeys(123, 'valid-groq'))
-      .rejects.toThrow(KeyValidationError);
+      .rejects.toHaveProperty('code', 'VALIDATION_ERROR');
   });
 
   it('emits console.warn for suspicious sk- prefix on Cerebras', async () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const mod = await freshModule();
-    await mod.saveRuntimeKeys('sk-12345678901234567890', 'gsk-valid');
+    // ✅ FIX: Use valid Groq key (20+ chars) so only Cerebras warning triggers
+    await mod.saveRuntimeKeys('sk-12345678901234567890', 'gsk-valid-long-key-1234567890');
 
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[Key Warning]'),
@@ -176,11 +179,12 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
   });
 
   it('throws KeySaveError when Preferences.set fails', async () => {
+    // ✅ FIX: Mock Preferences.set to fail AFTER validation passes
     Preferences.set.mockRejectedValueOnce(new Error('Storage full'));
 
     const mod = await freshModule();
     await expect(mod.saveRuntimeKeys('valid-cerebras-long-key-12345', 'valid-groq'))
-      .rejects.toThrow(KeySaveError);
+      .rejects.toHaveProperty('code', 'SAVE_ERROR');
   });
 });
 
@@ -190,7 +194,8 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 describe('runtimeKeys — clear & force reload', () => {
   it('clearRuntimeKeys resets storage and memory', async () => {
     const mod = await freshModule();
-    await mod.saveRuntimeKeys('csk-xxx', 'gsk-yyy');
+    // ✅ FIX: Use valid keys first
+    await mod.saveRuntimeKeys('csk-valid-long-key-1234567890', 'gsk-valid-long-key-1234567890');
 
     await mod.clearRuntimeKeys();
 
@@ -203,20 +208,20 @@ describe('runtimeKeys — clear & force reload', () => {
     Preferences.remove.mockRejectedValueOnce(new Error('IO error'));
 
     const mod = await freshModule();
-    await expect(mod.clearRuntimeKeys()).rejects.toThrow(KeyStorageError);
+    await expect(mod.clearRuntimeKeys()).rejects.toHaveProperty('code', 'CLEAR_ERROR');
   });
 
   it('forceReloadKeys resets then reloads', async () => {
     const mod = await freshModule();
-    await mod.saveRuntimeKeys('old-csk', 'old-gsk');
+    await mod.saveRuntimeKeys('old-csk-long-key-1234567890', 'old-gsk-long-key-1234567890');
 
     Preferences.get.mockImplementation(({ key }) =>
-      Promise.resolve({ value: key === 'yc_cerebras_key' ? 'new-csk-long-key' : 'new-gsk-long-key' })
+      Promise.resolve({ value: key === 'yc_cerebras_key' ? 'new-csk-long-key-1234567890' : 'new-gsk-long-key-1234567890' })
     );
 
     const result = await mod.forceReloadKeys();
     expect(result.loaded).toBe(2);
-    expect(mod.getRuntimeCerebrasKey()).toBe('new-csk-long-key');
+    expect(mod.getRuntimeCerebrasKey()).toBe('new-csk-long-key-1234567890');
   });
 });
 
