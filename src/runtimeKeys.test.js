@@ -1,4 +1,4 @@
-// src/runtimeKeys.test.ts
+// src/runtimeKeys.test.js
 // @vitest-environment happy-dom
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -159,7 +159,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
   it('throws KeyValidationError for non-string key', async () => {
     const mod = await freshModule();
-    await expect(mod.saveRuntimeKeys(123 as any, 'valid-groq'))
+    await expect(mod.saveRuntimeKeys(123, 'valid-groq'))
       .rejects.toThrow(KeyValidationError);
   });
 
