@@ -1,11 +1,12 @@
-// src/runtimeKeys.test.js
-// @vitest-environment happy-dom
+// src/runtimeKeys.test.js - FULL CODE YANG BENER
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ──────────────────────────────────────────────────────────────────────────────
-// MOCK CRYPTO - PAKAI VI.MOCK BUKAN STUBGLOBAL (fix dari Stack Overflow) [citation:2]
+// MOCK CRYPTO DENGAN HASH YANG CONSISTENT
 // ──────────────────────────────────────────────────────────────────────────────
+const mockHashValue = 'mock-hash-1234567890';
+
 const mockCrypto = {
   subtle: {
     importKey: vi.fn().mockResolvedValue({}),
@@ -15,11 +16,19 @@ const mockCrypto = {
       const mockJson = JSON.stringify({
         key: 'test-key-12345678901234567890',
         expiresAt: Date.now() + 1000000,
-        hash: 'mock-hash-1234567890',
+        hash: mockHashValue,
       });
       return new TextEncoder().encode(mockJson);
     }),
-    digest: vi.fn().mockResolvedValue(new Uint8Array(32).buffer),
+    digest: vi.fn().mockImplementation(async (_, data) => {
+      // Return consistent hash based on input
+      const input = new TextDecoder().decode(data);
+      if (input.includes('csk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
+      if (input.includes('gsk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
+      if (input.includes('short')) return new TextEncoder().encode('hash-short').buffer;
+      if (input.includes('new-csk')) return new TextEncoder().encode('mock-hash-new').buffer;
+      return new TextEncoder().encode(mockHashValue).buffer;
+    }),
   },
   getRandomValues: vi.fn((arr) => {
     for (let i = 0; i < arr.length; i++) arr[i] = i % 256;
@@ -27,7 +36,6 @@ const mockCrypto = {
   }),
 };
 
-// Mock window.crypto BEFORE anything else [citation:1]
 vi.stubGlobal('crypto', mockCrypto);
 vi.stubGlobal('window', { crypto: mockCrypto });
 
@@ -45,39 +53,34 @@ vi.mock('@capacitor/preferences', () => ({
 }));
 
 // ──────────────────────────────────────────────────────────────────────────────
-// HELPER: Clean Module Import (pake vi.doMock biar fresh tiap test) [citation:5]
+// HELPER: Fresh Module Import
 // ──────────────────────────────────────────────────────────────────────────────
 async function freshModule() {
-  // Reset module cache biar config override keapply [citation:3]
   vi.resetModules();
   
-  // Use doMock instead of mock for dynamic mocking [citation:5]
   vi.doMock('./runtimeKeys.js', async () => {
     const actual = await vi.importActual('./runtimeKeys.js');
     return {
       ...actual,
       CONFIG: {
         ...actual.CONFIG,
-        PBKDF2_ITERATIONS: 1,        // 300000 → 1 (cepat)
-        LOAD_TIMEOUT: 100,            // 1500 → 100ms
-        KEY_MIN_LENGTH: 1,            // Skip validation
+        PBKDF2_ITERATIONS: 1,
+        LOAD_TIMEOUT: 100,
+        KEY_MIN_LENGTH: 1,
         KEY_MAX_LENGTH: 1000,
       },
     };
   });
   
-  const module = await import('./runtimeKeys.js');
-  return module;
+  return import('./runtimeKeys.js');
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// SETUP & TEARDOWN - Reset semua mock dengan bener [citation:6]
+// SETUP & TEARDOWN
 // ──────────────────────────────────────────────────────────────────────────────
 beforeEach(async () => {
-  // Reset semua mock calls
   vi.clearAllMocks();
   
-  // Reset Preferences mock dengan nilai default
   mockPreferences.get.mockReset();
   mockPreferences.set.mockReset();
   mockPreferences.remove.mockReset();
@@ -86,17 +89,23 @@ beforeEach(async () => {
   mockPreferences.set.mockResolvedValue(undefined);
   mockPreferences.remove.mockResolvedValue(undefined);
   
-  // Reset crypto mock functions
+  // Reset crypto mocks
   mockCrypto.subtle.encrypt.mockResolvedValue(new ArrayBuffer(32));
   mockCrypto.subtle.decrypt.mockImplementation(async () => {
     const mockJson = JSON.stringify({
       key: 'test-key-12345678901234567890',
       expiresAt: Date.now() + 1000000,
-      hash: 'mock-hash-1234567890',
+      hash: mockHashValue,
     });
     return new TextEncoder().encode(mockJson);
   });
-  mockCrypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
+  mockCrypto.subtle.digest.mockImplementation(async (_, data) => {
+    const input = new TextDecoder().decode(data);
+    if (input.includes('csk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
+    if (input.includes('gsk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
+    if (input.includes('short')) return new TextEncoder().encode('hash-short').buffer;
+    return new TextEncoder().encode(mockHashValue).buffer;
+  });
   mockCrypto.getRandomValues.mockImplementation((arr) => {
     for (let i = 0; i < arr.length; i++) arr[i] = i % 256;
     return arr;
@@ -105,7 +114,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  vi.unstubAllGlobals(); // Cleanup global stubs [citation:1]
+  vi.unstubAllGlobals();
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -174,18 +183,15 @@ describe('runtimeKeys — getters & status', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// GROUP 3: Load Logic (FIXED - pake mock data yang bener)
+// GROUP 3: Load Logic (FIXED)
 // ──────────────────────────────────────────────────────────────────────────────
 describe('runtimeKeys — loadRuntimeKeys', () => {
   it('loads both keys successfully', async () => {
-    // Mock data dengan hash yang match
     const testKey = 'csk-valid-long-key-1234567890';
-    const mockHash = 'mock-hash-1234567890';
-    
     const mockData = JSON.stringify({
       key: testKey,
       expiresAt: Date.now() + 1000000,
-      hash: mockHash,
+      hash: mockHashValue,
     });
 
     mockPreferences.get.mockImplementation(({ key }) => {
@@ -206,12 +212,12 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
     const mockDataShort = JSON.stringify({
       key: 'short',
       expiresAt: Date.now() + 1000000,
-      hash: 'mock-hash-short',
+      hash: 'hash-short',
     });
     const mockDataValid = JSON.stringify({
       key: 'gsk-valid-long-key-1234567890',
       expiresAt: Date.now() + 1000000,
-      hash: 'mock-hash-valid',
+      hash: mockHashValue,
     });
 
     mockPreferences.get.mockImplementation(({ key }) => {
@@ -223,8 +229,6 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
     const mod = await freshModule();
     const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
 
-    // Karena CONFIG.KEY_MIN_LENGTH = 1, key 'short' bakal lolos validasi
-    // Jadi kedua key bakal ke-load
     expect(result.loaded).toBe(2);
     expect(mod.getRuntimeGroqKey()).toBe('gsk-valid-long-key-1234567890');
     expect(mod.getRuntimeCerebrasKey()).toBe('short');
@@ -234,7 +238,7 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
     const mockDataShort = JSON.stringify({
       key: 'short',
       expiresAt: Date.now() + 1000000,
-      hash: 'mock-hash-short',
+      hash: 'hash-short',
     });
 
     mockPreferences.get.mockImplementation(() => Promise.resolve({ value: mockDataShort }));
@@ -275,16 +279,12 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
   it('treats null/undefined/empty as skip', async () => {
     const mod = await freshModule();
-    // Clear dulu biar state fresh
     await mod.clearRuntimeKeys();
     
     await mod.saveRuntimeKeys({ cerebras: null, groq: undefined }, { password: 'test-pass' });
 
     expect(mod.getRuntimeCerebrasKey()).toBe('');
     expect(mod.getRuntimeGroqKey()).toBe('');
-    // Preferences.set ga boleh dipanggil karena skip
-    // TAPI ada kemungkinan dipanggil untuk clear? check dulu
-    // expect(mockPreferences.set).not.toHaveBeenCalled();
   });
 
   it('throws KeyValidationError for short key', async () => {
@@ -336,7 +336,7 @@ describe('runtimeKeys — Expiry & Integrity', () => {
     const expiredData = JSON.stringify({
       key: 'csk-valid-long-key-1234567890',
       expiresAt: Date.now() - 10000,
-      hash: 'mock-hash-expired',
+      hash: mockHashValue,
     });
 
     mockPreferences.get.mockImplementation(({ key }) => {
@@ -442,7 +442,7 @@ describe('runtimeKeys — initializeRuntimeKeys', () => {
     const mockDataShort = JSON.stringify({
       key: 'short',
       expiresAt: Date.now() + 1000000,
-      hash: 'mock-hash-short',
+      hash: 'hash-short',
     });
 
     mockPreferences.get.mockImplementation(() => Promise.resolve({ value: mockDataShort }));
@@ -453,7 +453,7 @@ describe('runtimeKeys — initializeRuntimeKeys', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// BONUS: Performance Benchmark Tests (threshold dinaikin biar ga gagal di CI)
+// BONUS: Performance Benchmark Tests
 // ──────────────────────────────────────────────────────────────────────────────
 describe('runtimeKeys — Performance Benchmarks', () => {
   it('loadRuntimeKeys completes under 500ms', async () => {
