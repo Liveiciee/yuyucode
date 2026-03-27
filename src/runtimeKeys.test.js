@@ -1,46 +1,10 @@
-// src/runtimeKeys.test.js - FULL CODE YANG BENER
+// src/runtimeKeys.test.js
+// @vitest-environment happy-dom
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ──────────────────────────────────────────────────────────────────────────────
-// MOCK CRYPTO DENGAN HASH YANG CONSISTENT
-// ──────────────────────────────────────────────────────────────────────────────
-const mockHashValue = 'mock-hash-1234567890';
-
-const mockCrypto = {
-  subtle: {
-    importKey: vi.fn().mockResolvedValue({}),
-    deriveKey: vi.fn().mockResolvedValue({}),
-    encrypt: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
-    decrypt: vi.fn().mockImplementation(async () => {
-      const mockJson = JSON.stringify({
-        key: 'test-key-12345678901234567890',
-        expiresAt: Date.now() + 1000000,
-        hash: mockHashValue,
-      });
-      return new TextEncoder().encode(mockJson);
-    }),
-    digest: vi.fn().mockImplementation(async (_, data) => {
-      // Return consistent hash based on input
-      const input = new TextDecoder().decode(data);
-      if (input.includes('csk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
-      if (input.includes('gsk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
-      if (input.includes('short')) return new TextEncoder().encode('hash-short').buffer;
-      if (input.includes('new-csk')) return new TextEncoder().encode('mock-hash-new').buffer;
-      return new TextEncoder().encode(mockHashValue).buffer;
-    }),
-  },
-  getRandomValues: vi.fn((arr) => {
-    for (let i = 0; i < arr.length; i++) arr[i] = i % 256;
-    return arr;
-  }),
-};
-
-vi.stubGlobal('crypto', mockCrypto);
-vi.stubGlobal('window', { crypto: mockCrypto });
-
-// ──────────────────────────────────────────────────────────────────────────────
-// MOCK CAPACITOR PREFERENCES
+// MOCK CAPACITOR PREFERENCES (top level, persist)
 // ──────────────────────────────────────────────────────────────────────────────
 const mockPreferences = {
   get: vi.fn(),
@@ -53,25 +17,66 @@ vi.mock('@capacitor/preferences', () => ({
 }));
 
 // ──────────────────────────────────────────────────────────────────────────────
+// MOCK RUNTIMEKEYS.JS - CRITICAL: crypto stub DI DALAM factory
+// ──────────────────────────────────────────────────────────────────────────────
+vi.mock('./runtimeKeys.js', async () => {
+  // FIX: Setup crypto mock DI SINI di dalam factory
+  const mockHashValue = 'mock-hash-1234567890';
+  
+  const mockCrypto = {
+    subtle: {
+      importKey: vi.fn().mockResolvedValue({}),
+      deriveKey: vi.fn().mockResolvedValue({}),
+      encrypt: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
+      decrypt: vi.fn().mockImplementation(async () => {
+        const mockJson = JSON.stringify({
+          key: 'test-key-12345678901234567890',
+          expiresAt: Date.now() + 1000000,
+          hash: mockHashValue,
+        });
+        return new TextEncoder().encode(mockJson);
+      }),
+      digest: vi.fn().mockImplementation(async (_, data) => {
+        const input = new TextDecoder().decode(data);
+        if (input.includes('csk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
+        if (input.includes('gsk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
+        if (input.includes('short')) return new TextEncoder().encode('hash-short').buffer;
+        if (input.includes('new-csk')) return new TextEncoder().encode('mock-hash-new').buffer;
+        if (input.includes('old-csk')) return new TextEncoder().encode('mock-hash-old').buffer;
+        if (input.includes('csk-long-valid-key')) return new TextEncoder().encode(mockHashValue).buffer;
+        if (input.includes('gsk-long-valid-key')) return new TextEncoder().encode(mockHashValue).buffer;
+        return new TextEncoder().encode(mockHashValue).buffer;
+      }),
+    },
+    getRandomValues: vi.fn((arr) => {
+      for (let i = 0; i < arr.length; i++) arr[i] = i % 256;
+      return arr;
+    }),
+  };
+
+  // Stub global DI DALAM factory - ini kunci fix-nya!
+  vi.stubGlobal('crypto', mockCrypto);
+  vi.stubGlobal('window', { crypto: mockCrypto });
+  
+  const actual = await vi.importActual('./runtimeKeys.js');
+  
+  return {
+    ...actual,
+    CONFIG: {
+      ...actual.CONFIG,
+      PBKDF2_ITERATIONS: 1,
+      LOAD_TIMEOUT: 100,
+      KEY_MIN_LENGTH: 1,
+      KEY_MAX_LENGTH: 1000,
+    },
+  };
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // HELPER: Fresh Module Import
 // ──────────────────────────────────────────────────────────────────────────────
 async function freshModule() {
   vi.resetModules();
-  
-  vi.doMock('./runtimeKeys.js', async () => {
-    const actual = await vi.importActual('./runtimeKeys.js');
-    return {
-      ...actual,
-      CONFIG: {
-        ...actual.CONFIG,
-        PBKDF2_ITERATIONS: 1,
-        LOAD_TIMEOUT: 100,
-        KEY_MIN_LENGTH: 1,
-        KEY_MAX_LENGTH: 1000,
-      },
-    };
-  });
-  
   return import('./runtimeKeys.js');
 }
 
@@ -88,33 +93,10 @@ beforeEach(async () => {
   mockPreferences.get.mockResolvedValue({ value: null });
   mockPreferences.set.mockResolvedValue(undefined);
   mockPreferences.remove.mockResolvedValue(undefined);
-  
-  // Reset crypto mocks
-  mockCrypto.subtle.encrypt.mockResolvedValue(new ArrayBuffer(32));
-  mockCrypto.subtle.decrypt.mockImplementation(async () => {
-    const mockJson = JSON.stringify({
-      key: 'test-key-12345678901234567890',
-      expiresAt: Date.now() + 1000000,
-      hash: mockHashValue,
-    });
-    return new TextEncoder().encode(mockJson);
-  });
-  mockCrypto.subtle.digest.mockImplementation(async (_, data) => {
-    const input = new TextDecoder().decode(data);
-    if (input.includes('csk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
-    if (input.includes('gsk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
-    if (input.includes('short')) return new TextEncoder().encode('hash-short').buffer;
-    return new TextEncoder().encode(mockHashValue).buffer;
-  });
-  mockCrypto.getRandomValues.mockImplementation((arr) => {
-    for (let i = 0; i < arr.length; i++) arr[i] = i % 256;
-    return arr;
-  });
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  vi.unstubAllGlobals();
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -183,13 +165,14 @@ describe('runtimeKeys — getters & status', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// GROUP 3: Load Logic (FIXED)
+// GROUP 3: Load Logic
 // ──────────────────────────────────────────────────────────────────────────────
+const mockHashValue = 'mock-hash-1234567890';
+
 describe('runtimeKeys — loadRuntimeKeys', () => {
   it('loads both keys successfully', async () => {
-    const testKey = 'csk-valid-long-key-1234567890';
     const mockData = JSON.stringify({
-      key: testKey,
+      key: 'csk-valid-long-key-1234567890',
       expiresAt: Date.now() + 1000000,
       hash: mockHashValue,
     });
