@@ -1,124 +1,240 @@
+// src/runtimeKeys.test.ts
 // @vitest-environment happy-dom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  loadRuntimeKeys,
+  saveRuntimeKeys,
+  clearRuntimeKeys,
+  checkKeysStatus,
+  getRuntimeCerebrasKey,
+  getRuntimeGroqKey,
+  initializeRuntimeKeys,
+  forceReloadKeys,
+  KeyValidationError,
+  KeyStorageError,
+  KeyLoadError,
+  KeySaveError,
+} from './runtimeKeys.js';
 
 vi.mock('@capacitor/preferences', () => ({
   Preferences: {
-    get: vi.fn().mockResolvedValue({ value: null }),
-    set: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn(),
+    set: vi.fn(),
+    remove: vi.fn(),
   },
 }));
+
+const { Preferences } = await import('@capacitor/preferences');
 
 async function freshModule() {
   vi.resetModules();
   return import('./runtimeKeys.js');
 }
 
-describe('runtimeKeys — initial state', () => {
-  it('getRuntimeCerebrasKey returns empty string before load', async () => {
-    const { getRuntimeCerebrasKey } = await freshModule();
-    expect(getRuntimeCerebrasKey()).toBe('');
+beforeEach(async () => {
+  vi.clearAllMocks();
+  Preferences.get.mockReset();
+  Preferences.set.mockReset();
+  Preferences.remove.mockReset();
+
+  Preferences.get.mockResolvedValue({ value: null });
+  Preferences.set.mockResolvedValue(undefined);
+  Preferences.remove.mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Core Getters & Status
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — getters & status', () => {
+  it('initial state is empty', async () => {
+    const mod = await freshModule();
+    expect(mod.getRuntimeCerebrasKey()).toBe('');
+    expect(mod.getRuntimeGroqKey()).toBe('');
+
+    const status = mod.checkKeysStatus();
+    expect(status).toEqual({
+      hasCerebras: false,
+      hasGroq: false,
+      both: false,
+      loaded: false,
+      lastLoaded: null,
+    });
   });
 
-  it('getRuntimeGroqKey returns empty string before load', async () => {
-    const { getRuntimeGroqKey } = await freshModule();
-    expect(getRuntimeGroqKey()).toBe('');
+  it('checkKeysStatus reflects loaded keys', async () => {
+    const mod = await freshModule();
+    await mod.saveRuntimeKeys('csk-long-valid-key-12345678901234567890', 'gsk-long-valid-key-12345678901234567890');
+
+    const status = mod.checkKeysStatus();
+    expect(status.hasCerebras).toBe(true);
+    expect(status.hasGroq).toBe(true);
+    expect(status.both).toBe(true);
+    expect(status.loaded).toBe(true);
+    expect(status.lastLoaded).toBeDefined();
   });
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// loadRuntimeKeys
+// ──────────────────────────────────────────────────────────────────────────────
 describe('runtimeKeys — loadRuntimeKeys', () => {
-  it('loads cerebras key from Preferences', async () => {
-    const { Preferences } = await import('@capacitor/preferences');
+  it('loads both keys successfully with validation', async () => {
     Preferences.get.mockImplementation(({ key }) =>
-      Promise.resolve({ value: key === 'yc_cerebras_key' ? 'csk-test' : null })
+      Promise.resolve({ value: key === 'yc_cerebras_key' ? 'csk-valid-long-key-1234567890' : 'gsk-valid-long-key-0987654321' })
     );
-    const { loadRuntimeKeys, getRuntimeCerebrasKey } = await freshModule();
-    await loadRuntimeKeys();
-    expect(getRuntimeCerebrasKey()).toBe('csk-test');
+
+    const mod = await freshModule();
+    const result = await mod.loadRuntimeKeys();
+
+    expect(result.success).toBe(true);
+    expect(result.loaded).toBe(2);
+    expect(result.errors).toHaveLength(0);
   });
 
-  it('loads groq key from Preferences', async () => {
-    const { Preferences } = await import('@capacitor/preferences');
+  it('loads with some validation failures', async () => {
     Preferences.get.mockImplementation(({ key }) =>
-      Promise.resolve({ value: key === 'yc_groq_key' ? 'gsk-test' : null })
+      Promise.resolve({ value: key === 'yc_cerebras_key' ? 'short' : 'gsk-valid-long-key-1234567890' })
     );
-    const { loadRuntimeKeys, getRuntimeGroqKey } = await freshModule();
-    await loadRuntimeKeys();
-    expect(getRuntimeGroqKey()).toBe('gsk-test');
+
+    const mod = await freshModule();
+    const result = await mod.loadRuntimeKeys();
+
+    expect(result.success).toBe(false);
+    expect(result.loaded).toBe(1);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toContain('Cerebras');
   });
 
-  it('falls back to empty string when Preferences returns null', async () => {
-    const { Preferences } = await import('@capacitor/preferences');
-    Preferences.get.mockResolvedValue({ value: null });
-    const { loadRuntimeKeys, getRuntimeCerebrasKey, getRuntimeGroqKey } = await freshModule();
-    await loadRuntimeKeys();
-    expect(getRuntimeCerebrasKey()).toBe('');
-    expect(getRuntimeGroqKey()).toBe('');
+  it('loads without validation', async () => {
+    Preferences.get.mockImplementation(({ key }) =>
+      Promise.resolve({ value: key === 'yc_cerebras_key' ? 'short' : 'short-groq' })
+    );
+
+    const mod = await freshModule();
+    const result = await mod.loadRuntimeKeys({ validate: false });
+
+    expect(result.success).toBe(true);
+    expect(result.loaded).toBe(2);
   });
 
-  it('loads both keys in parallel', async () => {
-    const { Preferences } = await import('@capacitor/preferences');
-    Preferences.get.mockImplementation(({ key }) =>
-      Promise.resolve({ value: key === 'yc_cerebras_key' ? 'csk-abc' : 'gsk-xyz' })
-    );
-    const { loadRuntimeKeys, getRuntimeCerebrasKey, getRuntimeGroqKey } = await freshModule();
-    await loadRuntimeKeys();
-    expect(getRuntimeCerebrasKey()).toBe('csk-abc');
-    expect(getRuntimeGroqKey()).toBe('gsk-xyz');
+  it('throws KeyLoadError on timeout', async () => {
+    Preferences.get.mockImplementation(() => new Promise(() => {}));
+
+    const mod = await freshModule();
+    await expect(mod.loadRuntimeKeys()).rejects.toThrow(KeyLoadError);
   });
 });
 
-describe('runtimeKeys — saveRuntimeKeys', () => {
-  it('saves both keys to Preferences', async () => {
-    const { Preferences } = await import('@capacitor/preferences');
-    Preferences.get.mockResolvedValue({ value: null });
-    const { saveRuntimeKeys } = await freshModule();
-    await saveRuntimeKeys('csk-new', 'gsk-new');
-    expect(Preferences.set).toHaveBeenCalledWith({ key: 'yc_cerebras_key', value: 'csk-new' });
-    expect(Preferences.set).toHaveBeenCalledWith({ key: 'yc_groq_key', value: 'gsk-new' });
+// ──────────────────────────────────────────────────────────────────────────────
+// saveRuntimeKeys + Validation
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — saveRuntimeKeys & validation', () => {
+  it('saves valid keys, trims, updates state', async () => {
+    const mod = await freshModule();
+    const result = await mod.saveRuntimeKeys('  csk-valid-long-key-12345  ', 'gsk-valid-long-key-67890');
+
+    expect(result.success).toBe(true);
+    expect(result.saved).toBe(2);
+    expect(mod.getRuntimeCerebrasKey()).toBe('csk-valid-long-key-12345');
   });
 
-  it('updates in-memory values immediately', async () => {
-    const { Preferences } = await import('@capacitor/preferences');
-    Preferences.get.mockResolvedValue({ value: null });
-    const { saveRuntimeKeys, getRuntimeCerebrasKey, getRuntimeGroqKey } = await freshModule();
-    await saveRuntimeKeys('csk-mem', 'gsk-mem');
-    expect(getRuntimeCerebrasKey()).toBe('csk-mem');
-    expect(getRuntimeGroqKey()).toBe('gsk-mem');
+  it('treats null/undefined/empty as empty string', async () => {
+    const mod = await freshModule();
+    await mod.saveRuntimeKeys(null, undefined);
+
+    expect(mod.getRuntimeCerebrasKey()).toBe('');
+    expect(mod.getRuntimeGroqKey()).toBe('');
   });
 
-  it('saves empty string when null passed', async () => {
-    const { Preferences } = await import('@capacitor/preferences');
-    Preferences.get.mockResolvedValue({ value: null });
-    const { saveRuntimeKeys, getRuntimeCerebrasKey, getRuntimeGroqKey } = await freshModule();
-    await saveRuntimeKeys(null, null);
-    expect(getRuntimeCerebrasKey()).toBe('');
-    expect(getRuntimeGroqKey()).toBe('');
-    expect(Preferences.set).toHaveBeenCalledWith({ key: 'yc_cerebras_key', value: '' });
-    expect(Preferences.set).toHaveBeenCalledWith({ key: 'yc_groq_key', value: '' });
+  it('throws KeyValidationError for short key', async () => {
+    const mod = await freshModule();
+    await expect(mod.saveRuntimeKeys('short', 'gsk-valid-long-key-1234567890'))
+      .rejects.toThrow(KeyValidationError);
   });
 
-  it('saves empty string when undefined passed', async () => {
-    const { Preferences } = await import('@capacitor/preferences');
-    Preferences.get.mockResolvedValue({ value: null });
-    const { saveRuntimeKeys, getRuntimeCerebrasKey } = await freshModule();
-    await saveRuntimeKeys(undefined, undefined);
-    expect(getRuntimeCerebrasKey()).toBe('');
+  it('throws KeyValidationError for non-string key', async () => {
+    const mod = await freshModule();
+    await expect(mod.saveRuntimeKeys(123 as any, 'valid-groq'))
+      .rejects.toThrow(KeyValidationError);
   });
 
-  it('saves raw value from caller', async () => {
-    const { Preferences } = await import('@capacitor/preferences');
-    Preferences.get.mockResolvedValue({ value: null });
-    const { saveRuntimeKeys, getRuntimeCerebrasKey } = await freshModule();
-    await saveRuntimeKeys('csk-padded', 'gsk-padded');
-    expect(getRuntimeCerebrasKey()).toBe('csk-padded');
+  it('emits console.warn for suspicious sk- prefix on Cerebras', async () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const mod = await freshModule();
+    await mod.saveRuntimeKeys('sk-12345678901234567890', 'gsk-valid');
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[Key Warning]'),
+      expect.any(String)
+    );
   });
 
-  it('overwrites previous key on second save', async () => {
-    const { Preferences } = await import('@capacitor/preferences');
-    Preferences.get.mockResolvedValue({ value: null });
-    const { saveRuntimeKeys, getRuntimeCerebrasKey } = await freshModule();
-    await saveRuntimeKeys('csk-first', 'gsk-first');
-    await saveRuntimeKeys('csk-second', 'gsk-second');
-    expect(getRuntimeCerebrasKey()).toBe('csk-second');
+  it('throws KeySaveError when Preferences.set fails', async () => {
+    Preferences.set.mockRejectedValueOnce(new Error('Storage full'));
+
+    const mod = await freshModule();
+    await expect(mod.saveRuntimeKeys('valid-cerebras-long-key-12345', 'valid-groq'))
+      .rejects.toThrow(KeySaveError);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Clear & Force Reload
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — clear & force reload', () => {
+  it('clearRuntimeKeys resets storage and memory', async () => {
+    const mod = await freshModule();
+    await mod.saveRuntimeKeys('csk-xxx', 'gsk-yyy');
+
+    await mod.clearRuntimeKeys();
+
+    expect(mod.getRuntimeCerebrasKey()).toBe('');
+    expect(mod.checkKeysStatus().loaded).toBe(false);
+    expect(Preferences.remove).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws KeyStorageError on clear failure', async () => {
+    Preferences.remove.mockRejectedValueOnce(new Error('IO error'));
+
+    const mod = await freshModule();
+    await expect(mod.clearRuntimeKeys()).rejects.toThrow(KeyStorageError);
+  });
+
+  it('forceReloadKeys resets then reloads', async () => {
+    const mod = await freshModule();
+    await mod.saveRuntimeKeys('old-csk', 'old-gsk');
+
+    Preferences.get.mockImplementation(({ key }) =>
+      Promise.resolve({ value: key === 'yc_cerebras_key' ? 'new-csk-long-key' : 'new-gsk-long-key' })
+    );
+
+    const result = await mod.forceReloadKeys();
+    expect(result.loaded).toBe(2);
+    expect(mod.getRuntimeCerebrasKey()).toBe('new-csk-long-key');
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Initialize
+// ──────────────────────────────────────────────────────────────────────────────
+describe('runtimeKeys — initializeRuntimeKeys', () => {
+  it('succeeds silently on normal load', async () => {
+    const mod = await freshModule();
+    await expect(mod.initializeRuntimeKeys()).resolves.not.toThrow();
+  });
+
+  it('handles validation failure gracefully (no throw)', async () => {
+    Preferences.get.mockImplementation(({ key }) =>
+      Promise.resolve({ value: key === 'yc_cerebras_key' ? 'short' : 'valid-groq' })
+    );
+
+    const mod = await freshModule();
+    await expect(mod.initializeRuntimeKeys()).resolves.not.toThrow();
   });
 });
