@@ -2,16 +2,30 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import os from 'os'
 
-const isArm64 = os.arch() === 'arm64' || os.arch() === 'arm';
-const isCI    = process.env.GITHUB_ACTIONS === 'true';
-const pool    = (isArm64 || isCI) ? 'threads' : 'vmThreads';
+// ──────────────────────────────────────────────────────────────────────────────
+// ENVIRONMENT DETECTION
+// ──────────────────────────────────────────────────────────────────────────────
+const isArm64 = os.arch() === 'arm64' || os.arch() === 'arm'
+const isCI = process.env.GITHUB_ACTIONS === 'true' || !!process.env.CI
 
+// ──────────────────────────────────────────────────────────────────────────────
+// POOL STRATEGY (Optimized for architecture & CI)
+// ──────────────────────────────────────────────────────────────────────────────
+// vmThreads: New in Vitest v2+, combines speed of threads with VM isolation
+const pool = isArm64 || isCI ? 'threads' : 'vmThreads'
+
+// ──────────────────────────────────────────────────────────────────────────────
+// CONFIGURATION
+// ──────────────────────────────────────────────────────────────────────────────
 export default defineConfig({
   plugins: [react()],
+
   test: {
-    environment:  'happy-dom',
-    globals:      true,
-    setupFiles:   './src/setupTest.js',
+    // ─── Environment ──────────────────────────────────────────────────────────
+    environment: 'happy-dom',
+    setupFiles: ['./src/setupTest.js'],
+
+    // ─── Pool & Workers ───────────────────────────────────────────────────────
     pool,
     poolOptions: {
       threads: {
@@ -21,49 +35,116 @@ export default defineConfig({
       },
       vmThreads: {
         useAtomics: true,
+        singleThread: isArm64,
       },
     },
+    maxWorkers: isArm64 ? 2 : undefined,
+    minWorkers: isArm64 ? 1 : undefined,
 
-    isolate:     true,
-    clearMocks:  true,
-    css:         false,
-    testTimeout: 10000,
-    hookTimeout: 10000,
+    // ─── Test Execution ───────────────────────────────────────────────────────
+    globals: true,
+    isolate: true,
+    clearMocks: true,
+    restoreMocks: true,
+    mockReset: true,
+    unstubEnvs: true,
+    unstubGlobals: true,
+
+    testTimeout: 10_000,
+    hookTimeout: 10_000,
     slowTestThreshold: 500,
     retry: isCI ? 2 : 1,
+    bail: isCI ? 1 : 0,
 
-    reporters: process.env.CI ? ['verbose'] : ['dot'],
-
-    onConsoleLog: (_log, type) => type !== 'stderr' ? false : undefined,
-
+    // ─── Sequence Control ─────────────────────────────────────────────────────
     sequence: {
       concurrent: false,
       shuffle: false,
       seed: Date.now(),
     },
 
-    maxWorkers: isArm64 ? 2 : undefined,
-    minWorkers: isArm64 ? 1 : undefined,
+    // ─── Console & Logging ────────────────────────────────────────────────────
+    silent: false,
+    verbose: !isCI,
+    reporters: isCI ? ['verbose', 'junit'] : ['dot'],
+    outputFile: isCI ? { junit: './test-results/junit.xml' } : undefined,
 
+    onConsoleLog: (log, type) => {
+      // Always show errors
+      if (type === 'stderr') return true
+      // Show our custom logs
+      if (log.includes('[RuntimeKeys]')) return true
+      // Suppress everything else
+      return false
+    },
+
+    // ─── Watch Mode ───────────────────────────────────────────────────────────
     watch: {
-      ignore: ['node_modules', 'coverage', 'android', 'dist', '.yuyu'],
+      ignore: [
+        'node_modules',
+        'coverage',
+        'android',
+        'dist',
+        '.yuyu',
+        '*.test.*',
+        '*.spec.*',
+      ],
     },
 
-    teardown: {
-      force: true,
+    // ─── CSS Handling ─────────────────────────────────────────────────────────
+    css: false,
+
+    // ─── Diff Configuration ───────────────────────────────────────────────────
+    diff: {
+      expand: false,
+      contextLines: 3,
     },
 
+    // ─── Transform & Dependencies ─────────────────────────────────────────────
+    transformIgnorePatterns: [
+      'node_modules/(?!( @capacitor| @codemirror| @valtown )/)',
+    ],
+    server: {
+      deps: {
+        inline: ['@capacitor-community/sqlite'],
+      },
+    },
+
+    // ─── Coverage ─────────────────────────────────────────────────────────────
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'lcov', 'json', 'html', 'clover'],
+      reporter: [
+        ['text', { skipFull: true }],
+        ['html', { skipEmpty: true }],
+        ['lcov', { projectRoot: './' }],
+        ['json', { file: 'coverage.json' }],
+        ['clover', { file: 'clover.xml' }],
+      ],
       reportsDirectory: './coverage',
+      clean: true,
+      cleanOnRerun: true,
+      all: true,
+
+      // Thresholds (fail CI if below)
       thresholds: {
-        lines:      60,
-        functions:  60,
-        branches:   50,
-        statements: 60,
+        global: {
+          lines: 60,
+          functions: 60,
+          branches: 50,
+          statements: 60,
+        },
+        perFile: true,
       },
-      perFile: true,
+
+      // Watermarks (for color coding in reports)
+      watermarks: {
+        statements: [60, 80],
+        functions: [60, 80],
+        branches: [50, 70],
+        lines: [60, 80],
+      },
+
+      // Include paths
       include: [
         'src/hooks/**/*.js',
         'src/features.js',
@@ -72,61 +153,41 @@ export default defineConfig({
         'yuyu-server.js',
         'yuyu-map.cjs',
       ],
+
+      // Exclude paths
       exclude: [
-        'yugit.cjs', 'yuyu-bench.cjs',
-        'public/**', 'android/**', 'patch/**',
-        'src/main.jsx', 'src/plugins/**',
-        'src/constants.js', 'src/theme.js', 'src/setupTest.js',
-        'src/components/**', 'src/App.jsx', 'src/themes/**',
-        '**/*.test.*', '**/*.bench.*', '**/*.spec.*',
+        // Build artifacts
+        'yugit.cjs',
+        'yuyu-bench.cjs',
+        'public/**',
+        'android/**',
+        'patch/**',
+        'dist/**',
+
+        // Entry points & configs
+        'src/main.jsx',
+        'src/App.jsx',
+        'src/constants.js',
+        'src/theme.js',
+        'src/themes/**',
+        'src/setupTest.js',
+
+        // Components (UI tests separate)
+        'src/components/**',
+
+        // Test files
+        '**/*.test.*',
+        '**/*.spec.*',
+        '**/*.bench.*',
         'src/__snapshots__/**',
         '**/__mocks__/**',
         '**/__fixtures__/**',
       ],
-      watermarks: {
-        statements: [60, 80],
-        functions: [60, 80],
-        branches: [50, 70],
-        lines: [60, 80],
-      },
-      clean: true,
-      cleanOnRerun: true,
     },
 
+    // ─── Type Checking (Optional) ─────────────────────────────────────────────
     typecheck: {
       enabled: false,
-    },
-
-    diff: {
-      expand: false,
-      contextLines: 3,
-    },
-
-    bail: isCI ? 1 : 0,
-
-    silent: false,
-    verbose: false,
-
-    mockReset: true,
-    restoreMocks: true,
-    unstubEnvs: true,
-    unstubGlobals: true,
-
-    environmentOptions: {
-      jsdom: {
-        resources: 'usable',
-        runScripts: 'dangerously',
-      },
-    },
-
-    transformIgnorePatterns: [
-      '/node_modules/(?!(@capacitor|@codemirror|@valtown)/)',
-    ],
-
-    server: {
-      deps: {
-        inline: ['@capacitor-community/sqlite'],
-      },
     },
   },
 })
