@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ──────────────────────────────────────────────────────────────────────────────
-// MOCK CAPACITOR PREFERENCES (top level, persist)
+// MOCK CAPACITOR PREFERENCES
 // ──────────────────────────────────────────────────────────────────────────────
 const mockPreferences = {
   get: vi.fn(),
@@ -17,13 +17,12 @@ vi.mock('@capacitor/preferences', () => ({
 }));
 
 // ──────────────────────────────────────────────────────────────────────────────
-// MOCK RUNTIMEKEYS.JS - CRITICAL: crypto stub DI DALAM factory
+// CRYPTO MOCK - PINDAH KE SINI, JANGAN DI DALAM vi.mock factory!
 // ──────────────────────────────────────────────────────────────────────────────
-vi.mock('./runtimeKeys.js', async () => {
-  // FIX: Setup crypto mock DI SINI di dalam factory
+const createMockCrypto = () => {
   const mockHashValue = 'mock-hash-1234567890';
   
-  const mockCrypto = {
+  return {
     subtle: {
       importKey: vi.fn().mockResolvedValue({}),
       deriveKey: vi.fn().mockResolvedValue({}),
@@ -53,11 +52,12 @@ vi.mock('./runtimeKeys.js', async () => {
       return arr;
     }),
   };
+};
 
-  // Stub global DI DALAM factory - ini kunci fix-nya!
-  vi.stubGlobal('crypto', mockCrypto);
-  vi.stubGlobal('window', { crypto: mockCrypto });
-  
+// ──────────────────────────────────────────────────────────────────────────────
+// MOCK RUNTIMEKEYS.JS - Simplified factory, tanpa crypto di dalam
+// ──────────────────────────────────────────────────────────────────────────────
+vi.mock('./runtimeKeys.js', async () => {
   const actual = await vi.importActual('./runtimeKeys.js');
   
   return {
@@ -66,37 +66,54 @@ vi.mock('./runtimeKeys.js', async () => {
       ...actual.CONFIG,
       PBKDF2_ITERATIONS: 1,
       LOAD_TIMEOUT: 100,
-      KEY_MIN_LENGTH: 1,
+      KEY_MIN_LENGTH: 1,  // Lower for testing
       KEY_MAX_LENGTH: 1000,
     },
   };
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// HELPER: Fresh Module Import
+// HELPER: Fresh Module Import dengan proper cleanup
 // ──────────────────────────────────────────────────────────────────────────────
 async function freshModule() {
+  // Reset modules
   vi.resetModules();
+  
+  // Reset crypto mock global
+  const mockCrypto = createMockCrypto();
+  vi.stubGlobal('crypto', mockCrypto);
+  vi.stubGlobal('window', { crypto: mockCrypto });
+  
+  // Clear any cached state in module
   return import('./runtimeKeys.js');
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// SETUP & TEARDOWN
+// SETUP & TEARDOWN - YANG PALING PENTING!
 // ──────────────────────────────────────────────────────────────────────────────
 beforeEach(async () => {
+  // Clear ALL mocks
   vi.clearAllMocks();
   
+  // Reset mock implementations
   mockPreferences.get.mockReset();
   mockPreferences.set.mockReset();
   mockPreferences.remove.mockReset();
   
+  // Default: return null (empty storage)
   mockPreferences.get.mockResolvedValue({ value: null });
   mockPreferences.set.mockResolvedValue(undefined);
   mockPreferences.remove.mockResolvedValue(undefined);
+  
+  // Setup fresh crypto
+  const mockCrypto = createMockCrypto();
+  vi.stubGlobal('crypto', mockCrypto);
+  vi.stubGlobal('window', { crypto: mockCrypto });
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -177,6 +194,7 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
       hash: mockHashValue,
     });
 
+    // Setup mock untuk test ini SAJA
     mockPreferences.get.mockImplementation(({ key }) => {
       if (key === 'yc_cerebras_key_enc') return Promise.resolve({ value: mockData });
       if (key === 'yc_groq_key_enc') return Promise.resolve({ value: mockData.replace('csk', 'gsk') });
