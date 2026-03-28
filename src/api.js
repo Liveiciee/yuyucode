@@ -108,7 +108,7 @@ function validateApiKey(key, provider) {
 // ──────────────────────────────────────────────────────────────────────────────
 // VISION SUPPORT
 // ──────────────────────────────────────────────────────────────────────────────
-function injectVisionImage(messages, imageBase64) {
+export function injectVisionImage(messages, imageBase64) {
   if (!imageBase64) return messages;
   
   return messages.map((msg, idx) => {
@@ -135,7 +135,7 @@ function injectVisionImage(messages, imageBase64) {
 // ──────────────────────────────────────────────────────────────────────────────
 // SSE STREAM READER
 // ──────────────────────────────────────────────────────────────────────────────
-async function readSSEStream(response, onChunk, signal) {
+export async function readSSEStream(response, onChunk, signal) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -160,7 +160,8 @@ async function readSSEStream(response, onChunk, signal) {
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
       
-      for (const line of lines) {
+      for (const rawLine of lines) {
+        const line = rawLine.trimEnd();
         if (!line.startsWith('data: ')) continue;
         if (line === 'data: [DONE]') continue;
         
@@ -176,9 +177,10 @@ async function readSSEStream(response, onChunk, signal) {
     }
     
     // Handle remaining buffer
-    if (buffer.startsWith('data: ') && buffer !== 'data: [DONE]') {
+    const finalLine = buffer.trimEnd();
+    if (finalLine.startsWith('data: ') && finalLine !== 'data: [DONE]') {
       try {
-        const json = JSON.parse(buffer.slice(6));
+        const json = JSON.parse(finalLine.slice(6));
         const content = json.choices?.[0]?.delta?.content || '';
         fullContent += content;
         onChunk?.(fullContent);
