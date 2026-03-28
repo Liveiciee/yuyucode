@@ -7,7 +7,8 @@ const { spawnSync } = require('child_process');
 
 const CHECKS = [
   { name: 'Lint', cmd: 'npm', args: ['run', 'lint'] },
-  { name: 'Slash handlers tests', cmd: 'npx', args: ['vitest', 'run', 'src/hooks/useSlashCommands/handlers/chat.test.js'] },
+  { name: 'Critical slash handlers', cmd: 'npx', args: ['vitest', 'run', 'src/hooks/useSlashCommands/handlers/chat.test.js', 'src/hooks/useSlashCommands/handlers/agent.test.js', 'src/hooks/useSlashCommands/handlers/tools.test.js', 'src/hooks/useSlashCommands/handlers/plan.test.js'] },
+  { name: 'Mobile command sequence smoke', cmd: 'npx', args: ['vitest', 'run', 'src/hooks/useSlashCommands/mobile.smoke.test.js', 'src/hooks/useSlashCommands/mobile.sequence.smoke.test.js'] },
   { name: 'API orchestration tests', cmd: 'npx', args: ['vitest', 'run', 'src/api.orchestration.test.js'] },
   { name: 'Runtime key tests', cmd: 'npx', args: ['vitest', 'run', 'src/runtimeKeys.test.js'] },
   { name: 'Production build', cmd: 'npm', args: ['run', 'build'] },

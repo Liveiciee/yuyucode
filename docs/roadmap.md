@@ -111,14 +111,14 @@ Interactive D3 force-directed graph of inter-file imports. Tap node → jump to 
 
 ---
 
-## Current State (v4.5.9)
+## Current State (v4.6.0)
 
 ```
-Tests:          1203 ✅
+Tests:          1216 ✅
 Slash commands: ~68
 CI:             CodeQL ✅ · Semgrep ✅ · SonarCloud ✅ · DeepSource ✅
 SonarCloud:     Blocker 0 · High 0 · Security A · Maintainability A
-Coverage:       ~75%
+Coverage:       ~80% statements / ~85% branches
 Platform:       Oppo A77s, Snapdragon 680, Android 14
 Diff:           Histogram chunked (O(n) large files)
 Fallback chain: Cerebras → Kimi K2 → Llama 70B → Llama 8B

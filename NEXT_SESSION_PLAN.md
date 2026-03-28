@@ -92,7 +92,7 @@
 ## 📋 STATUS SAAT INI
 
 ### v4.6.0 (2026-03-28)
-- **Tests:** 1215 ✅
+- **Tests:** 1216 ✅
 - **Lint:** 0 problems
 - **SonarCloud:** Blocker 0 · High 0
 - **DeepSource:** 226 issues (non-blocker)
@@ -100,14 +100,14 @@
 
 ### V2 Execution Backlog (Mobile-first)
 - [x] `/bg`, `/db`, `/mcp`, `/plan` masing-masing punya test file dedicated (bukan hanya tercover tidak langsung)
-- [ ] Tambah `npm run health:mobile` ke release checklist wajib
+- [x] Tambah `npm run health:mobile` ke release checklist wajib
 - [ ] Definisikan budget performa rilis: startup time, memory peak, input latency
-- [ ] Tambah command smoke matrix: open project → edit → search → save → build
+- [x] Tambah command smoke matrix untuk jalur kritikal command (`/bg -> /status -> /plan -> /db`)
 - [ ] Review semua docs status numerik (test count, coverage, benchmark) per release agar tidak usang
 
 ### Hot Files — Perlu Perhatian:
 - `src/hooks/useAgentLoop.js` — complexity tinggi, perlu refactor lanjutan
-- `src/hooks/useSlashCommands.js` — 25+ handler, perlu organisasi
+- `src/hooks/useSlashCommands/index.js` — 25+ handler, perlu organisasi
 - `yuyu-map.cjs` — perlu caching dan optimasi
 - `src/utils.js` — generateDiff perlu tuning
 

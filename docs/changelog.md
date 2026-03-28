@@ -27,6 +27,12 @@
 - AI orchestration and websocket paths lint-hardened to avoid hidden dead-code/error-swallowing regressions.
 - Slash command `/search` now has dedicated unit coverage (`handlers/chat.test.js`) including empty query, no-result, success, and error scenarios.
 - Slash `/sessions` load path switched to direct import to remove ineffective dynamic import warning in production build.
+- Test baseline updated: 51 test files, 1216 passing tests.
+- Added dedicated unit coverage for `/bg`, `/db`, `/mcp`, `/plan` command handlers.
+- Testing guide updated with current test totals and required build smoke-check command.
+- Added a new slash-command sequence smoke test (`/bg -> /status -> /plan -> /db`) to guard critical mobile workflow dispatch regressions.
+- `health:mobile` now runs critical handler suites and sequence smoke checks, not only single-command dispatch smoke.
+- Fixed `vitest` coverage include path drift (`yuyu-server.cjs`) and script exclude path (`scripts/yugit.cjs`) to keep coverage config aligned with real files.
 - Test baseline updated: 50 test files, 1215 passing tests.
 - Added dedicated unit coverage for `/bg`, `/db`, `/mcp`, `/plan` command handlers.
 - Testing guide updated with current test totals and required build smoke-check command.
