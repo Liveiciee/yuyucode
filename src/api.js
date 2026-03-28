@@ -6,8 +6,8 @@
 import { 
   CEREBRAS_KEY, 
   GROQ_KEY, 
-  YUYU_SERVER,   // ✅ imported, not from CONFIG
-  WS_SERVER,     // ✅ imported, not from CONFIG
+  YUYU_SERVER,   
+  WS_SERVER,
   MODELS,
   FALLBACK_MODEL
 } from './constants.js';
@@ -25,7 +25,6 @@ const CONFIG = Object.freeze({
   MAX_RETRIES: 2,
   RETRY_DELAY_BASE: 2000,
   RATE_LIMIT_RETRY_DEFAULT: 60,
-  // ✅ ADDED: API URLs
   CEREBRAS_URL: 'https://api.cerebras.ai/v1/chat/completions',
   GROQ_URL: 'https://api.groq.com/openai/v1/chat/completions',
   GROQ_FALLBACK_CHAIN: [
@@ -34,6 +33,7 @@ const CONFIG = Object.freeze({
     'llama-3.1-8b-instant',
   ],
 });
+
 
 // ──────────────────────────────────────────────────────────────────────────────
 // ERROR CLASSES
@@ -356,7 +356,7 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
 // ──────────────────────────────────────────────────────────────────────────────
 export async function callServer(payload) {
   try {
-    const response = await fetch(YUYU_SERVER, {  // ✅ Direct import, not CONFIG.YUYU_SERVER
+    const response = await fetch(YUYU_SERVER, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -388,7 +388,7 @@ export function execStream(command, cwd, onLine, signal) {
     let ws;
     
     try {
-      ws = new WebSocket(WS_SERVER);  // ✅ Direct import, not CONFIG.WS_SERVER
+      ws = new WebSocket(WS_SERVER);
     } catch (error) {
       reject(new Error('WebSocket tidak tersedia'));
       return;
