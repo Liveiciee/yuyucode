@@ -154,7 +154,7 @@ describe('callServerBatch', () => {
 // execStream Tests
 // ──────────────────────────────────────────────────────────────────────────────
 describe('execStream', () => {
-  it('connects to WebSocket and sends exec_stream message', (done) => {
+  it('connects to WebSocket and sends exec_stream message', async () => {
     const mockWs = {
       send: vi.fn(),
       close: vi.fn(),
@@ -165,18 +165,15 @@ describe('execStream', () => {
     };
     globalThis.WebSocket.mockImplementation(() => mockWs);
 
-    execStream('ls -la', '/tmp', () => {}, null)
-      .then(() => {
-        expect(mockWs.send).toHaveBeenCalledWith(
-          expect.stringContaining('exec_stream')
-        );
-        done();
-      })
-      .catch(done);
+    const promise = execStream('ls -la', '/tmp', () => {}, null);
 
     // Trigger onopen
     mockWs.onopen();
     mockWs.onmessage({ data: JSON.stringify({ id: mockWs.send.mock.calls[0][0], type: 'exit', code: 0 }) });
+    await promise;
+    expect(mockWs.send).toHaveBeenCalledWith(
+      expect.stringContaining('exec_stream')
+    );
   });
 
   it('streams stdout and stderr to onLine callback', async () => {
