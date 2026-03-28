@@ -25,6 +25,7 @@ vi.mock('../features.js', () => ({
 import { useProjectStore } from './useProjectStore.js';
 import { callServer } from '../api.js';
 import { loadSkills, saveSkillFile, deleteSkillFile } from '../features.js';
+import { Preferences } from '@capacitor/preferences';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -67,5 +68,96 @@ describe('useProjectStore — skill helpers', () => {
     await act(async () => { await result.current.removeSkill('old-skill'); });
     expect(deleteSkillFile).toHaveBeenCalled();
     expect(result.current.skills).toHaveLength(0);
+  });
+});
+
+describe('useProjectStore — state and persistence coverage', () => {
+  it('addRecentProject deduplicates, orders newest first, and persists', () => {
+    const { result } = renderHook(() => useProjectStore());
+
+    act(() => {
+      result.current.addRecentProject('/work/a');
+      result.current.addRecentProject('/work/b');
+      result.current.addRecentProject('/work/a');
+    });
+
+    expect(result.current.recentProjects.map((p) => p.path)).toEqual(['/work/a', '/work/b']);
+    expect(Preferences.set).toHaveBeenCalledWith({
+      key: 'yc_recent_projects',
+      value: JSON.stringify(result.current.recentProjects),
+    });
+  });
+
+  it('loadRecentProjects ignores invalid json but loads valid list', () => {
+    const { result } = renderHook(() => useProjectStore());
+
+    act(() => {
+      result.current.loadRecentProjects('not-json');
+    });
+    expect(result.current.recentProjects).toEqual([]);
+
+    const seeded = [{ path: '/repo', name: 'repo', lastOpened: 1 }];
+    act(() => {
+      result.current.loadRecentProjects(JSON.stringify(seeded));
+    });
+    expect(result.current.recentProjects).toEqual(seeded);
+  });
+
+  it('loadProjectPrefs hydrates known fields and safely ignores broken json', () => {
+    const { result } = renderHook(() => useProjectStore());
+
+    act(() => {
+      result.current.loadProjectPrefs({
+        folder: '/repo',
+        cmdHistory: JSON.stringify(['/plan', '/status']),
+        model: 'qwen-cerebras',
+        hooks: '{broken',
+        githubToken: 'ghp_x',
+        githubRepo: 'owner/repo',
+        sessionColor: 'blue',
+        plugins: JSON.stringify({ lint: true }),
+        effort: 'high',
+        thinkingEnabled: '1',
+        permissions: JSON.stringify({ read_file: true }),
+        diffReview: '1',
+      });
+    });
+
+    expect(result.current.folder).toBe('/repo');
+    expect(result.current.folderInput).toBe('/repo');
+    expect(result.current.cmdHistory).toEqual(['/plan', '/status']);
+    expect(result.current.githubToken).toBe('ghp_x');
+    expect(result.current.githubRepo).toBe('owner/repo');
+    expect(result.current.sessionColor).toBe('blue');
+    expect(result.current.activePlugins).toEqual({ lint: true });
+    expect(result.current.effort).toBe('high');
+    expect(result.current.thinkingEnabled).toBe(true);
+    expect(result.current.diffReview).toBe(true);
+  });
+
+  it('loadFolderPrefs loads branch, docs and skills', async () => {
+    callServer
+      .mockResolvedValueOnce({ ok: true, data: 'main\n' })
+      .mockResolvedValueOnce({ ok: true, data: '# AGENTS' })
+      .mockResolvedValueOnce({ ok: true, data: '# YUYU' });
+    Preferences.get
+      .mockResolvedValueOnce({ value: 'dev notes' })
+      .mockResolvedValueOnce({ value: JSON.stringify({ optimizer: true }) });
+    loadSkills.mockResolvedValueOnce([{ name: 'optimizer', active: true }]);
+
+    const { result } = renderHook(() => useProjectStore());
+    await act(async () => {
+      await result.current.loadFolderPrefs('/repo');
+      await Promise.resolve();
+    });
+
+    expect(result.current.notes).toBe('dev notes');
+    expect(result.current.branch).toBe('main');
+    expect(result.current.agentsMd).toBe('# AGENTS');
+    expect(result.current.yuyuMd).toBe('# YUYU');
+    expect(result.current.skills).toEqual([{ name: 'optimizer', active: true }]);
+    expect(callServer).toHaveBeenNthCalledWith(1, { type: 'exec', path: '/repo', command: 'git branch --show-current' });
+    expect(callServer).toHaveBeenNthCalledWith(2, { type: 'read', path: '/repo/AGENTS.md' });
+    expect(callServer).toHaveBeenNthCalledWith(3, { type: 'read', path: '/repo/YUYU.md' });
   });
 });

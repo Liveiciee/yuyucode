@@ -63,12 +63,6 @@ export default defineConfig({
           if (id.includes('@capacitor'))
             return 'capacitor';
         },
-        // Optimasi untuk mobile
-        compact: true,
-        generatedCode: {
-          constBindings: true, // Gunakan const untuk binding
-          objectShorthand: true,
-        },
       },
     },
   },
@@ -91,8 +85,8 @@ export default defineConfig({
       'diff',
     ],
     exclude: ['@capacitor-community/sqlite'],
-    esbuildOptions: {
-      target: 'es2020', // Match build target
+    rolldownOptions: {
+      target: 'es2020', // Match build target in Vite 8 dependency optimizer
     },
   },
   
