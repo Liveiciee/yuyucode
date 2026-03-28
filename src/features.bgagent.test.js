@@ -36,7 +36,7 @@ import {
 } from './features.js';
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   mockCallServer.mockResolvedValue({ ok: true, data: '' });
   mockExecuteAction.mockResolvedValue({ ok: true, data: 'done' });
   mockParseActions.mockReturnValue([]);
@@ -122,8 +122,15 @@ describe('runBackgroundAgent — lifecycle', () => {
     expect(typeof id).toBe('string');
     expect(id.startsWith('bg_')).toBe(true);
 
-    // Increase wait time to ensure async loop completes
-    await new Promise(r => setTimeout(r, 500));
+    const waitUntil = async (predicate, timeoutMs = 4000, stepMs = 50) => {
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        if (predicate()) return true;
+        await new Promise((r) => setTimeout(r, stepMs));
+      }
+      return false;
+    };
+    await waitUntil(() => onDone.mock.calls.length > 0);
 
     expect(onDone).toHaveBeenCalled();
     const agents = getBgAgents();

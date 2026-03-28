@@ -10,7 +10,7 @@
     "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "test": "vitest",
-    "test:ci": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=lcov --coverage.reporter=text --no-isolate",
+    "test:ci": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=lcov --coverage.reporter=text",
     "test:watch": "vitest --watch",
     "health:mobile": "node scripts/mobile-health-check.cjs",
     "perf:budget": "node scripts/perf-budget-check.cjs",

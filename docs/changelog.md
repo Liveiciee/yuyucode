@@ -35,6 +35,8 @@
 - Added `node --check src/api.js` into `health:mobile` to catch CLI syntax regressions (e.g. `Unexpected token`) before build.
 - Added performance budget gate `npm run perf:budget` (hard limits for total JS, largest chunk, and CodeMirror chunk after build).
 - Fixed `vitest` coverage include path drift (`yuyu-server.cjs`) and script exclude path (`scripts/yugit.cjs`) to keep coverage config aligned with real files.
+- Stabilized CI test reliability by removing `--no-isolate` from `test:ci` and hardening flaky branch/background-agent tests against mock leakage/timing variance.
+- Added `.yuyu/bench-ci.json` and `.yuyu/bench-metadata.json` to `.gitignore` to prevent benchmark artifact checkout conflicts in CI.
 
 ## v4.5.8
 
