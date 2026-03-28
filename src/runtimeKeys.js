@@ -3,7 +3,7 @@ import { Preferences } from '@capacitor/preferences';
 // ──────────────────────────────────────────────────────────────────────────────
 // CONFIGURATION
 // ──────────────────────────────────────────────────────────────────────────────
-const CONFIG = Object.freeze({
+const CONFIG = {
   STORAGE_KEYS: {
     CEREBRAS: 'yc_cerebras_key_enc',
     GROQ: 'yc_groq_key_enc',
@@ -15,7 +15,7 @@ const CONFIG = Object.freeze({
   IV_SIZE: 12,
   SALT_SIZE: 16,
   PBKDF2_ITERATIONS: 300000,
-});
+};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // SECURITY HELPERS
@@ -378,4 +378,4 @@ export const checkKeysStatus = () => store.getStatus();
 export const forceReloadKeys = (options = {}) => store.forceReload(options);
 export const initializeRuntimeKeys = (options = {}) => store.initialize(options);
 
-export { KeyStorageError, KeyValidationError, KeyLoadError, KeySaveError, CONFIG };
+export { KeyStorageError, KeyValidationError, KeyLoadError, KeySaveError, KeyStore, CONFIG };

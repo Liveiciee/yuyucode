@@ -49,7 +49,7 @@ class AIError extends Error {
 
 class RateLimitError extends AIError {
   constructor(retryAfter) {
-    super(`Rate limit exceeded. Retry after ${retryAfter}s`, 'RATE_LIMIT');
+    super(`RATE_LIMIT:${retryAfter}`, 'RATE_LIMIT');
     this.retryAfter = retryAfter;
   }
 }
