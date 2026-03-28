@@ -7,12 +7,17 @@ const { spawnSync, execSync } = require('child_process');
 const ROOT     = process.cwd();
 const YUYU_DIR = path.join(ROOT, '.yuyu');
 const OUT_FILE = process.env.BENCH_OUTPUT || path.join(YUYU_DIR, 'bench-ci.json');
-const METADATA_FILE = path.join(YUYU_DIR, 'bench-metadata.json');
+const OUT_DIR  = path.dirname(OUT_FILE);
+// METADATA_FILE follows OUT_FILE's directory — so in CI (/tmp/), nothing lands in .yuyu/
+const METADATA_FILE = path.join(OUT_DIR, 'bench-metadata.json');
 
 const isArm64 = process.arch === 'arm64' || process.arch === 'arm';
 const TIMEOUT = isArm64 ? 240_000 : 180_000;
 
-if (!fs.existsSync(YUYU_DIR)) fs.mkdirSync(YUYU_DIR, { recursive: true });
+// Only create .yuyu/ if we're actually writing there
+if (OUT_DIR === YUYU_DIR && !fs.existsSync(YUYU_DIR)) fs.mkdirSync(YUYU_DIR, { recursive: true });
+// Always ensure OUT_DIR exists (handles /tmp/ or any custom path)
+if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
 
 console.log('🏃 Running CI benchmarks...');
 console.log(`📱 Platform: ${isArm64 ? 'ARM64' : 'x86_64'}`);
