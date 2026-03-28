@@ -125,6 +125,32 @@ function base64ToUint8Array(base64) {
   return bytes;
 }
 
+function getCrypto() {
+  const cryptoObj = globalThis?.crypto;
+  if (!cryptoObj?.subtle || !cryptoObj?.getRandomValues) {
+    throw new KeyStorageError('Web Crypto API is not available', 'CRYPTO_UNAVAILABLE');
+  }
+  return cryptoObj;
+}
+
+function getTextEncoder() {
+  const Encoder = globalThis?.TextEncoder || globalThis?.window?.TextEncoder;
+  if (Encoder) return new Encoder();
+  if (typeof globalThis.Buffer !== 'undefined') {
+    return { encode: (value) => Uint8Array.from(globalThis.Buffer.from(String(value), 'utf8')) };
+  }
+  throw new KeyStorageError('TextEncoder is not available', 'ENCODER_UNAVAILABLE');
+}
+
+function getTextDecoder() {
+  const Decoder = globalThis?.TextDecoder || globalThis?.window?.TextDecoder;
+  if (Decoder) return new Decoder();
+  if (typeof globalThis.Buffer !== 'undefined') {
+    return { decode: (value) => globalThis.Buffer.from(value).toString('utf8') };
+  }
+  throw new KeyStorageError('TextDecoder is not available', 'DECODER_UNAVAILABLE');
+}
+
 function generateRandomBytes(length) {
   const cryptoApi = globalThis?.crypto;
   if (!cryptoApi?.getRandomValues) {
