@@ -1,19 +1,82 @@
 import { Preferences } from '@capacitor/preferences';
 
-if (!globalThis.TextEncoder && typeof globalThis.Buffer !== 'undefined') {
+const MEMORY_PREFS = new Map();
+
+if (typeof globalThis.TextEncoder !== 'function' && typeof Buffer !== 'undefined') {
   globalThis.TextEncoder = class TextEncoderPolyfill {
-    encode(value) {
-      return Uint8Array.from(globalThis.Buffer.from(String(value), 'utf8'));
+    encode(value = '') {
+      return new Uint8Array(Buffer.from(String(value), 'utf8'));
     }
   };
 }
 
-if (!globalThis.TextDecoder && typeof globalThis.Buffer !== 'undefined') {
+if (typeof globalThis.TextDecoder !== 'function' && typeof Buffer !== 'undefined') {
   globalThis.TextDecoder = class TextDecoderPolyfill {
-    decode(value) {
-      return globalThis.Buffer.from(value).toString('utf8');
+    decode(value = new Uint8Array()) {
+      return Buffer.from(value).toString('utf8');
     }
   };
+}
+
+function fallbackEncodeUtf8(value) {
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(String(value), 'utf8'));
+  }
+  const encoded = encodeURIComponent(String(value));
+  const bytes = [];
+  for (let i = 0; i < encoded.length; i++) {
+    const ch = encoded[i];
+    if (ch === '%') {
+      bytes.push(parseInt(encoded.slice(i + 1, i + 3), 16));
+      i += 2;
+    } else {
+      bytes.push(ch.charCodeAt(0));
+    }
+  }
+  return new Uint8Array(bytes);
+}
+
+function fallbackDecodeUtf8(value) {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(value).toString('utf8');
+  }
+  return Array.from(value, b => String.fromCharCode(b)).join('');
+}
+
+const textEncoder = typeof globalThis.TextEncoder === 'function'
+  ? new globalThis.TextEncoder()
+  : { encode: fallbackEncodeUtf8 };
+
+const textDecoder = typeof globalThis.TextDecoder === 'function'
+  ? new globalThis.TextDecoder()
+  : { decode: fallbackDecodeUtf8 };
+
+async function preferencesGet(key) {
+  try {
+    const result = await Preferences.get({ key });
+    if (result?.value != null) return result;
+  } catch (_error) {
+    // Fallback to in-memory storage when Capacitor bridge is unavailable (tests/node).
+  }
+  return { value: MEMORY_PREFS.get(key) ?? null };
+}
+
+async function preferencesSet(key, value) {
+  MEMORY_PREFS.set(key, value);
+  try {
+    await Preferences.set({ key, value });
+  } catch (error) {
+    const msg = String(error?.message || error || '');
+    const isUnavailableBridge = /not implemented|unavailable|not available/i.test(msg);
+    if (!isUnavailableBridge) {
+      throw error;
+    }
+  }
+}
+
+async function preferencesRemove(key) {
+  MEMORY_PREFS.delete(key);
+  await Preferences.remove({ key });
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -37,12 +100,24 @@ const CONFIG = {
 // SECURITY HELPERS
 // ──────────────────────────────────────────────────────────────────────────────
 function uint8ArrayToBase64(bytes) {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(bytes).toString('base64');
+  }
+  if (typeof btoa !== 'function') {
+    throw new Error('Base64 encoder is not available');
+  }
   let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
 }
 
 function base64ToUint8Array(base64) {
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(base64, 'base64'));
+  }
+  if (typeof atob !== 'function') {
+    throw new Error('Base64 decoder is not available');
+  }
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -76,19 +151,26 @@ function getTextDecoder() {
 }
 
 function generateRandomBytes(length) {
-  return getCrypto().getRandomValues(new Uint8Array(length));
+  const cryptoApi = globalThis?.crypto;
+  if (!cryptoApi?.getRandomValues) {
+    throw new Error('Web Crypto API is not available');
+  }
+  return cryptoApi.getRandomValues(new Uint8Array(length));
 }
 
 async function deriveKey(password, salt) {
-  const enc = getTextEncoder();
-  const keyMaterial = await getCrypto().subtle.importKey(
+  const cryptoApi = globalThis?.crypto;
+  if (!cryptoApi?.subtle) {
+    throw new Error('Web Crypto Subtle API is not available');
+  }
+  const keyMaterial = await cryptoApi.subtle.importKey(
     'raw',
-    enc.encode(password),
+    textEncoder.encode(password),
     { name: 'PBKDF2' },
     false,
     ['deriveKey']
   );
-  return getCrypto().subtle.deriveKey(
+  return cryptoApi.subtle.deriveKey(
     {
       name: 'PBKDF2',
       salt,
@@ -103,11 +185,15 @@ async function deriveKey(password, salt) {
 }
 
 async function encryptData(data, password) {
+  const cryptoApi = globalThis?.crypto;
+  if (!cryptoApi?.subtle) {
+    throw new Error('Web Crypto Subtle API is not available');
+  }
   const salt = generateRandomBytes(CONFIG.SALT_SIZE);
-  const iv = getCrypto().getRandomValues(new Uint8Array(CONFIG.IV_SIZE));
+  const iv = generateRandomBytes(CONFIG.IV_SIZE);
   const key = await deriveKey(password, salt);
-  const encoded = getTextEncoder().encode(data);
-  const encrypted = await getCrypto().subtle.encrypt(
+  const encoded = textEncoder.encode(data);
+  const encrypted = await cryptoApi.subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
     encoded
@@ -127,6 +213,10 @@ async function decryptData(encryptedBase64, password) {
   }
 
   try {
+    const cryptoApi = globalThis?.crypto;
+    if (!cryptoApi?.subtle) {
+      throw new Error('Web Crypto Subtle API is not available');
+    }
     const combined = base64ToUint8Array(encryptedBase64);
     if (combined.length < CONFIG.SALT_SIZE + CONFIG.IV_SIZE) {
       throw new Error('Invalid data format');
@@ -137,20 +227,25 @@ async function decryptData(encryptedBase64, password) {
     const data = combined.slice(CONFIG.SALT_SIZE + CONFIG.IV_SIZE);
 
     const key = await deriveKey(password, salt);
+    const decrypted = await cryptoApi.subtle.decrypt(
     const decrypted = await getCrypto().subtle.decrypt(
       { name: 'AES-GCM', iv },
       key,
       data
     );
-    return getTextDecoder().decode(decrypted);
-  } catch (_e) {
+    return textDecoder.decode(new Uint8Array(decrypted));
+  } catch (e) {
     throw new Error('Decryption failed: Wrong password or corrupted data');
   }
 }
 
 async function calculateHash(data) {
-  const msgBuffer = getTextEncoder().encode(data);
-  const hashBuffer = await getCrypto().subtle.digest('SHA-256', msgBuffer);
+  const msgBuffer = textEncoder.encode(data);
+  const cryptoApi = globalThis?.crypto;
+  if (!cryptoApi?.subtle) {
+    throw new Error('Web Crypto Subtle API is not available');
+  }
+  const hashBuffer = await cryptoApi.subtle.digest('SHA-256', msgBuffer);
   return Array.from(new Uint8Array(hashBuffer))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
@@ -185,7 +280,8 @@ class KeyLoadError extends KeyStorageError {
 
 class KeySaveError extends KeyStorageError {
   constructor(provider, originalError) {
-    super(`Failed to save ${provider} key`, 'SAVE_ERROR', { provider });
+    const detail = originalError?.message ? `: ${originalError.message}` : '';
+    super(`Failed to save ${provider} key${detail}`, 'SAVE_ERROR', { provider });
     this.provider = provider;
     this.originalError = originalError;
   }
@@ -248,7 +344,7 @@ async function saveSingleKey(rawKey, provider, storageKey, password) {
   const secureObj = createSecureKey(trimmed);
   secureObj.hash = await calculateHash(secureObj.key);
   const encrypted = await encryptData(JSON.stringify(secureObj), password);
-  await Preferences.set({ key: storageKey, value: encrypted });
+  await preferencesSet(storageKey, encrypted);
   return secureObj;
 }
 
@@ -301,7 +397,7 @@ class KeyStore {
         const timeout = new Promise((_, reject) =>
           setTimeout(() => reject(new KeyLoadError(provider, new Error('Load timeout'))), CONFIG.LOAD_TIMEOUT)
         );
-        return Promise.race([Preferences.get({ key }), timeout]);
+        return Promise.race([preferencesGet(key), timeout]);
       };
 
       const entries = Object.entries(CONFIG.STORAGE_KEYS);
@@ -389,7 +485,7 @@ class KeyStore {
 
   async clear() {
     try {
-      await Promise.all(Object.values(CONFIG.STORAGE_KEYS).map(key => Preferences.remove({ key })));
+      await Promise.all(Object.values(CONFIG.STORAGE_KEYS).map(key => preferencesRemove(key)));
       this.state = { cerebras: null, groq: null, loaded: false, lastLoaded: null };
       return { success: true };
     } catch (error) {
