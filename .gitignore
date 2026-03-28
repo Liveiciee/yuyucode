@@ -59,6 +59,8 @@ Pods/
 .yuyu/handoff.md
 .yuyu/map.md
 .yuyu/*.log
+.yuyu/bench-ci.json
+.yuyu/bench-metadata.json
 .tla/
 tmp/
 

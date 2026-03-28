@@ -18,6 +18,26 @@
 
 # Changelog
 
+## v4.6.0
+
+**Kebaikan penuh V2 — integrity + docs sync.**
+
+- Dev toolchain moved to Vite 8-compatible settings and dependency set (`vite`, `@vitejs/plugin-react`, `happy-dom`) to keep local dev/test/build aligned with current ecosystem.
+- `runtimeKeys` hardened for Node/test/Capacitor runtime differences (buffer-aware encoding path + guarded Preferences fallback behavior).
+- AI orchestration and websocket paths lint-hardened to avoid hidden dead-code/error-swallowing regressions.
+- Slash command `/search` now has dedicated unit coverage (`handlers/chat.test.js`) including empty query, no-result, success, and error scenarios.
+- Slash `/sessions` load path switched to direct import to remove ineffective dynamic import warning in production build.
+- Test baseline updated: 52 test files, 1225 passing tests.
+- Added dedicated unit coverage for `/bg`, `/db`, `/mcp`, `/plan` command handlers.
+- Testing guide updated with current test totals and required build smoke-check command.
+- Added a new slash-command sequence smoke test (`/bg -> /status -> /plan -> /db`) to guard critical mobile workflow dispatch regressions.
+- `health:mobile` now runs critical handler suites and sequence smoke checks, not only single-command dispatch smoke.
+- Added `node --check src/api.js` into `health:mobile` to catch CLI syntax regressions (e.g. `Unexpected token`) before build.
+- Added performance budget gate `npm run perf:budget` (hard limits for total JS, largest chunk, and CodeMirror chunk after build).
+- Fixed `vitest` coverage include path drift (`yuyu-server.cjs`) and script exclude path (`scripts/yugit.cjs`) to keep coverage config aligned with real files.
+- Stabilized CI test reliability by removing `--no-isolate` from `test:ci` and hardening flaky branch/background-agent tests against mock leakage/timing variance.
+- Added `.yuyu/bench-ci.json` and `.yuyu/bench-metadata.json` to `.gitignore` to prevent benchmark artifact checkout conflicts in CI.
+
 ## v4.5.8
 
 **Stable QA baseline.**
