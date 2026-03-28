@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e0f20"/>
+      <stop offset="100%" stop-color="#0a080c"/>
+    </linearGradient>
+    <linearGradient id="p1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fce7f3"/>
+      <stop offset="60%" stop-color="#f472b6"/>
+      <stop offset="100%" stop-color="#9d174d"/>
+    </linearGradient>
+    <linearGradient id="p2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fef3c7"/>
+      <stop offset="60%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <radialGradient id="amb" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ec4899" stop-opacity=".16"/>
+      <stop offset="100%" stop-color="#ec4899" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="200" fill="url(#amb)"/>
+  <g filter="url(#glow)">
+    <g transform="rotate(18 256 256)"><path d="M256 256 C216 220 196 148 256 104 C316 148 296 220 256 256Z" fill="url(#p1)" opacity=".95"/></g>
+    <g transform="rotate(90 256 256)"><path d="M256 256 C216 220 196 148 256 104 C316 148 296 220 256 256Z" fill="url(#p2)" opacity=".9"/></g>
+    <g transform="rotate(162 256 256)"><path d="M256 256 C216 220 196 148 256 104 C316 148 296 220 256 256Z" fill="url(#p1)" opacity=".88"/></g>
+    <g transform="rotate(234 256 256)"><path d="M256 256 C216 220 196 148 256 104 C316 148 296 220 256 256Z" fill="url(#p2)" opacity=".92"/></g>
+    <g transform="rotate(306 256 256)"><path d="M256 256 C216 220 196 148 256 104 C316 148 296 220 256 256Z" fill="url(#p1)" opacity=".9"/></g>
+  </g>
+  <!-- notches -->
+  <g transform="rotate(18 256 256)"><path d="M248 108 Q256 100 264 108" stroke="rgba(10,8,12,.55)" stroke-width="7" fill="none" stroke-linecap="round"/></g>
+  <g transform="rotate(90 256 256)"><path d="M248 108 Q256 100 264 108" stroke="rgba(10,8,12,.55)" stroke-width="7" fill="none" stroke-linecap="round"/></g>
+  <g transform="rotate(162 256 256)"><path d="M248 108 Q256 100 264 108" stroke="rgba(10,8,12,.55)" stroke-width="7" fill="none" stroke-linecap="round"/></g>
+  <g transform="rotate(234 256 256)"><path d="M248 108 Q256 100 264 108" stroke="rgba(10,8,12,.55)" stroke-width="7" fill="none" stroke-linecap="round"/></g>
+  <g transform="rotate(306 256 256)"><path d="M248 108 Q256 100 264 108" stroke="rgba(10,8,12,.55)" stroke-width="7" fill="none" stroke-linecap="round"/></g>
+  <!-- center -->
+  <circle cx="256" cy="256" r="28" fill="#fde68a"/>
+  <circle cx="247" cy="247" r="10" fill="rgba(255,255,255,.55)"/>
+  <!-- stamens -->
+  <g transform="rotate(18 256 256)"><circle cx="256" cy="214" r="6" fill="rgba(253,230,138,.75)"/></g>
+  <g transform="rotate(90 256 256)"><circle cx="256" cy="214" r="6" fill="rgba(253,230,138,.75)"/></g>
+  <g transform="rotate(162 256 256)"><circle cx="256" cy="214" r="6" fill="rgba(253,230,138,.75)"/></g>
+  <g transform="rotate(234 256 256)"><circle cx="256" cy="214" r="6" fill="rgba(253,230,138,.75)"/></g>
+  <g transform="rotate(306 256 256)"><circle cx="256" cy="214" r="6" fill="rgba(253,230,138,.75)"/></g>
+</svg>
