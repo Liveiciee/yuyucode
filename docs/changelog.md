@@ -33,6 +33,9 @@
 - Added a new slash-command sequence smoke test (`/bg -> /status -> /plan -> /db`) to guard critical mobile workflow dispatch regressions.
 - `health:mobile` now runs critical handler suites and sequence smoke checks, not only single-command dispatch smoke.
 - Fixed `vitest` coverage include path drift (`yuyu-server.cjs`) and script exclude path (`scripts/yugit.cjs`) to keep coverage config aligned with real files.
+- Test baseline updated: 50 test files, 1215 passing tests.
+- Added dedicated unit coverage for `/bg`, `/db`, `/mcp`, `/plan` command handlers.
+- Testing guide updated with current test totals and required build smoke-check command.
 
 ## v4.5.8
 
