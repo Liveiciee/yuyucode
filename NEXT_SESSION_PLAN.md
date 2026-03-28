@@ -92,11 +92,18 @@
 ## 📋 STATUS SAAT INI
 
 ### v4.6.0 (2026-03-28)
-- **Tests:** 1216 ✅
+- **Tests:** 1225 ✅
 - **Lint:** 0 problems
 - **SonarCloud:** Blocker 0 · High 0
 - **DeepSource:** 226 issues (non-blocker)
-- **Coverage:** ~75% (target 85%)
+- **Coverage:** ~80% statements / ~85% branches
+
+### V2 Execution Backlog (Mobile-first)
+- [x] `/bg`, `/db`, `/mcp`, `/plan` masing-masing punya test file dedicated (bukan hanya tercover tidak langsung)
+- [x] Tambah `npm run health:mobile` ke release checklist wajib
+- [x] Definisikan budget awal ukuran bundle JS (`npm run perf:budget`) sebagai release gate
+- [x] Tambah command smoke matrix untuk jalur kritikal command (`/bg -> /status -> /plan -> /db`)
+- [ ] Review semua docs status numerik (test count, coverage, benchmark) per release agar tidak usang
 
 ### V2 Execution Backlog (Mobile-first)
 - [x] `/bg`, `/db`, `/mcp`, `/plan` masing-masing punya test file dedicated (bukan hanya tercover tidak langsung)

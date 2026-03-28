@@ -2,16 +2,17 @@
 
 ## Test Suite
 
-1216 tests passing. 0 lint warnings. Runs on Termux ARM64 (Snapdragon 680).
+1225 tests passing. 0 lint warnings. Runs on Termux ARM64 (Snapdragon 680).
 
 - 50 property-based tests via `fast-check` — 100 random inputs each for `parseActions` and `resolvePath`
 - 363 branch coverage tests targeting SonarCloud condition branches across all core hooks
 
 ```bash
-npx vitest run       # run all tests (1216)
+npx vitest run       # run all tests (1225)
 npm run lint         # must be 0 problems
 npm run build        # production build smoke check
 npm run health:mobile # fast phone-ready confidence gate
+npm run perf:budget  # enforce JS size budget after build
 ```
 
 ### Test Files
@@ -41,6 +42,7 @@ npm run health:mobile # fast phone-ready confidence gate
 | `useSlashCommands/index.test.js` | Unit — command dispatch | 9 |
 | `useSlashCommands/mobile.smoke.test.js` | Smoke — critical mobile slash dispatch | 1 |
 | `useSlashCommands/mobile.sequence.smoke.test.js` | Smoke — `/bg -> /status -> /plan -> /db` sequence guard | 1 |
+| `useWakeWord.test.js` | Unit — wake-word recognition lifecycle and retries | 5 |
 | `useSlashCommands/handlers/batch.test.js` | Unit — /batch handler | 45 |
 | `useSlashCommands/handlers/chat.test.js` | Unit — /search + clear/stop/rename paths | 8 |
 | `useSlashCommands/handlers/agent.test.js` | Unit — /bg and /bgstatus core flows | 3 |
@@ -58,6 +60,7 @@ npm run health:mobile # fast phone-ready confidence gate
 | `useFileStore.branch.test.js` | Branch coverage — useFileStore | 14 |
 | `useAgentLoop.branch.test.js` | Branch coverage — agent loop conditions | 39 |
 | `useDb.test.js` | Unit — SQLite + Preferences fallback paths | 36 |
+| `useProjectStore.test.js` | Unit — project prefs, skills, recent projects, folder loading | 7 |
 | `runtimeKeys.test.js` | Unit — KeyStore encrypt/decrypt/expiry/integrity | 26 |
 | `utils.coverage.test.js` | Coverage — generateDiff edge cases | 6 |
 

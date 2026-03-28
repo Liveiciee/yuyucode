@@ -114,11 +114,11 @@ Interactive D3 force-directed graph of inter-file imports. Tap node → jump to 
 ## Current State (v4.6.0)
 
 ```
-Tests:          1216 ✅
+Tests:          1225 ✅
 Slash commands: ~68
 CI:             CodeQL ✅ · Semgrep ✅ · SonarCloud ✅ · DeepSource ✅
 SonarCloud:     Blocker 0 · High 0 · Security A · Maintainability A
-Coverage:       ~80% statements / ~85% branches
+Coverage:       ~80% statements / ~85% branches (with new wake-word + project-store tests)
 Platform:       Oppo A77s, Snapdragon 680, Android 14
 Diff:           Histogram chunked (O(n) large files)
 Fallback chain: Cerebras → Kimi K2 → Llama 70B → Llama 8B
@@ -141,4 +141,5 @@ Semua fase ini diprioritaskan agar **jalan stabil di HP (Snapdragon 680, 8GB RAM
    - Telemetry ringan lokal (tanpa network) untuk crash hotspots.
 4. **Performance Budget (Release Gate)**
    - Tetapkan budget startup, input latency, dan render chunk per release.
+   - Jalankan `npm run perf:budget` setelah build untuk cek hard-limit ukuran bundle JS.
    - Tolak merge jika budget melewati ambang yang disepakati.

@@ -11,7 +11,9 @@ const CHECKS = [
   { name: 'Mobile command sequence smoke', cmd: 'npx', args: ['vitest', 'run', 'src/hooks/useSlashCommands/mobile.smoke.test.js', 'src/hooks/useSlashCommands/mobile.sequence.smoke.test.js'] },
   { name: 'API orchestration tests', cmd: 'npx', args: ['vitest', 'run', 'src/api.orchestration.test.js'] },
   { name: 'Runtime key tests', cmd: 'npx', args: ['vitest', 'run', 'src/runtimeKeys.test.js'] },
+  { name: 'Node syntax check (api.js)', cmd: 'node', args: ['--check', 'src/api.js'] },
   { name: 'Production build', cmd: 'npm', args: ['run', 'build'] },
+  { name: 'Performance budget', cmd: 'npm', args: ['run', 'perf:budget'] },
 ];
 
 function runCheck({ name, cmd, args }) {
