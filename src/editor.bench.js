@@ -1,10 +1,11 @@
 // @vitest-environment node
 import { describe, bench } from 'vitest';
-import { generateDiff } from './utils.js';
+import { generateDiff, parseActions } from './utils.js';
 import {
   extractSymbols,
   compressSource,
   extractImports,
+  computeSalience,
 } from '../yuyu-map.cjs';
 
 // ── Inline pure functions (copied from FileEditor — cannot import component) ──
@@ -296,7 +297,6 @@ describe('computeSalience', () => {
 });
 
 // ── parseActions hot path benchmark (NEW) ─────────────────────────────────────
-import { parseActions } from './utils.js';
 
 const ACTION_NONE     = 'This is a plain response with no action blocks at all.';
 const ACTION_ONE      = '```action\n{"type":"read_file","path":"src/App.jsx"}\n```';
