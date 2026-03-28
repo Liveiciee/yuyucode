@@ -55,8 +55,8 @@ jobs:
           BENCH_OUTPUT: /tmp/bench-ci.json
         run: node yuyu-bench-ci.cjs
 
-      - name: Stash generated files before branch switch
-        run: git stash --include-untracked || true
+      - name: Discard generated files before branch switch
+        run: git checkout -- . && git clean -fd .yuyu/ || true
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
