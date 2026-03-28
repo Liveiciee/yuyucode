@@ -51,6 +51,8 @@ npm run lint         # must be 0 problems
 | `useAgentLoop.branch.test.js` | Branch coverage — agent loop conditions | 39 |
 | `useSlashCommands.branch.test.js` | Branch coverage — slash command handlers | 41 |
 | `useDb.test.js` | Unit — SQLite + Preferences fallback paths | 36 |
+| `runtimeKeys.test.js` | Unit — KeyStore encrypt/decrypt/expiry/integrity | 26 |
+| `utils.coverage.test.js` | Coverage — generateDiff edge cases | 6 |
 
 ### Why vitest@3
 
