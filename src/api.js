@@ -161,7 +161,7 @@ export async function readSSEStream(response, onChunk, signal) {
       
       try {
         ({ done, value } = await reader.read());
-      } catch (readError) {
+      } catch (_readError) {
         if (signal?.aborted) {
           throw new DOMException('Aborted', 'AbortError');
         }
@@ -206,7 +206,7 @@ export async function readSSEStream(response, onChunk, signal) {
       }
     }
   } finally {
-    try { reader.releaseLock(); } catch (e) { /* ignore */ }
+    try { reader.releaseLock(); } catch (_e) { /* ignore */ }
   }
   
   return fullContent;
@@ -412,7 +412,7 @@ export async function callServer(payload) {
     }
     
     return await response.json();
-  } catch (error) {
+  } catch (_error) {
     return { 
       ok: false, 
       data: 'YuyuServer tidak dapat dihubungi. Jalankan: node yuyu-server.cjs &' 
@@ -433,7 +433,7 @@ export function execStream(command, cwd, onLine, signal) {
     
     try {
       ws = new WebSocket(WS_SERVER);
-    } catch (error) {
+  } catch (_error) {
       reject(new Error('WebSocket tidak tersedia'));
       return;
     }
@@ -443,7 +443,7 @@ export function execStream(command, cwd, onLine, signal) {
     let settled = false;
     
     const cleanup = () => {
-      try { ws.close(); } catch (e) { /* ignore */ }
+      try { ws.close(); } catch (_e) { /* ignore */ }
     };
     
     const done = (exitCode) => {
@@ -502,7 +502,7 @@ export function execStream(command, cwd, onLine, signal) {
       signal.addEventListener('abort', () => {
         try {
           ws.send(JSON.stringify({ type: 'kill', id }));
-        } catch (e) { /* ignore */ }
+        } catch (_e) { /* ignore */ }
         cleanup();
         if (!settled) {
           settled = true;
