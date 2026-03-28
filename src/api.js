@@ -453,7 +453,13 @@ export function execStream(command, cwd, onLine, signal) {
       resolve({ exitCode, output });
     };
     
-    ws.onopen = () => {
+    const emitLine = (text, type) => {
+      if (typeof onLine === 'function') {
+        onLine(text, type);
+      }
+    };
+
+    ws.onopen = function onOpen() {
       ws.send(JSON.stringify({ type: 'exec_stream', id, command, cwd }));
     };
     
@@ -467,19 +473,19 @@ export function execStream(command, cwd, onLine, signal) {
       return false;
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = function onMessage(event) {
       try {
         const msg = JSON.parse(event.data);
         if (!isMessageForThisExec(msg.id)) return;
         
         if (msg.type === 'stdout' || msg.type === 'stderr') {
           output += msg.data;
-          onLine?.(msg.data, msg.type);
+          emitLine(msg.data, msg.type);
         } else if (msg.type === 'exit') {
-          onLine?.(`\n[exit ${msg.code}]`, 'exit');
+          emitLine(`\n[exit ${msg.code}]`, 'exit');
           done(msg.code);
         } else if (msg.type === 'error') {
-          onLine?.(`\n[error: ${msg.data}]`, 'stderr');
+          emitLine(`\n[error: ${msg.data}]`, 'stderr');
           done(-1);
         }
       } catch (parseError) {
@@ -487,14 +493,14 @@ export function execStream(command, cwd, onLine, signal) {
       }
     };
     
-    ws.onerror = () => 
+    ws.onerror = function onError() {
       if (!settled) {
         settled = true;
         reject(new Error('WebSocket error'));
       }
     };
     
-    ws.onclose = () => {
+    ws.onclose = function onClose() {
       if (!settled) done(-1);
     };
     

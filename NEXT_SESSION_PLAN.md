@@ -105,13 +105,6 @@
 - [x] Tambah command smoke matrix untuk jalur kritikal command (`/bg -> /status -> /plan -> /db`)
 - [ ] Review semua docs status numerik (test count, coverage, benchmark) per release agar tidak usang
 
-### V2 Execution Backlog (Mobile-first)
-- [x] `/bg`, `/db`, `/mcp`, `/plan` masing-masing punya test file dedicated (bukan hanya tercover tidak langsung)
-- [x] Tambah `npm run health:mobile` ke release checklist wajib
-- [ ] Definisikan budget performa rilis: startup time, memory peak, input latency
-- [x] Tambah command smoke matrix untuk jalur kritikal command (`/bg -> /status -> /plan -> /db`)
-- [ ] Review semua docs status numerik (test count, coverage, benchmark) per release agar tidak usang
-
 ### Hot Files — Perlu Perhatian:
 - `src/hooks/useAgentLoop.js` — complexity tinggi, perlu refactor lanjutan
 - `src/hooks/useSlashCommands/index.js` — 25+ handler, perlu organisasi
