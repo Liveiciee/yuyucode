@@ -162,11 +162,12 @@ export async function readSSEStream(response, onChunk, signal) {
       
       for (const rawLine of lines) {
         const line = rawLine.trimEnd();
-        if (!line.startsWith('data: ')) continue;
-        if (line === 'data: [DONE]') continue;
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trimStart();
+        if (payload === '[DONE]') continue;
         
         try {
-          const json = JSON.parse(line.slice(6));
+          const json = JSON.parse(payload);
           const content = json.choices?.[0]?.delta?.content || '';
           fullContent += content;
           onChunk?.(fullContent);
@@ -178,9 +179,11 @@ export async function readSSEStream(response, onChunk, signal) {
     
     // Handle remaining buffer
     const finalLine = buffer.trimEnd();
-    if (finalLine.startsWith('data: ') && finalLine !== 'data: [DONE]') {
+    if (finalLine.startsWith('data:')) {
+      const payload = finalLine.slice(5).trimStart();
+      if (payload === '[DONE]') return fullContent;
       try {
-        const json = JSON.parse(finalLine.slice(6));
+        const json = JSON.parse(payload);
         const content = json.choices?.[0]?.delta?.content || '';
         fullContent += content;
         onChunk?.(fullContent);

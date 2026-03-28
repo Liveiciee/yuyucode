@@ -131,6 +131,18 @@ describe('readSSEStream', () => {
     expect(onChunk).not.toHaveBeenCalled();
   });
 
+  it('parses data lines without space after colon', async () => {
+    const reader = makeReader(
+      'data:{"choices":[{"delta":{"content":"NoSpace"}}]}\n',
+      'data:[DONE]\n',
+    );
+    const onChunk = vi.fn();
+    const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
+
+    expect(result).toBe('NoSpace');
+    expect(onChunk).toHaveBeenCalledWith('NoSpace');
+  });
+
   it('handles abort and throws DOMException', async () => {
     const ctrl = new AbortController();
     const reader = {

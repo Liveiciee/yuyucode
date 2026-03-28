@@ -16,6 +16,10 @@ const isArm64 = /arm64|arm|aarch64/i.test(navigator?.platform || '') || /aarch64
 const MAX_CONTEXT_FILES = isArm64 ? 3 : 4; // Less files on ARM64
 const MAX_PREVIEW_CHARS = isArm64 ? 600 : 800;
 
+export function extractMentionedFiles(txt = '') {
+  return txt.match(/\b([\w/-]+\.(?:js|cjs|mjs|jsx|ts|tsx|json|md|css|py|sh))\b/g) || [];
+}
+
 // ── Module-level helpers for sendMsg ─────────────────────────────────────────
 
 async function checkServerHealth() {
@@ -281,7 +285,7 @@ ${outB.slice(0, 1500)}
       [['editor','codemirror','tab'],              '/src/components/FileEditor.jsx'],
     ];
     const keyFiles = [];
-    const fileMatch = txt.match(/\b([\w/-]+\.(?:js|jsx|ts|tsx|json|md|css|py|sh))\b/g);
+    const fileMatch = extractMentionedFiles(txt);
     if (fileMatch) fileMatch.forEach(f => keyFiles.push(f.startsWith('/') ? f : folder + '/src/' + f));
     KEYWORD_FILES.forEach(([keys, file]) => { if (keys.some(k => kw.includes(k))) keyFiles.push(folder + file); });
 
