@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "echo '🔍 Scouring the codebase...' && eslint . && echo '✨ 0 problems found! Code is pure.'",
+    "lint": "echo '\ud83d\udd0d Scouring the codebase...' && eslint . && echo '\u2728 0 problems found! Code is pure.'",
     "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "test": "vitest",
@@ -15,7 +15,7 @@
     "bench": "node yuyu-bench.cjs",
     "bench:save": "node yuyu-bench.cjs --save",
     "bench:reset": "node yuyu-bench.cjs --reset",
-    "postinstall": "echo '✅ Dependencies installed. Run `npm run dev` to start.'"
+    "postinstall": "echo '\u2705 Dependencies installed. Run `npm run dev` to start.'"
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",
@@ -46,7 +46,6 @@
     "codemirror": "^6.0.2",
     "d3": "^7.9.0",
     "diff": "^8.0.3",
-    "esbuild-android-arm64": "^0.15.18",
     "fuse.js": "^7.1.0",
     "lucide-react": "^0.577.0",
     "react": "^19.2.4",
