@@ -487,7 +487,7 @@ export function execStream(command, cwd, onLine, signal) {
       }
     };
     
-    ws.onerror = () => {
+    ws.onerror = () => 
       if (!settled) {
         settled = true;
         reject(new Error('WebSocket error'));
