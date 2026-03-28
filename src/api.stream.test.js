@@ -93,6 +93,44 @@ describe('readSSEStream', () => {
     expect(onChunk).toHaveBeenCalledTimes(1);
   });
 
+  it('ignores keepalive/comment lines and non-data events', async () => {
+    const reader = makeReader(
+      ': keepalive\r\n',
+      'event: ping\r\n',
+      'data: {"choices":[{"delta":{"content":"A"}}]}\r\n',
+      ': keepalive\r\n',
+      'data: {"choices":[{"delta":{"content":"B"}}]}\r\n',
+      'data: [DONE]\r\n',
+    );
+    const onChunk = vi.fn();
+    const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
+
+    expect(result).toBe('AB');
+    expect(onChunk).toHaveBeenNthCalledWith(1, 'A');
+    expect(onChunk).toHaveBeenNthCalledWith(2, 'AB');
+    expect(onChunk).toHaveBeenCalledTimes(2);
+  });
+
+  it('handles partial JSON split across chunks', async () => {
+    const part1 = 'data: {"choices":[{"delta":{"content":"He';
+    const part2 = 'llo"}}]}\n';
+    const reader = makeReader(part1, part2, 'data: [DONE]\n');
+    const onChunk = vi.fn();
+    const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
+
+    expect(result).toBe('Hello');
+    expect(onChunk).toHaveBeenCalledWith('Hello');
+  });
+
+  it('does not parse final buffer when remaining line is [DONE] with CR', async () => {
+    const reader = makeReader('data: [DONE]\r');
+    const onChunk = vi.fn();
+    const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
+
+    expect(result).toBe('');
+    expect(onChunk).not.toHaveBeenCalled();
+  });
+
   it('handles abort and throws DOMException', async () => {
     const ctrl = new AbortController();
     const reader = {
@@ -205,5 +243,24 @@ describe('injectVisionImage', () => {
     
     expect(result[0].content).toBe('first message');
     expect(Array.isArray(result[1].content)).toBe(true);
+  });
+
+  it('joins multiple text parts and ignores non-text array content', () => {
+    const messages = [{
+      role: 'user',
+      content: [
+        { type: 'text', text: 'first' },
+        { type: 'image_url', image_url: { url: 'x' } },
+        { type: 'text', text: 'second' },
+      ],
+    }];
+
+    const result = injectVisionImage(messages, 'base64data');
+    const textPart = result[0].content.find(c => c.type === 'text');
+    const imageParts = result[0].content.filter(c => c.type === 'image_url');
+
+    expect(textPart.text).toBe('first second');
+    expect(imageParts).toHaveLength(1);
+    expect(imageParts[0].image_url.url).toBe('data:image/jpeg;base64,base64data');
   });
 });
