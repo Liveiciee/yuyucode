@@ -471,3 +471,4 @@ export {
   MODELS,
   FALLBACK_MODEL,
 };
+export { askAIStream as askCerebrasStream };

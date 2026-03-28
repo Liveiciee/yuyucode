@@ -1,0 +1,77 @@
+#!/data/data/com.termux/files/usr/bin/python3
+import requests
+import sys
+import json
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+
+API_KEY = "csk-rhp8v2ve4r2eh5ynnrywrt9jxmkcmjmhekmt9y389e5j9f55"
+
+console = Console()
+
+def ask_ai(prompt):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    
+    data = {
+        "model": "llama3.1-8b",
+        "messages": [
+            {"role": "system", "content": "Kamu adalah AI coding assistant yang expert. Berikan kode yang rapi, jelas, dan lengkap dengan penjelasan. Selalu gunakan markdown untuk formatting."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold cyan]🤖 Thinking...[/bold cyan]"),
+        console=console,
+    ) as progress:
+        progress.add_task(description="", total=None)
+        response = requests.post(
+            "https://api.cerebras.ai/v1/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=60
+        )
+        result = response.json()
+    
+    if 'choices' in result and len(result['choices']) > 0:
+        return result['choices'][0]['message']['content']
+    elif 'error' in result:
+        return f"[red]Error:[/red] {result['error'].get('message', result['error'])}"
+    else:
+        return f"[yellow]Unexpected:[/yellow] {result}"
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        console.print(Panel.fit(
+            "[bold cyan]🤖 AI Coding Assistant[/bold cyan]\n\n"
+            "[yellow]Usage:[/yellow] ai_rich 'pertanyaan'\n\n"
+            "[green]Contoh:[/green]\n"
+            "  ai_rich 'Buat script python factorial'\n"
+            "  ai_rich 'Jelaskan function di Python'",
+            border_style="cyan"
+        ))
+        sys.exit(1)
+    
+    # Banner
+    console.print("\n[bold cyan]╔══════════════════════════════════════╗[/bold cyan]")
+    console.print("[bold cyan]║      🤖 AI Coding Assistant v2.0    ║[/bold cyan]")
+    console.print("[bold cyan]╚══════════════════════════════════════╝[/bold cyan]\n")
+    
+    prompt = " ".join(sys.argv[1:])
+    console.print(f"[dim]? {prompt}[/dim]\n")
+    
+    answer = ask_ai(prompt)
+    
+    console.print(Panel(
+        Markdown(answer),
+        title="[bold green]💬 Response[/bold green]",
+        border_style="green",
+        padding=(1, 2)
+    ))
