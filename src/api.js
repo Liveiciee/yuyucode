@@ -147,7 +147,7 @@ export async function readSSEStream(response, onChunk, signal) {
       
       try {
         ({ done, value } = await reader.read());
-      } catch (readError) {
+      } catch (_readError) {
         if (signal?.aborted) {
           throw new DOMException('Aborted', 'AbortError');
         }
@@ -192,7 +192,7 @@ export async function readSSEStream(response, onChunk, signal) {
       }
     }
   } finally {
-    try { reader.releaseLock(); } catch (e) { /* ignore */ }
+    try { reader.releaseLock(); } catch (_e) { /* ignore */ }
   }
   
   return fullContent;
@@ -222,15 +222,28 @@ async function makeAIRequest({
     temperature: options.temperature ?? CONFIG.DEFAULT_TEMPERATURE,
   };
   
-  const response = await fetch(url, {
-    method: 'POST',
-    signal,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    throw new AIError(`${provider} network error: ${error?.message || 'Unknown network error'}`, 'NETWORK_ERROR', {
+      provider,
+      cause: error,
+    });
+  }
+
+  if (!response || typeof response.status !== 'number') {
+    throw new ServerError(provider, 503, 'Invalid response object');
+  }
   
   if (response.status === 429) {
     const retryAfter = parseInt(response.headers.get('retry-after') || String(CONFIG.RATE_LIMIT_RETRY_DEFAULT), 10);
@@ -323,7 +336,7 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
       if (error.name === 'AbortError' || error.code === 'RATE_LIMIT') {
         throw error;
       }
-      if (error.code === 'SERVER_ERROR' && (options._attempt ?? 0) < CONFIG.MAX_RETRIES) {
+      if ((error.code === 'SERVER_ERROR' || error.code === 'NETWORK_ERROR') && (options._attempt ?? 0) < CONFIG.MAX_RETRIES) {
         const attempt = options._attempt ?? 0;
         const delay = (attempt + 1) * CONFIG.RETRY_DELAY_BASE;
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -345,7 +358,7 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
       throw error;
     }
     
-    if (error.code === 'SERVER_ERROR' || (error.code === 'HTTP_ERROR' && (error.details?.statusCode ?? 0) >= 500)) {
+    if (error.code === 'NETWORK_ERROR' || error.code === 'SERVER_ERROR' || (error.code === 'HTTP_ERROR' && (error.details?.statusCode ?? 0) >= 500)) {
       if ((options._attempt ?? 0) < CONFIG.MAX_RETRIES) {
         const attempt = options._attempt ?? 0;
         const delay = (attempt + 1) * CONFIG.RETRY_DELAY_BASE;
@@ -375,7 +388,7 @@ export async function callServer(payload) {
     }
     
     return await response.json();
-  } catch (error) {
+  } catch (_error) {
     return { 
       ok: false, 
       data: 'YuyuServer tidak dapat dihubungi. Jalankan: node yuyu-server.cjs &' 
@@ -396,7 +409,7 @@ export function execStream(command, cwd, onLine, signal) {
     
     try {
       ws = new WebSocket(WS_SERVER);
-    } catch (error) {
+  } catch (_error) {
       reject(new Error('WebSocket tidak tersedia'));
       return;
     }
@@ -406,7 +419,7 @@ export function execStream(command, cwd, onLine, signal) {
     let settled = false;
     
     const cleanup = () => {
-      try { ws.close(); } catch (e) { /* ignore */ }
+      try { ws.close(); } catch (_e) { /* ignore */ }
     };
     
     const done = (exitCode) => {
@@ -465,7 +478,7 @@ export function execStream(command, cwd, onLine, signal) {
       signal.addEventListener('abort', () => {
         try {
           ws.send(JSON.stringify({ type: 'kill', id }));
-        } catch (e) { /* ignore */ }
+        } catch (_e) { /* ignore */ }
         cleanup();
         if (!settled) {
           settled = true;
