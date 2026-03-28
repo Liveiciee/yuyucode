@@ -1,281 +1,330 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes" />
-    <style>
-      html {
-        font-family: BlinkMacSystemFont,-apple-system,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
-        -webkit-font-smoothing: antialiased;
-        background-color: #fff;
-        font-size: 16px;
-      }
-      body {
-        color: #4a4a4a;
-        margin: 8px;
-        font-size: 1em;
-        font-weight: 400;
-      }
-      header {
-        margin-bottom: 8px;
-        display: flex;
-        flex-direction: column;
-      }
-      main {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-      }
-      a {
-        color: #3273dc;
-        cursor: pointer;
-        text-decoration: none;
-      }
-      a:hover {
-        color: #000;
-      }
-      button {
-        color: #fff;
-        background-color: #3298dc;
-        border-color: transparent;
-        cursor: pointer;
-        text-align: center;
-      }
-      button:hover {
-        background-color: #2793da;
-        flex: none;
-      }
-      .spacer {
-        flex: auto;
-      }
-      .small {
-        font-size: 0.75rem;
-      }
-      footer {
-        margin-top: 16px;
-        display: flex;
-        align-items: center;
-      }
-      .header-label {
-        margin-right: 4px;
-      }
-      .benchmark-set {
-        margin: 8px 0;
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-      }
-      .benchmark-title {
-        font-size: 3rem;
-        font-weight: 600;
-        word-break: break-word;
-        text-align: center;
-      }
-      .benchmark-graphs {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
-        flex-wrap: wrap;
-        width: 100%;
-      }
-      .benchmark-chart {
-        max-width: 1000px;
-      }
-    </style>
-    <title>Benchmarks</title>
-  </head>
-
-  <body>
-    <header id="header">
-      <div class="header-item">
-        <strong class="header-label">Last Update:</strong>
-        <span id="last-update"></span>
-      </div>
-      <div class="header-item">
-        <strong class="header-label">Repository:</strong>
-        <a id="repository-link" rel="noopener"></a>
-      </div>
-    </header>
-    <main id="main"></main>
-    <footer>
-      <button id="dl-button">Download data as JSON</button>
-      <div class="spacer"></div>
-      <div class="small">Powered by <a rel="noopener" href="https://github.com/marketplace/actions/continuous-benchmark">github-action-benchmark</a></div>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.2/dist/Chart.min.js"></script>
-    <script src="data.js"></script>
-    <script id="main-script">
-      'use strict';
-      (function() {
-        // Colors from https://github.com/github/linguist/blob/master/lib/linguist/languages.yml
-        const toolColors = {
-          cargo: '#dea584',
-          go: '#00add8',
-          benchmarkjs: '#f1e05a',
-          benchmarkluau: '#000080',
-          pytest: '#3572a5',
-          googlecpp: '#f34b7d',
-          catch2: '#f34b7d',
-          julia: '#a270ba',
-          jmh: '#b07219',
-          benchmarkdotnet: '#178600',
-          customBiggerIsBetter: '#38ff38',
-          customSmallerIsBetter: '#ff3838',
-          _: '#333333'
-        };
-
-        function init() {
-          function collectBenchesPerTestCase(entries) {
-            const map = new Map();
-            for (const entry of entries) {
-              const {commit, date, tool, benches} = entry;
-              for (const bench of benches) {
-                const result = { commit, date, tool, bench };
-                const arr = map.get(bench.name);
-                if (arr === undefined) {
-                  map.set(bench.name, [result]);
-                } else {
-                  arr.push(result);
-                }
-              }
-            }
-            return map;
-          }
-
-          const data = window.BENCHMARK_DATA;
-
-          // Render header
-          document.getElementById('last-update').textContent = new Date(data.lastUpdate).toString();
-          const repoLink = document.getElementById('repository-link');
-          repoLink.href = data.repoUrl;
-          repoLink.textContent = data.repoUrl;
-
-          // Render footer
-          document.getElementById('dl-button').onclick = () => {
-            const dataUrl = 'data:,' + JSON.stringify(data, null, 2);
-            const a = document.createElement('a');
-            a.href = dataUrl;
-            a.download = 'benchmark_data.json';
-            a.click();
-          };
-
-          // Prepare data points for charts
-          return Object.keys(data.entries).map(name => ({
-            name,
-            dataSet: collectBenchesPerTestCase(data.entries[name]),
-          }));
-        }
-
-        function renderAllChars(dataSets) {
-
-          function renderGraph(parent, name, dataset) {
-            const canvas = document.createElement('canvas');
-            canvas.className = 'benchmark-chart';
-            parent.appendChild(canvas);
-
-            const color = toolColors[dataset.length > 0 ? dataset[0].tool : '_'];
-            const data = {
-              labels: dataset.map(d => d.commit.id.slice(0, 7)),
-              datasets: [
-                {
-                  label: name,
-                  data: dataset.map(d => d.bench.value),
-                  borderColor: color,
-                  backgroundColor: color + '60', // Add alpha for #rrggbbaa
-                }
-              ],
-            };
-            const options = {
-              scales: {
-                xAxes: [
-                  {
-                    scaleLabel: {
-                      display: true,
-                      labelString: 'commit',
-                    },
-                  }
-                ],
-                yAxes: [
-                  {
-                    scaleLabel: {
-                      display: true,
-                      labelString: dataset.length > 0 ? dataset[0].bench.unit : '',
-                    },
-                    ticks: {
-                      beginAtZero: true,
-                    }
-                  }
-                ],
-              },
-              tooltips: {
-                callbacks: {
-                  afterTitle: items => {
-                    const {index} = items[0];
-                    const data = dataset[index];
-                    return '\n' + data.commit.message + '\n\n' + data.commit.timestamp + ' committed by @' + data.commit.committer.username + '\n';
-                  },
-                  label: item => {
-                    let label = item.value;
-                    const { range, unit } = dataset[item.index].bench;
-                    label += ' ' + unit;
-                    if (range) {
-                      label += ' (' + range + ')';
-                    }
-                    return label;
-                  },
-                  afterLabel: item => {
-                    const { extra } = dataset[item.index].bench;
-                    return extra ? '\n' + extra : '';
-                  }
-                }
-              },
-              onClick: (_mouseEvent, activeElems) => {
-                if (activeElems.length === 0) {
-                  return;
-                }
-                // XXX: Undocumented. How can we know the index?
-                const index = activeElems[0]._index;
-                const url = dataset[index].commit.url;
-                window.open(url, '_blank');
-              },
-            };
-
-            new Chart(canvas, {
-              type: 'line',
-              data,
-              options,
-            });
-          }
-
-          function renderBenchSet(name, benchSet, main) {
-            const setElem = document.createElement('div');
-            setElem.className = 'benchmark-set';
-            main.appendChild(setElem);
-
-            const nameElem = document.createElement('h1');
-            nameElem.className = 'benchmark-title';
-            nameElem.textContent = name;
-            setElem.appendChild(nameElem);
-
-            const graphsElem = document.createElement('div');
-            graphsElem.className = 'benchmark-graphs';
-            setElem.appendChild(graphsElem);
-
-            for (const [benchName, benches] of benchSet.entries()) {
-              renderGraph(graphsElem, benchName, benches)
-            }
-          }
-
-          const main = document.getElementById('main');
-          for (const {name, dataSet} of dataSets) {
-            renderBenchSet(name, dataSet, main);
-          }
-        }
-
-        renderAllChars(init()); // Start
-      })();
-    </script>
-  </body>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>yuyu · bench</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0a0f;--bg2:#131108;--bg3:#1a1420;--bg4:#0f0c13;
+  --pk:#ec4899;--pk2:#be185d;--pk3:#f9a8d4;
+  --pkd:rgba(236,72,153,.06);--pkb:rgba(236,72,153,.14);--pkg:rgba(236,72,153,.26);
+  --tx:#f5f0f8;--sc:#b8adc4;--mu:rgba(184,173,196,.3);
+  --gn:#4ade80;--gnd:rgba(74,222,128,.1);--gnb:rgba(74,222,128,.2);
+  --rd:#f87171;--rdd:rgba(248,113,113,.08);--rdb:rgba(248,113,113,.18);
+  --yw:#fbbf24;--ywd:rgba(251,191,36,.08);
+  --fn:'JetBrains Mono','Cascadia Code','Fira Code',ui-monospace,monospace;
+  --r:10px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font-family:var(--fn);font-size:13px;line-height:1.6;min-height:100vh;padding-bottom:80px}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px);pointer-events:none;z-index:9999}
+.orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0}
+.o1{width:55vw;height:55vw;background:rgba(236,72,153,.045);right:-12%;top:5%}
+.o2{width:40vw;height:40vw;background:rgba(139,92,246,.03);left:-10%;bottom:15%}
+.o3{width:25vw;height:25vw;background:rgba(236,72,153,.025);left:40%;bottom:5%}
+.tb{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:11px 20px;background:rgba(13,10,15,.92);backdrop-filter:blur(18px);border-bottom:1px solid rgba(236,72,153,.06)}
+.tb-l{display:flex;align-items:center;gap:12px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--pk);box-shadow:0 0 10px var(--pkg);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.45;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}
+.brand{font-size:12px;color:var(--sc);letter-spacing:.05em}
+.brand b{color:var(--pk);font-weight:700}
+.tb-r{display:flex;align-items:center;gap:12px}
+.meta{font-size:10px;color:var(--mu);text-align:right;line-height:1.7}
+.meta a{color:var(--pk);text-decoration:none;opacity:.55}
+.meta a:hover{opacity:1}
+.win-sel{display:flex;gap:3px}
+.win-btn{background:transparent;border:1px solid rgba(255,255,255,.06);border-radius:4px;padding:3px 9px;font-size:9px;font-family:var(--fn);color:var(--mu);cursor:pointer;transition:all .15s;letter-spacing:.06em}
+.win-btn:hover{border-color:var(--pkb);color:var(--pk3)}
+.win-btn.active{background:var(--pkb);border-color:var(--pk);color:white}
+.export-btn{background:transparent;border:1px solid rgba(255,255,255,.06);border-radius:4px;padding:3px 9px;font-size:9px;font-family:var(--fn);color:var(--mu);cursor:pointer;transition:all .15s;letter-spacing:.06em}
+.export-btn:hover{border-color:var(--pkb);color:var(--pk3)}
+.main{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:28px 16px 0}
+.summary-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:24px}
+.sstrip-card{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:8px;padding:12px 14px;position:relative;overflow:hidden}
+.sstrip-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px}
+.sstrip-card.pk::before{background:linear-gradient(90deg,transparent,var(--pkg),transparent)}
+.sstrip-card.gn::before{background:linear-gradient(90deg,transparent,var(--gnb),transparent)}
+.sstrip-card.rd::before{background:linear-gradient(90deg,transparent,var(--rdb),transparent)}
+.sstrip-card.yw::before{background:linear-gradient(90deg,transparent,rgba(251,191,36,.3),transparent)}
+.ss-label{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin-bottom:5px}
+.ss-val{font-size:18px;font-weight:700;line-height:1}
+.ss-val.pk{color:var(--pk)}.ss-val.gn{color:var(--gn)}.ss-val.rd{color:var(--rd)}.ss-val.yw{color:var(--yw);font-size:13px}
+.ss-sub{font-size:9px;color:var(--mu);margin-top:4px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.filter-bar{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;align-items:center}
+.search{flex:1;min-width:180px}
+.search input{width:100%;background:var(--bg2);border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:7px 14px;color:var(--tx);font-size:11px;font-family:var(--fn);outline:none;transition:border-color .2s;letter-spacing:.03em}
+.search input:focus{border-color:var(--pkb)}
+.search input::placeholder{color:var(--mu)}
+.filters{display:flex;gap:5px;flex-wrap:wrap}
+.filter-btn{background:var(--bg2);border:1px solid rgba(255,255,255,.05);border-radius:4px;padding:5px 10px;font-size:10px;font-family:var(--fn);color:var(--sc);cursor:pointer;transition:all .15s;letter-spacing:.04em}
+.filter-btn:hover{border-color:var(--pkb);color:var(--pk3)}
+.filter-btn.active{background:var(--pkb);border-color:var(--pk);color:white}
+.sl{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.sl-t{font-size:9px;letter-spacing:.15em;text-transform:uppercase;white-space:nowrap}
+.sl-t.pk{color:var(--pk);opacity:.8}.sl-t.mu{color:var(--mu)}
+.sl-l{flex:1;height:1px}
+.sl-l.pk{background:linear-gradient(90deg,var(--pkb),transparent)}.sl-l.mu{background:rgba(255,255,255,.04)}
+.sl-badge{font-size:9px;padding:2px 8px;border-radius:4px;white-space:nowrap}
+.sl-badge.gn{background:var(--gnd);color:var(--gn);border:1px solid var(--gnb)}
+.sl-badge.rd{background:var(--rdd);color:var(--rd);border:1px solid var(--rdb)}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:9px;margin-bottom:32px}
+.hcard{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:var(--r);padding:15px;position:relative;overflow:hidden;transition:border-color .15s,transform .15s,box-shadow .15s}
+.hcard:hover{border-color:var(--pkb);transform:translateY(-1px);box-shadow:0 4px 24px rgba(236,72,153,.06)}
+.hcard::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(236,72,153,.16),transparent)}
+.hcard.regress{border-color:var(--rdb);background:linear-gradient(135deg,var(--rdd),var(--bg2))}
+.hcard.regress::before{background:linear-gradient(90deg,transparent,var(--rdb),transparent)}
+.hcard.improve{border-color:rgba(74,222,128,.2)}
+.h-icon{font-size:19px;line-height:1;margin-bottom:5px}
+.h-lbl{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--mu);margin-bottom:4px}
+.h-hl{font-size:15px;color:var(--tx);line-height:1.3;margin-bottom:5px}
+.h-hl b{color:var(--pk)}
+.h-dt{font-size:11px;color:var(--sc);line-height:1.65}
+.h-rel{font-size:10px;color:rgba(236,72,153,.5);line-height:1.5;margin-top:5px;font-style:italic}
+.h-note{font-size:9px;background:var(--ywd);border:1px solid rgba(251,191,36,.14);border-radius:4px;padding:3px 7px;color:rgba(251,191,36,.65);line-height:1.5;margin-top:6px}
+.h-trend{font-size:10px;margin-top:5px;font-weight:700}
+.up{color:var(--gn)}.dn{color:var(--rd)}.fl{color:var(--mu)}
+.regress-badge{display:inline-block;font-size:8px;background:var(--rdd);border:1px solid var(--rdb);color:var(--rd);border-radius:3px;padding:1px 6px;margin-bottom:6px;letter-spacing:.06em;text-transform:uppercase}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:7px;margin-bottom:24px}
+.scard{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:8px;padding:11px 13px;transition:border-color .15s;position:relative;overflow:hidden}
+.scard:hover{border-color:var(--pkb)}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(236,72,153,.1),transparent)}
+.s-name{font-size:8px;letter-spacing:.07em;text-transform:uppercase;color:var(--mu);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-val{font-size:18px;font-weight:700;color:var(--tx);line-height:1}
+.s-unit{font-size:8px;color:var(--mu);margin-top:2px}
+.s-delta{font-size:10px;margin-top:3px;font-weight:700}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:9px;margin-bottom:24px}
+.ccard{background:var(--bg2);border:1px solid rgba(255,255,255,.04);border-radius:var(--r);padding:13px;position:relative;overflow:hidden}
+.ccard:hover{border-color:rgba(236,72,153,.12)}
+.chead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.cname{font-size:10px;color:var(--sc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68%}
+.cval{font-size:11px;font-weight:700;color:var(--pk);white-space:nowrap}
+.ccard canvas{display:block;width:100%;height:68px}
+.ctip{position:absolute;background:#1a1420;border:1px solid rgba(236,72,153,.22);border-radius:5px;padding:4px 9px;font-size:10px;color:#f5f0f8;pointer-events:none;display:none;white-space:nowrap;z-index:10;font-family:var(--fn)}
+.ctrend{font-size:8px;color:var(--mu);margin-top:5px;text-align:right;letter-spacing:.05em}
+.ctrend.up{color:var(--gn)}.ctrend.dn{color:var(--rd)}.ctrend.fl{color:var(--mu)}
+.compare-bar{background:var(--bg2);border:1px solid var(--pkb);border-radius:8px;padding:12px 16px;margin-bottom:20px;display:none;align-items:center;gap:12px;flex-wrap:wrap}
+.compare-bar.active{display:flex}
+.cmp-lbl{font-size:10px;color:var(--sc);letter-spacing:.04em;white-space:nowrap}
+.cmp-sel{background:var(--bg3);border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:4px 8px;color:var(--tx);font-size:10px;font-family:var(--fn);outline:none;cursor:pointer;flex:1;min-width:150px}
+.cmp-btn{background:var(--pkb);border:1px solid var(--pk);border-radius:4px;padding:4px 10px;font-size:9px;color:white;font-family:var(--fn);cursor:pointer;letter-spacing:.06em;white-space:nowrap}
+.cmp-btn:hover{background:var(--pkg)}
+.cmp-close{background:transparent;border:1px solid rgba(255,255,255,.08);border-radius:4px;padding:4px 8px;font-size:9px;color:var(--mu);font-family:var(--fn);cursor:pointer;margin-left:auto;white-space:nowrap}
+.cmp-close:hover{border-color:var(--pkb);color:var(--pk3)}
+.cmp-result-wrap{overflow-x:auto;border:1px solid rgba(255,255,255,.04);border-radius:var(--r);margin-bottom:24px}
+.cmp-table{width:100%;border-collapse:collapse;font-size:11px}
+.cmp-table th{padding:8px 11px;text-align:left;color:var(--mu);font-size:8px;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,.04)}
+.cmp-table td{padding:6px 11px;border-bottom:1px solid rgba(255,255,255,.02);color:var(--sc)}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table tr:hover td{background:var(--bg3)}
+.cmp-better{color:var(--gn);font-weight:700}.cmp-worse{color:var(--rd);font-weight:700}.cmp-same{color:var(--mu)}
+.tw{overflow-x:auto;border:1px solid rgba(255,255,255,.04);border-radius:var(--r);margin-bottom:28px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{padding:8px 11px;text-align:left;color:var(--mu);font-size:8px;letter-spacing:.1em;text-transform:uppercase;font-weight:400;border-bottom:1px solid rgba(255,255,255,.04);white-space:nowrap}
+td{padding:7px 11px;border-bottom:1px solid rgba(255,255,255,.02);color:var(--sc);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg3)}
+.hash{color:var(--pk);opacity:.65;font-style:italic}
+.v{color:var(--tx);font-weight:700}
+.v.dn{color:rgba(248,113,113,.85)}.v.up{color:rgba(74,222,128,.85)}
+.empty-state{text-align:center;padding:60px;color:var(--mu);font-size:11px;letter-spacing:.08em}
+footer{border-top:1px solid rgba(255,255,255,.04);padding:20px 16px 0;max-width:960px;margin:0 auto;font-size:10px;color:var(--mu);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+footer a{color:var(--pk);opacity:.5;text-decoration:none}
+footer a:hover{opacity:1}
+.spin{display:flex;align-items:center;justify-content:center;padding:80px;gap:5px}
+.spin span{width:5px;height:5px;border-radius:50%;background:var(--pk);animation:blink 1s infinite}
+.spin span:nth-child(2){animation-delay:.15s}.spin span:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,80%,100%{opacity:.1;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
+.err{margin:40px auto;max-width:400px;text-align:center;padding:24px;border:1px solid var(--rdb);border-radius:var(--r);background:var(--rdd);color:var(--rd);font-size:12px;line-height:1.8}
+@media(max-width:600px){
+  .summary-strip{grid-template-columns:repeat(2,1fr)}
+  .hgrid,.cgrid{grid-template-columns:1fr}
+  .sgrid{grid-template-columns:repeat(2,1fr)}
+  .filter-bar{flex-direction:column;align-items:stretch}
+  .win-sel,.export-btn{display:none}
+}
+</style>
+</head>
+<body>
+<div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+<div class="tb">
+  <div class="tb-l"><div class="dot"></div><div class="brand"><b>yuyu</b> · bench</div></div>
+  <div class="tb-r">
+    <div class="win-sel" id="winSel">
+      <button class="win-btn" data-w="10">10</button>
+      <button class="win-btn" data-w="30">30</button>
+      <button class="win-btn" data-w="100">100</button>
+      <button class="win-btn active" data-w="0">all</button>
+    </div>
+    <button class="export-btn" id="exportBtn">↓ csv</button>
+    <div class="meta" id="meta">—</div>
+  </div>
+</div>
+<div class="main" id="root"><div class="spin"><span></span><span></span><span></span></div></div>
+<footer>
+  <span>Built on a ~$130 phone · Oppo A77s × GitHub Actions · MIT</span>
+  <span><a href="https://github.com/Liveiciee/yuyucode" target="_blank">github.com/Liveiciee/yuyucode</a></span>
+</footer>
+<script>
+// ── Chart — bezier smooth, adaptive dots ──────────────────────────────────────
+function drawChart(canvas,values,labels,opts={}){
+  const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,H=68;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  const valid=values.filter(v=>v!==null&&v>0);
+  if(valid.length<2)return;
+  const mn=Math.min(...valid)*.88,mx=Math.max(...valid)*1.08;
+  const pad={t:6,r:8,b:16,l:6},cW=W-pad.l-pad.r,cH=H-pad.t-pad.b,n=values.length;
+  const DOTS=n<=20; // hide dots when crowded — the key fix
+  const px=i=>pad.l+(i/(n-1))*cW;
+  const py=v=>pad.t+cH-((v-mn)/(mx-mn||1))*cH;
+  // grid
+  ctx.strokeStyle='rgba(255,255,255,.03)';ctx.lineWidth=1;
+  [.25,.5,.75,1].forEach(t=>{const y=pad.t+cH*(1-t);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke()});
+  const pts=values.map((v,i)=>[px(i),v>0?py(v):null]);
+  const col=opts.regress?'rgba(248,113,113,.7)':'#ec4899';
+  // fill
+  const grad=ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,opts.regress?'rgba(248,113,113,.15)':'rgba(236,72,153,.18)');
+  grad.addColorStop(1,'rgba(236,72,153,.01)');
+  function bezier(fill){
+    const vp=pts.filter(([,y])=>y!==null);if(vp.length<2)return;
+    ctx.beginPath();ctx.moveTo(vp[0][0],vp[0][1]);
+    for(let i=1;i<vp.length;i++){const[x0,y0]=vp[i-1],[x1,y1]=vp[i],cx=(x0+x1)/2;ctx.bezierCurveTo(cx,y0,cx,y1,x1,y1)}
+    if(fill){ctx.lineTo(vp[vp.length-1][0],H-pad.b);ctx.lineTo(vp[0][0],H-pad.b);ctx.closePath();ctx.fillStyle=grad;ctx.fill()}
+    else{ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke()}
+  }
+  bezier(true);bezier(false);
+  // dots only when sparse
+  if(DOTS)pts.forEach(([x,y])=>{if(y===null)return;ctx.beginPath();ctx.arc(x,y,2.5,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.beginPath();ctx.arc(x,y,1.2,0,Math.PI*2);ctx.fillStyle='#0d0a0f';ctx.fill()});
+  // always show last point
+  const lp=[...pts].reverse().find(([,y])=>y!==null);
+  if(lp){const[lx,ly]=lp;ctx.beginPath();ctx.arc(lx,ly,3.5,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.beginPath();ctx.arc(lx,ly,1.5,0,Math.PI*2);ctx.fillStyle='#0d0a0f';ctx.fill()}
+  // x labels — adaptive spacing
+  const ff=getComputedStyle(document.body).fontFamily;
+  ctx.fillStyle='rgba(184,173,196,.25)';ctx.font=`8px ${ff}`;ctx.textAlign='center';
+  const step=Math.max(1,Math.ceil(n/5));
+  for(let i=0;i<n;i+=step)if(pts[i][1]!==null)ctx.fillText(labels[i]||'',pts[i][0],H-2);
+}
+function addTooltip(canvas,values,labels){
+  const tip=document.createElement('div');tip.className='ctip';canvas.parentElement.appendChild(tip);
+  canvas.addEventListener('mousemove',e=>{
+    const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,n=values.length;
+    const idx=Math.max(0,Math.min(n-1,Math.round((x/r.width)*(n-1))));
+    const v=values[idx];if(!v){tip.style.display='none';return}
+    tip.innerHTML=`<span style="color:var(--pk)">${labels[idx]}</span>  ${fmt(v)} ops/s`;
+    tip.style.display='block';tip.style.left=Math.min(x,r.width-130)+'px';tip.style.top='-30px';
+  });
+  canvas.addEventListener('mouseleave',()=>{tip.style.display='none'});
+}
+// ── Utils ──────────────────────────────────────────────────────────────────────
+function fmt(n){if(!n||n<=0)return'0';if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toFixed(0)}
+function fmtNs(v){if(v<1000)return v.toFixed(0)+' ns';if(v<1e6)return(v/1000).toFixed(1)+' µs';return(v/1e6).toFixed(2)+' ms'}
+const fmtDate=ts=>new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+function pct(a,b){return b?((a-b)/b*100):null}
+function deltaTag(d){if(d===null)return'';const c=d>2?'up':d<-2?'dn':'fl',s=d>0?'+':'';return`<div class="h-trend ${c}">${s}${d.toFixed(1)}% vs prev</div>`}
+function trendLine(values){const v=values.filter(x=>x>0);if(v.length<4)return'fl';const h=Math.floor(v.length/2),early=v.slice(0,h).reduce((a,b)=>a+b)/h,late=v.slice(-h).reduce((a,b)=>a+b)/h,d=pct(late,early);return d>3?'up':d<-3?'dn':'fl'}
+function getCategory(name){const l=name.toLowerCase();if(l.includes('tab')||l.includes('open')||l.includes('close')||l.includes('reorder')||l.includes('find'))return'editor';if(l.includes('preview')||l.includes('srcdoc')||l.includes('build')||l==='js only'||l.includes('html + css')||l.includes('giant js')||l.includes('20 tabs (only'))return'preview';if(l.includes('parse')||l.includes('action')||l.includes('agent')||l.includes('single call'))return'ai';if(l.includes('diff'))return'diff';if(l.includes('symbol')||l.includes('compress')||l.includes('import')||l.includes('salience')||l.includes('component')||l.includes('large file')||l.includes('small file')||l.includes('non-code')||l.includes('pre-built'))return'map';if(l.includes('stress')||l.includes('5000')||l.includes('parallel')||l.includes('mixed workload')||l.includes('500 mixed')||l.includes('200 unique')||l.includes('200 files'))return'stress';if(l.includes('null')||l.includes('undefined')||l.includes('empty')||l.includes('malformed')||l.includes('unicode')||l.includes('no extension')||l.includes('deeply nested')||l.includes('single line')||l.includes('10mb')||l.includes('adversarial'))return'robustness';return'default'}
+// ── Explanations ──────────────────────────────────────────────────────────────
+const E={'single call — jsx':{i:'⚡',l:'Language detection',h:v=>`Detects file type in <b>${fmtNs(1e9/v)}</b>`,d:'Every file open triggers this — identifies language instantly so syntax highlighting and tooling activate.',r:'Bottleneck here = laggy editor on every file open.'},'single call — ts':{i:'⚡',l:'TypeScript detection',h:v=>`Identifies TypeScript in <b>${fmtNs(1e9/v)}</b>`,d:'TS-specific features activate the moment you open a .ts or .tsx file.',r:'Slow detection delays the type-check pipeline.'},'10 mixed extensions':{i:'⚡',l:'Batch language scan',h:v=>`Scans 10 files in <b>${fmtNs(1e9/v)}</b>`,d:'Workspace load scan — all file types detected at once when opening a project.',r:'Slow = sluggish startup.'},'10 mixed':{i:'⚡',l:'Batch detection',h:v=>`Processes 10 files in <b>${fmtNs(1e9/v)}</b>`,d:'Batch detection pass across mixed file types.',r:'Scales linearly with project size.'},'empty tabs':{i:'📑',l:'New tab speed',h:v=>`Opens blank tab in <b>${fmtNs(1e9/v)}</b>`,d:'Zero wait on new tab — ready before your finger lifts.',r:'Happens every new file. This is how responsive the UI feels.'},'open 1 tab (Array spread)':{i:'🗂️',l:'Tab open',h:v=>`Opens tab in <b>${fmtNs(1e9/v)}</b>`,d:'Core tab-open using immutable array spread — safe, predictable state.',r:'Every file open triggers this.'},'close middle tab from 10':{i:'🗂️',l:'Tab close',h:v=>`Closes tab in <b>${fmtNs(1e9/v)}</b>`,d:'Closes from middle of 10 open files — filters array, recalculates active tab.',r:'Heavy users keep 10+ tabs. Slow = perceptible lag.'},'find active tab from 20':{i:'🗂️',l:'Tab lookup',h:v=>`Finds active tab in <b>${fmtNs(1e9/v)}</b>`,d:'Linear scan for active tab among 20 — runs on every render cycle.',r:'Called constantly. Slow = whole editor renders sluggishly.'},'open 50 tabs sequentially':{i:'🗂️',l:'Stress: 50 tabs',h:v=>`Opens 50 tabs in <b>${fmtNs(1e9/v)}</b>`,d:'Sequential opens — O(n²) total, intentional tradeoff.',n:'O(n²) by design — immutability over raw mutation.'},'open 200 tabs sequentially':{i:'🔥',l:'Stress: 200 tabs',h:v=>`Opens 200 tabs in <b>${fmtNs(1e9/v)}</b>`,d:'Extreme stress — shows where O(n²) cost becomes visible.',n:'Stress only — real UX limit is ~50 tabs.'},'js only':{i:'👁️',l:'Live preview (JS)',h:v=>`Builds JS preview in <b>${fmtNs(1e9/v)}</b>`,d:'Generates iframe srcdoc for JS-only project — runs on every keypress in preview mode.',r:'Slow = preview lags your code.'},'html + css + js':{i:'👁️',l:'Live preview (full)',h:v=>`Builds full preview in <b>${fmtNs(1e9/v)}</b>`,d:'Combines HTML + CSS + JS into iframe srcdoc — most common preview case.',r:'Fast enough for real-time updates.'},'small diff (4 lines)':{i:'🔍',l:'Diff (small)',h:v=>`Computes change in <b>${fmtNs(1e9/v)}</b>`,d:'Myers diff on a 4-line AI edit — diff appears before you finish blinking.',r:'Most AI edits are small. This is the common case.'},'large diff (500 lines, many changes)':{i:'🔍',l:'Diff (large)',h:v=>v<10?`~<b>${(1000/Math.max(v,.01)).toFixed(0)}ms</b> per diff`:`<b>${fmt(v)} ops/s</b>`,d:'Myers on 500 lines with many changes — worst-case pattern.',n:'Myers O(ND): large D on large N is expensive by design.'},'identical (no diff)':{i:'🔍',l:'Diff: no changes',h:v=>`Confirms no changes in <b>${fmtNs(1e9/v)}</b>`,d:'Myers still does one full pass to confirm nothing changed.'},'5000 lines all changed (worst case Myers)':{i:'💀',l:'Worst case: Myers',h:v=>v<1?`~<b>${(1000/Math.max(v,.001)).toFixed(0)}ms</b> — expected`:`<b>${fmt(v)} ops/s</b>`,d:"Every line changed across 5000 lines — O(ND) worst case. Not a bug.",n:"⚠️ 0–3 ops/sec is correct. Myers O(ND) worst case."},'small file (4 lines)':{i:'🧠',l:'Symbol scan (small)',h:v=>`Extracts symbols in <b>${fmtNs(1e9/v)}</b>`,d:'Extracts exports from a 4-line file — typical small component.',r:'Small files are the common case in the project map.'},'realistic component (~50 lines)':{i:'🧠',l:'Symbol scan (typical)',h:v=>`Scans real component in <b>${fmtNs(1e9/v)}</b>`,d:'50-line React hook with multiple exports — median YuyuCode file.',r:'This is what the project map runs on most.'},'large file (10 components, ~500 lines)':{i:'🧠',l:'Symbol scan (large)',h:v=>`Scans 500-line file in <b>${fmtNs(1e9/v)}</b>`,d:'500 lines, 10 components — tests parser at scale.'},'non-code file (early return)':{i:'🚀',l:'Smart file skip',h:v=>`Skips non-code in <b>${fmtNs(1e9/v)}</b>`,d:'CSS, JSON, images recognized immediately and skipped.',r:'Projects are 30–50% non-JS. Saves significant scan time.'},'no action blocks':{i:'🤖',l:'AI parse: plain text',h:v=>`Processes plain reply in <b>${fmtNs(1e9/v)}</b>`,d:'Pure text AI response — fastest parser path. Runs thousands of times per session.',r:'Most AI replies are conversational. Real hot path.'},'1 action block':{i:'🤖',l:'AI parse: 1 action',h:v=>`Parses 1 action in <b>${fmtNs(1e9/v)}</b>`,d:'Single file operation — typical single-edit response.',r:'Median agentic operation.'},'5 action blocks':{i:'🤖',l:'AI parse: 5 actions',h:v=>`Parses 5 actions in <b>${fmtNs(1e9/v)}</b>`,d:'Multi-step response — typical for "implement this feature".',r:'Complex tasks generate 5–10 actions.'},'mixed — valid + invalid + non-action blocks':{i:'🤖',l:'AI parse: real-world',h:v=>`Handles messy reply in <b>${fmtNs(1e9/v)}</b>`,d:'Valid actions + invalid JSON + code examples — real AI output.',r:'Parser must handle every combo without false positives.'},'20 pre-built file data objects':{i:'🗺️',l:'Project map scoring',h:v=>`Scores 20 files in <b>${fmtNs(1e9/v)}</b>`,d:'Calculates file importance for AI context — based on import count, recency, size.',r:'Better scoring = AI sees the right files = smarter responses.'},'200 files with cross-imports':{i:'🔥',l:'Stress: 200-file map',h:v=>`Scores 200 files in <b>${fmtNs(1e9/v)}</b>`,d:'Dense dependency graph — all 200 files import each other.',n:"O(n²) dependency scan — scales to ~500 files before needing optimization."},'mixed workload — 5 ops all types concurrently':{i:'⚡',l:'Mixed workload',h:v=>`5 different ops concurrently in <b>${fmtNs(1e9/v)}</b>`,d:'Symbol + compression + diff + action parse + import scan — all at once.',r:'Closest to actual YuyuCode runtime during active editing.'},'10 compressSource in parallel':{i:'⚡',l:'Concurrent compression',h:v=>`10 compressions in <b>${fmtNs(1e9/v)}</b>`,d:'Parallel context compression — when AI requests multiple files at once.'},'10 generateDiff in parallel':{i:'⚠️',l:'Concurrent diff',h:v=>v<10?`~<b>${(1000/Math.max(v,.1)).toFixed(0)}ms</b> per batch`:`<b>${fmt(v)} ops/s</b>`,d:"10 large diffs at once — Myers is CPU-bound, not I/O-bound.",n:'⚠️ Low ops/sec expected — CPU saturation demonstration.'},'50 parseActions in parallel':{i:'🤖',l:'Concurrent AI parse (50x)',h:v=>`50 parses concurrently in <b>${fmtNs(1e9/v)}</b>`,d:'50 AI response parses simultaneously — background agent swarm at max load.'}};
+const DEF={i:'📊',l:n=>n,h:v=>v<1?`~<b>${(1000/Math.max(v,.001)).toFixed(0)}ms</b> per op`:`<b>${fmt(v)} ops/s</b>`,d:'Core engine function — higher ops/sec = faster execution.'};
+// ── State ──────────────────────────────────────────────────────────────────────
+let CF='all',CS='',CW=0,cmpMode=false,cmpA=null,cmpB=null,_data=null,_entries=[];
+// ── Load ──────────────────────────────────────────────────────────────────────
+function loadData(){return new Promise((ok,fail)=>{const s=document.createElement('script');s.src='./data.js?t='+Date.now();s.onload=()=>window.BENCHMARK_DATA?ok(window.BENCHMARK_DATA):fail(new Error('BENCHMARK_DATA not found'));s.onerror=()=>fail(new Error('data.js not found — CI might not have run yet'));document.head.appendChild(s)})}
+// ── Render ─────────────────────────────────────────────────────────────────────
+function render(data){
+  _data=data;
+  const raw=data.entries||{},cm={};
+  for(const runs of Object.values(raw))for(const run of runs){const id=typeof run.commit==='object'?(run.commit.id||run.commit.hash||''):run.commit;if(!cm[id])cm[id]={commit:id,date:run.date,benches:[]};for(const b of(run.benches||[]))if(!cm[id].benches.find(x=>x.name===b.name))cm[id].benches.push(b)}
+  const all=Object.values(cm).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  _entries=all;
+  const entries=CW>0?all.slice(-CW):all;
+  if(!entries.length){document.getElementById('root').innerHTML='<div class="err">No data yet.<br>Push to main to trigger the first bench run.</div>';return}
+  const last=entries[entries.length-1],prev=entries[entries.length-2]||null;
+  const allNames=[...new Set(entries.flatMap(e=>e.benches.map(b=>b.name)))];
+  let fNames=allNames;
+  if(CF!=='all')fNames=fNames.filter(n=>getCategory(n)===CF);
+  if(CS)fNames=fNames.filter(n=>n.toLowerCase().includes(CS.toLowerCase()));
+  const fBenches=last.benches.filter(b=>fNames.includes(b.name));
+  document.getElementById('meta').innerHTML=`<a href="https://github.com/Liveiciee/yuyucode/commit/${last.commit}" target="_blank">${last.commit.slice(0,7)}</a> · ${fmtDate(last.date)} · ${all.length} runs`;
+  // summary
+  let impr=0,regr=0,topName='',topVal=0,botName='',botPct=0;
+  for(const b of fBenches){if(b.value>topVal){topVal=b.value;topName=b.name}const p=prev?.benches.find(x=>x.name===b.name);if(!p)continue;const d=pct(b.value,p.value);if(d>3)impr++;if(d<-3){regr++;if(-d>botPct){botPct=-d;botName=b.name}}}
+  const FILTERS=[{k:'all',label:'All'},{k:'editor',label:'✏️ Editor'},{k:'preview',label:'👁️ Preview'},{k:'ai',label:'🤖 AI'},{k:'diff',label:'🔍 Diff'},{k:'map',label:'🗺️ Map'},{k:'stress',label:'🔥 Stress'},{k:'robustness',label:'🛡️ Edge'}];
+  let html=`
+  <div class="summary-strip">
+    <div class="sstrip-card pk"><div class="ss-label">Benchmarks</div><div class="ss-val pk">${fBenches.length}</div><div class="ss-sub">${entries.length} runs shown · ${all.length} total</div></div>
+    <div class="sstrip-card gn"><div class="ss-label">Improvements</div><div class="ss-val gn">${impr}</div><div class="ss-sub">vs previous push</div></div>
+    <div class="sstrip-card rd"><div class="ss-label">Regressions</div><div class="ss-val rd">${regr}</div><div class="ss-sub">${botName?'↓ '+botName.slice(0,24):'vs previous push'}</div></div>
+    <div class="sstrip-card yw"><div class="ss-label">Fastest</div><div class="ss-val yw">${fmt(topVal)} ops/s</div><div class="ss-sub">${topName.slice(0,26)}</div></div>
+  </div>
+  <div class="filter-bar">
+    <div class="search"><input type="text" id="searchInput" placeholder="search benchmarks..." value="${CS.replace(/"/g,'&quot;')}"></div>
+    <div class="filters">${FILTERS.map(f=>`<button class="filter-btn${CF===f.k?' active':''}" data-filter="${f.k}">${f.label}</button>`).join('')}</div>
+  </div>
+  <div class="compare-bar${cmpMode?' active':''}" id="compareBar">
+    <span class="cmp-lbl">Compare:</span>
+    <select class="cmp-sel" id="cmpA">${all.map((e,i)=>`<option value="${i}"${cmpA===i?' selected':''}>${e.commit.slice(0,7)} · ${fmtDate(e.date)}</option>`).join('')}</select>
+    <span class="cmp-lbl">vs</span>
+    <select class="cmp-sel" id="cmpB">${all.map((e,i)=>`<option value="${i}"${cmpB===i?' selected':''}>${e.commit.slice(0,7)} · ${fmtDate(e.date)}</option>`).join('')}</select>
+    <button class="cmp-btn" id="runCmp">Compare</button>
+    <button class="cmp-close" id="closeCmp">✕</button>
+  </div>`;
+  if(!fBenches.length){html+='<div class="empty-state">no benchmarks match · try a different filter</div>';document.getElementById('root').innerHTML=html;bindEvents(data,entries,fNames,all);return}
+  const badge=regr>0?`<span class="sl-badge rd">⚠ ${regr} regression${regr>1?'s':''}</span>`:`<span class="sl-badge gn">✓ All stable</span>`;
+  html+=`<div class="sl"><div class="sl-t pk">Performance Overview</div><div class="sl-l pk"></div>${badge}</div><div class="hgrid">`;
+  for(const b of fBenches){const ex=E[b.name]||DEF;const lbl=typeof ex.l==='function'?ex.l(b.name):ex.l;const hl=ex.h(b.value);const p=prev?.benches.find(x=>x.name===b.name);const d=p?pct(b.value,p.value):null;const isR=d!==null&&d<-5,isI=d!==null&&d>5;html+=`<div class="hcard${isR?' regress':isI?' improve':''}">${isR?'<div class="regress-badge">↓ regression</div>':''}<div class="h-icon">${ex.i}</div><div class="h-lbl">${lbl}</div><div class="h-hl">${hl}</div><div class="h-dt">${ex.d}</div>${ex.r?`<div class="h-rel">↳ ${ex.r}</div>`:''}${ex.n?`<div class="h-note">${ex.n}</div>`:''}${deltaTag(d)}</div>`}
+  html+='</div>';
+  html+=`<div class="sl" style="margin-top:4px"><div class="sl-t mu">Numbers</div><div class="sl-l mu"></div></div><div class="sgrid">`;
+  for(const b of fBenches){const p=prev?.benches.find(x=>x.name===b.name);const d=p?pct(b.value,p.value):null;const dc=d===null?'':d>2?`<div class="s-delta up">+${d.toFixed(1)}%</div>`:d<-2?`<div class="s-delta dn">${d.toFixed(1)}%</div>`:`<div class="s-delta fl">→ stable</div>`;html+=`<div class="scard"><div class="s-name">${b.name}</div><div class="s-val">${fmt(b.value)}</div><div class="s-unit">ops/sec · CI x86_64</div>${dc}</div>`}
+  html+='</div>';
+  html+=`<div class="sl" style="margin-top:4px"><div class="sl-t mu">History Charts</div><div class="sl-l mu"></div><span style="font-size:8px;color:var(--mu);white-space:nowrap">last ${entries.length} run${entries.length!==1?'s':''}</span></div><div class="cgrid" id="cgrid"></div>`;
+  html+='<div id="cmpResult"></div>';
+  html+=`<div class="sl"><div class="sl-t mu">Run History</div><div class="sl-l mu"></div><button class="cmp-btn" id="openCmp" style="font-size:8px;padding:2px 8px">⇄ Compare</button></div>`;
+  html+='<div class="tw"><table><thead><tr><th>commit</th><th>date</th>';
+  for(const n of fNames)html+=`<th title="${n}">${n.slice(0,10)}</th>`;
+  html+='</tr></thead><tbody>';
+  for(let ei=entries.length-1;ei>=0;ei--){const e=entries[ei],prevE=entries[ei-1];html+=`<tr><td class="hash">${e.commit.slice(0,7)}</td><td>${fmtDate(e.date)}</td>`;for(const n of fNames){const b=e.benches.find(x=>x.name===n);const pb=prevE?.benches.find(x=>x.name===n);let cls='v';if(b&&pb){const d=pct(b.value,pb.value);if(d>5)cls='v up';else if(d<-5)cls='v dn'}html+=`<td class="${cls}">${b?fmt(b.value):'—'}</td>`}html+='</tr>'}
+  html+='</tbody></table></div>';
+  document.getElementById('root').innerHTML=html;
+  // charts
+  const labels=entries.map(e=>e.commit.slice(0,7));
+  const grid=document.getElementById('cgrid');
+  const regressSet=new Set(fBenches.filter(b=>{const p=prev?.benches.find(x=>x.name===b.name);return p&&pct(b.value,p.value)<-5}).map(b=>b.name));
+  for(const name of fNames){const vals=entries.map(e=>e.benches.find(b=>b.name===name)?.value??null);const lv=vals[vals.length-1];const trend=trendLine(vals);const card=document.createElement('div');card.className='ccard';card.innerHTML=`<div class="chead"><span class="cname">${name}</span><span class="cval">${fmt(lv??0)} ops/s</span></div><canvas></canvas><div class="ctrend ${trend}">${trend==='up'?'↑ improving':trend==='dn'?'↓ declining':'→ stable'}</div>`;grid.appendChild(card);const canvas=card.querySelector('canvas');requestAnimationFrame(()=>{drawChart(canvas,vals,labels,{regress:regressSet.has(name)});addTooltip(canvas,vals,labels)})}
+  bindEvents(data,entries,fNames,all);
+}
+// ── Compare ────────────────────────────────────────────────────────────────────
+function doCompare(all,fNames){
+  const a=parseInt(document.getElementById('cmpA')?.value??0),b=parseInt(document.getElementById('cmpB')?.value??1);
+  cmpA=a;cmpB=b;const eA=all[a],eB=all[b];if(!eA||!eB)return;
+  let html=`<div class="sl"><div class="sl-t pk">Commit Comparison</div><div class="sl-l pk"></div><span style="font-size:9px;color:var(--mu)">${eA.commit.slice(0,7)} vs ${eB.commit.slice(0,7)}</span></div><div class="cmp-result-wrap"><table class="cmp-table"><thead><tr><th>benchmark</th><th>${eA.commit.slice(0,7)}</th><th>${eB.commit.slice(0,7)}</th><th>delta</th></tr></thead><tbody>`;
+  for(const name of fNames){const bA=eA.benches.find(x=>x.name===name),bB=eB.benches.find(x=>x.name===name);if(!bA&&!bB)continue;const d=bA&&bB?pct(bB.value,bA.value):null;const dc=d===null?'cmp-same':d>2?'cmp-better':d<-2?'cmp-worse':'cmp-same';const ds=d===null?'—':(d>0?'+':'')+d.toFixed(1)+'%';html+=`<tr><td>${name}</td><td>${bA?fmt(bA.value):'—'}</td><td class="${dc}">${bB?fmt(bB.value):'—'}</td><td class="${dc}">${ds}</td></tr>`}
+  html+='</tbody></table></div>';
+  document.getElementById('cmpResult').innerHTML=html;
+}
+// ── Export CSV ─────────────────────────────────────────────────────────────────
+function exportCSV(entries,fNames){
+  const rows=[['commit','date',...fNames]];
+  for(const e of entries){const row=[e.commit.slice(0,7),fmtDate(e.date)];for(const n of fNames){const b=e.benches.find(x=>x.name===n);row.push(b?b.value.toFixed(0):'')}rows.push(row)}
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`yuyu-bench-${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
+// ── Bind ───────────────────────────────────────────────────────────────────────
+function bindEvents(data,entries,fNames,all){
+  document.querySelectorAll('.filter-btn').forEach(btn=>btn.addEventListener('click',()=>{CF=btn.dataset.filter;render(data)}));
+  const si=document.getElementById('searchInput');
+  if(si){si.addEventListener('input',e=>{CS=e.target.value;render(data)});if(CS)si.focus()}
+  document.querySelectorAll('.win-btn').forEach(btn=>btn.addEventListener('click',()=>{CW=parseInt(btn.dataset.w);document.querySelectorAll('.win-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render(data)}));
+  document.getElementById('exportBtn')?.addEventListener('click',()=>exportCSV(entries,fNames));
+  document.getElementById('openCmp')?.addEventListener('click',()=>{cmpMode=true;if(cmpB===null)cmpB=Math.max(0,all.length-2);if(cmpA===null)cmpA=all.length-1;render(data)});
+  document.getElementById('closeCmp')?.addEventListener('click',()=>{cmpMode=false;cmpA=null;cmpB=null;document.getElementById('cmpResult').innerHTML='';render(data)});
+  document.getElementById('runCmp')?.addEventListener('click',()=>doCompare(all,fNames));
+}
+// ── Boot ───────────────────────────────────────────────────────────────────────
+loadData().then(render).catch(e=>{document.getElementById('root').innerHTML=`<div class="err">Failed to load benchmark data.<br><small style="opacity:.5">${e.message}</small></div>`});
+</script>
+</body>
 </html>
