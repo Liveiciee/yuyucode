@@ -290,6 +290,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
   it('throws KeyValidationError for short key', async () => {
     const mod = await createFreshStore();
+    mod.CONFIG.KEY_MIN_LENGTH = 20;
     await expect(
       mod.saveRuntimeKeys({ cerebras: 'short', groq: 'gsk-valid-long-key-1234567890' }, { password: 'test-pass' })
     ).rejects.toHaveProperty('code', 'VALIDATION_ERROR');

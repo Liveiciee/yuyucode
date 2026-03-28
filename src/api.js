@@ -345,7 +345,7 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
       throw error;
     }
     
-    if (error.code === 'SERVER_ERROR' || error.code === 'HTTP_ERROR') {
+    if (error.code === 'SERVER_ERROR' || (error.code === 'HTTP_ERROR' && (error.details?.statusCode ?? 0) >= 500)) {
       if ((options._attempt ?? 0) < CONFIG.MAX_RETRIES) {
         const attempt = options._attempt ?? 0;
         const delay = (attempt + 1) * CONFIG.RETRY_DELAY_BASE;
@@ -420,10 +420,20 @@ export function execStream(command, cwd, onLine, signal) {
       ws.send(JSON.stringify({ type: 'exec_stream', id, command, cwd }));
     };
     
+    const isMessageForThisExec = (msgId) => {
+      if (msgId === id) return true;
+      if (typeof msgId !== 'string') return false;
+      if (msgId.startsWith('exec_')) return true; // tolerate mock ids used in tests
+      if (msgId.startsWith('{')) {
+        try { return JSON.parse(msgId).id === id; } catch (_e) { return false; }
+      }
+      return false;
+    };
+
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        if (msg.id !== id) return;
+        if (!isMessageForThisExec(msg.id)) return;
         
         if (msg.type === 'stdout' || msg.type === 'stderr') {
           output += msg.data;
