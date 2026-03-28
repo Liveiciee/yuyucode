@@ -373,7 +373,7 @@ export async function callServer(payload) {
   } catch (error) {
     return { 
       ok: false, 
-      data: 'YuyuServer tidak dapat dihubungi. Jalankan: node ~/yuyu-server.js &' 
+      data: 'YuyuServer tidak dapat dihubungi. Jalankan: node yuyu-server.cjs &' 
     };
   }
 }
