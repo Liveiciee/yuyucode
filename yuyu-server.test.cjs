@@ -128,6 +128,20 @@ function applyPatchTest(filePath, oldStr, newStr) {
   return { ok: false, data: '⚠ old_str tidak ditemukan' };
 }
 
+function shellEscTest(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/\0/g, '')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/`/g, '\\`')
+    .replace(/\$\(/g, '\\$(');
+}
+
+function isValidGitHubIdentifierTest(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_.-]+$/.test(value);
+}
+
 function buildTreeTest(dirPath, depth, maxDepth, prefix) {
   if (depth > maxDepth) return '';
   let entries;
@@ -632,4 +646,16 @@ describe('ARM64 compatibility', () => {
     expect(endMem - startMem).toBeLessThan(15 * 1024 * 1024); // less than 15MB increase
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }, 30000);
+});
+
+describe('security helpers', () => {
+  it('shellEsc escapes command-substitution sequences', () => {
+    expect(shellEscTest('abc$(whoami)def')).toBe('abc\\$(whoami)def');
+  });
+
+  it('GitHub identifier validator rejects unsafe input', () => {
+    expect(isValidGitHubIdentifierTest('repo-1_ok')).toBe(true);
+    expect(isValidGitHubIdentifierTest('owner;rm -rf /')).toBe(false);
+    expect(isValidGitHubIdentifierTest('bad/repo')).toBe(false);
+  });
 });

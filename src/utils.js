@@ -279,10 +279,11 @@ const ACTION_HANDLERS = {
   },
 };
 
-export async function executeAction(action, baseFolder, _callServer = callServer) {
+export async function executeAction(action, baseFolder, _callServer) {
   const base    = baseFolder || '';
+  const cs      = _callServer || callServer;
   const handler = ACTION_HANDLERS[action.type];
-  if (handler) return handler(action, base, _callServer);
+  if (handler) return handler(action, base, cs);
   return { ok: false, data: 'Unknown action type: ' + action.type };
 }
 
