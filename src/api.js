@@ -108,7 +108,7 @@ function validateApiKey(key, provider) {
 // ──────────────────────────────────────────────────────────────────────────────
 // VISION SUPPORT
 // ──────────────────────────────────────────────────────────────────────────────
-function injectVisionImage(messages, imageBase64) {
+export function injectVisionImage(messages, imageBase64) {
   if (!imageBase64) return messages;
   
   return messages.map((msg, idx) => {
@@ -135,7 +135,7 @@ function injectVisionImage(messages, imageBase64) {
 // ──────────────────────────────────────────────────────────────────────────────
 // SSE STREAM READER
 // ──────────────────────────────────────────────────────────────────────────────
-async function readSSEStream(response, onChunk, signal) {
+export async function readSSEStream(response, onChunk, signal) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -160,12 +160,14 @@ async function readSSEStream(response, onChunk, signal) {
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
       
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        if (line === 'data: [DONE]') continue;
+      for (const rawLine of lines) {
+        const line = rawLine.trimEnd();
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trimStart();
+        if (payload === '[DONE]') continue;
         
         try {
-          const json = JSON.parse(line.slice(6));
+          const json = JSON.parse(payload);
           const content = json.choices?.[0]?.delta?.content || '';
           fullContent += content;
           onChunk?.(fullContent);
@@ -176,9 +178,12 @@ async function readSSEStream(response, onChunk, signal) {
     }
     
     // Handle remaining buffer
-    if (buffer.startsWith('data: ') && buffer !== 'data: [DONE]') {
+    const finalLine = buffer.trimEnd();
+    if (finalLine.startsWith('data:')) {
+      const payload = finalLine.slice(5).trimStart();
+      if (payload === '[DONE]') return fullContent;
       try {
-        const json = JSON.parse(buffer.slice(6));
+        const json = JSON.parse(payload);
         const content = json.choices?.[0]?.delta?.content || '';
         fullContent += content;
         onChunk?.(fullContent);
@@ -373,7 +378,7 @@ export async function callServer(payload) {
   } catch (error) {
     return { 
       ok: false, 
-      data: 'YuyuServer tidak dapat dihubungi. Jalankan: node ~/yuyu-server.js &' 
+      data: 'YuyuServer tidak dapat dihubungi. Jalankan: node yuyu-server.cjs &' 
     };
   }
 }

@@ -16,6 +16,10 @@ const isArm64 = /arm64|arm|aarch64/i.test(navigator?.platform || '') || /aarch64
 const MAX_CONTEXT_FILES = isArm64 ? 3 : 4; // Less files on ARM64
 const MAX_PREVIEW_CHARS = isArm64 ? 600 : 800;
 
+export function extractMentionedFiles(txt = '') {
+  return txt.match(/\b([\w/-]+\.(?:js|cjs|mjs|jsx|ts|tsx|json|md|css|py|sh))\b/g) || [];
+}
+
 // ── Module-level helpers for sendMsg ─────────────────────────────────────────
 
 async function checkServerHealth() {
@@ -274,14 +278,14 @@ ${outB.slice(0, 1500)}
       [['agent','loop','sendmsg'],                 '/src/hooks/useAgentLoop.js'],
       [['panel','ui','modal'],                     '/src/components/panels.jsx'],
       [['constant','model','theme'],               '/src/constants.js'],
-      [['server','yuyu-server','exec'],            '/yuyu-server.js'],
+      [['server','yuyu-server','exec'],            '/yuyu-server.cjs'],
       [['feature','skill','plan'],                 '/src/features.js'],
       [['brightness','gamma','color'],             '/src/hooks/useBrightness.js'],
       [['slash','command'],                        '/src/hooks/useSlashCommands/index.js'],
       [['editor','codemirror','tab'],              '/src/components/FileEditor.jsx'],
     ];
     const keyFiles = [];
-    const fileMatch = txt.match(/\b([\w/-]+\.(?:js|jsx|ts|tsx|json|md|css|py|sh))\b/g);
+    const fileMatch = extractMentionedFiles(txt);
     if (fileMatch) fileMatch.forEach(f => keyFiles.push(f.startsWith('/') ? f : folder + '/src/' + f));
     KEYWORD_FILES.forEach(([keys, file]) => { if (keys.some(k => kw.includes(k))) keyFiles.push(folder + file); });
 
@@ -401,7 +405,7 @@ ${outB.slice(0, 1500)}
       const serverOk = await checkServerHealth();
       if (!serverOk) {
         chat.setLoading(false); chat.setStreaming(''); chat.setAgentStatus(null);
-        chat.setMessages(m => [...m, { role: 'assistant', content: '❌ **yuyu-server tidak dapat dijangkau!**\n\nPastikan server berjalan di Termux:\n```bash\nyuyu-server-start\n# atau\nnode ~/yuyu-server.js &\n```\n\nLalu coba lagi.', actions: [] }]);
+        chat.setMessages(m => [...m, { role: 'assistant', content: '❌ **yuyu-server tidak dapat dijangkau!**\n\nPastikan server berjalan di Termux:\n```bash\nyuyu-server-start\n# atau\nnode ~/yuyu-server.cjs &\n```\n\nLalu coba lagi.', actions: [] }]);
         return;
       }
 

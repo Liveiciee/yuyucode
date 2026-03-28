@@ -47,7 +47,7 @@ export function OnboardingWizard({ T, onDone }) {
         {step===1&&<div>
           <div style={{fontSize:'18px',fontWeight:'700',color:T.text,marginBottom:'8px'}}>🖥 Yuyu Server</div>
           <div style={{fontSize:'13px',color:T.textSec,lineHeight:'1.6',marginBottom:'16px'}}>Yuyu butuh server lokal untuk baca/tulis file. Jalankan dulu di Termux:</div>
-          <div style={{background:T.bg2,border:'1px solid '+T.border,borderRadius:'10px',padding:'12px 14px',fontFamily:'monospace',fontSize:'13px',color:T.accent,marginBottom:'16px'}}>node yuyu-server.js</div>
+          <div style={{background:T.bg2,border:'1px solid '+T.border,borderRadius:'10px',padding:'12px 14px',fontFamily:'monospace',fontSize:'13px',color:T.accent,marginBottom:'16px'}}>node yuyu-server.cjs</div>
           <button onClick={checkServer} disabled={pinging} style={{...btnP,marginTop:'0',opacity:pinging?.6:1,background:ping==='ok'?T.success+'22':ping==='fail'?'#f8717122':T.accentBg,borderColor:ping==='ok'?T.success:ping==='fail'?'#f87171':T.accentBorder,color:ping==='ok'?T.success:ping==='fail'?'#f87171':T.accent}}>
             {pinging?'⏳ Checking...':ping==='ok'?'✅ Server OK':ping==='fail'?'❌ Tidak terdeteksi':'🔍 Cek koneksi'}
           </button>

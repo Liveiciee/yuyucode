@@ -142,7 +142,7 @@ export function AppPanels({
           </button>
           <div style={{background:T.bg3,border:'1px solid '+T.border,borderRadius:'8px',padding:'10px 16px',fontFamily:'monospace',fontSize:'11px',color:T.success,maxWidth:'320px',width:'100%',marginTop:'8px'}}>
             <div style={{color:T.textMute,fontSize:'10px',marginBottom:'4px'}}>💡 Pastikan server jalan:</div>
-            node ~/yuyu-server.js &
+            node ~/yuyu-server.cjs &
           </div>
         </div>
       )}

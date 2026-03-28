@@ -323,7 +323,11 @@ function shellEsc(str) {
     .replace(/\\/g, '\\\\')
     .replace(/"/g, '\\"')
     .replace(/`/g, '\\`')
-    .replace(/\$$$/g, '\\$(');
+    .replace(/\$\(/g, '\\$(');
+}
+
+function isValidGitHubIdentifier(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_.-]+$/.test(value);
 }
 
 const ALLOWED_TYPES = new Set([
@@ -671,13 +675,18 @@ function handleMCP(tool, action, params) {
   if (tool === 'github') {
     const ghToken = token || process.env.GITHUB_TOKEN || '';
     if (!ghToken) return { ok: false, data: 'GitHub token diperlukan. Set GITHUB_TOKEN env.' };
-    const base = `curl -sL -H "Authorization: Bearer ${ghToken}" -H "Accept: application/vnd.github+json"`;
-    if (action === 'repo_info')    return execSafe(`$${base} "https://api.github.com/repos/$${owner}/${repo}"`, HOME, 15000);
-    if (action === 'issues')       return execSafe(`$${base} "https://api.github.com/repos/$${owner}/${repo}/issues?state=open&per_page=20"`, HOME, 15000);
-    if (action === 'pulls')        return execSafe(`$${base} "https://api.github.com/repos/$${owner}/${repo}/pulls?state=open&per_page=20"`, HOME, 15000);
+    if (!isValidGitHubIdentifier(owner) || !isValidGitHubIdentifier(repo)) {
+      return { ok: false, data: 'Owner/repo tidak valid' };
+    }
+    const ownerSafe = shellEsc(owner);
+    const repoSafe = shellEsc(repo);
+    const base = `curl -sL -H "Authorization: Bearer ${shellEsc(ghToken)}" -H "Accept: application/vnd.github+json"`;
+    if (action === 'repo_info')    return execSafe(`${base} "https://api.github.com/repos/${ownerSafe}/${repoSafe}"`, HOME, 15000);
+    if (action === 'issues')       return execSafe(`${base} "https://api.github.com/repos/${ownerSafe}/${repoSafe}/issues?state=open&per_page=20"`, HOME, 15000);
+    if (action === 'pulls')        return execSafe(`${base} "https://api.github.com/repos/${ownerSafe}/${repoSafe}/pulls?state=open&per_page=20"`, HOME, 15000);
     if (action === 'create_issue') {
       const bd = JSON.stringify({ title, body: body || '' });
-      return execSafe(`$${base} -X POST -d '$${bd}' "https://api.github.com/repos/$${owner}/$${repo}/issues"`, HOME, 15000);
+      return execSafe(`${base} -X POST -d '${bd}' "https://api.github.com/repos/${ownerSafe}/${repoSafe}/issues"`, HOME, 15000);
     }
     return { ok: false, data: 'Unknown github action: ' + action };
   }
