@@ -27,7 +27,7 @@
 - AI orchestration and websocket paths lint-hardened to avoid hidden dead-code/error-swallowing regressions.
 - Slash command `/search` now has dedicated unit coverage (`handlers/chat.test.js`) including empty query, no-result, success, and error scenarios.
 - Slash `/sessions` load path switched to direct import to remove ineffective dynamic import warning in production build.
-- Test baseline updated: 49 test files, 1214 passing tests.
+- Test baseline updated: 50 test files, 1215 passing tests.
 - Added dedicated unit coverage for `/bg`, `/db`, `/mcp`, `/plan` command handlers.
 - Testing guide updated with current test totals and required build smoke-check command.
 

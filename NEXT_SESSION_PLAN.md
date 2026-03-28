@@ -56,7 +56,7 @@
 - [ ] JS-0128 — dangling underscore (intentional, tambah comment)
 - [ ] SC issues — shellcheck di bashrc-additions.sh
 
-### 2. Test Coverage — 1214 tests, target 85%
+### 2. Test Coverage — 1215 tests, target 85%
 - [ ] Coverage gap: error handling paths
 - [ ] Integration tests untuk agent loop edge cases
 - [ ] E2E test untuk critical path (open project → edit → save → commit)
@@ -92,7 +92,7 @@
 ## 📋 STATUS SAAT INI
 
 ### v4.6.0 (2026-03-28)
-- **Tests:** 1214 ✅
+- **Tests:** 1215 ✅
 - **Lint:** 0 problems
 - **SonarCloud:** Blocker 0 · High 0
 - **DeepSource:** 226 issues (non-blocker)
