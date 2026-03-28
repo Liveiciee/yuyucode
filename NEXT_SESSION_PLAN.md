@@ -1,5 +1,5 @@
 # YuyuCode — Flagship Plan
-> Dibuat: 2026-03-21 | **Update terakhir: 2026-03-25 (Tech Debt Sprint)**
+> Dibuat: 2026-03-21 | **Update terakhir: 2026-03-28 (Kebaikan Penuh V2)**
 > Pesan dari owner: "Berat, Lama, Susah Bukan Hambatan. All in selama sesuai ekspektasi."
 
 ---
@@ -56,7 +56,7 @@
 - [ ] JS-0128 — dangling underscore (intentional, tambah comment)
 - [ ] SC issues — shellcheck di bashrc-additions.sh
 
-### 2. Test Coverage — 1235 tests, target 85%
+### 2. Test Coverage — 1203 tests, target 85%
 - [ ] Coverage gap: error handling paths
 - [ ] Integration tests untuk agent loop edge cases
 - [ ] E2E test untuk critical path (open project → edit → save → commit)
@@ -91,12 +91,19 @@
 
 ## 📋 STATUS SAAT INI
 
-### v4.5.8 (2026-03-25)
-- **Tests:** 1235 ✅
+### v4.6.0 (2026-03-28)
+- **Tests:** 1203 ✅
 - **Lint:** 0 problems
 - **SonarCloud:** Blocker 0 · High 0
 - **DeepSource:** 226 issues (non-blocker)
 - **Coverage:** ~75% (target 85%)
+
+### V2 Execution Backlog (Mobile-first)
+- [ ] `/bg`, `/db`, `/mcp`, `/plan` masing-masing punya test file dedicated (bukan hanya tercover tidak langsung)
+- [ ] Tambah `npm run health:mobile` ke release checklist wajib
+- [ ] Definisikan budget performa rilis: startup time, memory peak, input latency
+- [ ] Tambah command smoke matrix: open project → edit → search → save → build
+- [ ] Review semua docs status numerik (test count, coverage, benchmark) per release agar tidak usang
 
 ### Hot Files — Perlu Perhatian:
 - `src/hooks/useAgentLoop.js` — complexity tinggi, perlu refactor lanjutan

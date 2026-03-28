@@ -434,7 +434,6 @@ export function execStream(command, cwd, onLine, signal) {
     try {
       ws = new WebSocket(WS_SERVER);
     } catch (_error) {
-  } catch (_error) {
       reject(new Error('WebSocket tidak tersedia'));
       return;
     }

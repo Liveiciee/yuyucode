@@ -11,6 +11,7 @@
 npx vitest run       # run all tests (1203)
 npm run lint         # must be 0 problems
 npm run build        # production build smoke check
+npm run health:mobile # fast phone-ready confidence gate
 ```
 
 ### Test Files

@@ -12,6 +12,7 @@
     "test": "vitest",
     "test:ci": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=lcov --coverage.reporter=text --no-isolate",
     "test:watch": "vitest --watch",
+    "health:mobile": "node scripts/mobile-health-check.cjs",
     "bench": "node yuyu-bench.cjs",
     "bench:save": "node yuyu-bench.cjs --save",
     "bench:reset": "node yuyu-bench.cjs --reset",
