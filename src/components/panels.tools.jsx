@@ -256,7 +256,7 @@ export function McpPanel({ mcpTools, folder: _folder, onResult, onClose, T }) {
           <button onClick={onClose} style={{background:'none',border:'none',color:textMute,fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
         </div>
         {Object.keys(mcpTools).length === 0 && (
-          <div style={{color:textMute,fontSize:'12px',padding:'8px 0'}}>Tidak ada MCP tools terdeteksi dari server.<br/>Pastikan yuyu-server.js sudah jalan.</div>
+          <div style={{color:textMute,fontSize:'12px',padding:'8px 0'}}>Tidak ada MCP tools terdeteksi dari server.<br/>Pastikan yuyu-server.cjs sudah jalan.</div>
         )}
         {entries.map(([tool, actions])=>(
           <div key={tool} style={{padding:'10px 12px',marginBottom:'6px',background:bg3,border:'1px solid rgba(74,222,128,.1)',borderRadius:'8px'}}>

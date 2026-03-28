@@ -81,7 +81,7 @@ export VITE_GROQ_API_KEY="your_key"
 Run:
 
 ```bash
-node ~/yuyu-server.js &   # Session 1
+node ~/yuyu-server.cjs &   # Session 1
 npm run dev               # Session 2 — open localhost:5173
 ```
 
@@ -95,7 +95,7 @@ npm run dev               # Session 2 — open localhost:5173
 |---|---|
 | Frontend | React 19 + Vite 5 |
 | Mobile | Capacitor 8 |
-| Backend | Node.js (yuyu-server.js, Termux) |
+| Backend | Node.js (yuyu-server.cjs, Termux) |
 | Editor | CodeMirror 6 |
 | Terminal | xterm.js |
 | AI | Cerebras (default) + Groq (fallback + vision) |
@@ -104,7 +104,7 @@ npm run dev               # Session 2 — open localhost:5173
 
 ## Known limitations
 
-- Requires `yuyu-server.js` running in Termux at all times
+- Requires `yuyu-server.cjs` running in Termux at all times
 - Depends on free-tier AI APIs — rate limits are real
 - Tested on one device only (Oppo A77s, Snapdragon 680)
 - `npm run build` takes ~1–2 min on ARM64 — signed APK via CI only
