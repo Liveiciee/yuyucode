@@ -6,48 +6,7 @@ export YUYU_AI_CONFIG="$HOME/.yuyu-ai-config"
 export YUYU_AI_KEY="$HOME/.yuyu-ai-key"
 export YUYU_AI_SCRIPT="$YUYU_HOME/bin/ai"
 
-# Helper functions
-_neko_success() {
-    echo -e "${COLOR_GREEN}✅ $*${COLOR_RESET}"
-}
-
-_neko_error() {
-    echo -e "${COLOR_RED}❌ $*${COLOR_RESET}" >&2
-}
-
-_neko_warn() {
-    echo -e "${COLOR_YELLOW}⚠️ $*${COLOR_RESET}"
-}
-
-_neko_info() {
-    echo -e "${COLOR_CYAN}ℹ️ $*${COLOR_RESET}"
-}
-
-_yuyu_yes_no() {
-    local prompt="$1"
-    local default="${2:-y}"
-    
-    echo -ne "${COLOR_CYAN}${prompt} (y/N): ${COLOR_RESET}"
-    read -r answer
-    [[ "${answer:-${default}}" =~ ^[Yy]$ ]]
-}
-
-# Check if external AI exists
-_yuyu_has_external_ai() {
-    [[ -f "${YUYU_AI_SCRIPT}" ]] && [[ -x "${YUYU_AI_SCRIPT}" ]]
-}
-
-# Use external AI
-_yuyu_ai_external_call() {
-    local query="$1"
-    if _yuyu_has_external_ai; then
-        "${YUYU_AI_SCRIPT}" "${query}"
-    else
-        echo "${EMOJI_NEKO} AI script not found at ${YUYU_AI_SCRIPT}"
-        return 1
-    fi
-}
-
+# ==================== AI INIT ====================
 _yuyu_ai_init() {
     mkdir -p "$(dirname "${YUYU_AI_CONFIG}")" 2>/dev/null
     if [[ ! -f "${YUYU_AI_CONFIG}" ]]; then
@@ -62,6 +21,10 @@ EOC
     fi
 }
 
+_yuyu_has_external_ai() {
+    [[ -f "${YUYU_AI_SCRIPT}" ]] && [[ -x "${YUYU_AI_SCRIPT}" ]]
+}
+
 _yuyu_ai_is_enabled() {
     _yuyu_ai_init
     if command -v jq >/dev/null 2>&1; then
@@ -72,129 +35,109 @@ _yuyu_ai_is_enabled() {
     fi
 }
 
-_yuyu_ai_call() {
+_yuyu_ai_external_call() {
     local query="$1"
-    local context="$2"
-    
-    if ! _yuyu_ai_is_enabled; then
-        echo "${EMOJI_NEKO} Nyaa~! AI not enabled. Run: yai-setup"
-        return
-    fi
-    
     if _yuyu_has_external_ai; then
-        _yuyu_ai_external_call "${query}"
+        "${YUYU_AI_SCRIPT}" "${query}"
     else
-        echo "${EMOJI_AI} AI script not found at ${YUYU_AI_SCRIPT}"
-        echo "Please place your AI script at: ~/.config/yuyu/bin/ai"
+        echo "🐱 AI script not found at ${YUYU_AI_SCRIPT}"
+        return 1
     fi
 }
 
+# ==================== LOCAL RESPONSE ====================
 _neko_local_response() {
     local input="$1"
     local input_lower=$(echo "$input" | tr '[:upper:]' '[:lower:]')
-    
+
     case "$input_lower" in
         *"help"*) echo "Try: yhelp for all commands" ;;
         *"hello"*|*"hi"*) echo "Nyaa~! Hello! I'm Yuyu, your cat assistant!" ;;
         *"thank"*) echo "You're welcome! Purr~!" ;;
-        *"ai"*) echo "AI Mode: $( _yuyu_has_external_ai && echo "External AI ready!" || echo "Not installed" )" ;;
+        *"how to"*|*"tutorial"*) echo "💡 Try: yhelp or yai 'how to do X' (with AI enabled)" ;;
+        *"error"*) echo "🐛 Check logs: ylogs | Server status: ystatus" ;;
+        *"ai"*) echo "🤖 AI Mode: $(_yuyu_ai_is_enabled && echo "Enabled" || echo "Disabled")" ;;
         *) echo "Nyaa~! I'm here! Type 'yhelp' for commands, or 'yai-setup' for AI mode" ;;
     esac
 }
 
-# AI Commands
+# ==================== AI COMMANDS ====================
 yai() {
     local query="$*"
     if [[ -z "${query}" ]]; then
-        echo "${EMOJI_AI} Yuyu AI Assistant"
+        echo "🤖 Yuyu AI Assistant"
+        echo ""
         echo "Usage: yai \"your question\""
+        echo ""
+        echo "Examples:"
+        echo "  yai \"How to fix npm install error?\""
+        echo "  yai \"Buat function bash untuk backup\""
+        echo "  yai \"Optimasi Node.js untuk Snapdragon 680\""
         echo ""
         if _yuyu_ai_is_enabled; then
             if _yuyu_has_external_ai; then
-                local model=$(jq -r '.model // "llama3.1-8b"' "${YUYU_AI_CONFIG}" 2>/dev/null)
-                echo "✅ AI Mode: Enabled (External: ${model})"
+                echo "✅ AI Mode: Enabled (External AI ready)"
             else
-                echo "⚠️ AI Enabled but script not found"
+                echo "⚠️ AI Enabled but script not found at: ${YUYU_AI_SCRIPT}"
             fi
             echo "   Disable: yai-off"
         else
-            echo "🐱 Neko Mode: Local responses"
+            echo "🐱 Neko Mode: Local responses (fast, offline)"
             if _yuyu_has_external_ai; then
                 echo "   💡 External AI available! Enable: yai-setup"
             else
-                echo "   📦 Place AI script at: ~/.config/yuyu/bin/ai"
+                echo "   📦 Place AI script at: ${YUYU_AI_SCRIPT}"
                 echo "   Then run: yai-setup"
             fi
         fi
         return
     fi
-    
-    local context="Device: ${YUYU_DEVICE:-unknown} | Profile: ${YUYU_POWER_PROFILE:-cool} | Temp: $(_yuyu_get_cpu_temp 2>/dev/null || echo '?')°C"
-    _yuyu_ai_call "${query}" "${context}"
+
+    local context="Device: ${YUYU_DEVICE:-unknown} | Profile: ${YUYU_POWER_PROFILE:-cool}"
+
+    if _yuyu_ai_is_enabled && _yuyu_has_external_ai; then
+        echo "🤖 Thinking..."
+        _yuyu_ai_external_call "${query}"
+    else
+        _neko_local_response "${query}"
+    fi
 }
 
 yai_setup() {
-    echo "${EMOJI_WIZARD} Yuyu AI Setup Wizard"
-    echo "================================"
+    echo "🤖 Yuyu AI Setup Wizard"
+    echo "========================"
     echo ""
-    
+
     if _yuyu_has_external_ai; then
-        echo "${EMOJI_AI} External AI detected at: ${YUYU_AI_SCRIPT}"
+        echo "✅ External AI detected at: ${YUYU_AI_SCRIPT}"
         echo ""
         
-        # Test AI
-        echo "Testing AI connection..."
-        if "${YUYU_AI_SCRIPT}" "Say 'OK' if you can hear me" 2>/dev/null | grep -q "OK"; then
-            _neko_success "AI is working!"
-        else
-            _neko_warn "AI test failed, but we'll still enable it"
-        fi
-        echo ""
-        
-        if _yuyu_yes_no "Enable this AI as Yuyu's brain?" "y"; then
+        echo -n "Enable AI as Yuyu's brain? (y/N): "
+        read ans
+        if [[ "$ans" =~ ^[Yy]$ ]]; then
             if command -v jq >/dev/null 2>&1; then
-                jq '.enabled = true | .provider = "external"' "${YUYU_AI_CONFIG}" > "${YUYU_AI_CONFIG}.tmp" 2>/dev/null && mv "${YUYU_AI_CONFIG}.tmp" "${YUYU_AI_CONFIG}"
+                jq '.enabled = true' "${YUYU_AI_CONFIG}" > "${YUYU_AI_CONFIG}.tmp" 2>/dev/null && mv "${YUYU_AI_CONFIG}.tmp" "${YUYU_AI_CONFIG}"
             else
-                # Manual edit if jq not available
                 sed -i 's/"enabled": false/"enabled": true/' "${YUYU_AI_CONFIG}"
             fi
-            _neko_success "AI Mode enabled! Try: yai \"Hello!\""
-            echo ""
-            echo "💡 Example:"
-            echo "   yai \"Buat script Python untuk backup file\""
-            echo "   yai \"Optimasi Node.js untuk Snapdragon 680\""
+            echo "✅ AI Mode enabled! Try: yai \"Hello!\""
         else
             echo "Cancelled"
         fi
     else
-        echo "${EMOJI_WARN} No external AI script found at ${YUYU_AI_SCRIPT}"
+        echo "❌ No external AI script found at ${YUYU_AI_SCRIPT}"
         echo ""
-        echo "Options:"
-        echo "  1) Copy your AI script to: ${YUYU_AI_SCRIPT}"
-        echo "  2) Use built-in AI (coming soon)"
-        echo "  3) Cancel"
+        echo "Please place your AI script (Python/Bash) at:"
+        echo "  ${YUYU_AI_SCRIPT}"
         echo ""
-        
-        local choice
-        echo -ne "${COLOR_CYAN}Choose (1-3): ${COLOR_RESET}"
-        read -r choice
-        
-        case $choice in
-            1)
-                echo ""
-                echo "Please copy your AI script:"
-                echo "  cp /path/to/your/ai ${YUYU_AI_SCRIPT}"
-                echo "  chmod +x ${YUYU_AI_SCRIPT}"
-                echo ""
-                echo "Then run: yai-setup again"
-                ;;
-            2)
-                echo "Built-in AI coming in v6.1..."
-                ;;
-            *)
-                echo "Cancelled"
-                ;;
-        esac
+        echo "It should accept a query as argument and output response."
+        echo ""
+        echo "Example Python script:"
+        echo "  #!/usr/bin/env python3"
+        echo "  import sys"
+        echo "  print(f\"Nya~! You said: {sys.argv[1]}\")"
+        echo ""
+        echo "Then run: yai-setup again"
     fi
 }
 
@@ -204,11 +147,11 @@ yai_off() {
     else
         sed -i 's/"enabled": true/"enabled": false/' "${YUYU_AI_CONFIG}"
     fi
-    echo "${EMOJI_NEKO} AI disabled. Neko Mode active!"
+    echo "🐱 AI disabled. Neko Mode active! (fast, private, offline)"
 }
 
 yai_status() {
-    echo "${EMOJI_AI} AI Status"
+    echo "🤖 AI Status"
     echo "━━━━━━━━━━━━━━━━━━━━"
     if _yuyu_ai_is_enabled; then
         echo "  ✅ Enabled: Yes"
@@ -229,22 +172,142 @@ yai_status() {
     fi
 }
 
+# ==================== API KEY MANAGEMENT ====================
+yai_key() {
+    echo "🔑 Yuyu AI Key Manager"
+    echo "======================"
+    echo ""
+    
+    local ai_script="${YUYU_AI_SCRIPT:-$HOME/.config/yuyu/bin/ai}"
+    
+    if [ ! -f "$ai_script" ]; then
+        echo "❌ AI script not found at: $ai_script"
+        echo ""
+        echo "Please create AI script first:"
+        echo "  mkdir -p $(dirname "$ai_script")"
+        echo "  nano $ai_script"
+        return 1
+    fi
+    
+    echo "📁 Current AI script: $ai_script"
+    echo ""
+    
+    # Show current key (partial)
+    if grep -q "API_KEY" "$ai_script" 2>/dev/null; then
+        local current_key=$(grep "API_KEY" "$ai_script" | head -1 | sed -n 's/.*API_KEY = "\([^"]*\).*/\1/p')
+        if [ -n "$current_key" ]; then
+            local partial="${current_key:0:8}********${current_key: -4}"
+            echo "🔍 Current API key: $partial"
+        else
+            echo "⚠️ No API_KEY found in script"
+        fi
+        echo ""
+    fi
+    
+    echo "Options:"
+    echo "  1) Change API Key"
+    echo "  2) Change AI Model"
+    echo "  3) View full current key (show all)"
+    echo "  4) Disable AI"
+    echo "  5) Cancel"
+    echo ""
+    
+    local choice
+    echo -ne "\033[0;36mChoose (1-5): \033[0m"
+    read -r choice
+    
+    case $choice in
+        1)
+            echo ""
+            echo "🔑 Enter new API Key:"
+            echo -ne "\033[0;36m> \033[0m"
+            read -rs new_key
+            echo ""
+            
+            if [ -z "$new_key" ]; then
+                echo "❌ No key provided"
+                return 1
+            fi
+            
+            # Backup original
+            local backup="${ai_script}.backup.$(date +%Y%m%d-%H%M%S)"
+            cp "$ai_script" "$backup"
+            echo "💾 Backup saved: $(basename "$backup")"
+            
+            # Update API_KEY in script
+            if grep -q "API_KEY" "$ai_script"; then
+                sed -i "s/API_KEY = \".*\"/API_KEY = \"$new_key\"/" "$ai_script"
+                echo "✅ API Key updated!"
+            else
+                # Add API_KEY after imports
+                sed -i "/^import/a API_KEY = \"$new_key\"" "$ai_script"
+                echo "✅ API Key added to script!"
+            fi
+            ;;
+            
+        2)
+            echo ""
+            echo "🤖 Available models:"
+            echo "  • llama3.1-8b (default)"
+            echo "  • llama3-70b"
+            echo "  • mixtral-8x7b"
+            echo "  • gpt-3.5-turbo"
+            echo "  • gpt-4"
+            echo "  • custom"
+            echo ""
+            echo -ne "\033[0;36mEnter model name: \033[0m"
+            read -r new_model
+            
+            if [ -z "$new_model" ]; then
+                echo "❌ No model provided"
+                return 1
+            fi
+            
+            # Update config
+            if command -v jq >/dev/null 2>&1; then
+                jq ".model = \"$new_model\"" "${YUYU_AI_CONFIG}" > "${YUYU_AI_CONFIG}.tmp" 2>/dev/null && mv "${YUYU_AI_CONFIG}.tmp" "${YUYU_AI_CONFIG}"
+            else
+                sed -i "s/\"model\": \".*\"/\"model\": \"$new_model\"/" "${YUYU_AI_CONFIG}"
+            fi
+            
+            echo "✅ Model updated to: $new_model"
+            ;;
+            
+        3)
+            echo ""
+            echo "🔑 Full API Key:"
+            grep "API_KEY" "$ai_script" | head -1 | sed 's/API_KEY = "\(.*\)"/\1/'
+            echo ""
+            echo "⚠️  Keep this key secret! Don't share it."
+            ;;
+            
+        4)
+            yai_off
+            ;;
+            
+        *)
+            echo "Cancelled"
+            return 0
+            ;;
+    esac
+    
+    echo ""
+    echo "🔄 Test new configuration:"
+    echo "   yai \"Hello, test connection\""
+}
+
+# ==================== ALIASES ====================
+alias yai="yai"
+alias yai-setup="yai_setup"
+alias yai-off="yai_off"
+alias yai-status="yai_status"
+alias yai-key="yai_key"
+
 # Initialize
 _yuyu_ai_init
 export YUYU_AI_ENABLED="$(_yuyu_ai_is_enabled && echo "1" || echo "0")"
 
 # Show AI status on load (only if enabled)
 if _yuyu_ai_is_enabled && _yuyu_has_external_ai; then
-    echo -e "${COLOR_GREEN}🤖 AI Mode: External AI ready!${COLOR_RESET}"
+    echo -e "\033[38;5;99m🤖 AI Mode: External AI ready!\033[0m"
 fi
-
-# Fix for yes/no prompt
-_yuyu_yes_no() {
-    local prompt="$1"
-    local default="${2:-n}"
-    
-    echo -ne "${COLOR_CYAN}${prompt} (y/N): ${COLOR_RESET}"
-    read -r answer
-    answer="${answer:-${default}}"
-    [[ "${answer}" =~ ^[Yy]$ ]]
-}

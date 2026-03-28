@@ -2,30 +2,56 @@
 import requests
 import sys
 import json
+from pathlib import Path
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-API_KEY = "csk-rhp8v2ve4r2eh5ynnrywrt9jxmkcmjmhekmt9y389e5j9f55"
+API_KEY = "csk-...."  # Ganti dengan API keymu yang benar
 
 console = Console()
 
-def ask_ai(prompt):
+def read_file(file_path):
+    """Membaca file lokal. Jika tidak ada, kembalikan tanda khusus untuk ditangani AI."""
+    path = Path(file_path)
+    if not path.exists():
+        return f"[FILE_NOT_FOUND]{file_path}"  # Tanda khusus
+    return f"```\n{path.read_text()}\n```"
+
+def list_files(folder_path):
+    """List semua file di folder lokal."""
+    path = Path(folder_path)
+    if not path.exists():
+        return f"[FOLDER_NOT_FOUND]{folder_path}"  # Tanda khusus
+
+    files = [f.name for f in path.iterdir() if f.is_file()]
+    if not files:
+        return "[FOLDER_EMPTY]"
+    return "File di folder:\n- " + "\n- ".join(files)
+
+def ask_ai_to_api(prompt):
+    """Kirim prompt ke API AI untuk respon alami."""
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API_KEY}"
     }
-    
+
     data = {
         "model": "llama3.1-8b",
         "messages": [
-            {"role": "system", "content": "Kamu adalah AI coding assistant yang expert. Berikan kode yang rapi, jelas, dan lengkap dengan penjelasan. Selalu gunakan markdown untuk formatting."},
+            {"role": "system", "content": (
+                "Kamu adalah AI coding assistant yang lucu, ramah, dan imut seperti kucing. "
+                "Gunakan emoji kucing (😺, 🐱, 😼, 🐾, 🐱‍👤) dan bahasa yang alami. "
+                "Jika user salah (misal file tidak ditemukan), beri tahu dengan cara yang menyenangkan "
+                "dan beri saran untuk mengecek path atau menggunakan perintah 'list file'. "
+                "Selalu balas dengan semangat!"
+            )},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.7
+        "temperature": 0.9  # Lebih kreatif
     }
-    
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[bold cyan]🤖 Thinking...[/bold cyan]"),
@@ -39,36 +65,89 @@ def ask_ai(prompt):
             timeout=60
         )
         result = response.json()
-    
+
     if 'choices' in result and len(result['choices']) > 0:
         return result['choices'][0]['message']['content']
-    elif 'error' in result:
-        return f"[red]Error:[/red] {result['error'].get('message', result['error'])}"
     else:
-        return f"[yellow]Unexpected:[/yellow] {result}"
+        return f"[red]Error:[/red] Gagal terhubung ke AI. Coba lagi nanti!"
+
+def ask_ai(prompt):
+    """Proses permintaan user (baca file/list file) dan kirim ke API jika perlu."""
+    if prompt.lower().startswith("baca file"):
+        file_path = prompt[9:].strip()
+        if not file_path:
+            return (
+                "😹 **Path file-nya mana?** 🐱\n"
+                "Contoh: `baca file /storage/emulated/0/Download/contoh.txt`"
+            )
+
+        file_content = read_file(file_path)
+        if file_content.startswith("[FILE_NOT_FOUND]"):
+            error_path = file_content.replace("[FILE_NOT_FOUND]", "")
+            ai_prompt = (
+                f"User meminta untuk membaca file '{error_path}', "
+                f"tapi file tidak ditemukan di perangkat. "
+                f"Beri tahu user dengan bahasa yang lucu, ramah, dan alami, "
+                f"seperti kucing yang ngomong. Gunakan emoji kucing (😺, 🐱, 😼) "
+                f"dan beri saran untuk mengecek path atau menggunakan perintah 'list file'."
+            )
+            return ask_ai_to_api(ai_prompt)
+
+        return file_content
+
+    elif prompt.lower().startswith("list file"):
+        folder_path = prompt[9:].strip() or "/storage/emulated/0/Download"
+        folder_content = list_files(folder_path)
+
+        if folder_content.startswith("[FOLDER_NOT_FOUND]"):
+            error_path = folder_content.replace("[FOLDER_NOT_FOUND]", "")
+            ai_prompt = (
+                f"User meminta untuk melihat file di folder '{error_path}', "
+                f"tapi folder tidak ditemukan. "
+                f"Beri tahu user dengan bahasa yang lucu, ramah, dan alami, "
+                f"seperti kucing, dan beri saran untuk mengecek path."
+            )
+            return ask_ai_to_api(ai_prompt)
+
+        elif folder_content == "[FOLDER_EMPTY]":
+            ai_prompt = (
+                f"User meminta untuk melihat file di folder '{folder_path}', "
+                f"tapi folder kosong. "
+                f"Beri tahu user dengan bahasa yang lucu, ramah, dan alami, "
+                f"seperti kucing, dan beri saran untuk membuat file baru."
+            )
+            return ask_ai_to_api(ai_prompt)
+
+        return folder_content
+
+    else:
+        # Jika bukan perintah baca/list file, kirim ke AI biasa
+        return ask_ai_to_api(prompt)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         console.print(Panel.fit(
-            "[bold cyan]🤖 AI Coding Assistant[/bold cyan]\n\n"
+            "[bold cyan]🤖 AI Coding Assistant v2.0[/bold cyan]\n\n"
             "[yellow]Usage:[/yellow] ai_rich 'pertanyaan'\n\n"
             "[green]Contoh:[/green]\n"
             "  ai_rich 'Buat script python factorial'\n"
-            "  ai_rich 'Jelaskan function di Python'",
+            "  ai_rich 'Jelaskan function di Python'\n"
+            "  ai_rich 'baca file /storage/emulated/0/Download/contoh.txt'\n"
+            "  ai_rich 'list file /storage/emulated/0/Download'",
             border_style="cyan"
         ))
         sys.exit(1)
-    
+
     # Banner
     console.print("\n[bold cyan]╔══════════════════════════════════════╗[/bold cyan]")
     console.print("[bold cyan]║      🤖 AI Coding Assistant v2.0    ║[/bold cyan]")
     console.print("[bold cyan]╚══════════════════════════════════════╝[/bold cyan]\n")
-    
+
     prompt = " ".join(sys.argv[1:])
     console.print(f"[dim]? {prompt}[/dim]\n")
-    
+
     answer = ask_ai(prompt)
-    
+
     console.print(Panel(
         Markdown(answer),
         title="[bold green]💬 Response[/bold green]",

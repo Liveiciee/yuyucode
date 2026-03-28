@@ -76,3 +76,8 @@ __screenshots__/
 # Termux specific
 bashrc-additions.sh.local
 .termux/
+
+# Shell runtime files (jangan commit)
+shell/logs/
+shell/backups/
+shell/bin/ai.backup.*
