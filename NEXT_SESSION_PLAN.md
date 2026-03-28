@@ -56,7 +56,7 @@
 - [ ] JS-0128 — dangling underscore (intentional, tambah comment)
 - [ ] SC issues — shellcheck di bashrc-additions.sh
 
-### 2. Test Coverage — 1203 tests, target 85%
+### 2. Test Coverage — 1214 tests, target 85%
 - [ ] Coverage gap: error handling paths
 - [ ] Integration tests untuk agent loop edge cases
 - [ ] E2E test untuk critical path (open project → edit → save → commit)
@@ -92,14 +92,14 @@
 ## 📋 STATUS SAAT INI
 
 ### v4.6.0 (2026-03-28)
-- **Tests:** 1203 ✅
+- **Tests:** 1214 ✅
 - **Lint:** 0 problems
 - **SonarCloud:** Blocker 0 · High 0
 - **DeepSource:** 226 issues (non-blocker)
 - **Coverage:** ~75% (target 85%)
 
 ### V2 Execution Backlog (Mobile-first)
-- [ ] `/bg`, `/db`, `/mcp`, `/plan` masing-masing punya test file dedicated (bukan hanya tercover tidak langsung)
+- [x] `/bg`, `/db`, `/mcp`, `/plan` masing-masing punya test file dedicated (bukan hanya tercover tidak langsung)
 - [ ] Tambah `npm run health:mobile` ke release checklist wajib
 - [ ] Definisikan budget performa rilis: startup time, memory peak, input latency
 - [ ] Tambah command smoke matrix: open project → edit → search → save → build

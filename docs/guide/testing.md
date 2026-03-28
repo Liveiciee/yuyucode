@@ -2,13 +2,13 @@
 
 ## Test Suite
 
-1203 tests passing. 0 lint warnings. Runs on Termux ARM64 (Snapdragon 680).
+1214 tests passing. 0 lint warnings. Runs on Termux ARM64 (Snapdragon 680).
 
 - 50 property-based tests via `fast-check` — 100 random inputs each for `parseActions` and `resolvePath`
 - 363 branch coverage tests targeting SonarCloud condition branches across all core hooks
 
 ```bash
-npx vitest run       # run all tests (1203)
+npx vitest run       # run all tests (1214)
 npm run lint         # must be 0 problems
 npm run build        # production build smoke check
 npm run health:mobile # fast phone-ready confidence gate
@@ -41,8 +41,11 @@ npm run health:mobile # fast phone-ready confidence gate
 | `useSlashCommands/index.test.js` | Unit — command dispatch | 9 |
 | `useSlashCommands/handlers/batch.test.js` | Unit — /batch handler | 45 |
 | `useSlashCommands/handlers/chat.test.js` | Unit — /search + clear/stop/rename paths | 8 |
+| `useSlashCommands/handlers/agent.test.js` | Unit — /bg and /bgstatus core flows | 3 |
 | `useSlashCommands/handlers/git.test.js` | Unit — /history, /diff, /refactor | 49 |
 | `useSlashCommands/handlers/model.test.js` | Unit — /model, /ask, /ab | 7 |
+| `useSlashCommands/handlers/plan.test.js` | Unit — /plan + /ask alias paths | 4 |
+| `useSlashCommands/handlers/tools.test.js` | Unit — /mcp + /db core paths | 4 |
 | `useSlashCommands/handlers/undo.test.js` | Unit — /undo, /rewind | 15 |
 | `useSlashCommands/helpers/simpleResponse.test.js` | Unit — simpleResponse helper | 14 |
 | `useSlashCommands/helpers/withLoading.test.js` | Unit — withLoading wrapper | 23 |
