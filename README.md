@@ -23,7 +23,7 @@
 
 ---
 
-**v4.5.4** — Personal tool. Works on one phone — mine. Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). Issues welcome. Use at your own risk.
+**v4.5.9** — Personal tool. Works on one phone — mine. Not production software. Tested on one device (Oppo A77s, Snapdragon 680, Android 14). Issues welcome. Use at your own risk.
 
 ---
 
@@ -45,16 +45,20 @@ You type a task → YuyuCode streams a response, executes file reads/writes/patc
 
 ## Highlights
 
-- 🤖 **Agentic loop** — up to 10 iterations, parallel reads, serial exec, auto error recovery
-- 🔍 **Visual Diff Review** — pause before any write, inspect diffs, reject with feedback
+- 🤖 **Agentic loop** — up to 20 iterations (configurable via `/effort`), parallel reads, serial exec, auto error recovery
+- 🔍 **Visual Diff Review** — pause before any write, inspect diffs, reject with feedback, atomic rollback
 - 🐝 **Agent Swarm** — Architect → FE + BE (parallel) → QA → auto-fix, one command
-- 🤖 **Background Agents** — isolated git worktrees, main branch stays clean
-- ✏️ **Full mobile editor** — CodeMirror 6, Vim, AI ghost text L1+L2, TypeScript LSP, inline blame
+- 🤖 **Background Agents** — isolated git worktrees, main branch stays clean, `/bgmerge` when done
+- ✏️ **Full mobile editor** — CodeMirror 6, Vim, AI ghost text L1+L2, TypeScript LSP, inline blame, minimap
+- 🔐 **Encrypted key storage** — AES-256-GCM + PBKDF2 (300K iterations), 24h expiry, change at runtime via `/apikeys`
 - 🔆 **Perceptual brightness** — Weber-Fechner compensation below 25%, zero cost above
 - 📷 **Camera-to-Code** — photo → vision model → code
 - 📁 **Project Manager** — recent projects, browse filesystem, create new — first-run ready
+- 🎙️ **Wake word** — "Hey Yuyu" hands-free activation via Web Speech API
+- 🗄️ **SQLite persistence** — FTS5 full-text search across messages, memories, checkpoints
 - ⚡ **Rate limit fallback chain** — Cerebras → Kimi K2 → Llama 70B → Llama 8B, seamless
 - ⚡ **Histogram diff** — chunked O(n) diff for large files, 0 → 2482 ops/sec worst case
+- 🛠️ **~68 slash commands** — `/review --all`, `/bg`, `/swarm`, `/search`, `/ab`, `/db`, and more
 
 → **[All features](https://liveiciee.github.io/yuyucode/features/)**
 
@@ -62,28 +66,38 @@ You type a task → YuyuCode streams a response, executes file reads/writes/patc
 
 ## Getting started
 
-Requires Android + [Termux](https://termux.dev/).
+Requires Android + [Termux](https://termux.dev/) (install from F-Droid, not Play Store).
 
 ```bash
+pkg install nodejs
 git clone https://github.com/liveiciee/yuyucode
 cd yuyucode
 npm install
 ```
 
-Set API keys (free tier — [Cerebras](https://cloud.cerebras.ai) + [Groq](https://console.groq.com)):
+Set API keys (free tier). All three services are required or optional as noted:
+
+| Service | Purpose | Link |
+|---------|---------|------|
+| Cerebras | Primary AI inference (Qwen 3 235B) | [cloud.cerebras.ai](https://cloud.cerebras.ai) |
+| Groq | Fallback chain + vision routing | [console.groq.com](https://console.groq.com) |
+| Tavily | Web search — optional | [tavily.com](https://tavily.com) |
 
 ```bash
 # Add to ~/.bashrc
 export VITE_CEREBRAS_API_KEY="your_key"
 export VITE_GROQ_API_KEY="your_key"
+export VITE_TAVILY_API_KEY="your_key"   # optional
 ```
 
-Run:
+Run — two Termux sessions simultaneously:
 
 ```bash
-node ~/yuyu-server.cjs &   # Session 1
+node ~/yuyu-server.cjs &  # Session 1 — run from home (~), keep running
 npm run dev               # Session 2 — open localhost:5173
 ```
+
+Keys can also be entered through the Onboarding Wizard on first launch, or changed any time with `/apikeys` in chat — no APK rebuild required.
 
 → **[Full setup guide](https://liveiciee.github.io/yuyucode/guide/getting-started)**
 
@@ -93,12 +107,59 @@ npm run dev               # Session 2 — open localhost:5173
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19 + Vite 5 |
+| Frontend | React 19 + Vite |
 | Mobile | Capacitor 8 |
 | Backend | Node.js (yuyu-server.cjs, Termux) |
 | Editor | CodeMirror 6 |
 | Terminal | xterm.js |
+| Persistence | SQLite via @capacitor-community/sqlite |
 | AI | Cerebras (default) + Groq (fallback + vision) |
+
+---
+
+## Commit workflow
+
+Uses `yugit.cjs` — handles `git add -A`, commit, and push in one command. Enforces conventional commit format and auto-bumps version on releases.
+
+**Quality gate — must pass before every push:**
+
+```bash
+npm run lint && npx vitest run
+```
+
+Must be: 0 lint errors, 1225/1225 tests passing. Then commit:
+
+```bash
+# Commit + push (most common)
+node yugit.cjs "feat: add something"
+node yugit.cjs "fix: broken layout"
+node yugit.cjs "perf: reduce bundle size"
+node yugit.cjs "test: add edge cases for useAgentLoop"
+
+# Commit only, push later
+node yugit.cjs "feat: wip thing" --no-push
+
+# Release — auto bumps package.json version + triggers CI APK build + GitHub Release
+node yugit.cjs "release: v4.6 — agent swarm improvements"
+
+# Amend last commit (force push)
+node yugit.cjs "fix: typo in last commit" --amend
+
+# Push existing local commits
+node yugit.cjs --push
+
+# Squash last N commits into one
+node yugit.cjs --squash 3 "feat: squashed feature"
+
+# Check branch status + recent commits
+node yugit.cjs --status
+```
+
+**Commit types:** `feat` · `fix` · `perf` · `test` · `docs` · `refactor` · `ci` · `chore` · `release`
+
+Scope is supported: `feat(api): add retry logic`. Breaking change: `feat!: overhaul agent loop`.
+
+→ **[Full yugit reference](https://liveiciee.github.io/yuyucode/guide/yugit)**
 
 ---
 
@@ -108,6 +169,8 @@ npm run dev               # Session 2 — open localhost:5173
 - Depends on free-tier AI APIs — rate limits are real
 - Tested on one device only (Oppo A77s, Snapdragon 680)
 - `npm run build` takes ~1–2 min on ARM64 — signed APK via CI only
+- `vitest` is pinned at v3 — v4 crashes with `Illegal instruction` on Snapdragon 680 (ARM64)
+- Do not remove `"overrides": { "rollup": "npm:@rollup/wasm-node" }` from `package.json` — breaks ARM64 build
 
 ---
 
