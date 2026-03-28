@@ -1,11 +1,11 @@
 // ============================================================
 // FILE: yuyu-server.js
 // ============================================================
-// YuyuServer v6 — HTTP :8765, WS :8766
-// ARM64 optimized, cache invalidation, rate limiting
+// YuyuServer v7 — HTTP :8765, WS :8766
+// ARM64 optimized, cache invalidation, rate limiting, HUMAN MODE
 // ============================================================
 
-// yuyu-server.js — v6
+// yuyu-server.js — v7
 // Run dari ~: node ~/yuyu-server.js &
 // Flags: --verbose (log every request)
 const http   = require('http');
@@ -67,7 +67,7 @@ setInterval(() => {
 const HOME    = process.env.HOME;
 const PORT    = 8765;
 const WS_PORT = 8766;
-const VERSION = 'v6';
+const VERSION = 'v7';
 
 // ── MCP TOOL REGISTRY ─────────────────────────────────────────────────────────
 const MCP_TOOLS = {
@@ -120,6 +120,195 @@ try {
   });
 } catch(_e) {}
 
+// ── HUMAN-FRIENDLY FORMATTERS ─────────────────────────────────────────────────
+function formatPackageJSON(pkgData) {
+  if (typeof pkgData === 'string') {
+    try { pkgData = JSON.parse(pkgData); } catch(e) { return pkgData; }
+  }
+  
+  const lines = [];
+  lines.push(`📦 **$${pkgData.name || 'Project'}** v$${pkgData.version || '?'}`);
+  lines.push(`   ${pkgData.private ? '🔒 Private' : '🌍 Public'}`);
+  lines.push('');
+  
+  if (pkgData.scripts) {
+    lines.push('⚙️ **Scripts yang tersedia:**');
+    const scriptDesc = {
+      'dev': '🚀 Jalankan development server (mode live-reload)',
+      'build': '📦 Build untuk production (hasil siap deploy)',
+      'lint': '🔍 Cek kualitas kode & style guide',
+      'lint:fix': '✨ Perbaiki masalah linting otomatis',
+      'test': '🧪 Jalankan semua tes',
+      'test:watch': '👀 Tes otomatis saat ada perubahan',
+      'preview': '👀 Preview hasil build di browser',
+      'bench': '📊 Ukur performa aplikasi',
+      'bench:save': '💾 Simpan hasil benchmark',
+      'bench:reset': '🔄 Reset data benchmark',
+    };
+    for (const [name, cmd] of Object.entries(pkgData.scripts)) {
+      const desc = scriptDesc[name] || `💻 $${cmd.slice(0, 50)}$${cmd.length > 50 ? '...' : ''}`;
+      lines.push(`   • \`npm run ${name}\` — ${desc}`);
+    }
+  }
+  
+  if (pkgData.dependencies) {
+    const depCount = Object.keys(pkgData.dependencies).length;
+    lines.push(`\n📚 **${depCount} dependensi utama** (library yang dipakai aplikasi)`);
+    
+    // Highlight yang penting
+    const important = {
+      'react': 'Framework UI paling populer',
+      'vue': 'Framework UI yang mudah dipelajari',
+      'angular': 'Framework enterprise oleh Google',
+      'typescript': 'JavaScript dengan tipe data',
+      'node': 'Runtime JavaScript di server',
+      'codemirror': 'Editor kode di browser',
+      'vite': 'Build tool super cepat',
+    };
+    
+    const highlighted = [];
+    for (const [name, desc] of Object.entries(pkgData.dependencies)) {
+      if (important[name]) {
+        highlighted.push(`   • **$${name}** ($${desc})`);
+      }
+    }
+    
+    if (highlighted.length) {
+      lines.push('\n   ✨ Yang sering dipakai:');
+      lines.push(...highlighted.slice(0, 5));
+    }
+    
+    const otherDeps = Object.keys(pkgData.dependencies).filter(d => !important[d]);
+    if (otherDeps.length) {
+      lines.push(`\n   📦 Lainnya: $${otherDeps.slice(0, 5).join(', ')}$${otherDeps.length > 5 ? '...' : ''}`);
+    }
+  }
+  
+  if (pkgData.devDependencies) {
+    const devCount = Object.keys(pkgData.devDependencies).length;
+    lines.push(`\n🛠️ **${devCount} dev tools** (hanya dipakai saat development)`);
+  }
+  
+  if (pkgData.overrides) {
+    lines.push(`\n⚠️ **Overrides khusus**:`);
+    for (const [pkg, override] of Object.entries(pkgData.overrides)) {
+      lines.push(`   • ${pkg} → ${override}`);
+    }
+  }
+  
+  return lines.join('\n');
+}
+
+function formatConfigFile(configData, fileName) {
+  if (typeof configData === 'string') {
+    try { configData = JSON.parse(configData); } catch(e) { return configData; }
+  }
+  
+  const lines = [];
+  lines.push(`⚙️ **${fileName}**`);
+  lines.push('');
+  
+  if (fileName === 'tsconfig.json') {
+    lines.push('📝 **Konfigurasi TypeScript:**');
+    if (configData.compilerOptions) {
+      const opts = configData.compilerOptions;
+      if (opts.target) lines.push(`   • Target: ${opts.target}`);
+      if (opts.module) lines.push(`   • Module system: ${opts.module}`);
+      if (opts.strict) lines.push(`   • Strict mode: ${opts.strict ? '✅ Aktif' : '❌ Nonaktif'}`);
+      if (opts.jsx) lines.push(`   • JSX support: ${opts.jsx}`);
+      if (opts.outDir) lines.push(`   • Output folder: ${opts.outDir}`);
+      if (opts.rootDir) lines.push(`   • Source folder: ${opts.rootDir}`);
+    }
+  }
+  
+  if (fileName === 'vite.config.js' || fileName === 'vite.config.ts') {
+    lines.push('⚡ **Konfigurasi Vite (build tool):**');
+    lines.push('   📦 Build tool modern yang sangat cepat');
+    if (configData.plugins) lines.push(`   • Plugins: ${configData.plugins.length || 0} plugin`);
+  }
+  
+  if (fileName === '.eslintrc.json' || fileName === 'eslint.config.js') {
+    lines.push('🔍 **Konfigurasi ESLint (code quality):**');
+    lines.push('   • Memastikan kode konsisten & bebas error');
+  }
+  
+  return lines.join('\n');
+}
+
+function formatEnvFile(envData) {
+  const lines = [];
+  lines.push('🔐 **Environment Variables**');
+  lines.push('');
+  
+  const vars = envData.split('\n').filter(l => l.trim() && !l.startsWith('#'));
+  const sensitive = ['KEY', 'SECRET', 'TOKEN', 'PASSWORD', 'API', 'CREDENTIAL'];
+  
+  let publicCount = 0;
+  let secretCount = 0;
+  
+  for (const line of vars) {
+    const [key] = line.split('=');
+    const isSecret = sensitive.some(s => key.includes(s));
+    if (isSecret) secretCount++;
+    else publicCount++;
+  }
+  
+  lines.push(`   📊 Total: ${vars.length} variabel`);
+  lines.push(`   🔒 Secret: ${secretCount}`);
+  lines.push(`   🌍 Public: ${publicCount}`);
+  lines.push('');
+  lines.push('   ⚠️ Jangan commit file ini ke GitHub!');
+  
+  return lines.join('\n');
+}
+
+function formatMarkdown(mdData) {
+  const lines = [];
+  const titleMatch = mdData.match(/^#\s+(.+)$/m);
+  if (titleMatch) {
+    lines.push(`📖 **${titleMatch[1]}**`);
+  } else {
+    lines.push('📖 **Dokumentasi**');
+  }
+  lines.push('');
+  
+  // Hitung sections
+  const sections = mdData.match(/^#{1,3}\s+.+$/gm) || [];
+  lines.push(`📑 **${sections.length} section**`);
+  
+  // Estimasi panjang
+  const wordCount = mdData.split(/\s+/).length;
+  lines.push(`📝 **~${wordCount} kata**`);
+  
+  // Cek ada code blocks?
+  const codeBlocks = (mdData.match(/```/g) || []).length;
+  if (codeBlocks > 0) {
+    lines.push(`💻 **${codeBlocks / 2} code block**`);
+  }
+  
+  // Cek ada links?
+  const links = (mdData.match(/$$.*?$$$$.*?$$/g) || []).length;
+  if (links > 0) {
+    lines.push(`🔗 **${links} link eksternal**`);
+  }
+  
+  return lines.join('\n');
+}
+
+function humanFormat(content, filePath) {
+  const fileName = path.basename(filePath).toLowerCase();
+  
+  if (fileName === 'package.json') return formatPackageJSON(content);
+  if (fileName === 'tsconfig.json') return formatConfigFile(content, 'tsconfig.json');
+  if (fileName.startsWith('vite.config')) return formatConfigFile(content, 'vite.config');
+  if (fileName === '.eslintrc.json' || fileName === 'eslint.config.js') return formatConfigFile(content, 'eslint');
+  if (fileName === '.env' || fileName.endsWith('.env')) return formatEnvFile(content);
+  if (fileName.endsWith('.md')) return formatMarkdown(content);
+  
+  // Default: return as-is
+  return content;
+}
+
 // ── HELPERS ────────────────────────────────────────────────────────────────────
 function resolvePath(filePath) {
   if (!filePath) return HOME;
@@ -134,7 +323,7 @@ function shellEsc(str) {
     .replace(/\\/g, '\\\\')
     .replace(/"/g, '\\"')
     .replace(/`/g, '\\`')
-    .replace(/\$\(/g, '\\$(');
+    .replace(/\$$$/g, '\\$(');
 }
 
 const ALLOWED_TYPES = new Set([
@@ -152,7 +341,7 @@ function execSafe(command, cwd, timeoutMs = 60000) {
     });
     return { ok: true, data: out || '(selesai)' };
   } catch(e) {
-    const errMsg = `${e.stdout || ''}${e.stderr || ''}` || e.message;
+    const errMsg = `$${e.stdout || ''}$${e.stderr || ''}` || e.message;
     if (errMsg.includes('Illegal instruction')) {
       return { ok: false, data: '⚠️ Illegal instruction — possible ARM64 incompatibility.' };
     }
@@ -201,11 +390,11 @@ function applyPatch(filePath, oldStr, newStr) {
   const fileLines = normContent.split('\n');
   const nearIdx   = fileLines.findIndex(l => l.trim().includes(firstLine.slice(0, 30)));
   const ctx = nearIdx !== -1
-    ? `\n\nContext sekitar baris ${nearIdx + 1}:\n${fileLines.slice(Math.max(0, nearIdx - 2), nearIdx + 5).join('\n')}`
+    ? `\n\nContext sekitar baris $${nearIdx + 1}:\n$${fileLines.slice(Math.max(0, nearIdx - 2), nearIdx + 5).join('\n')}`
     : '';
   return {
     ok: false,
-    data: `⚠ old_str tidak ditemukan di ${filePath}. Pastikan exact match.${ctx}`,
+    data: `⚠ old_str tidak ditemukan di $${filePath}. Pastikan exact match.$${ctx}`,
   };
 }
 
@@ -253,9 +442,9 @@ function walkSync(dir) {
 
 function extractSigs(src, _filePath) {
   const sigs = [];
-  const re1 = /^export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]{0,120})\)/gm;
-  const re2 = /^export\s+const\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]{0,80})\)\s*=>/gm;
-  const re3 = /^(?:export\s+)?(?:default\s+)?function\s+([A-Za-z]\w+)\s*\(([^)]{0,80})\)/gm;
+  const re1 = /^export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]{0,120})$$/gm;
+  const re2 = /^export\s+const\s+(\w+)\s*=\s*(?:async\s*)?$$([^)]{0,80})$$\s*=>/gm;
+  const re3 = /^(?:export\s+)?(?:default\s+)?function\s+([A-Za-z]\w+)\s*$$([^)]{0,80})$$/gm;
   for (const re of [re1, re2, re3]) {
     let m;
     while ((m = re.exec(src)) !== null) {
@@ -270,7 +459,7 @@ function extractSigs(src, _filePath) {
 
 // ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 function handle(payload) {
-  const { type, path: filePath, content, command, from, to, url, query, dbPath, token, tool, action, params, paths, depth } = payload;
+  const { type, path: filePath, content, command, from, to, url, query, dbPath, token, tool, action, params, paths, depth, human } = payload;
   const full = resolvePath(filePath);
 
   if (type && !ALLOWED_TYPES.has(type)) return { ok: false, data: 'Unknown type: ' + type };
@@ -309,12 +498,26 @@ function handle(payload) {
     if (!fs.existsSync(full)) return { ok: false, data: 'File tidak ada: ' + filePath };
     if (!from && !to) {
       const cached = getCached(full);
-      if (cached) return { ok: true, data: cached.data, meta: cached.meta, cached: true };
+      if (cached && !human) return { ok: true, data: cached.data, meta: cached.meta, cached: true };
     }
     let data = fs.readFileSync(full, 'utf8');
     const totalLines = data.split('\n').length;
     const totalChars = data.length;
-    if (!from && !to) setCache(full, data, { totalLines, totalChars });
+    if (!from && !to && !human) setCache(full, data, { totalLines, totalChars });
+    
+    // HUMAN MODE: Format untuk orang awam
+    if (human) {
+      try {
+        const parsed = JSON.parse(data);
+        data = humanFormat(parsed, filePath);
+      } catch(e) {
+        // Jika bukan JSON, tetap format markdown atau text biasa
+        if (filePath.endsWith('.md')) {
+          data = humanFormat(data, filePath);
+        }
+      }
+    }
+    
     if (from || to) {
       const lines = data.split('\n');
       const f = (from || 1) - 1;
@@ -389,11 +592,11 @@ function handle(payload) {
     const rgCheck = execSafe('which rg 2>/dev/null', HOME, 2000);
     if (rgCheck.ok && rgCheck.data.trim()) {
       const ext = (payload.ext || 'jsx,js,ts,tsx,json,md,py,sh').split(',').map(e => '-g "**/*.'+e+'"').join(' ');
-      const r = execSafe(`rg -n --color=never ${ext} "${q}" "${searchPath}" 2>/dev/null | head -100`, HOME, 15000);
+      const r = execSafe(`rg -n --color=never $${ext} "$${q}" "${searchPath}" 2>/dev/null | head -100`, HOME, 15000);
       return { ok: true, data: r.data.trim() || 'Tidak ditemukan' };
     }
     const exts = '--include="*.jsx" --include="*.js" --include="*.ts" --include="*.tsx" --include="*.json" --include="*.md" --include="*.py" --include="*.sh"';
-    const r = execSafe(`grep -rn "${q}" "${searchPath}" ${exts} 2>/dev/null | head -100 || echo ""`, HOME, 15000);
+    const r = execSafe(`grep -rn "$${q}" "$${searchPath}" ${exts} 2>/dev/null | head -100 || echo ""`, HOME, 15000);
     return { ok: true, data: r.data.trim() || 'Tidak ditemukan' };
   }
   if (type === 'web_search') {
@@ -419,16 +622,16 @@ function handle(payload) {
   if (type === 'browse') {
     const target = url || filePath;
     if (!target) return { ok: false, data: 'URL diperlukan' };
-    return execSafe(`curl -sL --max-time 15 -A "Mozilla/5.0" "${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$/d' | head -200`, HOME, 20000);
+    return execSafe(`curl -sL --max-time 15 -A "Mozilla/5.0" "$${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$$/d' | head -200`, HOME, 20000);
   }
   if (type === 'fetch_json') {
     const target = url || filePath;
     const headers = token ? `-H "Authorization: Bearer ${shellEsc(token)}"` : '';
-    return execSafe(`curl -sL --max-time 15 ${headers} "${target}"`, HOME, 20000);
+    return execSafe(`curl -sL --max-time 15 $${headers} "$${target}"`, HOME, 20000);
   }
   if (type === 'sqlite') {
     const db = resolvePath(dbPath || filePath);
-    return execSafe(`sqlite3 "${shellEsc(db)}" "${shellEsc(query || '')}"`, HOME);
+    return execSafe(`sqlite3 "$${shellEsc(db)}" "$${shellEsc(query || '')}"`, HOME);
   }
   return { ok: false, data: 'Unknown type: ' + type };
 }
@@ -439,35 +642,42 @@ function handleMCP(tool, action, params) {
 
   if (tool === 'git') {
     const cwd  = p ? resolvePath(p) : HOME;
-    const cmds = { status: 'git status --short', log: 'git log --oneline -20', diff: 'git diff HEAD', blame: `git blame "${p || '.'}" 2>/dev/null | head -50`, branch: 'git branch -a', stash: 'git stash list' };
+    const cmds = { 
+      status: 'git status --short', 
+      log: 'git log --oneline -20', 
+      diff: 'git diff HEAD', 
+      blame: `git blame "${p || '.'}" 2>/dev/null | head -50`, 
+      branch: 'git branch -a', 
+      stash: 'git stash list' 
+    };
     if (!cmds[action]) return { ok: false, data: 'Unknown git action: ' + action };
     return execSafe(cmds[action], cwd);
   }
   if (tool === 'fetch') {
     const target = url || p;
-    if (action === 'browse' || action === 'fetch') return execSafe(`curl -sL --max-time 15 -A "Mozilla/5.0" "${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$/d' | head -300`, HOME, 25000);
+    if (action === 'browse' || action === 'fetch') return execSafe(`curl -sL --max-time 15 -A "Mozilla/5.0" "$${target}" | sed 's/<[^>]*>//g' | sed '/^[[:space:]]*$$/d' | head -300`, HOME, 25000);
     if (action === 'fetch_json') {
       const headers = token ? `-H "Authorization: Bearer ${shellEsc(token)}"` : '';
-      return execSafe(`curl -sL --max-time 15 ${headers} "${target}"`, HOME, 20000);
+      return execSafe(`curl -sL --max-time 15 $${headers} "$${target}"`, HOME, 20000);
     }
   }
   if (tool === 'sqlite') {
     const db = resolvePath(dbPath || p);
     if (action === 'tables') return execSafe(`sqlite3 "${db}" ".tables"`, HOME);
     if (action === 'schema') return execSafe(`sqlite3 "${db}" ".schema"`, HOME);
-    if (action === 'query')  return execSafe(`sqlite3 "${db}" "${(query||'').replace(/"/g, '\\"')}"`, HOME);
+    if (action === 'query')  return execSafe(`sqlite3 "$${db}" "$${(query||'').replace(/"/g, '\\"')}"`, HOME);
     return { ok: false, data: 'Unknown sqlite action: ' + action };
   }
   if (tool === 'github') {
     const ghToken = token || process.env.GITHUB_TOKEN || '';
     if (!ghToken) return { ok: false, data: 'GitHub token diperlukan. Set GITHUB_TOKEN env.' };
     const base = `curl -sL -H "Authorization: Bearer ${ghToken}" -H "Accept: application/vnd.github+json"`;
-    if (action === 'repo_info')    return execSafe(`${base} "https://api.github.com/repos/${owner}/${repo}"`, HOME, 15000);
-    if (action === 'issues')       return execSafe(`${base} "https://api.github.com/repos/${owner}/${repo}/issues?state=open&per_page=20"`, HOME, 15000);
-    if (action === 'pulls')        return execSafe(`${base} "https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=20"`, HOME, 15000);
+    if (action === 'repo_info')    return execSafe(`$${base} "https://api.github.com/repos/$${owner}/${repo}"`, HOME, 15000);
+    if (action === 'issues')       return execSafe(`$${base} "https://api.github.com/repos/$${owner}/${repo}/issues?state=open&per_page=20"`, HOME, 15000);
+    if (action === 'pulls')        return execSafe(`$${base} "https://api.github.com/repos/$${owner}/${repo}/pulls?state=open&per_page=20"`, HOME, 15000);
     if (action === 'create_issue') {
       const bd = JSON.stringify({ title, body: body || '' });
-      return execSafe(`${base} -X POST -d '${bd}' "https://api.github.com/repos/${owner}/${repo}/issues"`, HOME, 15000);
+      return execSafe(`$${base} -X POST -d '$${bd}' "https://api.github.com/repos/$${owner}/$${repo}/issues"`, HOME, 15000);
     }
     return { ok: false, data: 'Unknown github action: ' + action };
   }
@@ -479,7 +689,7 @@ function handleMCP(tool, action, params) {
     return { ok: false, data: 'Unknown system action: ' + action };
   }
   if (tool === 'filesystem') {
-    return handle({ type: action, path: p, content: params.content, from: params.from, to: params.to, old_str: params.old_str, new_str: params.new_str });
+    return handle({ type: action, path: p, content: params.content, from: params.from, to: params.to, old_str: params.old_str, new_str: params.new_str, human: params.human });
   }
   const extServer = EXTERNAL_MCP.find(s => s.name === tool);
   if (extServer) return callExternalMCP(extServer, action, params);
@@ -545,7 +755,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`🌸 YuyuServer ${VERSION} — HTTP :${PORT}`);
+  console.log(`🌸 YuyuServer $${VERSION} — HTTP :$${PORT}`);
   console.log(`   HOME: ${HOME}`);
   console.log(`   Tools: ${Object.keys(MCP_TOOLS).join(', ')}`);
   console.log(`   Memory limit: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`);
