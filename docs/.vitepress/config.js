@@ -66,7 +66,8 @@ export default defineConfig({
             { text: 'Growth & Gamification', link: '/guide/growth' },
             { text: 'Codebase Tools', link: '/guide/codebase-tools' },
             { text: 'yugit', link: '/guide/yugit' },
-            { text: 'Runtime Key Encryption', link: '/guide/runtime-keys' }
+            { text: 'Runtime Key Encryption', link: '/guide/runtime-keys' },
+            { text: 'Shell Environment (Neko v5)', link: '/guide/shell-environment' }
           ]
         },
         {

@@ -89,6 +89,7 @@ src/
 │   └── mybrand.js
 │
 ├── runtimeKeys.js          # AES-256-GCM encrypted API key store (PBKDF2 300K iter, 24h expiry)
+├── bashrc-additions.sh     # Neko-Edition v5.0 — full Termux shell toolkit (y* commands, AI, metrics)
 ├── theme.js                # Active theme re-export (points to themes/obsidian.js by default)
 │
 └── plugins/

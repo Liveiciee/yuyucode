@@ -39,12 +39,16 @@ npm install
 
 ```bash
 # Add to ~/.bashrc
+source ~/yuyucode/bashrc-additions.sh
+
 export VITE_CEREBRAS_API_KEY="your_key"
 export VITE_GROQ_API_KEY="your_key"
 export VITE_TAVILY_API_KEY="your_key"
 ```
 
 Then `source ~/.bashrc`.
+
+`bashrc-additions.sh` is the Neko-Edition v5.0 shell toolkit — adds `y*` commands for server management, file ops, backups, metrics, and an optional AI assistant. See [Shell Environment](/guide/shell-environment) for the full reference.
 
 ### Option B — `.env.local`
 

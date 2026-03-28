@@ -1,3 +1,21 @@
+## bashrc-additions.sh v5.0 — Neko-Edition
+
+**Shell environment major release.**
+
+- **Dual-Brain AI** — `yai-setup` wizard adds OpenAI / Grok / Ollama support; falls back to local Neko Mode on failure or when disabled
+- **`yai` / `yai-analyze` / `yai-code`** — chat, auto-error-analysis, code generation from the terminal
+- **`ybrain`** — shows current intelligence mode (AI provider or Neko Mode)
+- **SQLite metrics** — `ymetrics` shows 7-day crash/restart/request stats via `~/.yuyu-server.db`; uses `BEGIN IMMEDIATE` transactions (no race conditions)
+- **Compressed backups** — `yapply` now creates `.tar.gz` backups before every apply, auto-rotates to keep last 5
+- **`yrestore`** — interactive restore from any compressed backup
+- **`yapply` flags** — `--dry-run`, `--skip-tests`, `--force`; jittered exponential backoff on server crashes
+- **`yprofile`** — device profile (CPU temp, disk, uptime, Node options)
+- **`yreset`** — clear crash counter to re-enable auto-restart after max crashes
+- **Atomic writes** — all PID/counter writes use `flock` to prevent partial-write corruption
+- **Security** — no `yexec` command; all ops via `yuyu-server.js` API; JSON built with `jq` to prevent injection; AI key chmod 600
+
+---
+
 # Changelog
 
 ## v4.5.8
