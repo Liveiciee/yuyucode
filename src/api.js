@@ -69,6 +69,10 @@ class ValidationError extends AIError {
   }
 }
 
+function isRetryableStatus(statusCode) {
+  return statusCode === 502 || statusCode === 503 || statusCode === 504;
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // KEY MANAGEMENT
 // ──────────────────────────────────────────────────────────────────────────────
@@ -99,10 +103,20 @@ function validateMessages(messages) {
 }
 
 function validateApiKey(key, provider) {
-  if (!key || key.trim() === '') {
+  const normalized = typeof key === 'string' ? key.trim() : '';
+  if (!normalized) {
     throw new ValidationError('apiKey', `${provider} API key is required`);
   }
+  if (/^your[_-\s]/i.test(normalized) || /placeholder|example/i.test(normalized)) {
+    throw new ValidationError('apiKey', `${provider} API key is not configured`);
+  }
   return true;
+}
+
+function hasUsableApiKey(key) {
+  if (typeof key !== 'string') return false;
+  const normalized = key.trim();
+  return !!normalized && !/^your[_-\s]/i.test(normalized) && !/placeholder|example/i.test(normalized);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -222,15 +236,27 @@ async function makeAIRequest({
     temperature: options.temperature ?? CONFIG.DEFAULT_TEMPERATURE,
   };
   
-  const response = await fetch(url, {
-    method: 'POST',
-    signal,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    throw new AIError(`${provider} network error`, 'NETWORK_ERROR', {
+      provider,
+      message: error?.message || 'Unknown network error',
+    });
+  }
+  if (!response || typeof response.status !== 'number') {
+    throw new AIError(`${provider} invalid response`, 'INVALID_RESPONSE', { provider });
+  }
   
   if (response.status === 429) {
     const retryAfter = parseInt(response.headers.get('retry-after') || String(CONFIG.RATE_LIMIT_RETRY_DEFAULT), 10);
@@ -323,7 +349,11 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
       if (error.name === 'AbortError' || error.code === 'RATE_LIMIT') {
         throw error;
       }
-      if (error.code === 'SERVER_ERROR' && (options._attempt ?? 0) < CONFIG.MAX_RETRIES) {
+      if (
+        (error.code === 'NETWORK_ERROR' ||
+          (error.code === 'SERVER_ERROR' && isRetryableStatus(error.statusCode))) &&
+        (options._attempt ?? 0) < CONFIG.MAX_RETRIES
+      ) {
         const attempt = options._attempt ?? 0;
         const delay = (attempt + 1) * CONFIG.RETRY_DELAY_BASE;
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -339,13 +369,20 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
   } catch (error) {
     if (error.name === 'AbortError') throw error;
     
-    if (error.code === 'RATE_LIMIT' && getGroqKey()) {
-      const fallbackResult = await tryGroqFallbackChain(messages, onChunk, signal, options);
-      if (fallbackResult !== null) return fallbackResult;
+    if (error.code === 'RATE_LIMIT' && hasUsableApiKey(getGroqKey())) {
+      try {
+        const fallbackResult = await tryGroqFallbackChain(messages, onChunk, signal, options);
+        if (fallbackResult !== null) return fallbackResult;
+      } catch (fallbackError) {
+        if (fallbackError?.name === 'AbortError') throw fallbackError;
+      }
       throw error;
     }
     
-    if (error.code === 'SERVER_ERROR' || (error.code === 'HTTP_ERROR' && (error.details?.statusCode ?? 0) >= 500)) {
+    if (
+      error.code === 'NETWORK_ERROR' ||
+      (error.code === 'SERVER_ERROR' && isRetryableStatus(error.statusCode))
+    ) {
       if ((options._attempt ?? 0) < CONFIG.MAX_RETRIES) {
         const attempt = options._attempt ?? 0;
         const delay = (attempt + 1) * CONFIG.RETRY_DELAY_BASE;
