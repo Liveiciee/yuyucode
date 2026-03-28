@@ -19,7 +19,8 @@ import * as utilsModule from './utils.js';
 import { useFileStore } from './hooks/useFileStore.js';
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
+  vi.resetAllMocks();
   mockCallServer.mockReset();
   mockCallServer.mockResolvedValue({ ok: true, data: '' });
   vi.spyOn(utilsModule, 'executeAction').mockResolvedValue({ ok: true, data: 'written' });

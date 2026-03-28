@@ -69,6 +69,10 @@ class ValidationError extends AIError {
   }
 }
 
+function isRetryableStatus(statusCode) {
+  return statusCode === 502 || statusCode === 503 || statusCode === 504;
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // KEY MANAGEMENT
 // ──────────────────────────────────────────────────────────────────────────────
@@ -99,10 +103,20 @@ function validateMessages(messages) {
 }
 
 function validateApiKey(key, provider) {
-  if (!key || key.trim() === '') {
+  const normalized = typeof key === 'string' ? key.trim() : '';
+  if (!normalized) {
     throw new ValidationError('apiKey', `${provider} API key is required`);
   }
+  if (/^your[_-\s]/i.test(normalized) || /placeholder|example/i.test(normalized)) {
+    throw new ValidationError('apiKey', `${provider} API key is not configured`);
+  }
   return true;
+}
+
+function hasUsableApiKey(key) {
+  if (typeof key !== 'string') return false;
+  const normalized = key.trim();
+  return !!normalized && !/^your[_-\s]/i.test(normalized) && !/placeholder|example/i.test(normalized);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -147,7 +161,7 @@ export async function readSSEStream(response, onChunk, signal) {
       
       try {
         ({ done, value } = await reader.read());
-      } catch (readError) {
+      } catch (_readError) {
         if (signal?.aborted) {
           throw new DOMException('Aborted', 'AbortError');
         }
@@ -192,7 +206,7 @@ export async function readSSEStream(response, onChunk, signal) {
       }
     }
   } finally {
-    try { reader.releaseLock(); } catch (e) { /* ignore */ }
+    try { reader.releaseLock(); } catch (_error) { /* ignore */ }
   }
   
   return fullContent;
@@ -222,15 +236,27 @@ async function makeAIRequest({
     temperature: options.temperature ?? CONFIG.DEFAULT_TEMPERATURE,
   };
   
-  const response = await fetch(url, {
-    method: 'POST',
-    signal,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    throw new AIError(`${provider} network error`, 'NETWORK_ERROR', {
+      provider,
+      message: error?.message || 'Unknown network error',
+    });
+  }
+  if (!response || typeof response.status !== 'number') {
+    throw new AIError(`${provider} invalid response`, 'INVALID_RESPONSE', { provider });
+  }
   
   if (response.status === 429) {
     const retryAfter = parseInt(response.headers.get('retry-after') || String(CONFIG.RATE_LIMIT_RETRY_DEFAULT), 10);
@@ -323,7 +349,11 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
       if (error.name === 'AbortError' || error.code === 'RATE_LIMIT') {
         throw error;
       }
-      if (error.code === 'SERVER_ERROR' && (options._attempt ?? 0) < CONFIG.MAX_RETRIES) {
+      if (
+        (error.code === 'NETWORK_ERROR' ||
+          (error.code === 'SERVER_ERROR' && isRetryableStatus(error.statusCode))) &&
+        (options._attempt ?? 0) < CONFIG.MAX_RETRIES
+      ) {
         const attempt = options._attempt ?? 0;
         const delay = (attempt + 1) * CONFIG.RETRY_DELAY_BASE;
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -339,13 +369,20 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
   } catch (error) {
     if (error.name === 'AbortError') throw error;
     
-    if (error.code === 'RATE_LIMIT' && getGroqKey()) {
-      const fallbackResult = await tryGroqFallbackChain(messages, onChunk, signal, options);
-      if (fallbackResult !== null) return fallbackResult;
+    if (error.code === 'RATE_LIMIT' && hasUsableApiKey(getGroqKey())) {
+      try {
+        const fallbackResult = await tryGroqFallbackChain(messages, onChunk, signal, options);
+        if (fallbackResult !== null) return fallbackResult;
+      } catch (fallbackError) {
+        if (fallbackError?.name === 'AbortError') throw fallbackError;
+      }
       throw error;
     }
     
-    if (error.code === 'SERVER_ERROR' || (error.code === 'HTTP_ERROR' && (error.details?.statusCode ?? 0) >= 500)) {
+    if (
+      error.code === 'NETWORK_ERROR' ||
+      (error.code === 'SERVER_ERROR' && isRetryableStatus(error.statusCode))
+    ) {
       if ((options._attempt ?? 0) < CONFIG.MAX_RETRIES) {
         const attempt = options._attempt ?? 0;
         const delay = (attempt + 1) * CONFIG.RETRY_DELAY_BASE;
@@ -375,7 +412,7 @@ export async function callServer(payload) {
     }
     
     return await response.json();
-  } catch (error) {
+  } catch (_error) {
     return { 
       ok: false, 
       data: 'YuyuServer tidak dapat dihubungi. Jalankan: node yuyu-server.cjs &' 
@@ -396,7 +433,7 @@ export function execStream(command, cwd, onLine, signal) {
     
     try {
       ws = new WebSocket(WS_SERVER);
-    } catch (error) {
+    } catch (_error) {
       reject(new Error('WebSocket tidak tersedia'));
       return;
     }
@@ -406,7 +443,7 @@ export function execStream(command, cwd, onLine, signal) {
     let settled = false;
     
     const cleanup = () => {
-      try { ws.close(); } catch (e) { /* ignore */ }
+      try { ws.close(); } catch (_error) { /* ignore */ }
     };
     
     const done = (exitCode) => {
@@ -416,7 +453,13 @@ export function execStream(command, cwd, onLine, signal) {
       resolve({ exitCode, output });
     };
     
-    ws.onopen = () => {
+    const emitLine = (text, type) => {
+      if (typeof onLine === 'function') {
+        onLine(text, type);
+      }
+    };
+
+    ws.onopen = function onOpen() {
       ws.send(JSON.stringify({ type: 'exec_stream', id, command, cwd }));
     };
     
@@ -430,19 +473,19 @@ export function execStream(command, cwd, onLine, signal) {
       return false;
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = function onMessage(event) {
       try {
         const msg = JSON.parse(event.data);
         if (!isMessageForThisExec(msg.id)) return;
         
         if (msg.type === 'stdout' || msg.type === 'stderr') {
           output += msg.data;
-          onLine?.(msg.data, msg.type);
+          emitLine(msg.data, msg.type);
         } else if (msg.type === 'exit') {
-          onLine?.(`\n[exit ${msg.code}]`, 'exit');
+          emitLine(`\n[exit ${msg.code}]`, 'exit');
           done(msg.code);
         } else if (msg.type === 'error') {
-          onLine?.(`\n[error: ${msg.data}]`, 'stderr');
+          emitLine(`\n[error: ${msg.data}]`, 'stderr');
           done(-1);
         }
       } catch (parseError) {
@@ -450,14 +493,14 @@ export function execStream(command, cwd, onLine, signal) {
       }
     };
     
-    ws.onerror = () => {
+    ws.onerror = function onError() {
       if (!settled) {
         settled = true;
         reject(new Error('WebSocket error'));
       }
     };
     
-    ws.onclose = () => {
+    ws.onclose = function onClose() {
       if (!settled) done(-1);
     };
     
@@ -465,7 +508,7 @@ export function execStream(command, cwd, onLine, signal) {
       signal.addEventListener('abort', () => {
         try {
           ws.send(JSON.stringify({ type: 'kill', id }));
-        } catch (e) { /* ignore */ }
+        } catch (_error) { /* ignore */ }
         cleanup();
         if (!settled) {
           settled = true;

@@ -52,7 +52,10 @@ CI benchmark runner. Runs `vitest bench` and converts output to the format expec
 
 ```bash
 node yuyu-bench-ci.cjs
-# Output: .yuyu/bench-ci.json
+# Output default:
+#   - CI      : /tmp/bench-ci.json
+#   - local   : .yuyu/bench-ci.json
+# override    : BENCH_OUTPUT=/custom/path.json
 ```
 
 ### Output format

@@ -150,14 +150,14 @@ export default defineConfig({
         'src/features.js',
         'src/utils.js',
         'src/api.js',
-        'yuyu-server.js',
+        'yuyu-server.cjs',
         'yuyu-map.cjs',
       ],
 
       // Exclude paths
       exclude: [
         // Build artifacts
-        'yugit.cjs',
+        'scripts/yugit.cjs',
         'yuyu-bench.cjs',
         'public/**',
         'android/**',

@@ -7,7 +7,7 @@ vi.mock('./api.js', () => ({ callServer: vi.fn() }));
 import { callServer } from './api.js';
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   callServer.mockResolvedValue({ ok: true, data: '' });
 });
 

@@ -79,3 +79,26 @@ export function handleHandoff({ folder, messages, setLoading, setMessages }) {
     }
   });
 }
+
+export async function handleSearch({ parts, searchMessages, setMessages }) {
+  const query = parts.slice(1).join(' ').trim();
+  if (!query) {
+    simpleResponse(setMessages, '🔎 Pakai: `/search <keyword>`');
+    return;
+  }
+
+  try {
+    const result = await searchMessages?.(query);
+    if (!result?.length) {
+      simpleResponse(setMessages, `🔎 Tidak ada hasil untuk: **${query}**`);
+      return;
+    }
+    const list = result
+      .slice(0, 10)
+      .map((item, i) => `${i + 1}. ${String(item.content || '').slice(0, 140)}`)
+      .join('\n');
+    simpleResponse(setMessages, `🔎 Hasil pencarian untuk **${query}**:\n\n${list}`);
+  } catch (error) {
+    simpleResponse(setMessages, `❌ Search gagal: ${error?.message || error}`);
+  }
+}

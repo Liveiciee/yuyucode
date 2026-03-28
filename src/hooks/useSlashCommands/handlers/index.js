@@ -1,6 +1,6 @@
 // handlers/index.js — export all handlers
 export { handleModel, handleEffort, handleThinking } from './model.js';
-export { handleClear, handleStop, handleSave, handleRewind, handleRename, handleCompact, handleHandoff } from './chat.js';
+export { handleClear, handleStop, handleSave, handleRewind, handleRename, handleCompact, handleHandoff, handleSearch } from './chat.js';
 export { handlePin, handleUnpin, handleIndex, handleTree, handleHistory } from './file.js';
 export { handleReview, handleLint, handleRefactor } from './review.js';
 export { handleBg, handleBgMerge, handleBgStatus, handleLoop } from './agent.js';
