@@ -111,17 +111,34 @@ Interactive D3 force-directed graph of inter-file imports. Tap node → jump to 
 
 ---
 
-## Current State (v4.5.9)
+## Current State (v4.6.0)
 
 ```
-Tests:          1235 ✅
+Tests:          1216 ✅
 Slash commands: ~68
 CI:             CodeQL ✅ · Semgrep ✅ · SonarCloud ✅ · DeepSource ✅
 SonarCloud:     Blocker 0 · High 0 · Security A · Maintainability A
-Coverage:       ~75%
+Coverage:       ~80% statements / ~85% branches
 Platform:       Oppo A77s, Snapdragon 680, Android 14
 Diff:           Histogram chunked (O(n) large files)
 Fallback chain: Cerebras → Kimi K2 → Llama 70B → Llama 8B
 Security:       AES-256-GCM encrypted key storage (runtimeKeys.js)
 Wake word:      "Hey Yuyu" — Web Speech API continuous detection
 ```
+
+## Mobile-First Execution Plan (V2)
+
+Semua fase ini diprioritaskan agar **jalan stabil di HP (Snapdragon 680, 8GB RAM)**:
+
+1. **Reliability Gate (Now)**
+   - Jalankan `npm run health:mobile` sebelum merge release.
+   - Wajib lulus lint + test kritikal + build.
+2. **Runtime Safety (Next)**
+   - Tambah watchdog untuk background agents (max restart budget + backoff).
+   - Batasi memory spike per fitur (live preview, diff, swarm).
+3. **UX Stability (Next+)**
+   - Graceful degradation saat offline / server down untuk command kritikal.
+   - Telemetry ringan lokal (tanpa network) untuk crash hotspots.
+4. **Performance Budget (Release Gate)**
+   - Tetapkan budget startup, input latency, dan render chunk per release.
+   - Tolak merge jika budget melewati ambang yang disepakati.

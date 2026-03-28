@@ -2,6 +2,7 @@
 import { useCallback, useMemo } from 'react';
 import { simpleResponse } from './helpers/simpleResponse.js';
 import * as handlers from './handlers/index.js';
+import { loadSessions } from '../../features.js';
 
 export function useSlashCommands(props) {
   // Map of simple actions (no complex logic) — wrapped in useMemo
@@ -16,7 +17,7 @@ export function useSlashCommands(props) {
     '/skills':     () => props.setShowSkills?.(true),
     '/permissions':() => props.setShowPermissions?.(true),
     '/sessions':   async () => {
-      const sessions = await import('../../features.js').then(m => m.loadSessions());
+      const sessions = await loadSessions();
       props.setSessionList?.(sessions);
       props.setShowSessions?.(true);
     },
