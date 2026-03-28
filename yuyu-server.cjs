@@ -12,6 +12,7 @@ const http   = require('http');
 const fs     = require('fs');
 const path   = require('path');
 const { execSync, spawn } = require('child_process');
+const { handlePolyglotAction } = require('./polyglot-runner.cjs');
 
 const VERBOSE    = process.argv.includes('--verbose');
 const START_TIME = Date.now();
@@ -77,6 +78,7 @@ const MCP_TOOLS = {
   sqlite:     { desc:'Query database SQLite',              actions:['query','tables','schema'] },
   github:     { desc:'GitHub API — issues, PRs, repos',    actions:['issues','pulls','create_issue','repo_info'] },
   system:     { desc:'Info sistem dan proses',             actions:['disk','memory','processes','env'] },
+  polyglot:   { desc:'Jalankan task multi-bahasa (rust/cpp/go/python/js)', actions:['list','health','run'] },
 };
 
 // ── External MCP Servers ──────────────────────────────────────────────────────
@@ -696,6 +698,9 @@ function handleMCP(tool, action, params) {
     if (action === 'processes') return execSafe('ps aux | head -20', HOME);
     if (action === 'env')       return { ok: true, data: JSON.stringify(process.env, null, 2).slice(0, 2000) };
     return { ok: false, data: 'Unknown system action: ' + action };
+  }
+  if (tool === 'polyglot') {
+    return handlePolyglotAction(action, params);
   }
   if (tool === 'filesystem') {
     return handle({ type: action, path: p, content: params.content, from: params.from, to: params.to, old_str: params.old_str, new_str: params.new_str, human: params.human });
