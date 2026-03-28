@@ -18,6 +18,18 @@
 
 # Changelog
 
+## v4.6.0
+
+**Kebaikan penuh V2 — integrity + docs sync.**
+
+- Dev toolchain moved to Vite 8-compatible settings and dependency set (`vite`, `@vitejs/plugin-react`, `happy-dom`) to keep local dev/test/build aligned with current ecosystem.
+- `runtimeKeys` hardened for Node/test/Capacitor runtime differences (buffer-aware encoding path + guarded Preferences fallback behavior).
+- AI orchestration and websocket paths lint-hardened to avoid hidden dead-code/error-swallowing regressions.
+- Slash command `/search` now has dedicated unit coverage (`handlers/chat.test.js`) including empty query, no-result, success, and error scenarios.
+- Slash `/sessions` load path switched to direct import to remove ineffective dynamic import warning in production build.
+- Test baseline updated: 46 test files, 1199 passing tests.
+- Testing guide updated with current test totals and required build smoke-check command.
+
 ## v4.5.8
 
 **Stable QA baseline.**
