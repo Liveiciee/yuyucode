@@ -2,13 +2,13 @@
 
 ## Test Suite
 
-1199 tests passing. 0 lint warnings. Runs on Termux ARM64 (Snapdragon 680).
+1203 tests passing. 0 lint warnings. Runs on Termux ARM64 (Snapdragon 680).
 
 - 50 property-based tests via `fast-check` — 100 random inputs each for `parseActions` and `resolvePath`
 - 363 branch coverage tests targeting SonarCloud condition branches across all core hooks
 
 ```bash
-npx vitest run       # run all tests (1199)
+npx vitest run       # run all tests (1203)
 npm run lint         # must be 0 problems
 npm run build        # production build smoke check
 ```
@@ -39,7 +39,7 @@ npm run build        # production build smoke check
 | `yuyu-server.test.cjs` | Integration — HTTP, read/write/patch/batch/exec | 30 |
 | `useSlashCommands/index.test.js` | Unit — command dispatch | 9 |
 | `useSlashCommands/handlers/batch.test.js` | Unit — /batch handler | 45 |
-| `useSlashCommands/handlers/chat.test.js` | Unit — /search handler + error paths | 4 |
+| `useSlashCommands/handlers/chat.test.js` | Unit — /search + clear/stop/rename paths | 8 |
 | `useSlashCommands/handlers/git.test.js` | Unit — /history, /diff, /refactor | 49 |
 | `useSlashCommands/handlers/model.test.js` | Unit — /model, /ask, /ab | 7 |
 | `useSlashCommands/handlers/undo.test.js` | Unit — /undo, /rewind | 15 |
