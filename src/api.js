@@ -6,8 +6,8 @@
 import { 
   CEREBRAS_KEY, 
   GROQ_KEY, 
-  YUYU_SERVER, 
-  WS_SERVER,
+  YUYU_SERVER,   // ✅ imported, not from CONFIG
+  WS_SERVER,     // ✅ imported, not from CONFIG
   MODELS,
   FALLBACK_MODEL
 } from './constants.js';
@@ -25,6 +25,9 @@ const CONFIG = Object.freeze({
   MAX_RETRIES: 2,
   RETRY_DELAY_BASE: 2000,
   RATE_LIMIT_RETRY_DEFAULT: 60,
+  // ✅ ADDED: API URLs
+  CEREBRAS_URL: 'https://api.cerebras.ai/v1/chat/completions',
+  GROQ_URL: 'https://api.groq.com/openai/v1/chat/completions',
   GROQ_FALLBACK_CHAIN: [
     'moonshotai/kimi-k2-instruct-0905',
     'llama-3.3-70b-versatile',
@@ -109,7 +112,6 @@ function injectVisionImage(messages, imageBase64) {
   if (!imageBase64) return messages;
   
   return messages.map((msg, idx) => {
-    // Only inject into the last user message
     if (idx !== messages.length - 1 || msg.role !== 'user') {
       return msg;
     }
@@ -168,7 +170,6 @@ async function readSSEStream(response, onChunk, signal) {
           fullContent += content;
           onChunk?.(fullContent);
         } catch (parseError) {
-          // Log parse error but don't break the stream
           console.warn('[SSE Parse Warning]', parseError.message);
         }
       }
@@ -205,7 +206,6 @@ async function makeAIRequest({
   signal,
   options = {},
 }) {
-  // Validate inputs
   validateMessages(messages);
   validateApiKey(apiKey, provider);
   
@@ -227,18 +227,15 @@ async function makeAIRequest({
     body: JSON.stringify(requestBody),
   });
   
-  // Handle rate limit
   if (response.status === 429) {
     const retryAfter = parseInt(response.headers.get('retry-after') || String(CONFIG.RATE_LIMIT_RETRY_DEFAULT), 10);
     throw new RateLimitError(retryAfter);
   }
   
-  // Handle server errors
   if (response.status >= 500) {
     throw new ServerError(provider, response.status);
   }
   
-  // Handle client errors
   if (!response.ok) {
     const errorText = await response.text().catch(() => 'Unknown error');
     throw new AIError(`${provider} error: HTTP ${response.status}`, 'HTTP_ERROR', {
@@ -258,7 +255,7 @@ async function cerebrasRequest(messages, model, onChunk, signal, options) {
   const processedMessages = injectVisionImage(messages, options?.imageBase64);
   
   return makeAIRequest({
-    url: CONFIG.CEREBRAS_URL,
+    url: CONFIG.CEREBRAS_URL,  // ✅ Now exists in CONFIG
     apiKey,
     provider: 'Cerebras',
     messages: processedMessages,
@@ -277,7 +274,7 @@ async function groqRequest(messages, model, onChunk, signal, options) {
   const processedMessages = injectVisionImage(messages, options?.imageBase64);
   
   return makeAIRequest({
-    url: CONFIG.GROQ_URL,
+    url: CONFIG.GROQ_URL,  // ✅ Now exists in CONFIG
     apiKey,
     provider: 'Groq',
     messages: processedMessages,
@@ -309,14 +306,11 @@ async function tryGroqFallbackChain(messages, onChunk, signal, options) {
 // MAIN ORCHESTRATION FUNCTION
 // ──────────────────────────────────────────────────────────────────────────────
 export async function askAIStream(messages, model, onChunk, signal, options = {}) {
-  // Validate input
   validateMessages(messages);
   
-  // Get model definition
   const modelDef = MODELS.find(m => m.id === model);
   const provider = modelDef?.provider || 'cerebras';
   
-  // Route to correct provider
   if (provider === 'groq') {
     try {
       return await groqRequest(messages, model, onChunk, signal, options);
@@ -339,14 +333,12 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
   } catch (error) {
     if (error.name === 'AbortError') throw error;
     
-    // Rate limit → try Groq fallback chain
     if (error.code === 'RATE_LIMIT' && getGroqKey()) {
       const fallbackResult = await tryGroqFallbackChain(messages, onChunk, signal, options);
       if (fallbackResult !== null) return fallbackResult;
       throw error;
     }
     
-    // Server/network error → retry
     if (error.code === 'SERVER_ERROR' || error.code === 'HTTP_ERROR') {
       if (options._attempt < CONFIG.MAX_RETRIES) {
         const delay = (options._attempt + 1) * CONFIG.RETRY_DELAY_BASE;
@@ -364,7 +356,7 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
 // ──────────────────────────────────────────────────────────────────────────────
 export async function callServer(payload) {
   try {
-    const response = await fetch(CONFIG.YUYU_SERVER, {
+    const response = await fetch(YUYU_SERVER, {  // ✅ Direct import, not CONFIG.YUYU_SERVER
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -396,7 +388,7 @@ export function execStream(command, cwd, onLine, signal) {
     let ws;
     
     try {
-      ws = new WebSocket(CONFIG.WS_SERVER);
+      ws = new WebSocket(WS_SERVER);  // ✅ Direct import, not CONFIG.WS_SERVER
     } catch (error) {
       reject(new Error('WebSocket tidak tersedia'));
       return;
@@ -452,7 +444,6 @@ export function execStream(command, cwd, onLine, signal) {
       if (!settled) done(-1);
     };
     
-    // Handle abort signal
     if (signal) {
       signal.addEventListener('abort', () => {
         try {
