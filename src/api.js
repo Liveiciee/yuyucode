@@ -318,10 +318,11 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
       if (error.name === 'AbortError' || error.code === 'RATE_LIMIT') {
         throw error;
       }
-      if (error.code === 'SERVER_ERROR' && options._attempt < CONFIG.MAX_RETRIES) {
-        const delay = (options._attempt + 1) * CONFIG.RETRY_DELAY_BASE;
+      if (error.code === 'SERVER_ERROR' && (options._attempt ?? 0) < CONFIG.MAX_RETRIES) {
+        const attempt = options._attempt ?? 0;
+        const delay = (attempt + 1) * CONFIG.RETRY_DELAY_BASE;
         await new Promise(resolve => setTimeout(resolve, delay));
-        return askAIStream(messages, model, onChunk, signal, { ...options, _attempt: options._attempt + 1 });
+        return askAIStream(messages, model, onChunk, signal, { ...options, _attempt: attempt + 1 });
       }
       throw error;
     }
@@ -340,10 +341,11 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
     }
     
     if (error.code === 'SERVER_ERROR' || error.code === 'HTTP_ERROR') {
-      if (options._attempt < CONFIG.MAX_RETRIES) {
-        const delay = (options._attempt + 1) * CONFIG.RETRY_DELAY_BASE;
+      if ((options._attempt ?? 0) < CONFIG.MAX_RETRIES) {
+        const attempt = options._attempt ?? 0;
+        const delay = (attempt + 1) * CONFIG.RETRY_DELAY_BASE;
         await new Promise(resolve => setTimeout(resolve, delay));
-        return askAIStream(messages, model, onChunk, signal, { ...options, _attempt: options._attempt + 1 });
+        return askAIStream(messages, model, onChunk, signal, { ...options, _attempt: attempt + 1 });
       }
     }
     

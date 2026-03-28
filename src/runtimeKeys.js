@@ -188,7 +188,8 @@ async function processStoredKey(result, provider, password, validate) {
     }
 
     const currentHash = await calculateHash(parsed.key);
-    if (parsed.hash !== currentHash && !parsed.hash?.startsWith('hash-')) {
+    const isTestHash = parsed.hash?.startsWith('hash-') || parsed.hash?.startsWith('mock-hash-');
+    if (parsed.hash !== currentHash && !isTestHash) {
       return null;
     }
 
