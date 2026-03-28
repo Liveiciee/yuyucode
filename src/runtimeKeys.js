@@ -1,27 +1,26 @@
 import { Preferences } from '@capacitor/preferences';
 
 const MEMORY_PREFS = new Map();
-const BufferCtor = globalThis.Buffer;
 
-if (typeof globalThis.TextEncoder !== 'function' && BufferCtor) {
+if (typeof globalThis.TextEncoder !== 'function' && typeof Buffer !== 'undefined') {
   globalThis.TextEncoder = class TextEncoderPolyfill {
     encode(value = '') {
-      return new Uint8Array(BufferCtor.from(String(value), 'utf8'));
+      return new Uint8Array(Buffer.from(String(value), 'utf8'));
     }
   };
 }
 
-if (typeof globalThis.TextDecoder !== 'function' && BufferCtor) {
+if (typeof globalThis.TextDecoder !== 'function' && typeof Buffer !== 'undefined') {
   globalThis.TextDecoder = class TextDecoderPolyfill {
     decode(value = new Uint8Array()) {
-      return BufferCtor.from(value).toString('utf8');
+      return Buffer.from(value).toString('utf8');
     }
   };
 }
 
 function fallbackEncodeUtf8(value) {
-  if (BufferCtor) {
-    return new Uint8Array(BufferCtor.from(String(value), 'utf8'));
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(String(value), 'utf8'));
   }
   const encoded = encodeURIComponent(String(value));
   const bytes = [];
@@ -38,8 +37,8 @@ function fallbackEncodeUtf8(value) {
 }
 
 function fallbackDecodeUtf8(value) {
-  if (BufferCtor) {
-    return BufferCtor.from(value).toString('utf8');
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(value).toString('utf8');
   }
   return Array.from(value, b => String.fromCharCode(b)).join('');
 }
@@ -101,8 +100,8 @@ const CONFIG = {
 // SECURITY HELPERS
 // ──────────────────────────────────────────────────────────────────────────────
 function uint8ArrayToBase64(bytes) {
-  if (BufferCtor) {
-    return BufferCtor.from(bytes).toString('base64');
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(bytes).toString('base64');
   }
   if (typeof btoa !== 'function') {
     throw new Error('Base64 encoder is not available');
@@ -113,8 +112,8 @@ function uint8ArrayToBase64(bytes) {
 }
 
 function base64ToUint8Array(base64) {
-  if (BufferCtor) {
-    return new Uint8Array(BufferCtor.from(base64, 'base64'));
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(base64, 'base64'));
   }
   if (typeof atob !== 'function') {
     throw new Error('Base64 decoder is not available');
@@ -123,6 +122,32 @@ function base64ToUint8Array(base64) {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
+}
+
+function getCrypto() {
+  const cryptoObj = globalThis?.crypto;
+  if (!cryptoObj?.subtle || !cryptoObj?.getRandomValues) {
+    throw new KeyStorageError('Web Crypto API is not available', 'CRYPTO_UNAVAILABLE');
+  }
+  return cryptoObj;
+}
+
+function getTextEncoder() {
+  const Encoder = globalThis?.TextEncoder || globalThis?.window?.TextEncoder;
+  if (Encoder) return new Encoder();
+  if (typeof globalThis.Buffer !== 'undefined') {
+    return { encode: (value) => Uint8Array.from(globalThis.Buffer.from(String(value), 'utf8')) };
+  }
+  throw new KeyStorageError('TextEncoder is not available', 'ENCODER_UNAVAILABLE');
+}
+
+function getTextDecoder() {
+  const Decoder = globalThis?.TextDecoder || globalThis?.window?.TextDecoder;
+  if (Decoder) return new Decoder();
+  if (typeof globalThis.Buffer !== 'undefined') {
+    return { decode: (value) => globalThis.Buffer.from(value).toString('utf8') };
+  }
+  throw new KeyStorageError('TextDecoder is not available', 'DECODER_UNAVAILABLE');
 }
 
 function generateRandomBytes(length) {
@@ -208,7 +233,7 @@ async function decryptData(encryptedBase64, password) {
       data
     );
     return textDecoder.decode(new Uint8Array(decrypted));
-  } catch (_error) {
+  } catch (e) {
     throw new Error('Decryption failed: Wrong password or corrupted data');
   }
 }
@@ -307,7 +332,7 @@ async function processStoredKey(result, provider, password, validate) {
 
     if (validate) validateApiKey(parsed.key, provider);
     return parsed;
-  } catch (_error) {
+  } catch (_err) {
     return null;
   }
 }

@@ -206,7 +206,7 @@ export async function readSSEStream(response, onChunk, signal) {
       }
     }
   } finally {
-    try { reader.releaseLock(); } catch (_error) { /* ignore */ }
+    try { reader.releaseLock(); } catch (_e) { /* ignore */ }
   }
   
   return fullContent;
@@ -433,7 +433,7 @@ export function execStream(command, cwd, onLine, signal) {
     
     try {
       ws = new WebSocket(WS_SERVER);
-    } catch (_error) {
+  } catch (_error) {
       reject(new Error('WebSocket tidak tersedia'));
       return;
     }
@@ -443,7 +443,7 @@ export function execStream(command, cwd, onLine, signal) {
     let settled = false;
     
     const cleanup = () => {
-      try { ws.close(); } catch (_error) { /* ignore */ }
+      try { ws.close(); } catch (_e) { /* ignore */ }
     };
     
     const done = (exitCode) => {
@@ -502,7 +502,7 @@ export function execStream(command, cwd, onLine, signal) {
       signal.addEventListener('abort', () => {
         try {
           ws.send(JSON.stringify({ type: 'kill', id }));
-        } catch (_error) { /* ignore */ }
+        } catch (_e) { /* ignore */ }
         cleanup();
         if (!settled) {
           settled = true;
