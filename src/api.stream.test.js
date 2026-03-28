@@ -81,6 +81,18 @@ describe('readSSEStream', () => {
     expect(onChunk).toHaveBeenCalledTimes(1);
   });
 
+  it('handles CRLF-formatted SSE lines', async () => {
+    const reader = makeReader(
+      `data: ${JSON.stringify({ choices: [{ delta: { content: 'Halo' } }] })}\r\n`,
+      'data: [DONE]\r\n',
+    );
+    const onChunk = vi.fn();
+    const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
+
+    expect(result).toBe('Halo');
+    expect(onChunk).toHaveBeenCalledTimes(1);
+  });
+
   it('handles abort and throws DOMException', async () => {
     const ctrl = new AbortController();
     const reader = {

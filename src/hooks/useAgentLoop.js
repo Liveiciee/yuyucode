@@ -274,7 +274,7 @@ ${outB.slice(0, 1500)}
       [['agent','loop','sendmsg'],                 '/src/hooks/useAgentLoop.js'],
       [['panel','ui','modal'],                     '/src/components/panels.jsx'],
       [['constant','model','theme'],               '/src/constants.js'],
-      [['server','yuyu-server','exec'],            '/yuyu-server.js'],
+      [['server','yuyu-server','exec'],            '/yuyu-server.cjs'],
       [['feature','skill','plan'],                 '/src/features.js'],
       [['brightness','gamma','color'],             '/src/hooks/useBrightness.js'],
       [['slash','command'],                        '/src/hooks/useSlashCommands/index.js'],
@@ -401,7 +401,7 @@ ${outB.slice(0, 1500)}
       const serverOk = await checkServerHealth();
       if (!serverOk) {
         chat.setLoading(false); chat.setStreaming(''); chat.setAgentStatus(null);
-        chat.setMessages(m => [...m, { role: 'assistant', content: '❌ **yuyu-server tidak dapat dijangkau!**\n\nPastikan server berjalan di Termux:\n```bash\nyuyu-server-start\n# atau\nnode ~/yuyu-server.js &\n```\n\nLalu coba lagi.', actions: [] }]);
+        chat.setMessages(m => [...m, { role: 'assistant', content: '❌ **yuyu-server tidak dapat dijangkau!**\n\nPastikan server berjalan di Termux:\n```bash\nyuyu-server-start\n# atau\nnode ~/yuyu-server.cjs &\n```\n\nLalu coba lagi.', actions: [] }]);
         return;
       }
 

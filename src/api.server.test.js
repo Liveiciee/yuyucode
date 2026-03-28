@@ -77,7 +77,7 @@ describe('callServer', () => {
     globalThis.fetch.mockRejectedValueOnce(new Error('ECONNREFUSED'));
     const r = await callServer({ type: 'ping' });
     expect(r.ok).toBe(false);
-    expect(r.data).toContain('yuyu-server.js');
+    expect(r.data).toContain('yuyu-server.cjs');
   });
 
   it('returns ok:false on network timeout', async () => {
