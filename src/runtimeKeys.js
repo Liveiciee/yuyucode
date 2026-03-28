@@ -1,5 +1,21 @@
 import { Preferences } from '@capacitor/preferences';
 
+if (!globalThis.TextEncoder && typeof globalThis.Buffer !== 'undefined') {
+  globalThis.TextEncoder = class TextEncoderPolyfill {
+    encode(value) {
+      return Uint8Array.from(globalThis.Buffer.from(String(value), 'utf8'));
+    }
+  };
+}
+
+if (!globalThis.TextDecoder && typeof globalThis.Buffer !== 'undefined') {
+  globalThis.TextDecoder = class TextDecoderPolyfill {
+    decode(value) {
+      return globalThis.Buffer.from(value).toString('utf8');
+    }
+  };
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // CONFIGURATION
 // ──────────────────────────────────────────────────────────────────────────────
@@ -33,20 +49,46 @@ function base64ToUint8Array(base64) {
   return bytes;
 }
 
+function getCrypto() {
+  const cryptoObj = globalThis?.crypto;
+  if (!cryptoObj?.subtle || !cryptoObj?.getRandomValues) {
+    throw new KeyStorageError('Web Crypto API is not available', 'CRYPTO_UNAVAILABLE');
+  }
+  return cryptoObj;
+}
+
+function getTextEncoder() {
+  const Encoder = globalThis?.TextEncoder || globalThis?.window?.TextEncoder;
+  if (Encoder) return new Encoder();
+  if (typeof globalThis.Buffer !== 'undefined') {
+    return { encode: (value) => Uint8Array.from(globalThis.Buffer.from(String(value), 'utf8')) };
+  }
+  throw new KeyStorageError('TextEncoder is not available', 'ENCODER_UNAVAILABLE');
+}
+
+function getTextDecoder() {
+  const Decoder = globalThis?.TextDecoder || globalThis?.window?.TextDecoder;
+  if (Decoder) return new Decoder();
+  if (typeof globalThis.Buffer !== 'undefined') {
+    return { decode: (value) => globalThis.Buffer.from(value).toString('utf8') };
+  }
+  throw new KeyStorageError('TextDecoder is not available', 'DECODER_UNAVAILABLE');
+}
+
 function generateRandomBytes(length) {
-  return window.crypto.getRandomValues(new Uint8Array(length));
+  return getCrypto().getRandomValues(new Uint8Array(length));
 }
 
 async function deriveKey(password, salt) {
-  const enc = new TextEncoder();
-  const keyMaterial = await window.crypto.subtle.importKey(
+  const enc = getTextEncoder();
+  const keyMaterial = await getCrypto().subtle.importKey(
     'raw',
     enc.encode(password),
     { name: 'PBKDF2' },
     false,
     ['deriveKey']
   );
-  return window.crypto.subtle.deriveKey(
+  return getCrypto().subtle.deriveKey(
     {
       name: 'PBKDF2',
       salt,
@@ -62,10 +104,10 @@ async function deriveKey(password, salt) {
 
 async function encryptData(data, password) {
   const salt = generateRandomBytes(CONFIG.SALT_SIZE);
-  const iv = window.crypto.getRandomValues(new Uint8Array(CONFIG.IV_SIZE));
+  const iv = getCrypto().getRandomValues(new Uint8Array(CONFIG.IV_SIZE));
   const key = await deriveKey(password, salt);
-  const encoded = new TextEncoder().encode(data);
-  const encrypted = await window.crypto.subtle.encrypt(
+  const encoded = getTextEncoder().encode(data);
+  const encrypted = await getCrypto().subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
     encoded
@@ -95,20 +137,20 @@ async function decryptData(encryptedBase64, password) {
     const data = combined.slice(CONFIG.SALT_SIZE + CONFIG.IV_SIZE);
 
     const key = await deriveKey(password, salt);
-    const decrypted = await window.crypto.subtle.decrypt(
+    const decrypted = await getCrypto().subtle.decrypt(
       { name: 'AES-GCM', iv },
       key,
       data
     );
-    return new TextDecoder().decode(decrypted);
-  } catch (e) {
+    return getTextDecoder().decode(decrypted);
+  } catch (_e) {
     throw new Error('Decryption failed: Wrong password or corrupted data');
   }
 }
 
 async function calculateHash(data) {
-  const msgBuffer = new TextEncoder().encode(data);
-  const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+  const msgBuffer = getTextEncoder().encode(data);
+  const hashBuffer = await getCrypto().subtle.digest('SHA-256', msgBuffer);
   return Array.from(new Uint8Array(hashBuffer))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
@@ -195,7 +237,7 @@ async function processStoredKey(result, provider, password, validate) {
 
     if (validate) validateApiKey(parsed.key, provider);
     return parsed;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }

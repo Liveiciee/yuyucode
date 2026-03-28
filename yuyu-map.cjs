@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // ============================================================
 //  yuyu-map.cjs — YuyuCode Codebase Quantizer v3
 //
