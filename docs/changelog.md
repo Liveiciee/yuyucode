@@ -37,6 +37,8 @@
 - Fixed `vitest` coverage include path drift (`yuyu-server.cjs`) and script exclude path (`scripts/yugit.cjs`) to keep coverage config aligned with real files.
 - Stabilized CI test reliability by removing `--no-isolate` from `test:ci` and hardening flaky branch/background-agent tests against mock leakage/timing variance.
 - Added `.yuyu/bench-ci.json` and `.yuyu/bench-metadata.json` to `.gitignore` to prevent benchmark artifact checkout conflicts in CI.
+- `quality.yml` benchmark job now writes benchmark output to `/tmp/bench-ci.json` and cleans workspace before `github-action-benchmark` branch switch to avoid checkout failures on `gh-pages`.
+- Removed tracked `.yuyu/bench-ci.json` from the repository so generated benchmark output no longer dirties git state.
 
 ## v4.5.8
 

@@ -1,12 +1,14 @@
 'use strict';
 
 const fs   = require('fs');
+const os   = require('os');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
 
 const ROOT     = process.cwd();
 const YUYU_DIR = path.join(ROOT, '.yuyu');
-const OUT_FILE = process.env.BENCH_OUTPUT || path.join(YUYU_DIR, 'bench-ci.json');
+const DEFAULT_OUT = process.env.CI ? path.join(os.tmpdir(), 'bench-ci.json') : path.join(YUYU_DIR, 'bench-ci.json');
+const OUT_FILE = process.env.BENCH_OUTPUT || DEFAULT_OUT;
 const OUT_DIR  = path.dirname(OUT_FILE);
 // METADATA_FILE follows OUT_FILE's directory — so in CI (/tmp/), nothing lands in .yuyu/
 const METADATA_FILE = path.join(OUT_DIR, 'bench-metadata.json');

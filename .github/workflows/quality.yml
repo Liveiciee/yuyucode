@@ -208,13 +208,18 @@ jobs:
         run: npm ci
 
       - name: Run benchmarks
+        env:
+          BENCH_OUTPUT: /tmp/bench-ci.json
         run: node yuyu-bench-ci.cjs
+
+      - name: Discard generated files before branch switch
+        run: git checkout -- . && git clean -fd .yuyu/ || true
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: 'customSmallerIsBetter'
-          output-file-path: .yuyu/bench-ci.json
+          output-file-path: /tmp/bench-ci.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           comment-on-alert: true
