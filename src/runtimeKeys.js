@@ -228,7 +228,6 @@ async function decryptData(encryptedBase64, password) {
 
     const key = await deriveKey(password, salt);
     const decrypted = await cryptoApi.subtle.decrypt(
-    const decrypted = await getCrypto().subtle.decrypt(
       { name: 'AES-GCM', iv },
       key,
       data

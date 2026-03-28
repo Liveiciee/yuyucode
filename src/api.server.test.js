@@ -170,7 +170,6 @@ describe('execStream', () => {
     // Trigger onopen
     mockWs.onopen();
     mockWs.onmessage({ data: JSON.stringify({ id: mockWs.send.mock.calls[0][0], type: 'exit', code: 0 }) });
-
     await promise;
     expect(mockWs.send).toHaveBeenCalledWith(
       expect.stringContaining('exec_stream')
