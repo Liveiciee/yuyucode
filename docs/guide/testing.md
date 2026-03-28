@@ -2,14 +2,17 @@
 
 ## Test Suite
 
-1235 tests passing. 0 lint warnings. Runs on Termux ARM64 (Snapdragon 680).
+1225 tests passing. 0 lint warnings. Runs on Termux ARM64 (Snapdragon 680).
 
 - 50 property-based tests via `fast-check` — 100 random inputs each for `parseActions` and `resolvePath`
 - 363 branch coverage tests targeting SonarCloud condition branches across all core hooks
 
 ```bash
-npx vitest run       # run all tests (1235)
+npx vitest run       # run all tests (1225)
 npm run lint         # must be 0 problems
+npm run build        # production build smoke check
+npm run health:mobile # fast phone-ready confidence gate
+npm run perf:budget  # enforce JS size budget after build
 ```
 
 ### Test Files
@@ -37,9 +40,16 @@ npm run lint         # must be 0 problems
 | `yuyu-map.test.cjs` | Unit — map, symbols, compress, handoff, llms.txt | 98 |
 | `yuyu-server.test.cjs` | Integration — HTTP, read/write/patch/batch/exec | 30 |
 | `useSlashCommands/index.test.js` | Unit — command dispatch | 9 |
+| `useSlashCommands/mobile.smoke.test.js` | Smoke — critical mobile slash dispatch | 1 |
+| `useSlashCommands/mobile.sequence.smoke.test.js` | Smoke — `/bg -> /status -> /plan -> /db` sequence guard | 1 |
+| `useWakeWord.test.js` | Unit — wake-word recognition lifecycle and retries | 5 |
 | `useSlashCommands/handlers/batch.test.js` | Unit — /batch handler | 45 |
+| `useSlashCommands/handlers/chat.test.js` | Unit — /search + clear/stop/rename paths | 8 |
+| `useSlashCommands/handlers/agent.test.js` | Unit — /bg and /bgstatus core flows | 3 |
 | `useSlashCommands/handlers/git.test.js` | Unit — /history, /diff, /refactor | 49 |
 | `useSlashCommands/handlers/model.test.js` | Unit — /model, /ask, /ab | 7 |
+| `useSlashCommands/handlers/plan.test.js` | Unit — /plan + /ask alias paths | 4 |
+| `useSlashCommands/handlers/tools.test.js` | Unit — /mcp + /db core paths | 4 |
 | `useSlashCommands/handlers/undo.test.js` | Unit — /undo, /rewind | 15 |
 | `useSlashCommands/helpers/simpleResponse.test.js` | Unit — simpleResponse helper | 14 |
 | `useSlashCommands/helpers/withLoading.test.js` | Unit — withLoading wrapper | 23 |
@@ -49,8 +59,8 @@ npm run lint         # must be 0 problems
 | `features.bgagent.test.js` | Branch coverage — background agent | 11 |
 | `useFileStore.branch.test.js` | Branch coverage — useFileStore | 14 |
 | `useAgentLoop.branch.test.js` | Branch coverage — agent loop conditions | 39 |
-| `useSlashCommands.branch.test.js` | Branch coverage — slash command handlers | 41 |
 | `useDb.test.js` | Unit — SQLite + Preferences fallback paths | 36 |
+| `useProjectStore.test.js` | Unit — project prefs, skills, recent projects, folder loading | 7 |
 | `runtimeKeys.test.js` | Unit — KeyStore encrypt/decrypt/expiry/integrity | 26 |
 | `utils.coverage.test.js` | Coverage — generateDiff edge cases | 6 |
 
