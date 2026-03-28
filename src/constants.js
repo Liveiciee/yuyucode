@@ -29,11 +29,11 @@ export const FALLBACK_MODEL = 'moonshotai/kimi-k2-instruct-0905';
 export const MODELS = [
   { id: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B 🔥',  provider: 'cerebras' },
   { id: 'llama3.1-8b',                    label: 'Llama 3.1 8B ⚡',  provider: 'cerebras' },
-  { id: 'moonshotai/kimi-k2-instruct-0905',           label: 'Kimi K2 🌙',        provider: 'groq' },
-  { id: 'llama-3.3-70b-versatile',                    label: 'Llama 3.3 70B 🦙',  provider: 'groq' },
-  { id: 'meta-llama/llama-4-scout-17b-16e-instruct',  label: 'Llama 4 Scout 👁',  provider: 'groq' },
-  { id: 'qwen/qwen3-32b',                             label: 'Qwen 3 32B 🐼',     provider: 'groq' },
-  { id: 'llama-3.1-8b-instant',                       label: 'Llama 8B Fast ⚡',   provider: 'groq' },
+  { id: 'moonshotai/kimi-k2-instruct-0905', label: 'Kimi K2 🌙',      provider: 'groq' },  // ✅ ADD THIS
+  { id: 'llama-3.3-70b-versatile',          label: 'Llama 3.3 70B 🦙', provider: 'groq' },
+  { id: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 👁', provider: 'groq' },
+  { id: 'qwen/qwen3-32b',                  label: 'Qwen 3 32B 🐼',     provider: 'groq' },
+  { id: 'llama-3.1-8b-instant',             label: 'Llama 8B Fast ⚡',  provider: 'groq' },
 ];
 
 // ── ARM64 detection for dynamic system prompt ─────────────────────────────────
