@@ -14,7 +14,7 @@ export async function callServer(payload, retries = 2) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Request-ID': `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          'X-Request-ID': `${Date.now()}-${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`,
         },
         body: JSON.stringify(payload),
         signal: controller.signal,

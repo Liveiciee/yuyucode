@@ -39,7 +39,7 @@ export function execStream(command, cwd, onLine, signal) {
 
       const id = `exec_${Date.now()}_${crypto?.getRandomValues
         ? Array.from(crypto.getRandomValues(new Uint8Array(4)), b => b.toString(16)).join('')
-        : Math.random().toString(36).slice(2, 10)}`;
+        : crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
 
       ws.onopen = () => {
         ws.send(JSON.stringify({ type: 'exec_stream', id, command, cwd }));

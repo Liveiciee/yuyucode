@@ -7,7 +7,7 @@ export const getBackoffDelay = (attempt, withJitter = true) => {
   const delay = CONFIG.RETRY.BASE_DELAY_MS * Math.pow(2, attempt);
   const cappedDelay = Math.min(delay, CONFIG.RETRY.MAX_DELAY_MS);
   if (!withJitter) return cappedDelay;
-  const jitter = Math.random() * CONFIG.RETRY.JITTER_MAX_MS;
+  const jitter = (crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296) * CONFIG.RETRY.JITTER_MAX_MS;
   return cappedDelay + jitter;
 };
 
