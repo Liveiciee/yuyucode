@@ -216,7 +216,7 @@ async function readSSEStream(response, onChunk, signal) {
 
       try {
         ({ done, value } = await reader.read())
-      } catch (readError) {
+      } catch (_readError) {
         if (signal?.aborted) {
           throw new DOMException('Aborted', 'AbortError')
         }
