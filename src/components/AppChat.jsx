@@ -1,4 +1,3 @@
-import React, { lazy, Suspense } from "react";
 const FileEditor = lazy(() => import("./FileEditor.jsx"));
 const Terminal = lazy(() => import("./Terminal.jsx"));
 const LivePreview = lazy(() => import("./LivePreview.jsx"));
