@@ -8,7 +8,7 @@ on:
   schedule:
     - cron: '0 3 * * 1'
 
-run-name: CodeQL Analysis - {{ github.ref_name }}
+run-name: CodeQL Analysis - ${{ github.ref_name }}
 
 permissions:
   security-events: write
