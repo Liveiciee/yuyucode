@@ -12,6 +12,77 @@ import {
 } from '../src/api.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Custom Matchers
+// ──────────────────────────────────────────────────────────────────────────────
+expect.extend({
+  toBeRateLimitError(received, expectedRetryAfter) {
+    const isRateLimitError = received instanceof RateLimitError;
+    const hasCorrectCode = isRateLimitError && received.code === 'RATE_LIMIT';
+    const hasCorrectRetryAfter = isRateLimitError && received.retryAfter === expectedRetryAfter;
+    const hasCorrectMessage = isRateLimitError && 
+      received.message.includes(`Retry after ${expectedRetryAfter}s`);
+    
+    const pass = isRateLimitError && hasCorrectCode && hasCorrectRetryAfter && hasCorrectMessage;
+    
+    if (pass) {
+      return {
+        pass: true,
+        message: () => `expected ${received} not to be a RateLimitError with retryAfter ${expectedRetryAfter}`
+      };
+    } else {
+      return {
+        pass: false,
+        message: () => {
+          const errors = [];
+          if (!isRateLimitError) errors.push(`not a RateLimitError (got ${received?.constructor?.name || typeof received})`);
+          if (!hasCorrectCode) errors.push(`code !== 'RATE_LIMIT' (got ${received?.code})`);
+          if (!hasCorrectRetryAfter) errors.push(`retryAfter !== ${expectedRetryAfter} (got ${received?.retryAfter})`);
+          if (!hasCorrectMessage) errors.push(`message does not contain 'Retry after ${expectedRetryAfter}s' (got ${received?.message})`);
+          
+          return `Expected RateLimitError with retryAfter ${expectedRetryAfter}\n  ${errors.join('\n  ')}`;
+        }
+      };
+    }
+  },
+  
+  toBeServerError(received, expectedStatusCode) {
+    const isServerError = received instanceof ServerError;
+    const hasCorrectCode = isServerError && received.code === 'SERVER_ERROR';
+    const hasCorrectStatusCode = isServerError && received.statusCode === expectedStatusCode;
+    
+    const pass = isServerError && hasCorrectCode && hasCorrectStatusCode;
+    
+    return {
+      pass,
+      message: () => {
+        if (!isServerError) return `expected ServerError, got ${received?.constructor?.name || typeof received}`;
+        if (!hasCorrectCode) return `expected code 'SERVER_ERROR', got '${received.code}'`;
+        if (!hasCorrectStatusCode) return `expected statusCode ${expectedStatusCode}, got ${received.statusCode}`;
+        return `expected not to be ServerError with status ${expectedStatusCode}`;
+      }
+    };
+  },
+  
+  toBeValidationError(received, expectedField) {
+    const isValidationError = received instanceof ValidationError;
+    const hasCorrectCode = isValidationError && received.code === 'VALIDATION_ERROR';
+    const hasCorrectField = isValidationError && received.field === expectedField;
+    
+    const pass = isValidationError && hasCorrectCode && hasCorrectField;
+    
+    return {
+      pass,
+      message: () => {
+        if (!isValidationError) return `expected ValidationError, got ${received?.constructor?.name || typeof received}`;
+        if (!hasCorrectCode) return `expected code 'VALIDATION_ERROR', got '${received.code}'`;
+        if (!hasCorrectField) return `expected field '${expectedField}', got '${received.field}'`;
+        return `expected not to be ValidationError with field ${expectedField}`;
+      }
+    };
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Mock Setup
 // ──────────────────────────────────────────────────────────────────────────────
 vi.mock('../src/constants.js', () => ({
@@ -91,25 +162,25 @@ describe('askAIStream', () => {
   it('throws on empty messages array', async () => {
     await expect(
       askAIStream([], 'qwen-cerebras', () => {}, null)
-    ).rejects.toThrow(ValidationError);
+    ).rejects.toBeValidationError('messages');
   });
 
   it('throws on non-array messages', async () => {
     await expect(
       askAIStream(null, 'qwen-cerebras', () => {}, null)
-    ).rejects.toThrow(ValidationError);
+    ).rejects.toBeValidationError('messages');
   });
 
   it('throws on messages without role', async () => {
     await expect(
       askAIStream([{ content: 'hi' }], 'qwen-cerebras', () => {}, null)
-    ).rejects.toThrow(ValidationError);
+    ).rejects.toBeValidationError('messages[0]');
   });
 
   it('throws on messages without content', async () => {
     await expect(
       askAIStream([{ role: 'user' }], 'qwen-cerebras', () => {}, null)
-    ).rejects.toThrow(ValidationError);
+    ).rejects.toBeValidationError('messages[0]');
   });
 
   // ── Cerebras Provider ───────────────────────────────────────────────────────
@@ -189,7 +260,7 @@ describe('askAIStream', () => {
         () => {},
         new AbortController().signal
       )
-    ).rejects.toThrow('RATE_LIMIT:60');
+    ).rejects.toBeRateLimitError(60);
   });
 
   it('throws AbortError when Groq fallback is aborted', async () => {
@@ -337,7 +408,7 @@ describe('askAIStream', () => {
         () => {},
         new AbortController().signal
       )
-    ).rejects.toThrow('RATE_LIMIT');
+    ).rejects.toBeRateLimitError(30);
   });
 
   it('stops fallback chain on non-rate-limit error', async () => {
@@ -393,7 +464,7 @@ describe('askAIStream', () => {
   // ── Error Handling ──────────────────────────────────────────────────────────
   it('throws ValidationError for missing messages', async () => {
     await expect(askAIStream([], 'qwen-cerebras', () => {}, null))
-      .rejects.toThrow(ValidationError);
+      .rejects.toBeValidationError('messages');
   });
 
   it('throws ServerError for 5xx responses', async () => {
@@ -406,7 +477,7 @@ describe('askAIStream', () => {
         () => {},
         new AbortController().signal
       )
-    ).rejects.toThrow(ServerError);
+    ).rejects.toBeServerError(500);
   });
 
   it('throws RateLimitError for 429 responses', async () => {
@@ -419,7 +490,7 @@ describe('askAIStream', () => {
         () => {},
         new AbortController().signal
       )
-    ).rejects.toThrow(RateLimitError);
+    ).rejects.toBeRateLimitError(30);
   });
 
   // ── Callbacks & Events ──────────────────────────────────────────────────────
