@@ -12,7 +12,7 @@ export class ResponseCache {
     let hashSum = 0;
     for (let i = 0; i < hash.length; i++) {
       hashSum = ((hashSum << 5) - hashSum) + hash.charCodeAt(i);
-      hashSum |= 0;
+      hashSum = Math.trunc(hashSum);
     }
     return `cache_${Math.abs(hashSum)}`;
   }
