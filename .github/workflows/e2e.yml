@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ main ]
 
-run-name: E2E Tests - {{ github.ref_name }}
+run-name: E2E Tests - ${{ github.ref_name }}
 
 concurrency:
   group: e2e-${{ github.ref }}
