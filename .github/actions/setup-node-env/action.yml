@@ -1,0 +1,32 @@
+name: 'Setup Node Env'
+description: 'Instal Node, Cache, dan Dependensi'
+inputs:
+  node-version:
+    description: 'Versi Node.js'
+    required: true
+    default: '24'
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Setup Node ${{ inputs.node-version }}
+      uses: actions/setup-node@v5
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+
+    - name: Cache node_modules
+      id: cache-nm
+      uses: actions/cache@v5
+      with:
+        path: node_modules
+        key: nm-${{ hashFiles('package-lock.json') }}
+        restore-keys: |
+          nm-
+
+    - name: Install Dependencies
+      if: steps.cache-nm.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm install --legacy-peer-deps

@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ main ]
   schedule:
-    - cron: '0 3 * * 1'  # Senin 03:00 UTC — weekly deep scan
+    - cron: '0 3 * * 1'
 
 jobs:
   analyze:
@@ -18,15 +18,15 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Setup Environment
+        uses: ./.github/actions/setup-node-env
+        with:
+          node-version: '24'
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: javascript
-          # Queries:
-          # security-extended  — lebih banyak security rules dari default
-          # security-and-quality — security + code quality (duplicate, dead code)
           queries: security-extended, security-and-quality
 
       - name: Autobuild
@@ -36,4 +36,3 @@ jobs:
         uses: github/codeql-action/analyze@v4
         with:
           category: codeql-javascript
-          # Hasil muncul di: GitHub → Security → Code scanning alerts

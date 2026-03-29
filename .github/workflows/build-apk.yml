@@ -17,23 +17,10 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
+      - name: Setup Environment
+        uses: ./.github/actions/setup-node-env
         with:
           node-version: '24'
-          cache: 'npm'
-
-      - name: Cache node_modules
-        id: nm-cache
-        uses: actions/cache@v5
-        with:
-          path: node_modules
-          key: nm-${{ hashFiles('package-lock.json') }}
-
-      - name: Install dependencies
-        if: steps.nm-cache.outputs.cache-hit != 'true'
-        run: npm install --legacy-peer-deps
 
       - name: Build Vite
         run: npm run build
@@ -121,7 +108,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.info.outputs.version }}
-          name: "YuyuCode v${{ steps.info.outputs.version }} (${{ steps.info.outputs.date }})"
+          name: "YuyuCode v$${{ steps.info.outputs.version }} ($${{ steps.info.outputs.date }})"
           body: |
             **${{ steps.info.outputs.msg }}**
 
@@ -129,7 +116,7 @@ jobs:
             |---|---|
             | Version | ${{ steps.info.outputs.version }} |
             | Build | #${{ github.run_number }} |
-            | Commit | ${{ github.sha }} |
+            | Commit | ${{ steps.info.outputs.sha }} |
             | Date | ${{ steps.info.outputs.date }} |
 
             ⬇️ Download **YuyuCode.apk** di bawah

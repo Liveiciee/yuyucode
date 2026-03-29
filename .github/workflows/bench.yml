@@ -6,7 +6,7 @@ on:
     paths-ignore: ['**.md']
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1'  # tiap Senin 00:00 UTC
+    - cron: '0 0 * * 1'
 
 permissions:
   contents: write
@@ -20,23 +20,10 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
+      - name: Setup Environment
+        uses: ./.github/actions/setup-node-env
         with:
           node-version: '24'
-          cache: 'npm'
-
-      - name: Cache node_modules
-        id: nm-cache
-        uses: actions/cache@v5
-        with:
-          path: node_modules
-          key: nm-${{ hashFiles('package-lock.json') }}
-
-      - name: Install dependencies
-        if: steps.nm-cache.outputs.cache-hit != 'true'
-        run: npm install --legacy-peer-deps
 
       - name: Create gh-pages branch if not exists
         run: |

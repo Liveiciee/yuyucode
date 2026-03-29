@@ -6,7 +6,6 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/docs.yml'
-
   workflow_dispatch:
 
 permissions:
@@ -22,15 +21,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Setup Environment
+        uses: ./.github/actions/setup-node-env
         with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - run: npm install --ignore-scripts
+          node-version: '22' # Docs pakai node 22
 
       - name: Build VitePress
         run: npx vitepress build docs
