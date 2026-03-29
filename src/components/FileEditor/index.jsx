@@ -106,12 +106,10 @@ export const FileEditor = forwardRef(function FileEditor(
         buildOptionalExtensions(editorConfig, tab?.path, folder, collabWsRef)
       ),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     editorConfig?.vimMode, editorConfig?.emmet, editorConfig?.ghostText,
     editorConfig?.lint, editorConfig?.multiCursor, editorConfig?.collab,
   ]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // Blame toggle
   useEffect(() => {
@@ -201,12 +199,10 @@ export const FileEditor = forwardRef(function FileEditor(
       view.setState(newState);
     }
     prevPathRef.current = tab.path;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     setTimeout(() => setSaved(true), 0);
   }, [tab?.path]);
 
   // External content sync
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!viewRef.current || !tab?.content) return;
     if (prevPathRef.current !== tab.path) return;

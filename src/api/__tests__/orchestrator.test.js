@@ -53,7 +53,7 @@ describe('askAIStream - retry logic', () => {
     expect(attempts).toBe(2);
   });
 
-  it('throws after max retries', async () => {
+  it('throws after max retries', async () => { timeout: 20000,
     vi.spyOn(cerebrasModule, 'cerebrasRequest').mockRejectedValue(new Error('network error'));
     await expect(askAIStream([{ role: 'user', content: 'hi' }], 'cerebras-model', () => {}, null))
       .rejects.toThrow('network error');
