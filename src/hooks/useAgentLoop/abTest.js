@@ -1,11 +1,10 @@
-// src/hooks/useAgentLoop/abTest.js
 import { askCerebrasStream } from '../../api.js';
 import { buildSystemPrompt } from './systemPrompt.js';
 
-export async function abTest(task, modelA, modelB, project, chat, abortRef, growth) {
+export async function abTest(task, modelA, modelB, project, chat, file, abortRef, growth) {
   const cfg  = project.effortCfg;
   const msgs = [{ role: 'user', content: task }];
-  const sys  = buildSystemPrompt(task, cfg, project, chat, {}, {});
+  const sys  = buildSystemPrompt(task, cfg, project, chat, file, growth);
   const full = [{ role: 'system', content: sys }, ...msgs];
 
   chat.setMessages(m => [...m,

@@ -329,5 +329,5 @@ export function useAgentLoop({
     await sendMsg(lastUser.content);
   }
 
-  return { sendMsg, callAI: (msgs, onChunk, signal, imageBase64) => callAI(msgs, onChunk, signal, imageBase64, project, chat), compactContext: () => compactContext(chat, project, abortRef, false), cancelMsg, continueMsg, retryLast, abTest: (task, modelA, modelB) => abTest(task, modelA, modelB, project, chat, abortRef, growth) };
+  return { sendMsg, callAI: (msgs, onChunk, signal, imageBase64) => callAI(msgs, onChunk, signal, imageBase64, project, chat), compactContext: () => compactContext(chat, project, abortRef, false), cancelMsg, continueMsg, retryLast, abTest: (task, modelA, modelB) => abTest(task, modelA, modelB, project, chat, file, abortRef, growth) };
 }
