@@ -1,7 +1,6 @@
 // src/components/FileEditor/optionalExtensions.js
 import { keymap } from '@codemirror/view';
 import { selectNextOccurrence, selectSelectionMatches } from '@codemirror/search';
-import { indentWithTab } from '@codemirror/commands';
 import { vim } from '@replit/codemirror-vim';
 import { abbreviationTracker, expandAbbreviation } from '@emmetio/codemirror6-plugin';
 import { collab } from '@codemirror/collab';

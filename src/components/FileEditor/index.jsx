@@ -7,14 +7,10 @@ import * as commandsModule from '@codemirror/commands';
 const { keymap } = commandsModule;
 import { foldAll, unfoldAll } from '@codemirror/language';
 import { Save } from 'lucide-react';
-import { callServer } from '../../api.js';
 import { getLang, buildTheme, isTsLang, isEmmetLang } from './editorUtils.js';
-import { makeGhostPlugin, ghostField, ghostL2Field, ghostDecorations, ghostL2Decorations, ghostAcceptKeymap } from './ghost.js';
 import { makeBlameGutter, fetchBlame } from './blame.js';
-import { makeSyntaxLinter } from './lint.js';
 import { Minimap } from './minimap.jsx';
 import { Breadcrumb } from './breadcrumb.jsx';
-import { makeCollabPlugin } from './collab.js';
 import { buildOptionalExtensions } from './optionalExtensions.js';
 import { getTsExtensions } from './tsExtensions.js';
 
@@ -114,6 +110,7 @@ export const FileEditor = forwardRef(function FileEditor(
     editorConfig?.vimMode, editorConfig?.emmet, editorConfig?.ghostText,
     editorConfig?.lint, editorConfig?.multiCursor, editorConfig?.collab,
   ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // Blame toggle
   useEffect(() => {
@@ -207,6 +204,7 @@ export const FileEditor = forwardRef(function FileEditor(
   }, [tab?.path]);
 
   // External content sync
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!viewRef.current || !tab?.content) return;
     if (prevPathRef.current !== tab.path) return;

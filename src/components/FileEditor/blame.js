@@ -43,4 +43,3 @@ export async function fetchBlame(folder, filePath) {
   });
   return map;
 }
-export { BlameMarker };
