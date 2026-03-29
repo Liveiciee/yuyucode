@@ -1,5 +1,5 @@
 import { CONFIG } from '../config.js';
-import { getRuntimeGroqKey } from '../../runtimeKeys.js';
+import { getRuntimeGroqKey } from '../../runtimeKeys/index.js';
 import { GROQ_KEY } from '../../constants.js';
 import { AIError } from '../errors.js';
 import { injectVisionImage } from '../../utils.js';

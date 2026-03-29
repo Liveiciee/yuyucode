@@ -1,5 +1,5 @@
 import { CONFIG } from '../config.js';
-import { getRuntimeCerebrasKey } from '../../runtimeKeys.js';
+import { getRuntimeCerebrasKey } from '../../runtimeKeys/index.js';
 import { CEREBRAS_KEY } from '../../constants.js';
 import { AIError } from '../errors.js';
 import { injectVisionImage } from '../../utils.js';
