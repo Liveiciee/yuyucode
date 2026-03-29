@@ -1,19 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { cerebrasRequest, getCerebrasKey } from '../../providers/cerebras.js';
+import { cerebrasRequest } from '../../providers/cerebras.js';
 import { makeSseResponse } from '../setup.js';
+import * as cerebrasModule from '../../providers/cerebras.js';
 
-vi.mock('../../../constants.js');
-vi.mock('../../../runtimeKeys.js');
+// Apply global mocks from setup.js
+import '../setup.js';
 
 const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
   globalThis.fetch = vi.fn();
+  // Ensure getCerebrasKey returns a valid key for this test
+  vi.spyOn(cerebrasModule, 'getCerebrasKey').mockReturnValue('test-cerebras-key');
 });
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe('cerebrasRequest', () => {
@@ -33,9 +36,7 @@ describe('cerebrasRequest', () => {
   });
 
   it('throws when API key is missing', async () => {
-    // Temporarily mock getCerebrasKey to return empty
-    vi.spyOn({ getCerebrasKey }, 'getCerebrasKey').mockReturnValue('');
-
+    vi.spyOn(cerebrasModule, 'getCerebrasKey').mockReturnValue('');
     await expect(
       cerebrasRequest([{ role: 'user', content: 'Hi' }], 'cerebras-model', () => {}, null)
     ).rejects.toThrow('Cerebras API key not configured');
