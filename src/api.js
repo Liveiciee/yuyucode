@@ -4,12 +4,9 @@
  * @module api
  */
 
-// ──────────────────────────────────────────────────────────────────────────────
-// IMPORTS (Optional - uncomment if using external modules)
-// ──────────────────────────────────────────────────────────────────────────────
-// import { logger } from './utils.js'
-// import { CEREBRAS_KEY, GROQ_KEY, YUYU_SERVER, WS_SERVER, MODELS, FALLBACK_MODEL } from './constants.js'
-// import { getRuntimeCerebrasKey, getRuntimeGroqKey } from './runtimeKeys.js'
+import { logger } from './utils.js'
+import { CEREBRAS_KEY, GROQ_KEY, YUYU_SERVER, WS_SERVER, MODELS, FALLBACK_MODEL } from './constants.js'
+import { getRuntimeCerebrasKey, getRuntimeGroqKey } from './runtimeKeys.js'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // CONFIGURATION
