@@ -36,7 +36,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.nm-cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Create gh-pages branch if not exists
         run: |

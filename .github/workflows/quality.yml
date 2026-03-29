@@ -87,7 +87,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.nm-cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Run tests with coverage
         run: npm run test:ci
@@ -144,7 +144,7 @@ jobs:
             nm-
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Run ESLint
         run: npm run lint
@@ -170,7 +170,7 @@ jobs:
             nm-
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Run tests
         run: npm run test:ci
@@ -205,7 +205,7 @@ jobs:
             nm-
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Run benchmarks
         env:
