@@ -1,11 +1,9 @@
-name: Build APK
+name: Build APK (Ultimate Optimized)
 
 on:
   push:
     branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'README.md'
+    paths-ignore: ['**.md', 'README.md']
   workflow_dispatch:
 
 jobs:
@@ -17,13 +15,30 @@ jobs:
       contents: write
 
     steps:
+      # 1. Checkout
       - uses: actions/checkout@v5
 
+      # 2. Setup Node (Unified Action)
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
           node-version: '24'
 
+      # 3. Extra Cache: NPM Global (Untuk dependency lintas project)
+      - name: Cache NPM Global
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: npm-global-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-global-
+
+      # 4. Install Dependencies (Optimized)
+      - name: Install Dependencies
+        run: |
+          npm install --legacy-peer-deps --no-audit --no-fund --prefer-offline
+
+      # 5. Build Web
       - name: Build Vite
         run: npm run build
         env:
@@ -31,6 +46,7 @@ jobs:
           VITE_TAVILY_API_KEY: ${{ secrets.VITE_TAVILY_API_KEY }}
           VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
 
+      # 6. Setup Java & Android
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
@@ -41,40 +57,50 @@ jobs:
         with:
           packages: 'tools platform-tools platforms;android-34 build-tools;34.0.0'
 
+      # 7. Advanced Gradle Caching
       - name: Cache Gradle
         uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
+            !~/.gradle/caches/build-cache-*
           key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: gradle-
+          restore-keys: |
+            gradle-
 
-      - name: Add Capacitor Android
+      # 8. Enable Gradle Configuration Cache (Future-Proof Speed)
+      - name: Enable Gradle Config Cache
+        run: |
+          echo "org.gradle.configuration-cache=true" >> android/gradle.properties
+          echo "org.gradle.parallel=true" >> android/gradle.properties
+          echo "org.gradle.daemon=true" >> android/gradle.properties
+          echo "org.gradle.caching=true" >> android/gradle.properties
+
+      # 9. Sync Capacitor
+      - name: Sync Capacitor
         run: |
           if [ ! -d "android" ]; then npx cap add android; fi
           npx cap sync android
-          # Restore custom icon after cap sync overwrites
-          echo "=== RESTORING ICONS ==="
-          cp -v .github/icons/ic_launcher_background.xml android/app/src/main/res/drawable/ic_launcher_background.xml
-          cp -v .github/icons/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
-          echo "=== ICONS RESTORED ==="
+          cp -v .github/icons/ic_launcher_background.xml android/app/src/main/res/drawable/
+          cp -v .github/icons/ic_launcher_foreground.xml android/app/src/main/res/drawable/
 
-      # Auto-bump versionCode = build number, versionName = 1.0.N
-      - name: Bump version
+      # 10. Bump Version
+      - name: Bump Version
         uses: chkfung/android-version-actions@v1.2.1
         with:
           gradlePath: android/app/build.gradle
           versionCode: ${{ github.run_number }}
           versionName: 1.0.${{ github.run_number }}
 
+      # 11. Build APK (Ultimate Flags)
       - name: Build Release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --parallel --build-cache
+          ./gradlew assembleRelease --configuration-cache --parallel --build-cache --no-daemon
 
-      # Decode keystore from secret, sign & zipalign
+      # 12. Sign APK
       - name: Sign APK
         id: sign_apk
         uses: r0adkll/sign-android-release@v1
@@ -87,24 +113,23 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: "34.0.0"
 
-      - name: Rename signed APK
-        run: cp "${{ steps.sign_apk.outputs.signedReleaseFile }}" android/app/build/outputs/apk/release/YuyuCode.apk
-
-      # Keep artifact upload as backup
-      - name: Upload APK artifact
+      # 13. Upload Artifact (Short Retention)
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: YuyuCode-v1.0.${{ github.run_number }}
           path: android/app/build/outputs/apk/release/YuyuCode.apk
+          retention-days: 7
 
-      - name: Get version & commit info
+      # 14. Get Version Info
+      - name: Get Version Info
         id: info
         run: |
           echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
           echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
 
-      # Create GitHub Release — hanya jika commit message diawali 'release:'
+      # 15. Create Release
       - name: Create Release
         if: startsWith(github.event.head_commit.message, 'release:')
         uses: softprops/action-gh-release@v2
@@ -113,14 +138,13 @@ jobs:
           name: "YuyuCode v$${{ steps.info.outputs.version }} ($${{ steps.info.outputs.date }})"
           body: |
             **${{ steps.info.outputs.msg }}**
-
+            
             | | |
             |---|---|
             | Version | ${{ steps.info.outputs.version }} |
             | Build | #${{ github.run_number }} |
-            | Commit | ${{ steps.info.outputs.sha }} |
             | Date | ${{ steps.info.outputs.date }} |
-
+            
             ⬇️ Download **YuyuCode.apk** di bawah
           files: android/app/build/outputs/apk/release/YuyuCode.apk
           make_latest: true
