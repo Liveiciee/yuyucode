@@ -1,4 +1,4 @@
-import { linter, lintGutter } from '@codemirror/lint';
+import { linter } from '@codemirror/lint';
 import { callServer } from '../../api.js';
 
 export function makeSyntaxLinter(path, folder) {

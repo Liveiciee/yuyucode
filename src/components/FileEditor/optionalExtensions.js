@@ -1,11 +1,9 @@
-// src/components/FileEditor/optionalExtensions.js
 import { keymap } from '@codemirror/view';
 import { selectNextOccurrence, selectSelectionMatches } from '@codemirror/search';
 import { vim } from '@replit/codemirror-vim';
 import { abbreviationTracker, expandAbbreviation } from '@emmetio/codemirror6-plugin';
 import { collab } from '@codemirror/collab';
-import { lintGutter } from '@codemirror/lint';
-import { isEmmetLang, isTsLang } from './editorUtils.js';
+import { isEmmetLang } from './editorUtils.js';
 import { ghostField, ghostL2Field, ghostDecorations, ghostL2Decorations, ghostAcceptKeymap, makeGhostPlugin } from './ghost.js';
 import { makeSyntaxLinter } from './lint.js';
 import { makeCollabPlugin } from './collab.js';
@@ -20,7 +18,7 @@ export function buildOptionalExtensions(cfg, path, folder, collabWsRef) {
   if (cfg?.ghostText) exts.push(ghostField, ghostL2Field, ghostDecorations, ghostL2Decorations, ghostAcceptKeymap, makeGhostPlugin());
   if (cfg?.lint) {
     const linterExt = makeSyntaxLinter(path, folder);
-    if (linterExt) exts.push(linterExt, lintGutter());
+    if (linterExt) exts.push(linterExt);
   }
   if (cfg?.multiCursor) {
     exts.push(keymap.of([
