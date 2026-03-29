@@ -1,32 +1,65 @@
 name: 'Setup Node Env'
-description: 'Instal Node, Cache, dan Dependensi'
+description: 'Setup Node.js + aggressive caching (npm + node_modules) + debugging info'
+
 inputs:
   node-version:
-    description: 'Versi Node.js'
+    description: 'Versi Node.js yang digunakan'
     required: true
     default: '24'
-runs:
-  using: "composite"
-  steps:
-    - name: Checkout
-      uses: actions/checkout@v5
 
-    - name: Setup Node ${{ inputs.node-version }}
+  # Opsional: path ke package-lock.json jika bukan di root
+  cache-dependency-path:
+    description: 'Path ke package-lock.json (default: root)'
+    required: false
+    default: 'package-lock.json'
+
+outputs:
+  cache-hit:
+    description: 'Apakah node_modules cache berhasil di-restore'
+    value: ${{ steps.cache-nm.outputs.cache-hit }}
+  node-version:
+    description: 'Versi Node.js yang aktif'
+    value: ${{ steps.setup-node.outputs.node-version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 🔧 Setup Node.js ${{ inputs.node-version }}
+      id: setup-node
       uses: actions/setup-node@v5
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'npm'
+        cache: 'npm'                    # Official global npm cache (paling direkomendasikan)
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
-    - name: Cache node_modules
+    - name: 📦 Cache node_modules (Aggressive)
       id: cache-nm
-      uses: actions/cache@v5
+      uses: actions/cache@v4
       with:
         path: node_modules
-        key: nm-${{ hashFiles('package-lock.json') }}
+        key: |
+          node-modules-\( {{ runner.os }}-node- \){{ inputs.node-version }}-${{ hashFiles(inputs.cache-dependency-path) }}
         restore-keys: |
-          nm-
+          node-modules-\( {{ runner.os }}-node- \){{ inputs.node-version }}-
 
-    - name: Install Dependencies
+    - name: 📋 Debug Info
+      shell: bash
+      run: |
+        echo "🟢 Node Version : ${{ steps.setup-node.outputs.node-version }}"
+        echo "🔑 Cache Hit (npm)     : ${{ steps.setup-node.outputs.cache-hit }}"
+        echo "🔑 Cache Hit (node_modules) : ${{ steps.cache-nm.outputs.cache-hit }}"
+        echo "📍 Working Directory : $(pwd)"
+        echo "🔒 package-lock hash : ${{ hashFiles(inputs.cache-dependency-path) }}"
+
+    - name: 📥 Install Dependencies
       if: steps.cache-nm.outputs.cache-hit != 'true'
       shell: bash
-      run: npm install --legacy-peer-deps
+      run: |
+        echo "⚡ Cache miss detected → Running full install"
+        npm ci --legacy-peer-deps --prefer-offline --no-audit --no-fund
+      # Gunakan npm ci untuk CI (lebih cepat & strict dibanding npm install)
+
+    - name: ✅ Dependencies Ready
+      if: steps.cache-nm.outputs.cache-hit == 'true'
+      shell: bash
+      run: echo "🚀 node_modules restored from cache – skipping install"
