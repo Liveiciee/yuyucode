@@ -12,15 +12,24 @@ permissions:
   contents: write
   deployments: write
 
+run-name: Benchmark - ${{ github.ref_name }}
+
+concurrency:
+  group: bench-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   benchmark:
     name: Performance · Vitest Bench (x86_64)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
