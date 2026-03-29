@@ -1,5 +1,18 @@
 import { callServer } from './api.js';
 import { diffLines } from 'diff';
+import { CONFIG } from './api/config.js';
+
+// ── LOGGER UTILITY ───────────────────────────────────────────────────────────
+export const logger = {
+  debug: (...args) => {
+    if (import.meta.env?.DEV !== false) {
+      console.debug('[DEBUG]', ...args);
+    }
+  },
+  info: (...args) => console.log('[INFO]', ...args),
+  warn: (...args) => console.warn('[WARN]', ...args),
+  error: (...args) => console.error('[ERROR]', ...args),
+};
 
 // ── TOKEN COUNT & ICON ────────────────────────────────────────────────────────
 export function countTokens(msgs) {
@@ -98,14 +111,10 @@ export function parseActions(text) {
 }
 
 // ── DIFF ENGINE — segmentedDiff dengan Triple Guard ───────────────────────────
-// Filosofi: konservatif. Kalau ragu, fallback ke Myers murni (diffLines).
-// Guard 1: min 30% unique anchor lines sebelum boleh segmented
-// Guard 2: max chunk gap 500 baris antar anchor
-// Guard 3: validasi hasil — kalau meledak (>1.5x), fallback Myers
-const MYERS_THRESHOLD  = 2000;  // file < threshold → selalu Myers (akurat, cepat)
-const MIN_ANCHOR_RATIO = 0.3;   // (Guard 1) minimal 30% baris unik
-const MAX_CHUNK_SIZE   = 500;   // (Guard 2) max celah antar anchor
-const MAX_DIFF_RATIO   = 1.5;   // (Guard 3) max rasio hasil diff vs panjang file
+const MYERS_THRESHOLD  = 2000;
+const MIN_ANCHOR_RATIO = 0.3;
+const MAX_CHUNK_SIZE   = 500;
+const MAX_DIFF_RATIO   = 1.5;
 
 function findStrictAnchors(aLines, bLines) {
   const aFreq = new Map(), bFreq = new Map();
@@ -131,7 +140,6 @@ function segmentedDiff(aLines, bLines) {
   const maxLines = Math.max(aLines.length, bLines.length);
   const anchors  = findStrictAnchors(aLines, bLines);
 
-  // Guard 1
   if (anchors.length < maxLines * MIN_ANCHOR_RATIO) {
     return diffLines(aLines.join('\n'), bLines.join('\n'));
   }
@@ -140,7 +148,6 @@ function segmentedDiff(aLines, bLines) {
   let prevA = 0, prevB = 0;
 
   for (const { a, b } of anchors) {
-    // Guard 2
     if ((a - prevA) > MAX_CHUNK_SIZE || (b - prevB) > MAX_CHUNK_SIZE) {
       return diffLines(aLines.join('\n'), bLines.join('\n'));
     }
@@ -155,7 +162,6 @@ function segmentedDiff(aLines, bLines) {
   const aTail = aLines.slice(prevA), bTail = bLines.slice(prevB);
   if (aTail.length || bTail.length) result.push(...diffLines(aTail.join('\n'), bTail.join('\n')));
 
-  // Guard 3
   if (result.length > maxLines * MAX_DIFF_RATIO) {
     return diffLines(aLines.join('\n'), bLines.join('\n'));
   }
@@ -163,11 +169,9 @@ function segmentedDiff(aLines, bLines) {
   return result;
 }
 
-// ── Diff line formatter helpers ───────────────────────────────────────────────
 function formatDiffLine(hunk, line, oldLine, newLine) {
   if (hunk.removed) return { text: `- L${oldLine}: ${line}`, oldInc: 1, newInc: 0 };
   if (hunk.added)   return { text: `+ L${newLine}: ${line}`, oldInc: 0, newInc: 1 };
-  /* istanbul ignore next */
   return null;
 }
 
@@ -336,4 +340,54 @@ export async function backupFiles(targets, folder) {
     }
   }
   return backups;
+}
+
+// ===== RETRY & BACKOFF HELPERS (from original api.js) =====
+export const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+export const getBackoffDelay = (attempt, withJitter = true) => {
+  const delay = CONFIG.RETRY.BASE_DELAY_MS * Math.pow(2, attempt);
+  const cappedDelay = Math.min(delay, CONFIG.RETRY.MAX_DELAY_MS);
+  if (!withJitter) return cappedDelay;
+  const jitter = Math.random() * CONFIG.RETRY.JITTER_MAX_MS;
+  return cappedDelay + jitter;
+};
+
+export const isRetryableError = (error) => {
+  if (error?.code && CONFIG.RETRY.RETRYABLE_CODES.includes(error.code)) {
+    return true;
+  }
+  if (error?.message?.includes('network') || error?.message?.includes('timeout')) {
+    return true;
+  }
+  return false;
+};
+
+export const isRetryableStatus = (statusCode) => {
+  return CONFIG.RETRY.RETRYABLE_STATUSES.includes(statusCode);
+};
+
+// ===== VISION SUPPORT (from original api.js) =====
+export function injectVisionImage(messages, imageBase64, imageMimeType = 'image/jpeg') {
+  if (!imageBase64) return messages;
+
+  return messages.map((msg, idx) => {
+    if (idx !== messages.length - 1 || msg.role !== 'user') {
+      return msg;
+    }
+
+    const text = typeof msg.content === 'string'
+      ? msg.content
+      : Array.isArray(msg.content)
+        ? msg.content.filter(c => c.type === 'text').map(c => c.text).join(' ')
+        : '';
+
+    return {
+      ...msg,
+      content: [
+        { type: 'text', text },
+        { type: 'image_url', image_url: { url: `data:${imageMimeType};base64,${imageBase64}` } },
+      ],
+    };
+  });
 }

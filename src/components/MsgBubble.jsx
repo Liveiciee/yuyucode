@@ -255,7 +255,6 @@ function DiffReviewCard({ action, onApprove, approveBtn, rejectBtn, border, bg3,
   const accentBorder = T?.accentBorder|| 'rgba(124,58,237,.25)';
   const successCol   = T?.success     || '#4ade80';
   const errorCol     = T?.error       || '#f87171';
-  const successBg    = T?.successBg   || 'rgba(74,222,128,.08)';
   const codeBg       = T?.codeBg      || 'rgba(0,0,0,.35)';
 
   const filename = action.path?.split('/').pop() || action.path || '?';
@@ -383,7 +382,6 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
   const border        = T?.border        || 'rgba(255,255,255,.07)';
   const bg3           = T?.bg3           || 'rgba(255,255,255,.03)';
   const success       = T?.success       || '#4ade80';
-  const successBg     = T?.successBg     || 'rgba(74,222,128,.08)';
   const error         = T?.error         || '#f87171';
   const errorBg       = T?.errorBg       || 'rgba(248,113,113,.08)';
   const textMute      = T?.textMute      || 'rgba(255,255,255,.3)';
@@ -396,7 +394,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
 
   function doCopy(){navigator.clipboard?.writeText(cleanText).catch(()=>{});setCopied(true);setTimeout(()=>setCopied(false),1800);}
 
-  const approveBtn={background:successBg,border:'1px solid '+success+'44',borderRadius:'10px',padding:'10px 18px',color:success,fontSize:'13px',cursor:'pointer',minHeight:'44px',fontWeight:'500',flex:1,display:'flex',alignItems:'center',gap:'6px',justifyContent:'center'};
+  const approveBtn={background:success+'18',border:'1px solid '+success+'44',borderRadius:'10px',padding:'10px 18px',color:success,fontSize:'13px',cursor:'pointer',minHeight:'44px',fontWeight:'500',flex:1,display:'flex',alignItems:'center',gap:'6px',justifyContent:'center'};
   const rejectBtn ={background:errorBg,border:'1px solid '+error+'44',borderRadius:'10px',padding:'10px 16px',color:error,fontSize:'13px',cursor:'pointer',minHeight:'44px',display:'flex',alignItems:'center',gap:'6px'};
 
   // ── User bubble ─────────────────────────────────────────────────────────────
@@ -432,7 +430,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
           </div>
         )}
         <div style={{display:'flex',gap:'3px',opacity:actionsVisible?1:0,transition:'opacity .15s',pointerEvents:actionsVisible?'auto':'none'}}>
-          <button onClick={doCopy} style={{background:copied?successBg:bg3,border:'1px solid '+(copied?success+'55':border),padding:'5px 10px',color:copied?success:textMute,fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'30px',display:'flex',alignItems:'center'}}>{copied?<Check size={12}/>:<Copy size={12}/>}</button>
+          <button onClick={doCopy} style={{background:copied?success+'18':bg3,border:'1px solid '+(copied?success+'55':border),padding:'5px 10px',color:copied?success:textMute,fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'30px',display:'flex',alignItems:'center'}}>{copied?<Check size={12}/>:<Copy size={12}/>}</button>
           {onEdit&&<button onClick={()=>{setEditText(cleanText);setEditing(true);}} style={{background:bg3,border:'1px solid '+border,padding:'5px 10px',color:textMute,fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'30px',display:'flex',alignItems:'center'}}><Pencil size={12}/></button>}
           {onRetry&&<button onClick={onRetry} style={{background:bg3,border:'1px solid '+border,padding:'5px 10px',color:textMute,fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'30px',display:'flex',alignItems:'center'}}><RotateCcw size={12}/></button>}
           {onDelete&&<button onClick={onDelete} style={{background:errorBg,border:'1px solid '+error+'44',padding:'5px 10px',color:error,fontSize:'11px',cursor:'pointer',borderRadius:'8px',minHeight:'30px',display:'flex',alignItems:'center'}}><Trash2 size={12}/></button>}
@@ -460,7 +458,7 @@ export function MsgBubble({ msg, onApprove, onPlanApprove, onRetry, onContinue, 
         {actions.filter(a=>!['write_file','patch_file'].includes(a.type)||a.executed).map((a,i)=><ActionChip key={i} action={a} T={T}/>)}
 
         {actions.filter(a=>a.type==='write_file'&&a.executed).map((a,i)=>(
-          <div key={'w'+i} style={{display:'inline-flex',alignItems:'center',gap:'7px',background:a.result?.ok?successBg:errorBg,border:'1px solid '+(a.result?.ok?success+'44':error+'44'),borderRadius:'8px',padding:'6px 12px',fontSize:'12px',fontFamily:'monospace',color:a.result?.ok?success:error,margin:'3px 0'}}>
+          <div key={'w'+i} style={{display:'inline-flex',alignItems:'center',gap:'7px',background:a.result?.ok?success+'18':errorBg,border:'1px solid '+(a.result?.ok?success+'44':error+'44'),borderRadius:'8px',padding:'6px 12px',fontSize:'12px',fontFamily:'monospace',color:a.result?.ok?success:error,margin:'3px 0'}}>
             {a.result?.ok?<Check size={11}/>:<X size={11}/>} {a.path?.split('/').pop()}
           </div>
         ))}
