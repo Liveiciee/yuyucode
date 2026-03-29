@@ -1,5 +1,5 @@
 // src/components/FileEditor/index.jsx
-import React, { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef, lazy, Suspense } from 'react';
 import { EditorView } from '@codemirror/view';
 import { EditorState, Compartment, StateEffect } from '@codemirror/state';
 import { basicSetup } from 'codemirror';
@@ -7,12 +7,13 @@ import * as commandsModule from '@codemirror/commands';
 const { keymap } = commandsModule;
 import { foldAll, unfoldAll } from '@codemirror/language';
 import { Save } from 'lucide-react';
-const Minimap = lazy(() => import("./minimap.jsx"));
-const Breadcrumb = lazy(() => import("./breadcrumb.jsx"));
 import { getLang, buildTheme, isTsLang, isEmmetLang } from './editorUtils.js';
 import { makeBlameGutter, fetchBlame } from './blame.js';
 import { buildOptionalExtensions } from './optionalExtensions.js';
 import { getTsExtensions } from './tsExtensions.js';
+
+const Minimap = lazy(() => import("./minimap.jsx"));
+const Breadcrumb = lazy(() => import("./breadcrumb.jsx"));
 
 export const FileEditor = forwardRef(function FileEditor(
   { tab, onSave, onClose, T, editorConfig, folder },
@@ -72,7 +73,7 @@ export const FileEditor = forwardRef(function FileEditor(
       doc: tab?.content || '',
       extensions: [
         basicSetup,
-        keymap.of([]), // placeholder
+        keymap.of([]),
         themeComp.current.of(buildTheme(T)),
         langComp.current.of(getLang(tab?.path)),
         optsComp.current.of(buildOptionalExtensions(editorConfig, tab?.path, folder, collabWsRef)),
@@ -276,11 +277,17 @@ export const FileEditor = forwardRef(function FileEditor(
         </button>
       </div>
 
-      <Breadcrumb viewRef={viewRef} T={T}/>
+      <Suspense fallback={<div style={{ height: 22 }} />}>
+        <Breadcrumb viewRef={viewRef} T={T} />
+      </Suspense>
 
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
         <div ref={containerRef} style={{ flex: 1, overflow: 'hidden' }}/>
-        {editorConfig?.minimap && <Suspense fallback={null}><Minimap viewRef={viewRef} T={T}/>}
+        {editorConfig?.minimap && (
+          <Suspense fallback={null}>
+            <Minimap viewRef={viewRef} T={T} />
+          </Suspense>
+        )}
       </div>
     </div>
   );
