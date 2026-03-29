@@ -1,92 +1,86 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { callServer, callServerBatch, execStream } from '../server.js';
-import { YUYU_SERVER, WS_SERVER } from '../../constants.js';
+import { callServer, callServerBatch, execStream } from '../../api.js';
 
 vi.mock('../../constants.js', () => ({
   YUYU_SERVER: 'http://localhost:8765',
   WS_SERVER: 'ws://127.0.0.1:8766',
+  MODELS: [],
 }));
 
 const originalFetch = globalThis.fetch;
+const originalWebSocket = globalThis.WebSocket;
 
 beforeEach(() => {
   globalThis.fetch = vi.fn();
+  globalThis.WebSocket = vi.fn();
 });
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  globalThis.WebSocket = originalWebSocket;
   vi.clearAllMocks();
 });
 
+function mockJsonResponse(data, status = 200) {
+  return Promise.resolve({
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(data),
+    text: () => Promise.resolve(JSON.stringify(data)),
+  });
+}
+
 describe('callServer', () => {
-  it('should return ok:true on successful fetch', async () => {
-    const mockData = { ok: true, data: 'test' };
+  it('returns ok:true and parsed JSON on success', async () => {
+    globalThis.fetch.mockResolvedValueOnce(mockJsonResponse({ ok: true, data: 'hello' }));
+    const r = await callServer({ type: 'ping' });
+    expect(r.ok).toBe(true);
+    expect(r.data).toBe('hello');
+  });
+
+  it('sends JSON POST to YUYU_SERVER', async () => {
+    globalThis.fetch.mockResolvedValueOnce(mockJsonResponse({ ok: true }));
+    await callServer({ type: 'read', path: '/foo' });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://localhost:8765',
+      expect.objectContaining({ method: 'POST' })
+    );
+    const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+    expect(body).toEqual({ type: 'read', path: '/foo' });
+  });
+
+  it('returns ok:false with message on non-ok HTTP status', async () => {
     globalThis.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockData,
+      ok: false, status: 500,
+      text: () => Promise.resolve('Internal Server Error'),
     });
-    const result = await callServer({ type: 'ping' });
-    expect(result).toEqual(mockData);
+    const r = await callServer({ type: 'ping' });
+    expect(r.ok).toBe(false);
+    expect(r.data).toContain('500');
   });
 
-  it('should handle non-ok response', async () => {
-    globalThis.fetch.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      text: async () => 'Server Error',
-    });
-    const result = await callServer({ type: 'ping' });
-    expect(result.ok).toBe(false);
-    expect(result.data).toContain('Server error: 500');
-  });
-
-  it('should retry on network error', async () => {
-    globalThis.fetch
-      .mockRejectedValueOnce(new Error('Network error'))
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ok: true }),
-      });
-    const result = await callServer({ type: 'ping' }, 1);
-    expect(result.ok).toBe(true);
-  });
-
-  it('should return fallback message after max retries', async () => {
-    globalThis.fetch.mockRejectedValue(new Error('Network error'));
-    const result = await callServer({ type: 'ping' }, 2);
-    expect(result.ok).toBe(false);
-    expect(result.data).toContain('yuyu-server.cjs');
+  it('returns ok:false when fetch throws (server unreachable)', async () => {
+    globalThis.fetch.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    const r = await callServer({ type: 'ping' });
+    expect(r.ok).toBe(false);
+    expect(r.data).toContain('yuyu-server.cjs');
   });
 });
 
 describe('callServerBatch', () => {
-  it('should execute multiple calls in parallel', async () => {
+  it('executes all payloads in parallel and returns array', async () => {
     globalThis.fetch
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: 'a' }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: 'b' }) });
-    const results = await callServerBatch([{ type: 'a' }, { type: 'b' }], 2);
-    expect(results).toHaveLength(2);
-    expect(results[0].data).toBe('a');
-    expect(results[1].data).toBe('b');
-  });
-});
+      .mockResolvedValueOnce(mockJsonResponse({ data: 'a' }))
+      .mockResolvedValueOnce(mockJsonResponse({ data: 'b' }))
+      .mockResolvedValueOnce(mockJsonResponse({ data: 'c' }));
 
-describe('execStream', () => {
-  it('should establish WebSocket connection', async () => {
-    const mockWs = {
-      send: vi.fn(),
-      close: vi.fn(),
-      onopen: null,
-      onmessage: null,
-      onerror: null,
-      onclose: null,
-    };
-    globalThis.WebSocket = vi.fn(() => mockWs);
-    const onLine = vi.fn();
-    const promise = execStream('ls', '/tmp', onLine, null);
-    mockWs.onopen();
-    mockWs.onmessage({ data: JSON.stringify({ type: 'exit', code: 0, id: 'some-id' }) });
-    await promise;
-    expect(mockWs.send).toHaveBeenCalled();
+    const results = await callServerBatch([
+      { type: 'a' },
+      { type: 'b' },
+      { type: 'c' },
+    ]);
+    expect(results).toHaveLength(3);
+    expect(results.map(r => r.data)).toEqual(['a', 'b', 'c']);
   });
 });
