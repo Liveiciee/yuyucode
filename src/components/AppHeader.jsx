@@ -29,7 +29,7 @@ export function AppHeader({ T, ui, project, file, chat, growth, _saveFolder, und
               {project.skills?.some(s=>s.active)&&<span style={{color:T.success,fontSize:'8px',fontWeight:'700',letterSpacing:'.06em',marginLeft:'5px',verticalAlign:'middle'}}>SKILL</span>}
             </div>
             <div style={{fontSize:'10px',color:T.textMute,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:'1.3',marginTop:'1px',display:'flex',alignItems:'center',gap:'4px'}}>
-              <span style={{display:'inline-block',width:'5px',height:'5px',borderRadius:'50%',background:project.serverOk?T.success:T.error,flexShrink:0,flexShrink:0}}/>
+              <span style={{display:'inline-block',width:'5px',height:'5px',borderRadius:'50%',background:project.serverOk?T.success:T.error,flexShrink:0}}/>
               <span style={{fontFamily:'monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{project.folder?.split('/').pop()||'no folder'}</span>
               {project.branch&&<span style={{opacity:.45,flexShrink:0,display:'flex',alignItems:'center',gap:'2px'}}><GitBranch size={8}/>{project.branch}</span>}
             </div>
