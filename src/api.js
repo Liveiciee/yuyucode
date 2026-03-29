@@ -11,3 +11,4 @@ export * from './api/server.js';
 export * from './api/websocket.js';
 
 export { sleep, getBackoffDelay, isRetryableError, isRetryableStatus } from './utils.js';
+export { askAIStream as askCerebrasStream } from './api/orchestrator.js';
