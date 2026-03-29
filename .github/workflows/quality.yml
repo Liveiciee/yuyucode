@@ -36,6 +36,7 @@ jobs:
             src/ || true
 
       - name: Upload SARIF to GitHub Security
+  if: always() && hashFiles('semgrep.sarif') != ''
         if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
