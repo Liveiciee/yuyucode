@@ -158,8 +158,8 @@ describe('askAIStream', () => {
     );
 
     const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
-    expect(body.max_tokens).toBe(CONFIG.MAX_TOKENS);
-    expect(body.temperature).toBe(CONFIG.DEFAULT_TEMPERATURE);
+    expect(body.max_tokens).toBe(CONFIG.AI.MAX_TOKENS);
+    expect(body.temperature).toBe(CONFIG.AI.DEFAULT_TEMPERATURE);
   });
 
   // ── Cerebras Rate Limit → Groq Fallback ─────────────────────────────────────
