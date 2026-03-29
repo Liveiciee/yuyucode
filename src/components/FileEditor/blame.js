@@ -2,7 +2,7 @@
 import { GutterMarker, gutter } from '@codemirror/view';
 import { callServer } from '../../api.js';
 
-class BlameMarker extends GutterMarker {
+export class BlameMarker extends GutterMarker {
   constructor(info) { super(); this.info = info; }
   toDOM() {
     const el = document.createElement('span');
@@ -43,3 +43,4 @@ export async function fetchBlame(folder, filePath) {
   });
   return map;
 }
+export { BlameMarker };
