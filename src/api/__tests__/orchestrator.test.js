@@ -3,8 +3,21 @@ import { askAIStream } from '../../api.js';
 import * as cerebrasModule from '../providers/cerebras.js';
 import * as groqModule from '../providers/groq.js';
 
-vi.mock('../../constants.js');
-vi.mock('../../runtimeKeys.js');
+// Mock constants dengan model yang benar
+vi.mock('../../constants.js', () => ({
+  MODELS: [
+    { id: 'cerebras-model', provider: 'cerebras' },
+    { id: 'groq-model', provider: 'groq' },
+  ],
+  GROQ_FALLBACK_CHAIN: [],
+  YUYU_SERVER: 'http://localhost:8765',
+  WS_SERVER: 'ws://127.0.0.1:8766',
+}));
+
+vi.mock('../../runtimeKeys.js', () => ({
+  getRuntimeCerebrasKey: () => 'mock-key',
+  getRuntimeGroqKey: () => 'mock-key',
+}));
 
 beforeEach(() => {
   vi.spyOn(cerebrasModule, 'cerebrasRequest').mockResolvedValue('cerebras response');
