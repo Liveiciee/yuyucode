@@ -39,3 +39,32 @@ describe('askAIStream - provider routing', () => {
     expect(groqModule.groqRequest).toHaveBeenCalled();
   });
 });
+
+describe('askAIStream - retry logic', () => {
+  it('retries on network error', async () => {
+    let attempts = 0;
+    vi.spyOn(cerebrasModule, 'cerebrasRequest').mockImplementation(async () => {
+      attempts++;
+      if (attempts < 2) throw new Error('network error');
+      return 'recovered';
+    });
+    const result = await askAIStream([{ role: 'user', content: 'hi' }], 'cerebras-model', () => {}, null);
+    expect(result).toBe('recovered');
+    expect(attempts).toBe(2);
+  });
+
+  it('throws after max retries', async () => {
+    vi.spyOn(cerebrasModule, 'cerebrasRequest').mockRejectedValue(new Error('network error'));
+    await expect(askAIStream([{ role: 'user', content: 'hi' }], 'cerebras-model', () => {}, null))
+      .rejects.toThrow('network error');
+  });
+});
+
+describe('askAIStream - fallback chain', () => {
+  it('falls back to Groq when Cerebras rate limited', async () => {
+    vi.spyOn(cerebrasModule, 'cerebrasRequest').mockRejectedValue(new RateLimitError(10, 'Cerebras'));
+    vi.spyOn(groqModule, 'groqRequest').mockResolvedValue('groq response');
+    const result = await askAIStream([{ role: 'user', content: 'hi' }], 'cerebras-model', () => {}, null);
+    expect(result).toBe('groq response');
+  });
+});
