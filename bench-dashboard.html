@@ -223,19 +223,36 @@ footer a:hover{opacity:1}
 @keyframes countUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .hero-num.counted{animation:countUp .5s ease both}
 
-/* ── PEAK CALLOUT ────────────────────────────────────────────────────────── */
-.peak-callout{
-  background:linear-gradient(135deg,rgba(236,72,153,.08),rgba(236,72,153,.03));
-  border:1px solid rgba(236,72,153,.18);border-radius:8px;
-  padding:10px 16px;margin-bottom:20px;
-  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+/* ── REGRESSION PANEL ───────────────────────────────────────────────────── */
+#regrPanel{
+  background:linear-gradient(135deg,rgba(248,113,113,.06),rgba(248,113,113,.02));
+  border:1px solid rgba(248,113,113,.2);border-radius:8px;
+  margin-bottom:20px;overflow:hidden;display:none;
 }
-.peak-icon{font-size:20px;line-height:1}
-.peak-body{flex:1;min-width:0}
-.peak-title{font-size:10px;color:var(--pk);font-weight:700;letter-spacing:.05em}
-.peak-desc{font-size:9px;color:var(--sc);margin-top:2px;line-height:1.5}
-.peak-val{font-size:18px;font-weight:700;color:var(--pk);white-space:nowrap;font-variant-numeric:tabular-nums}
-.peak-sub{font-size:8px;color:var(--mu);text-align:right;white-space:nowrap}
+#regrPanel.has-regr{display:block}
+.regr-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;cursor:pointer;user-select:none;
+  border-bottom:1px solid rgba(248,113,113,.1);
+}
+.regr-header:hover{background:rgba(248,113,113,.04)}
+.regr-title{font-size:10px;font-weight:700;color:var(--rd);letter-spacing:.07em;display:flex;align-items:center;gap:7px}
+.regr-toggle{font-size:9px;color:var(--mu);transition:transform .2s}
+.regr-toggle.open{transform:rotate(180deg)}
+.regr-body{display:none;padding:10px 14px 12px}
+.regr-body.open{display:block}
+.regr-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03);flex-wrap:wrap;
+}
+.regr-row:last-child{border-bottom:none}
+.regr-name{font-size:10px;color:var(--sc);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.regr-from{font-size:9px;color:var(--mu);white-space:nowrap}
+.regr-pct{font-size:10px;font-weight:700;color:var(--rd);white-space:nowrap;min-width:42px;text-align:right}
+.regr-bar-wrap{width:80px;height:3px;background:rgba(255,255,255,.05);border-radius:2px;flex-shrink:0}
+.regr-bar-fill{height:100%;border-radius:2px;background:var(--rd);transition:width .6s ease}
+.regr-hint{font-size:9px;color:var(--mu);margin-top:8px;letter-spacing:.04em}
+kbd{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:3px;padding:1px 5px;font-size:9px;font-family:var(--fn)}
 </style>
 </head>
 <body>
@@ -271,7 +288,7 @@ footer a:hover{opacity:1}
       <div class="hero-label">CI runs</div>
     </div>
   </div>
-  <div class="hero-device">Oppo A77s · Snapdragon 680 · 6GB RAM · Android + Termux</div>
+  <div class="hero-device">Oppo A77s · Snapdragon 680 · 8GB RAM · Android + Termux</div>
 </section>
 <div class="main" id="root"><div class="spin"><span></span><span></span><span></span></div></div>
 <footer>
@@ -443,16 +460,52 @@ function render(data){
     animateCount(hRuns,all.length);
     hPeak.dataset.set='1';
   }
-  // ── Peak callout ────────────────────────────────────────────────────────────
-  const pcWrap=document.querySelector('.peak-callout');
-  if(!pcWrap&&fBenches.length){
-    const pk=fBenches.reduce((a,b)=>b.value>a.value?b:a,fBenches[0]);
-    const ex=E[pk.name]||DEF;const ns=1e9/Math.max(pk.value,.001);
-    const callout=document.createElement('div');callout.className='peak-callout';
-    callout.innerHTML=`<div class="peak-icon">${ex.i}</div><div class="peak-body"><div class="peak-title">FASTEST THIS RUN</div><div class="peak-desc">${ex.d}</div></div><div><div class="peak-val">${fmt(pk.value)} <span style="font-size:10px;font-weight:400;color:var(--sc)">ops/s</span></div><div class="peak-sub">${ns<1e6?(ns/1000).toFixed(2)+' µs per op':(ns/1e6).toFixed(2)+' ms per op'}</div></div>`;
-    const summaryStrip=document.querySelector('.summary-strip');
-    if(summaryStrip)summaryStrip.insertAdjacentElement('afterend',callout);
-  }
+  // ── Regression panel ────────────────────────────────────────────────────────
+  (function buildRegrPanel(){
+    let panel=document.getElementById('regrPanel');
+    if(!panel){
+      panel=document.createElement('div');panel.id='regrPanel';
+      const summaryStrip=document.querySelector('.summary-strip');
+      if(summaryStrip)summaryStrip.insertAdjacentElement('afterend',panel);
+    }
+    const regrList=fBenches.map(b=>{
+      const p=prev?.benches.find(x=>x.name===b.name);
+      if(!p)return null;
+      const d=pct(b.value,p.value);
+      return d<-3?{name:b.name,cur:b.value,prev:p.value,drop:d}:null;
+    }).filter(Boolean).sort((a,b)=>a.drop-b.drop);
+    if(!regrList.length){panel.classList.remove('has-regr');return}
+    panel.classList.add('has-regr');
+    const isOpen=panel.querySelector('.regr-body.open');
+    panel.innerHTML=`
+      <div class="regr-header" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.regr-toggle').classList.toggle('open')">
+        <div class="regr-title">⚠ ${regrList.length} REGRESSION${regrList.length>1?'S':''} — click to expand</div>
+        <span class="regr-toggle${isOpen?' open':''}">▼</span>
+      </div>
+      <div class="regr-body${isOpen?' open':''}">
+        ${regrList.map(r=>{
+          const barW=Math.min(100,Math.abs(r.drop));
+          return `<div class="regr-row">
+            <span class="regr-name">${r.name}</span>
+            <span class="regr-from">${fmt(r.prev)} → ${fmt(r.cur)} ops/s</span>
+            <div class="regr-bar-wrap"><div class="regr-bar-fill" style="width:${barW}%"></div></div>
+            <span class="regr-pct">${r.drop.toFixed(1)}%</span>
+          </div>`;
+        }).join('')}
+        <div class="regr-hint">Press <kbd>R</kbd> to jump to first regression</div>
+      </div>`;
+    // keyboard shortcut R → scroll to first regressed hcard
+    if(!document._rKeyBound){
+      document._rKeyBound=true;
+      document.addEventListener('keydown',e=>{
+        if(e.key==='r'||e.key==='R'){
+          if(document.activeElement.tagName==='INPUT')return;
+          const first=document.querySelector('.hcard.regress');
+          if(first)first.scrollIntoView({behavior:'smooth',block:'center'});
+        }
+      });
+    }
+  })();
   // ── Speed context on hcards ─────────────────────────────────────────────────
   document.querySelectorAll('.hcard').forEach((card,i)=>{
     card.style.animationDelay=(i*28)+'ms';
