@@ -9,8 +9,8 @@ import {
   ServerError, 
   ValidationError,
   CONFIG 
-} from '../api.js';
-import * as groqModule from './providers/groq.js';
+} from './api.js';
+import * as groqModule from './api/providers/groq.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Custom Matchers
