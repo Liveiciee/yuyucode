@@ -24,8 +24,8 @@ export function buildSystemPrompt(txt, cfg, project, chat, file, growth) {
   const skillCtx    = selectedSkills.length
     ? '\n\nSkill context:\n' + selectedSkills.map(s => '## ' + s.name + '\n' + stripFrontmatter(s.content || '')).join('\n\n---\n\n')
     : '';
-  const pinnedCtx   = (file?.pinnedFiles?.length || 0) ? '\n\nPinned files: ' + file.pinnedFiles.slice(0, 5).join(', ') : '';
-  const fileCtx     = (file?.selectedFile file.selectedFile && file.fileContentfile.selectedFile && file.fileContent file?.fileContent) && (cfg._iter === undefined || cfg._iter <= 1)
+  const pinnedCtx   = file?.pinnedFiles?.length ? '\n\nPinned files: ' + file.pinnedFiles.slice(0, 5).join(', ') : '';
+  const fileCtx     = file?.selectedFile && file?.fileContent && (cfg._iter === undefined || cfg._iter <= 1)
     ? '\n\nFile terbuka: ' + file.selectedFile + '\n```\n' + file.fileContent.slice(0, MAX_PREVIEW_CHARS) + '\n```'
     : '';
   const memPool     = chat.getRelevantMemories(txt);
