@@ -8,7 +8,7 @@ function timeAgo(ts) {
   const m = Math.floor(diff / 60000);
   const h = Math.floor(diff / 3600000);
   const d = Math.floor(diff / 86400000);
-  if (d > 0)  return d + 'h lalu';
+  if (d > 0)  return d + 'd lalu';
   if (h > 0)  return h + 'j lalu';
   if (m > 0)  return m + 'm lalu';
   return 'baru saja';

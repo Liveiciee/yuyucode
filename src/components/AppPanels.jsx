@@ -202,6 +202,7 @@ export function AppPanels({
             ui.setShowBgAgents(false);chat.setLoading(false);
           }}
           onAbort={id=>abortBgAgent(id)}
+          onSpawn={task=>{ui.setShowBgAgents(false);sendMsg('/bg '+task);}}
           onClose={()=>ui.setShowBgAgents(false)}/>)}
       </Activity>
 

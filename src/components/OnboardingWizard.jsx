@@ -47,7 +47,7 @@ export function OnboardingWizard({ T, onDone }) {
         {step===1&&<div>
           <div style={{fontSize:'18px',fontWeight:'700',color:T.text,marginBottom:'8px'}}>🖥 Yuyu Server</div>
           <div style={{fontSize:'13px',color:T.textSec,lineHeight:'1.6',marginBottom:'16px'}}>Yuyu butuh server lokal untuk baca/tulis file. Jalankan dulu di Termux:</div>
-          <div style={{background:T.bg2,border:'1px solid '+T.border,borderRadius:'10px',padding:'12px 14px',fontFamily:'monospace',fontSize:'13px',color:T.accent,marginBottom:'16px'}}>node yuyu-server.cjs</div>
+          <div style={{background:T.bg2,border:'1px solid '+T.border,borderRadius:'10px',padding:'12px 14px',fontFamily:'monospace',fontSize:'13px',color:T.accent,marginBottom:'16px'}}>node ~/yuyu-server.cjs &amp;</div>
           <button onClick={checkServer} disabled={pinging} style={{...btnP,marginTop:'0',opacity:pinging?.6:1,background:ping==='ok'?T.success+'22':ping==='fail'?'#f8717122':T.accentBg,borderColor:ping==='ok'?T.success:ping==='fail'?'#f87171':T.accentBorder,color:ping==='ok'?T.success:ping==='fail'?'#f87171':T.accent}}>
             {pinging?'⏳ Checking...':ping==='ok'?'✅ Server OK':ping==='fail'?'❌ Tidak terdeteksi':'🔍 Cek koneksi'}
           </button>
@@ -57,14 +57,20 @@ export function OnboardingWizard({ T, onDone }) {
 
         {step===2&&<div>
           <div style={{fontSize:'18px',fontWeight:'700',color:T.text,marginBottom:'8px'}}>🔑 API Keys</div>
-          <div style={{fontSize:'13px',color:T.textSec,lineHeight:'1.6',marginBottom:'16px'}}>Opsional — APK sudah punya key bawaan.</div>
-          <div style={{marginBottom:'12px'}}>
-            <div style={{fontSize:'11px',color:T.textMute}}>Cerebras</div>
-            <input type="password" value={cerebras} onChange={e=>setCerebras(e.target.value)} placeholder="csk-… (opsional)" style={inputStyle}/>
+          <div style={{fontSize:'13px',color:T.textSec,lineHeight:'1.6',marginBottom:'16px'}}>
+            Semua free tier. Cerebras + Groq wajib. Tavily opsional untuk web search.
           </div>
-          <div>
-            <div style={{fontSize:'11px',color:T.textMute}}>Groq</div>
-            <input type="password" value={groq} onChange={e=>setGroq(e.target.value)} placeholder="gsk-… (opsional)" style={inputStyle}/>
+          <div style={{marginBottom:'10px'}}>
+            <div style={{fontSize:'11px',color:T.textMute,marginBottom:'2px'}}>Cerebras <span style={{color:T.error,fontSize:'9px'}}>WAJIB</span> — <span style={{color:T.accent,fontFamily:'monospace',fontSize:'10px'}}>cloud.cerebras.ai</span></div>
+            <input type="password" value={cerebras} onChange={e=>setCerebras(e.target.value)} placeholder="csk-…" style={inputStyle}/>
+          </div>
+          <div style={{marginBottom:'10px'}}>
+            <div style={{fontSize:'11px',color:T.textMute,marginBottom:'2px'}}>Groq <span style={{color:T.error,fontSize:'9px'}}>WAJIB</span> — <span style={{color:T.accent,fontFamily:'monospace',fontSize:'10px'}}>console.groq.com</span></div>
+            <input type="password" value={groq} onChange={e=>setGroq(e.target.value)} placeholder="gsk-…" style={inputStyle}/>
+          </div>
+          <div style={{marginBottom:'16px'}}>
+            <div style={{fontSize:'11px',color:T.textMute,marginBottom:'2px'}}>Tavily <span style={{opacity:.6,fontSize:'9px'}}>opsional</span> — web search (<span style={{color:T.accent,fontFamily:'monospace',fontSize:'10px'}}>tavily.com</span>)</div>
+            <input type="password" value={''} onChange={()=>{}} placeholder="tvly-… (opsional, bisa isi nanti via /apikeys)" style={inputStyle}/>
           </div>
           <button onClick={()=>setStep(3)} style={btnP}>Lanjut →</button>
           <button onClick={()=>setStep(3)} style={btnS}>Skip</button>
@@ -74,8 +80,8 @@ export function OnboardingWizard({ T, onDone }) {
           <div style={{fontSize:'48px',marginBottom:'16px'}}>🚀</div>
           <div style={{fontSize:'20px',fontWeight:'700',color:T.text,marginBottom:'10px'}}>Siap!</div>
           <div style={{fontSize:'13px',color:T.textSec,lineHeight:'1.6',marginBottom:'24px'}}>
-            Set project folder dari panel kiri, lalu mulai coding.<br/><br/>
-            Ketik <span style={{color:T.accent,fontFamily:'monospace'}}>/help</span> untuk lihat semua command.
+            Project Manager akan terbuka otomatis — pilih atau buat project pertama kamu.<br/><br/>
+            Ketik <span style={{color:T.accent,fontFamily:'monospace'}}>/help</span> untuk lihat semua command, atau <span style={{color:T.accent,fontFamily:'monospace'}}>/rules</span> untuk edit YUYU.md.
           </div>
           <button onClick={finish} style={btnP}>Mulai coding 🌸</button>
         </div>}

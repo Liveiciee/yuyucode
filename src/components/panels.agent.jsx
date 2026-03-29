@@ -214,11 +214,13 @@ function ElapsedTime({ startedAt }) {
 
 
 
-export function BgAgentPanel({ agents, onMerge, onAbort, onClose, T }) {
+export function BgAgentPanel({ agents, onMerge, onAbort, onClose, onSpawn, T }) {
 
-  const { bg3, border, text, textMute, accent, bg2, textSec } = resolveTheme(T);
+  const { bg3, border, text, textMute, accent, bg2, textSec, accentBg, accentBorder } = resolveTheme(T);
+  const [task, setTask] = React.useState('');
   const statusColor = { preparing:'#fbbf24', running:'#60a5fa', done:'#4ade80', error:'#f87171', aborted:'rgba(255,255,255,.3)', merged:'rgba(255,255,255,.2)', conflict:'#f97316' };
-  const statusIcon  = { preparing:'…', running:'↻', done:'✓', error:'✗', aborted:'⏹', merged:'⇄', conflict:'!' };
+  const statusEmoji = { preparing:'⏳', running:'↻', done:'✅', error:'❌', aborted:'⏹', merged:'✓', conflict:'⚠️' };
+  const statusLabel = { preparing:'preparing', running:'running', done:'done', error:'error', aborted:'aborted', merged:'merged', conflict:'conflict' };
 
   return (
     <BottomSheet onClose={onClose}>
@@ -227,37 +229,51 @@ export function BgAgentPanel({ agents, onMerge, onAbort, onClose, T }) {
           <span style={{fontSize:'14px',fontWeight:'600',color:text,flex:1}}>Background Agents</span>
           <button onClick={onClose} style={{background:'none',border:'none',color:textMute,fontSize:'16px',cursor:'pointer'}}><X size={16}/></button>
         </div>
+
+        {/* Quick spawn */}
+        <div style={{display:'flex',gap:'6px',marginBottom:'12px'}}>
+          <input value={task} onChange={e=>setTask(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter'&&task.trim()){onSpawn?.(task.trim());setTask('');}}}
+            placeholder="Task untuk background agent…"
+            style={{flex:1,background:bg3,border:'1px solid '+border,borderRadius:'10px',padding:'8px 12px',
+              color:text,fontSize:'12px',fontFamily:'inherit',outline:'none',minHeight:'38px'}}/>
+          <button disabled={!task.trim()}
+            onClick={()=>{if(task.trim()){onSpawn?.(task.trim());setTask('');}}}
+            style={{background:accentBg,border:'1px solid '+accentBorder,borderRadius:'10px',padding:'8px 14px',
+              color:accent,fontSize:'12px',cursor:'pointer',fontWeight:'600',opacity:task.trim()?1:.45,flexShrink:0}}>
+            /bg
+          </button>
+        </div>
+
         {agents.length === 0 && (
           <div style={{color:textMute,fontSize:'12px',padding:'8px 0'}}>
-            Tidak ada agent aktif. Jalankan dengan <code style={{color:accent}}>/bg &lt;task&gt;</code>
+            Tidak ada agent aktif. Ketik task di atas atau gunakan <code style={{color:accent}}>/bg &lt;task&gt;</code> di chat.
           </div>
         )}
         <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'8px'}}>
           {agents.map(agent => {
             const color = statusColor[agent.status] || '#f0f0f0';
-            const icon  = statusIcon[agent.status]  || '?';
+            const emoji = statusEmoji[agent.status] || '?';
+            const label = statusLabel[agent.status] || agent.status;
             return (
               <div key={agent.id} style={{padding:'12px',background:bg3,border:'1px solid '+border,borderRadius:'10px'}}>
-                {/* Header row */}
                 <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
-                  <span style={{fontSize:'13px'}}>{icon}</span>
+                  <span style={{fontSize:'12px',flexShrink:0}}>{emoji}</span>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:'12px',color:text,fontWeight:'500',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{agent.task}</div>
                     <div style={{fontSize:'10px',color:textMute,fontFamily:'monospace',marginTop:'1px'}}>
-                      {agent.id.slice(-8)} · <ElapsedTime startedAt={agent.startedAt}/> · branch: {agent.branch?.slice(-12)}
+                      {agent.id.slice(-8)} · <ElapsedTime startedAt={agent.startedAt}/> · {agent.branch?.slice(-14)}
                     </div>
                   </div>
-                  <span style={{fontSize:'11px',color,fontWeight:'600',textTransform:'uppercase',letterSpacing:'.04em'}}>{agent.status}</span>
+                  <span style={{fontSize:'10px',color,fontWeight:'600',flexShrink:0}}>{label}</span>
                 </div>
 
-                {/* Progress bar for running */}
                 {agent.status === 'running' && (
-                  <div style={{height:'2px',background:bg3,borderRadius:'2px',marginBottom:'8px',overflow:'hidden'}}>
+                  <div style={{height:'2px',background:'rgba(255,255,255,.06)',borderRadius:'2px',marginBottom:'8px',overflow:'hidden'}}>
                     <div style={{height:'100%',background:'#60a5fa',borderRadius:'2px',animation:'pulse 1.5s ease-in-out infinite',width:'60%'}}/>
                   </div>
                 )}
 
-                {/* Log — last 4 entries */}
                 {agent.log?.length > 0 && (
                   <div style={{background:bg2,borderRadius:'6px',padding:'6px 8px',marginBottom:'8px',maxHeight:'80px',overflowY:'auto'}}>
                     {agent.log.slice(-4).map((l,i) => (
@@ -266,7 +282,6 @@ export function BgAgentPanel({ agents, onMerge, onAbort, onClose, T }) {
                   </div>
                 )}
 
-                {/* Actions */}
                 <div style={{display:'flex',gap:'6px'}}>
                   {agent.status === 'done' && (
                     <button onClick={()=>onMerge(agent.id)} style={{flex:1,background:'rgba(74,222,128,.1)',border:'1px solid rgba(74,222,128,.2)',borderRadius:'7px',padding:'6px',color:'#4ade80',fontSize:'11px',cursor:'pointer',fontWeight:'500'}}>
@@ -292,4 +307,3 @@ export function BgAgentPanel({ agents, onMerge, onAbort, onClose, T }) {
     </BottomSheet>
   );
 }
-
