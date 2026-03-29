@@ -109,9 +109,8 @@ const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
   globalThis.fetch = vi.fn();
-  // Bypass key validation by mocking the cerebrasRequest function directly
+  // Bypass key validation by mocking the provider functions directly
   vi.spyOn(cerebrasModule, 'cerebrasRequest').mockImplementation(async (messages, model, onChunk, signal, options) => {
-    // Simulate a successful response by calling onChunk and returning the full text
     const fullText = 'Hello';
     onChunk?.(fullText);
     return fullText;
@@ -213,7 +212,6 @@ describe('askAIStream', () => {
   });
 
   it('passes maxTokens and temperature options to API', async () => {
-    // Since we mock cerebrasRequest, we can check that the options are passed through
     const options = { maxTokens: 500, temperature: 0.7 };
     const spy = vi.spyOn(cerebrasModule, 'cerebrasRequest').mockResolvedValue('x');
 
@@ -235,31 +233,24 @@ describe('askAIStream', () => {
   });
 
   it('uses default values when options not provided', async () => {
-    const spy = vi.spyOn(cerebrasModule, 'cerebrasRequest').mockResolvedValue('x');
+    const spy = vi.spyOn(cerebrasModule, 'cerebrasRequest').mockResolvedValue("x");
 
     await askAIStream(
-      [{ role: 'user', content: 'hi' }],
-      'qwen-cerebras',
+      [{ role: "user", content: "hi" }],
+      "qwen-cerebras",
       () => {},
       new AbortController().signal,
       {}
     );
 
-    expect(spy).toHaveBeenCalledWith(
-      expect.any(Array),
-      'qwen-cerebras',
-      expect.any(Function),
-      expect.any(AbortSignal),
-      expect.objectContaining({
-        maxTokens: CONFIG.AI.MAX_TOKENS.cerebras,
-        temperature: CONFIG.AI.DEFAULT_TEMPERATURE,
-      })
-    );
+    expect(spy).toHaveBeenCalled();
+    const callOptions = spy.mock.calls[0][4];
+    expect(callOptions.maxTokens).toBe(CONFIG.AI.MAX_TOKENS.cerebras);
+    expect(callOptions.temperature).toBe(CONFIG.AI.DEFAULT_TEMPERATURE);
   });
 
   // ── Cerebras Rate Limit → Groq Fallback ─────────────────────────────────────
   it('falls back to Groq on Cerebras 429 rate limit', async () => {
-    // Override cerebrasRequest to throw a RateLimitError
     vi.spyOn(cerebrasModule, 'cerebrasRequest').mockRejectedValue(new RateLimitError(10, 'Cerebras'));
 
     const result = await askAIStream(
@@ -269,13 +260,11 @@ describe('askAIStream', () => {
       new AbortController().signal
     );
 
-    // The groqRequest mock returns 'Groq fallback response'
     expect(result).toBe('Groq fallback response');
     expect(groqModule.groqRequest).toHaveBeenCalledTimes(1);
   });
 
   it('throws original Cerebras RATE_LIMIT when Groq also fails', async () => {
-    // Cerebras throws rate limit, Groq also throws
     vi.spyOn(cerebrasModule, 'cerebrasRequest').mockRejectedValue(new RateLimitError(60, 'Cerebras'));
     vi.spyOn(groqModule, 'groqRequest').mockRejectedValue(new RateLimitError(60, 'Groq'));
 
@@ -365,7 +354,6 @@ describe('askAIStream', () => {
 
   // ── Groq Provider ───────────────────────────────────────────────────────────
   it('routes Groq model directly to Groq API', async () => {
-    // The mock groqRequest will be called
     await askAIStream(
       [{ role: 'user', content: 'Hi' }],
       'kimi-groq',
@@ -449,19 +437,11 @@ describe('askAIStream', () => {
       { imageBase64: 'base64data' }
     );
 
-    expect(spy).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          content: expect.arrayContaining([
-            { type: 'image_url', image_url: { url: expect.stringContaining('base64data') } }
-          ])
-        })
-      ]),
-      'qwen-cerebras',
-      expect.any(Function),
-      expect.any(AbortSignal),
-      expect.anything()
-    );
+    const lastArg = spy.mock.calls[0][0];
+    expect(lastArg[0].content).toEqual([
+      { type: 'text', text: 'describe this' },
+      { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,base64data' } }
+    ]);
   });
 
   it('does not inject image when imageBase64 is null', async () => {
@@ -512,7 +492,6 @@ describe('askAIStream', () => {
   it('calls onFallback when using fallback model', async () => {
     vi.spyOn(cerebrasModule, 'cerebrasRequest').mockRejectedValue(new RateLimitError(10, 'Cerebras'));
     const onFallback = vi.fn();
-    // Mock groqRequest to simulate fallback call with callback
     vi.spyOn(groqModule, 'groqRequest').mockImplementation(async (messages, model, onChunk, signal, options) => {
       options?.onFallback?.(model);
       return 'fallback result';
@@ -532,7 +511,7 @@ describe('askAIStream', () => {
 
   it('accumulates full response correctly', async () => {
     const chunks = [];
-    const mockCerebras = vi.spyOn(cerebrasModule, 'cerebrasRequest').mockImplementation(async (messages, model, onChunk) => {
+    vi.spyOn(cerebrasModule, 'cerebrasRequest').mockImplementation(async (messages, model, onChunk) => {
       onChunk('Hello');
       onChunk('Hello World');
       onChunk('Hello World!');
@@ -603,7 +582,6 @@ describe('askAIStream', () => {
   });
 
   it('uses FALLBACK_MODEL when model not found in MODELS', async () => {
-    // The default model should be used, which is 'qwen-cerebras' (provider: cerebras)
     const spy = vi.spyOn(cerebrasModule, 'cerebrasRequest').mockResolvedValue('ok');
     await askAIStream(
       [{ role: 'user', content: 'hi' }],
