@@ -50,7 +50,7 @@ export function AppHeader({ T, ui, project, file, chat, growth, _saveFolder, und
 
           {/* Wake word indicator — shown only when PTT/wake word is on */}
           {project.pushToTalk&&(
-            <div title="Wake word aktif —  "Hey Yuyu""
+            <div title='Wake word aktif — "Hey Yuyu"'
               style={{display:'flex',alignItems:'center',justifyContent:'center',width:'30px',height:'30px',borderRadius:'8px',background:T.accentBg,flexShrink:0}}>
               <Mic size={12} style={{color:T.accent,animation:'pulse 1.8s ease-in-out infinite'}}/>
             </div>
