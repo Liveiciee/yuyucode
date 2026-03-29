@@ -87,8 +87,8 @@ expect.extend({
 // Mock Setup (with valid key lengths)
 // ──────────────────────────────────────────────────────────────────────────────
 vi.mock('../src/constants.js', () => ({
-  CEREBRAS_KEY: 'test-cerebras-key-1234567890', // length >20
-  GROQ_KEY: 'test-groq-key-1234567890',         // length >20
+  CEREBRAS_KEY: 'test-cerebras-key-1234567890',
+  GROQ_KEY: 'test-groq-key-1234567890',
   YUYU_SERVER: 'http://localhost:8765',
   WS_SERVER: 'ws://127.0.0.1:8766',
   MODELS: [
@@ -101,7 +101,7 @@ vi.mock('../src/constants.js', () => ({
 
 vi.mock('../src/runtimeKeys.js', () => ({
   getRuntimeCerebrasKey: () => null,
-  getRuntimeGroqKey: () => 'test-groq-key-1234567890', // length >20
+  getRuntimeGroqKey: () => 'test-groq-key-1234567890',
 }));
 
 const originalFetch = globalThis.fetch;
@@ -142,6 +142,7 @@ function make429Response(retryAfter = 10) {
     status: 429,
     headers: { get: (key) => key === 'retry-after' ? String(retryAfter) : null },
     body: null,
+    text: () => Promise.resolve('Rate limit exceeded'),
   };
 }
 
@@ -230,7 +231,6 @@ describe('askAIStream', () => {
     );
 
     const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
-    // Cerebras model uses provider-specific max tokens (8192)
     expect(body.max_tokens).toBe(CONFIG.AI.MAX_TOKENS.cerebras);
     expect(body.temperature).toBe(CONFIG.AI.DEFAULT_TEMPERATURE);
   });
@@ -253,7 +253,10 @@ describe('askAIStream', () => {
   });
 
   it('throws original Cerebras RATE_LIMIT when Groq also fails', async () => {
-    globalThis.fetch.mockResolvedValue(make429Response(60));
+    // Make both Cerebras and Groq fail with 429
+    globalThis.fetch
+      .mockResolvedValueOnce(make429Response(60))
+      .mockResolvedValueOnce(make429Response(60));
 
     await expect(
       askAIStream(
@@ -602,7 +605,6 @@ describe('askAIStream', () => {
       new AbortController().signal
     );
 
-    // Should default to cerebras provider
     const url = globalThis.fetch.mock.calls[0][0];
     expect(url).toContain('cerebras.ai');
   });
