@@ -17,7 +17,7 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
-run-name: Deploy Docs - ${{ github.ref_name }}
+run-name: Deploy Docs - {{ github.ref_name }}
 
 jobs:
   build:
