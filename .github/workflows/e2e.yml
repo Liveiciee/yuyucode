@@ -13,10 +13,10 @@ jobs:
     steps:
     - uses: actions/checkout@v5
 
-      - name: Setup Environment
+    - name: Setup Environment
       uses: ./.github/actions/setup-node-env
       with:
-        node-version: '20' # Playwright butuh 20
+        node-version: '20'
 
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps chromium
