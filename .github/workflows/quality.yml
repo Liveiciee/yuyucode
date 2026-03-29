@@ -17,6 +17,8 @@ jobs:
       actions: read
       contents: read
     steps:
+      - uses: actions/checkout@v5
+
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
@@ -49,6 +51,8 @@ jobs:
       actions: read
       contents: read
     steps:
+      - uses: actions/checkout@v5
+
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
@@ -71,6 +75,8 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
+      - uses: actions/checkout@v5
+
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
@@ -115,6 +121,8 @@ jobs:
     name: Lint · ESLint
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
+
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
@@ -128,6 +136,8 @@ jobs:
     name: Test · Vitest
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
+
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:

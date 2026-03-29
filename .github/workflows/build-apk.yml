@@ -17,6 +17,8 @@ jobs:
       contents: write
 
     steps:
+      - uses: actions/checkout@v5
+
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:

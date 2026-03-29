@@ -20,6 +20,8 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
+      - uses: actions/checkout@v5
+
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
