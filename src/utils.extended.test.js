@@ -224,7 +224,7 @@ describe('executeAction — lint', () => {
 
   it('detects console.log', async () => {
     callServer.mockResolvedValue({ ok: true, data: 'const x = 1;\nconsole.log(x);\n' });
-    const r = await executeAction({ type: 'lint', path: 'debug.js' }, '/base');
+    const r = await executeAction({ type: 'lint', path: 'debug.js', allowLogs: false }, '/base');
     expect(r.data).toContain('console.log');
   });
 
