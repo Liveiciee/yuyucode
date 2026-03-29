@@ -1,16 +1,17 @@
 // @vitest-environment node
-// tests/api/orchestration.test.js — AI Orchestration & Fallback Tests (Fixed)
+// tests/api.orchestration.test.js — AI Orchestration & Fallback Tests (Fixed)
 // ============================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { 
-  askAIStream, 
-  RateLimitError, 
-  ServerError, 
+import {
+  askAIStream,
+  RateLimitError,
+  ServerError,
   ValidationError,
-  CONFIG 
+  CONFIG
 } from './api.js';
 import * as groqModule from './api/providers/groq.js';
+import * as cerebrasModule from './api/providers/cerebras.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Custom Matchers
@@ -20,11 +21,11 @@ expect.extend({
     const isRateLimitError = received instanceof RateLimitError;
     const hasCorrectCode = isRateLimitError && received.code === 'RATE_LIMIT';
     const hasCorrectRetryAfter = isRateLimitError && received.retryAfter === expectedRetryAfter;
-    const hasCorrectMessage = isRateLimitError && 
+    const hasCorrectMessage = isRateLimitError &&
       received.message.includes(`Retry after ${expectedRetryAfter}s`);
-    
+
     const pass = isRateLimitError && hasCorrectCode && hasCorrectRetryAfter && hasCorrectMessage;
-    
+
     if (pass) {
       return {
         pass: true,
@@ -39,20 +40,20 @@ expect.extend({
           if (!hasCorrectCode) errors.push(`code !== 'RATE_LIMIT' (got ${received?.code})`);
           if (!hasCorrectRetryAfter) errors.push(`retryAfter !== ${expectedRetryAfter} (got ${received?.retryAfter})`);
           if (!hasCorrectMessage) errors.push(`message does not contain 'Retry after ${expectedRetryAfter}s' (got ${received?.message})`);
-          
+
           return `Expected RateLimitError with retryAfter ${expectedRetryAfter}\n  ${errors.join('\n  ')}`;
         }
       };
     }
   },
-  
+
   toBeServerError(received, expectedStatusCode) {
     const isServerError = received instanceof ServerError;
     const hasCorrectCode = isServerError && received.code === 'SERVER_ERROR';
     const hasCorrectStatusCode = isServerError && received.statusCode === expectedStatusCode;
-    
+
     const pass = isServerError && hasCorrectCode && hasCorrectStatusCode;
-    
+
     return {
       pass,
       message: () => {
@@ -63,14 +64,14 @@ expect.extend({
       }
     };
   },
-  
+
   toBeValidationError(received, expectedField) {
     const isValidationError = received instanceof ValidationError;
     const hasCorrectCode = isValidationError && received.code === 'VALIDATION_ERROR';
     const hasCorrectField = isValidationError && received.field === expectedField;
-    
+
     const pass = isValidationError && hasCorrectCode && hasCorrectField;
-    
+
     return {
       pass,
       message: () => {
@@ -86,7 +87,7 @@ expect.extend({
 // ──────────────────────────────────────────────────────────────────────────────
 // Mock Setup (with valid key lengths)
 // ──────────────────────────────────────────────────────────────────────────────
-vi.mock('../../constants.js', () => ({
+vi.mock('./constants.js', () => ({
   CEREBRAS_KEY: 'test-cerebras-key-1234567890',
   GROQ_KEY: 'test-groq-key-1234567890',
   YUYU_SERVER: 'http://localhost:8765',
@@ -99,7 +100,7 @@ vi.mock('../../constants.js', () => ({
   FALLBACK_MODEL: 'kimi-groq',
 }));
 
-vi.mock('../../runtimeKeys.js', () => ({
+vi.mock('./runtimeKeys.js', () => ({
   getRuntimeCerebrasKey: () => null,
   getRuntimeGroqKey: () => 'test-groq-key-1234567890',
 }));
@@ -108,6 +109,8 @@ const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
   globalThis.fetch = vi.fn();
+  vi.spyOn(cerebrasModule, 'getCerebrasKey').mockReturnValue('test-cerebras-key-1234567890');
+  vi.spyOn(groqModule, 'getGroqKey').mockReturnValue('test-groq-key-1234567890');
 });
 
 afterEach(() => {
@@ -303,7 +306,7 @@ describe('askAIStream', () => {
     await vi.runAllTimersAsync();
     const result = await promise;
     vi.useRealTimers();
-    
+
     expect(result).toBe('OK');
     expect(globalThis.fetch).toHaveBeenCalledTimes(3);
   });
