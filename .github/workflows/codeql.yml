@@ -8,17 +8,26 @@ on:
   schedule:
     - cron: '0 3 * * 1'
 
+run-name: CodeQL Analysis - ${{ github.ref_name }}
+
+permissions:
+  security-events: write
+  actions: read
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analyze:
-    name: CodeQL · JavaScript
+    name: CodeQL · JavaScript/TypeScript
     runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
-
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
@@ -28,7 +37,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
-          languages: javascript
+          languages: javascript-typescript
           queries: security-extended, security-and-quality
 
       - name: Autobuild
