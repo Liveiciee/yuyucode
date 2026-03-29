@@ -1006,3 +1006,36 @@ export function* executeDiff(original, patched, options = {}) {
     yield `\n💡 QUALITY:\n- ${Array.from(formatter.tips).join('\n- ')}`;
   }
 }
+
+/**
+ * Convenience wrapper around executeDiff.
+ * Returns a plain string instead of a generator.
+ * Returns '' for falsy/identical inputs.
+ * @param {string} original
+ * @param {string} patched
+ * @param {number} [maxLines] - Optional hard cap on output lines
+ */
+export function generateDiff(original, patched, maxLines) {
+  if (!original || !patched) return '';
+  if (original === patched) return '';
+
+  const parts = [];
+  for (const chunk of executeDiff(original, patched)) {
+    parts.push(chunk);
+  }
+  const isMetaLine = line => 
+    line.startsWith('📊') || 
+    line.startsWith('\n💡');
+  
+  const contentLines = parts.filter(p => !isMetaLine(p));
+  
+  if (contentLines.length === 0) return '';
+
+  const result = parts.join('\n');
+  if (maxLines) {
+    const lines = result.split('\n');
+    return lines.length > maxLines ? lines.slice(0, maxLines).join('\n') : result;
+  }
+  return result;
+}
+
