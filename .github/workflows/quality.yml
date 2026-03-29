@@ -7,34 +7,29 @@ on:
   pull_request:
     branches: [ main ]
 
-# Run name yang lebih jelas
 run-name: Quality Gate - \( {{ github.ref_name }} ( \){{ github.event_name }})
 
-# Permissions least privilege
 permissions:
   security-events: write
   contents: read
   actions: read
 
-# Cegah workflow lama menumpuk
 concurrency:
   group: \( {{ github.workflow }}- \){{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ── SEMGREP SAST ────────────────────────────────────────────────────────────
   semgrep:
     name: SAST · Semgrep
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
+      - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
           node-version: '24'
@@ -65,7 +60,6 @@ jobs:
           path: semgrep.sarif
           retention-days: 14
 
-  # ── CODEQL ─────────────────────────────────────────────────────────────────
   codeql:
     name: SAST · CodeQL
     runs-on: ubuntu-latest
@@ -75,44 +69,37 @@ jobs:
       actions: read
       contents: read
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
+      - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
           node-version: '24'
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+      - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           queries: security-extended
-          # config-file: .github/codeql.yml   # kalau mau custom nanti
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
+      - uses: github/codeql-action/autobuild@v4
 
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@v4
         with:
           category: "/language:javascript-typescript"
 
-  # ── SONARCLOUD + COVERAGE ───────────────────────────────────────────────────
   sonarcloud:
     name: Quality · SonarCloud + Coverage
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 12
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # penting untuk SonarCloud history
+          fetch-depth: 0
 
-      - name: Setup Node.js
+      - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
           node-version: '24'
@@ -151,40 +138,31 @@ jobs:
         with:
           scanMetadataReportFile: .scannerwork/report-task.txt
 
-  # ── LINT ────────────────────────────────────────────────────────────────────
   lint:
     name: Lint · ESLint
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      - uses: actions/checkout@v4
+      - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
           node-version: '24'
-
       - name: Run ESLint
         run: npm run lint
 
-  # ── TEST ────────────────────────────────────────────────────────────────────
   test:
     name: Test · Vitest
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      - uses: actions/checkout@v4
+      - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
           node-version: '24'
-
-      - name: Run Vitest tests
+      - name: Run Vitest
         run: npm run test:ci
-
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
