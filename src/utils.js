@@ -1,5 +1,18 @@
+// src/utils.js
 import { callServer } from './api.js';
 import { diffLines } from 'diff';
+
+// ── LOGGER UTILITY ───────────────────────────────────────────────────────────
+export const logger = {
+  debug: (...args) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[DEBUG]', ...args);
+    }
+  },
+  info: (...args) => console.log('[INFO]', ...args),
+  warn: (...args) => console.warn('[WARN]', ...args),
+  error: (...args) => console.error('[ERROR]', ...args),
+};
 
 // ── TOKEN COUNT & ICON ────────────────────────────────────────────────────────
 export function countTokens(msgs) {
