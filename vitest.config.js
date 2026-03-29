@@ -20,6 +20,8 @@ export default defineConfig({
   plugins: [react()],
 
   test: {
+    include: ['src/**/*.test.{js,ts,jsx,tsx}'],
+    exclude: ['e2e/**', 'node_modules/**'],
     setupFiles: ['./vitest.setup.js', './src/setupTest.js'],
     // ─── Environment ──────────────────────────────────────────────────────────
     environment: 'happy-dom',
