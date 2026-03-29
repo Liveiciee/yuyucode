@@ -9,7 +9,7 @@ import {
   ServerError, 
   ValidationError,
   CONFIG 
-} from '../../api.js';
+} from '../api.js';
 import * as groqModule from './providers/groq.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
