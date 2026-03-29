@@ -1,6 +1,6 @@
 import { CONFIG } from './config.js';
 import { KeyValidationError } from './errors.js';
-import { calculateHash, encryptData } from './crypto.js';
+import { calculateHash, encryptData, decryptData } from './crypto.js';
 import { preferencesSet } from './storage.js';
 
 export function validateApiKey(key, provider) {

@@ -6,10 +6,10 @@ import { CONFIG } from './api/config.js';
 export const logger = {
   debug: (...args) => {
     if (import.meta.env?.DEV !== false) {
-      console.debug('[DEBUG]', ...args);
+      logger.debug('[DEBUG]', ...args);
     }
   },
-  info: (...args) => console.log('[INFO]', ...args),
+  info: (...args) => logger.info('[INFO]', ...args),
   warn: (...args) => console.warn('[WARN]', ...args),
   error: (...args) => console.error('[ERROR]', ...args),
 };
@@ -275,7 +275,7 @@ const ACTION_HANDLERS = {
     lines.forEach((line, i) => {
       opens  += (line.match(/[{[(]/g) || []).length;
       closes += (line.match(/[}\])]/g) || []).length;
-      if (line.includes('console.log') && !action.allowLogs) issues.push('Line ' + (i + 1) + ': console.log');
+      if (line.includes('logger.info') && !action.allowLogs) issues.push('Line ' + (i + 1) + ': logger.info');
       if (line.length > 200) issues.push('Line ' + (i + 1) + ': baris terlalu panjang (' + line.length + ')');
     });
     if (opens !== closes) issues.push('Bracket tidak balance: ' + opens + ' buka, ' + closes + ' tutup');

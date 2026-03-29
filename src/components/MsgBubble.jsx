@@ -207,7 +207,6 @@ function ActionChip({ action, T }) {
   const textMute  = T?.textMute   || 'rgba(255,255,255,.3)';
   const textSec   = T?.textSec    || 'rgba(255,255,255,.6)';
   const success   = T?.success    || '#4ade80';
-  const successBg = T?.successBg  || 'rgba(74,222,128,.08)';
   const errorCol  = T?.error      || '#f87171';
   const errorBg   = T?.errorBg    || 'rgba(248,113,113,.08)';
   const codeBg    = T?.codeBg     || 'rgba(0,0,0,.35)';

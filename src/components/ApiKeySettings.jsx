@@ -1,6 +1,6 @@
 // ── ApiKeySettings — ganti API key tanpa rebuild ──────────────────────────────
 import { useState } from 'react';
-import { getRuntimeCerebrasKey, getRuntimeGroqKey, saveRuntimeKeys } from '../runtimeKeys.js';
+import { getRuntimeCerebrasKey, getRuntimeGroqKey, saveRuntimeKeys } from '../runtimeKeys/index.js';
 
 export function ApiKeySettings({ T, onClose }) {
   const [cerebras, setCerebras] = useState(() => getRuntimeCerebrasKey());

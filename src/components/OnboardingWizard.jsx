@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Preferences } from '@capacitor/preferences';
 import { callServer } from '../api.js';
-import { saveRuntimeKeys } from '../runtimeKeys.js';
+import { saveRuntimeKeys } from '../runtimeKeys/index.js';
 
 export function OnboardingWizard({ T, onDone }) {
   const [step,     setStep]     = useState(0);

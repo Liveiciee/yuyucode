@@ -7,7 +7,7 @@ import { AppSidebar } from './components/AppSidebar.jsx';
 import { AppChat }    from './components/AppChat.jsx';
 import { OnboardingWizard }  from './components/OnboardingWizard.jsx';
 import { ApiKeySettings }   from './components/ApiKeySettings.jsx';
-import { loadRuntimeKeys }  from './runtimeKeys.js';
+import { loadRuntimeKeys }  from './runtimeKeys/index.js';
 import { AppPanels }  from './components/AppPanels.jsx';
 import { ProjectManager } from './components/panels.project.jsx';
 import { useSlashCommands } from './hooks/useSlashCommands';
