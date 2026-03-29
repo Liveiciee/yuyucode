@@ -1,14 +1,8 @@
 // @vitest-environment node
-// scr/api.server.test.js — Server Communication Tests
-// ============================================================
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { callServer, callServerBatch, execStream } from './api.js';
+import { callServer, callServerBatch, execStream } from '../../api.js';
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Mock Setup
-// ──────────────────────────────────────────────────────────────────────────────
-vi.mock('./constants.js', () => ({
+vi.mock('../../constants.js', () => ({
   YUYU_SERVER: 'http://localhost:8765',
   WS_SERVER: 'ws://127.0.0.1:8766',
 }));
@@ -27,9 +21,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────────────────────────────────────
 function mockJsonResponse(data, status = 200) {
   return Promise.resolve({
     ok: status >= 200 && status < 300,
@@ -41,9 +32,6 @@ function mockJsonResponse(data, status = 200) {
   });
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// callServer Tests
-// ──────────────────────────────────────────────────────────────────────────────
 describe('callServer', () => {
   it('returns ok:true and parsed JSON on success', async () => {
     globalThis.fetch.mockResolvedValueOnce(mockJsonResponse({ ok: true, data: 'hello' }));
@@ -93,13 +81,10 @@ describe('callServer', () => {
       text: () => Promise.resolve(longError),
     });
     const r = await callServer({ type: 'ping' });
-    expect(r.data.length).toBeLessThanOrEqual(250); // "Server error: 500 — " + 200
+    expect(r.data.length).toBeLessThanOrEqual(250);
   });
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// callServerBatch Tests
-// ──────────────────────────────────────────────────────────────────────────────
 describe('callServerBatch', () => {
   it('executes all payloads in parallel and returns array', async () => {
     globalThis.fetch
@@ -150,9 +135,6 @@ describe('callServerBatch', () => {
   });
 });
 
-// ──────────────────────────────────────────────────────────────────────────────
-// execStream Tests
-// ──────────────────────────────────────────────────────────────────────────────
 describe('execStream', () => {
   it('connects to WebSocket and sends exec_stream message', async () => {
     const mockWs = {
@@ -166,14 +148,10 @@ describe('execStream', () => {
     globalThis.WebSocket.mockImplementation(() => mockWs);
 
     const promise = execStream('ls -la', '/tmp', () => {}, null);
-
-    // Trigger onopen
     mockWs.onopen();
     mockWs.onmessage({ data: JSON.stringify({ id: mockWs.send.mock.calls[0][0], type: 'exit', code: 0 }) });
     await promise;
-    expect(mockWs.send).toHaveBeenCalledWith(
-      expect.stringContaining('exec_stream')
-    );
+    expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('exec_stream'));
   });
 
   it('streams stdout and stderr to onLine callback', async () => {
@@ -223,10 +201,8 @@ describe('execStream', () => {
 
     const ctrl = new AbortController();
     const promise = execStream('long-running', '/tmp', () => {}, ctrl.signal);
-
     mockWs.onopen();
     ctrl.abort();
-
     await expect(promise).rejects.toThrow('Aborted');
     expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('kill'));
   });
@@ -243,7 +219,6 @@ describe('execStream', () => {
     globalThis.WebSocket.mockImplementation(() => mockWs);
 
     const promise = execStream('bad-command', '/tmp', () => {}, null);
-
     mockWs.onopen();
     mockWs.onmessage({ data: JSON.stringify({ id: 'exec_test', type: 'error', data: 'command not found' }) });
 
