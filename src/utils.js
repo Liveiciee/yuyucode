@@ -6,10 +6,10 @@ import { CONFIG } from './api/config.js';
 export const logger = {
   debug: (...args) => {
     if (import.meta.env?.DEV !== false) {
-      logger.debug('[DEBUG]', ...args);
+      console.debug('[DEBUG]', ...args);
     }
   },
-  info: (...args) => logger.info('[INFO]', ...args),
+  info: (...args) => console.log('[INFO]', ...args),
   warn: (...args) => console.warn('[WARN]', ...args),
   error: (...args) => console.error('[ERROR]', ...args),
 };
