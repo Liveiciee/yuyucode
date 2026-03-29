@@ -6,7 +6,7 @@ on:
     paths-ignore: ['**.md', 'README.md']
   workflow_dispatch:
 
-run-name: Build APK - ${{ github.ref_name }}
+run-name: Build APK - {{ github.ref_name }}
 
 permissions:
   contents: write
@@ -34,7 +34,7 @@ jobs:
       - name: Cache NPM Global
         uses: actions/cache@v4
         with:
-          path: \~/.npm
+          path: ~/.npm
           key: npm-global-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             npm-global-
@@ -65,9 +65,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            \~/.gradle/caches
-            \~/.gradle/wrapper
-            !\~/.gradle/caches/build-cache-*
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            !~/.gradle/caches/build-cache-*
           key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             gradle-
@@ -114,7 +114,7 @@ jobs:
       - name: Upload Signed APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: YuyuCode-v1.0.\( {{ github.run_number }}- \){{ github.sha }}
+          name: YuyuCode-v1.0.${{ github.run_number }}-${{ github.sha_short }}
           path: android/app/build/outputs/apk/release/YuyuCode.apk
           retention-days: 14
 
@@ -129,8 +129,8 @@ jobs:
         if: startsWith(github.event.head_commit.message, 'release:')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.info.outputs.version }}
-          name: "YuyuCode v\( {{ steps.info.outputs.version }} ( \){{ steps.info.outputs.date }})"
+          tag_name: ${{ steps.info.outputs.version }}
+          name: "YuyuCode v${{ steps.info.outputs.version }} (${{ steps.info.outputs.date }})"
           body: |
             **${{ steps.info.outputs.msg }}**
             
