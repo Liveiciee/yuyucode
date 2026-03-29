@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [ main ]
 
-run-name: 'Quality Gate ({{ github.ref_name }} - {{ github.event_name }})'
+run-name: 'Quality Gate (${{ github.ref_name }} - ${{ github.event_name }})'
 
 permissions:
   security-events: write
