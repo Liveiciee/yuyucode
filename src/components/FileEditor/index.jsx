@@ -3,7 +3,8 @@ import React, { useEffect, useRef, useState, useCallback, useImperativeHandle, f
 import { EditorView } from '@codemirror/view';
 import { EditorState, Compartment, StateEffect } from '@codemirror/state';
 import { basicSetup } from 'codemirror';
-import { keymap } from '@codemirror/commands';
+import * as commandsModule from '@codemirror/commands';
+const { keymap } = commandsModule;
 import { foldAll, unfoldAll } from '@codemirror/language';
 import { Save } from 'lucide-react';
 import { callServer } from '../../api.js';
