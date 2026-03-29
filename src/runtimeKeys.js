@@ -125,7 +125,7 @@ function base64ToUint8Array(base64) {
   return bytes;
 }
 
-function getCrypto() {
+function _getCrypto() {
   const cryptoObj = globalThis?.crypto;
   if (!cryptoObj?.subtle || !cryptoObj?.getRandomValues) {
     throw new KeyStorageError('Web Crypto API is not available', 'CRYPTO_UNAVAILABLE');
@@ -133,7 +133,7 @@ function getCrypto() {
   return cryptoObj;
 }
 
-function getTextEncoder() {
+function _getTextEncoder() {
   const Encoder = globalThis?.TextEncoder || globalThis?.window?.TextEncoder;
   if (Encoder) return new Encoder();
   if (typeof globalThis.Buffer !== 'undefined') {
@@ -142,7 +142,7 @@ function getTextEncoder() {
   throw new KeyStorageError('TextEncoder is not available', 'ENCODER_UNAVAILABLE');
 }
 
-function getTextDecoder() {
+function _getTextDecoder() {
   const Decoder = globalThis?.TextDecoder || globalThis?.window?.TextDecoder;
   if (Decoder) return new Decoder();
   if (typeof globalThis.Buffer !== 'undefined') {
