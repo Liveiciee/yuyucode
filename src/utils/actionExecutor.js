@@ -1,8 +1,6 @@
 // src/utils/actionExecutor.js
 import { callServer } from '../api.js';
 import { resolvePath } from './path.js';
-import { verifySyntaxBatch } from './syntax.js';
-import { backupFiles } from './backup.js';
 
 const ACTION_HANDLERS = {
   async read_file(action, base, cs) {

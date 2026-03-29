@@ -1,5 +1,4 @@
 import { ValidationError } from './errors.js';
-import { logger } from '../utils.js';
 import { CONFIG } from './config.js';
 
 export function validateMessages(messages) {

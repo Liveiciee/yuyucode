@@ -1,6 +1,5 @@
 import { CONFIG } from './config.js';
 import { textEncoder, textDecoder, BufferCtor } from './polyfills.js';
-import { preferencesGet, preferencesSet, preferencesRemove } from './storage.js';
 
 function uint8ArrayToBase64(bytes) {
   if (BufferCtor) {
