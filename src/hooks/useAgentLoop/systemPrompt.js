@@ -3,6 +3,7 @@ import { getSystemForModel } from '../../constants.js';
 import { selectSkills, tfidfRank } from '../../features.js';
 
 const isArm64 = /arm64|arm|aarch64/i.test(navigator?.platform || '') || /aarch64/i.test(navigator?.userAgent || '');
+// eslint-disable-next-line no-unused-vars
 const MAX_PREVIEW_CHARS = isArm64 ? 600 : 800;
 
 export function buildSystemPrompt(txt, cfg, project, chat, file, growth) {
