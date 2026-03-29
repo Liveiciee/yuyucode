@@ -42,7 +42,7 @@ describe('validators', () => {
       expect(() => validateApiKey('short', 'cerebras')).toThrow('too short');
     });
     it('throws on placeholder', () => {
-      expect(() => validateApiKey('your-key-here', 'cerebras')).toThrow('not configured');
+      expect(() => validateApiKey('your-key-here-1234567890', 'cerebras')).toThrow('not configured');
     });
     it('passes valid key', () => {
       expect(validateApiKey('a'.repeat(20), 'cerebras')).toBe(true);
