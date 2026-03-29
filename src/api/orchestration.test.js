@@ -1,6 +1,5 @@
-// src/api.orchestration.test.js (updated)
 // @vitest-environment node
-// tests/api.orchestration.test.js — AI Orchestration & Fallback Tests (Enhanced)
+// tests/api/orchestration.test.js — AI Orchestration & Fallback Tests (Fixed)
 // ============================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -10,11 +9,11 @@ import {
   ServerError, 
   ValidationError,
   CONFIG 
-} from '../src/api.js';
-import * as groqModule from '../src/api/providers/groq.js';
+} from '../../api.js';
+import * as groqModule from './providers/groq.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Custom Matchers (for better assertions)
+// Custom Matchers
 // ──────────────────────────────────────────────────────────────────────────────
 expect.extend({
   toBeRateLimitError(received, expectedRetryAfter) {
@@ -87,7 +86,7 @@ expect.extend({
 // ──────────────────────────────────────────────────────────────────────────────
 // Mock Setup (with valid key lengths)
 // ──────────────────────────────────────────────────────────────────────────────
-vi.mock('../src/constants.js', () => ({
+vi.mock('../../constants.js', () => ({
   CEREBRAS_KEY: 'test-cerebras-key-1234567890',
   GROQ_KEY: 'test-groq-key-1234567890',
   YUYU_SERVER: 'http://localhost:8765',
@@ -100,7 +99,7 @@ vi.mock('../src/constants.js', () => ({
   FALLBACK_MODEL: 'kimi-groq',
 }));
 
-vi.mock('../src/runtimeKeys.js', () => ({
+vi.mock('../../runtimeKeys.js', () => ({
   getRuntimeCerebrasKey: () => null,
   getRuntimeGroqKey: () => 'test-groq-key-1234567890',
 }));
