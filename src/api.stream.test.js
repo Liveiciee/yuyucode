@@ -3,7 +3,8 @@
 // ============================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { readSSEStream, injectVisionImage } from './api.js';
+import { injectVisionImage } from './api.js';
+import { readSSEStream } from './api/providers/base.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -48,7 +49,6 @@ describe('readSSEStream', () => {
     );
     const onChunk = vi.fn();
     const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
-
     expect(onChunk).toHaveBeenNthCalledWith(1, 'Hello');
     expect(onChunk).toHaveBeenNthCalledWith(2, 'Hello world');
     expect(result).toBe('Hello world');
@@ -76,7 +76,6 @@ describe('readSSEStream', () => {
     );
     const onChunk = vi.fn();
     const result = await readSSEStream(makeResponse(reader), onChunk, new AbortController().signal);
-
     expect(result).toBe('Done');
     expect(onChunk).toHaveBeenCalledTimes(1);
   });
@@ -209,7 +208,7 @@ describe('injectVisionImage', () => {
       { role: 'user', content: 'last' },
     ];
     const result = injectVisionImage(messages, 'base64data');
-    
+
     expect(result[0].content).toBe('first');
     expect(result[1].content).toBe('reply');
     expect(Array.isArray(result[2].content)).toBe(true);
@@ -219,7 +218,7 @@ describe('injectVisionImage', () => {
   it('handles string content', () => {
     const messages = [{ role: 'user', content: 'describe this' }];
     const result = injectVisionImage(messages, 'base64data');
-    
+
     expect(result[0].content).toEqual([
       { type: 'text', text: 'describe this' },
       { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,base64data' } },
@@ -227,12 +226,12 @@ describe('injectVisionImage', () => {
   });
 
   it('handles array content (preserves text, adds image)', () => {
-    const messages = [{ 
-      role: 'user', 
-      content: [{ type: 'text', text: 'describe this' }] 
+    const messages = [{
+      role: 'user',
+      content: [{ type: 'text', text: 'describe this' }]
     }];
     const result = injectVisionImage(messages, 'base64data');
-    
+
     expect(Array.isArray(result[0].content)).toBe(true);
     expect(result[0].content.find(c => c.type === 'text')).toBeDefined();
     expect(result[0].content.find(c => c.type === 'image_url')).toBeDefined();
@@ -241,7 +240,7 @@ describe('injectVisionImage', () => {
   it('handles null content (converts to empty string)', () => {
     const messages = [{ role: 'user', content: null }];
     const result = injectVisionImage(messages, 'base64data');
-    
+
     expect(Array.isArray(result[0].content)).toBe(true);
     expect(result[0].content.find(c => c.type === 'text').text).toBe('');
   });
@@ -252,7 +251,7 @@ describe('injectVisionImage', () => {
       { role: 'user', content: 'second message' },
     ];
     const result = injectVisionImage(messages, 'base64data');
-    
+
     expect(result[0].content).toBe('first message');
     expect(Array.isArray(result[1].content)).toBe(true);
   });

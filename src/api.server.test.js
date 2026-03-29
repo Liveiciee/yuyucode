@@ -8,7 +8,7 @@ import { callServer, callServerBatch, execStream } from './api.js';
 // ──────────────────────────────────────────────────────────────────────────────
 // Mock Setup
 // ──────────────────────────────────────────────────────────────────────────────
-vi.mock('../src/constants.js', () => ({
+vi.mock('./constants.js', () => ({
   YUYU_SERVER: 'http://localhost:8765',
   WS_SERVER: 'ws://127.0.0.1:8766',
 }));
