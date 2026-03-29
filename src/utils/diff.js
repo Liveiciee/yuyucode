@@ -26,10 +26,9 @@ const CONFIG = {
   TOKEN_LEVENSHTEIN_MAX: 100,
   IDENTIFIER_MAP_THRESHOLD: 0.8,
   MOVE_BLOCK_MIN_LINES: 3,
-  // Weighting untuk structural similarity
   TOKEN_WEIGHTS: {
     keyword: 2.0,
-    punct: 1.8,      // { } ( ) [ ] — structural importance
+    punct: 1.8,
     operator: 1.5,
     identifier: 1.0,
     string: 1.0,
@@ -72,7 +71,6 @@ function similarityScore(s1, s2) {
   return 1 - (dist / maxLen);
 }
 
-// FIX (5): Improved tokenizer dengan template literal dan escape support
 function tokenize(line) {
   const tokens = [];
   let i = 0;
@@ -80,13 +78,11 @@ function tokenize(line) {
   while (i < line.length) {
     const char = line[i];
     
-    // Skip whitespace
     if (/\s/.test(char)) {
       i++;
       continue;
     }
     
-    // Template literals dan strings (handle escaped)
     if (char === '`' || char === '"' || char === "'") {
       const quote = char;
       let j = i + 1;
@@ -103,7 +99,6 @@ function tokenize(line) {
           j++;
           break;
         } else if (quote === '`' && line[j] === '$' && line[j + 1] === '{') {
-          // Template literal interpolation — stop di sini untuk simplicity
           break;
         } else {
           j++;
@@ -116,7 +111,6 @@ function tokenize(line) {
       continue;
     }
     
-    // Numbers (integers, floats, hex, scientific)
     if (/\d/.test(char) || (char === '.' && /\d/.test(line[i + 1]))) {
       const numRegex = /^\d[\d.eE+xX]*$/;
       let j = i;
@@ -126,7 +120,6 @@ function tokenize(line) {
       continue;
     }
     
-    // Identifiers dan keywords
     if (/[a-zA-Z_$]/.test(char)) {
       let j = i;
       while (j < line.length && /[a-zA-Z0-9_$]/.test(line[j])) j++;
@@ -137,7 +130,6 @@ function tokenize(line) {
       continue;
     }
     
-    // Operators (multi-char)
     const ops = ['===', '!==', '==', '!=', '<=', '>=', '=>', '**', '++', '--', '&&', '||', '<<', '>>', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^='];
     let foundOp = false;
     for (const op of ops) {
@@ -150,7 +142,6 @@ function tokenize(line) {
     }
     if (foundOp) continue;
     
-    // Single-char operators dan punctuation
     if (/[+\-*/%=<>!&|^~?:]/.test(char)) {
       tokens.push({ value: char, type: 'operator' });
       i++;
@@ -163,7 +154,6 @@ function tokenize(line) {
       continue;
     }
     
-    // Other chars (catch-all)
     tokens.push({ value: char, type: 'other' });
     i++;
   }
@@ -171,7 +161,6 @@ function tokenize(line) {
   return tokens;
 }
 
-// FIX (3): Weighted structural signature
 function getWeightedStructuralSignature(tokens) {
   const parts = [];
   let totalWeight = 0;
@@ -274,7 +263,6 @@ function rollingHash(lines, blockSize) {
   return blocks;
 }
 
-// FIX (4): Block similarity dengan move confidence score
 function computeBlockSimilarity(aLines, bLines) {
   if (aLines.length < CONFIG.BLOCK_SIZE || bLines.length < CONFIG.BLOCK_SIZE) {
     return { score: 0, moves: [] };
@@ -298,7 +286,6 @@ function computeBlockSimilarity(aLines, bLines) {
       const drift = Math.abs(posA - posB);
       
       if (drift > CONFIG.MOVE_BLOCK_MIN_LINES) {
-        // FIX (4): Move confidence = size / drift
         const moveScore = (aData.weight * CONFIG.BLOCK_SIZE) / (drift + 1);
         moves.push({
           from: posA,
@@ -306,7 +293,7 @@ function computeBlockSimilarity(aLines, bLines) {
           size: CONFIG.BLOCK_SIZE,
           weight: aData.weight,
           drift,
-          confidence: Math.min(1, moveScore), // 0-1
+          confidence: Math.min(1, moveScore),
           identifiers: aData.identifiers
         });
       }
@@ -320,7 +307,6 @@ function computeBlockSimilarity(aLines, bLines) {
   
   const score = rawScore * (1 - (driftRatio * CONFIG.REORDER_PENALTY_FACTOR));
   
-  // Sort moves by confidence
   moves.sort((a, b) => b.confidence - a.confidence);
   
   return { score, moves };
@@ -455,42 +441,43 @@ function getSample(lines, size) {
   return result;
 }
 
+// FIX: Ganti "lines hidden" jadi "baris lebih"
 function* fastHeuristicDiff(aLines, bLines, ctx = {}) {
   const { prefixLen = 0 } = ctx;
   const head = CONFIG.HEURISTIC_HEAD_LINES;
   const tail = CONFIG.HEURISTIC_TAIL_LINES;
   
-  yield { type: 'info', lines: [`--- OLD (${aLines.length} lines) [Semantic View] ---`] };
+  yield { type: 'info', lines: [`--- OLD (${aLines.length} baris) [Semantic View] ---`] };
   
   if (aLines.length > 0) {
-    yield { type: 'info', lines: ['@@ First ' + Math.min(head, aLines.length) + ' lines @@'] };
+    yield { type: 'info', lines: ['@@ First ' + Math.min(head, aLines.length) + ' baris @@'] };
     yield { type: 'remove', lines: aLines.slice(0, head), offset: prefixLen };
   }
   
   const hiddenLines = aLines.length - head - tail;
   if (hiddenLines > 0) {
-    yield { type: 'info', lines: [`... (${hiddenLines} lines hidden) ...`] };
+    yield { type: 'info', lines: [`... (${hiddenLines} baris lebih) ...`] }; // FIX HERE
   }
   
   if (aLines.length > head && tail > 0) {
-    yield { type: 'info', lines: ['@@ Last ' + Math.min(tail, aLines.length - head) + ' lines @@'] };
+    yield { type: 'info', lines: ['@@ Last ' + Math.min(tail, aLines.length - head) + ' baris @@'] };
     yield { type: 'remove', lines: aLines.slice(-tail), offset: prefixLen + aLines.length - tail };
   }
   
-  yield { type: 'info', lines: [`+++ NEW (${bLines.length} lines) [Semantic View] +++`] };
+  yield { type: 'info', lines: [`+++ NEW (${bLines.length} baris) [Semantic View] +++`] };
   
   if (bLines.length > 0) {
-    yield { type: 'info', lines: ['@@ First ' + Math.min(head, bLines.length) + ' lines @@'] };
+    yield { type: 'info', lines: ['@@ First ' + Math.min(head, bLines.length) + ' baris @@'] };
     yield { type: 'add', lines: bLines.slice(0, head), offset: prefixLen };
   }
   
   const hiddenNew = bLines.length - head - tail;
   if (hiddenNew > 0) {
-    yield { type: 'info', lines: [`... (${hiddenNew} lines hidden) ...`] };
+    yield { type: 'info', lines: [`... (${hiddenNew} baris lebih) ...`] }; // FIX HERE
   }
   
   if (bLines.length > head && tail > 0) {
-    yield { type: 'info', lines: ['@@ Last ' + Math.min(tail, bLines.length - head) + ' lines @@'] };
+    yield { type: 'info', lines: ['@@ Last ' + Math.min(tail, bLines.length - head) + ' baris @@'] };
     yield { type: 'add', lines: bLines.slice(-tail), offset: prefixLen + bLines.length - tail };
   }
 }
@@ -658,7 +645,6 @@ function* patienceSegmentedEngine(aLines, bLines, ctx = {}) {
   }
 }
 
-// FIX (2): Multi-identifier mapping dengan frequency pairing
 class DiffFormatter {
   constructor(limit, startLine = 1) {
     this.limit = limit;
@@ -672,7 +658,6 @@ class DiffFormatter {
     this.blockMovedDetected = false;
     this._buffer = null;
     this.identifierMap = new Map();
-    this.idFrequency = new Map(); // Track frequency untuk confidence
   }
 
   *_flushBuffer(highlight) {
@@ -683,7 +668,7 @@ class DiffFormatter {
       const color = highlight ? '\x1b[31m' : '';
       for (const line of hunk.lines) {
         if (this.shown >= this.limit) {
-          yield "... (Limit baris tercapai)";
+          yield "... (baris lebih)";
           return;
         }
         this.indexRemovedLine(line);
@@ -737,20 +722,18 @@ class DiffFormatter {
     yield* this._flushBuffer(highlight);
   }
 
-  // FIX (2): Multi-identifier mapping dengan frequency analysis
   _calculateSemanticSimilarity(oldLines, newLines) {
     if (oldLines.length === 0 || newLines.length === 0) return { score: 0, isRename: false, mappings: [] };
     
     const minLen = Math.min(oldLines.length, newLines.length);
     let totalSim = 0;
     let totalWeight = 0;
-    const idPairs = []; // Collect semua pasangan
+    const idPairs = [];
     
     for (let i = 0; i < minLen; i++) {
       const oldTokens = tokenize(oldLines[i]);
       const newTokens = tokenize(newLines[i]);
       
-      // FIX (3): Weighted structural similarity
       const oldStruct = getWeightedStructuralSignature(oldTokens);
       const newStruct = getWeightedStructuralSignature(newTokens);
       const structSim = similarityScore(oldStruct.signature, newStruct.signature);
@@ -759,7 +742,6 @@ class DiffFormatter {
       totalSim += structSim * lineWeight;
       totalWeight += lineWeight;
       
-      // Collect identifier pairs
       if (structSim > 0.7) {
         const oldIds = extractIdentifiers(oldTokens);
         const newIds = extractIdentifiers(newTokens);
@@ -776,17 +758,15 @@ class DiffFormatter {
     
     const avgSim = totalWeight > 0 ? totalSim / totalWeight : 0;
     const lenDiff = Math.abs(oldLines.length - newLines.length);
-    const penalty = lenDiff * 0.05; // Reduced penalty karena weighted
+    const penalty = lenDiff * 0.05;
     const finalScore = Math.max(0, avgSim - penalty);
     
-    // FIX (2): Frequency-based multi-identifier mapping
     const mappings = this._computeReliableMappings(idPairs);
     const isRename = mappings.length > 0;
     
     return { score: finalScore, isRename, mappings };
   }
   
-  // FIX (2): Compute reliable mappings dari frequency pairs
   _computeReliableMappings(pairs) {
     if (pairs.length === 0) return [];
     
@@ -796,7 +776,6 @@ class DiffFormatter {
       freq.set(key, (freq.get(key) || 0) + 1);
     }
     
-    // Ambil yang konsisten (>50% dari max frequency untuk that 'from')
     const fromCounts = new Map();
     for (const p of pairs) {
       fromCounts.set(p.from, (fromCounts.get(p.from) || 0) + 1);
@@ -806,7 +785,7 @@ class DiffFormatter {
     for (const [key, count] of freq) {
       const [from, to] = key.split('→');
       const totalFrom = fromCounts.get(from) || 1;
-      if (count / totalFrom >= 0.5) { // 50% threshold
+      if (count / totalFrom >= 0.5) {
         reliable.push({ from, to, confidence: count / totalFrom });
         this.identifierMap.set(from, to);
       }
@@ -819,10 +798,10 @@ class DiffFormatter {
     const color = highlight ? '\x1b[33m' : '';
     const simPercent = Math.round(similarity.score * 100);
     
-    // FIX (1): Bug rename.name -> rename.to (via mappings)
+    // FIX: rename.to (not rename.name)
     if (similarity.isRename && similarity.mappings.length > 0) {
       const primary = similarity.mappings[0];
-      yield `${color}~ [${similarity.mappings.length} rename(s): ${primary.from}→${primary.to} ${Math.round(primary.confidence * 100)}%] ${simPercent}%${highlight ? '\x1b[0m' : ''}`;
+      yield `${color}~ [${similarity.mappings.length} rename: ${primary.from}→${primary.to} ${Math.round(primary.confidence * 100)}%] ${simPercent}%${highlight ? '\x1b[0m' : ''}`;
     } else {
       yield `${color}~ [${simPercent}% similar]${highlight ? '\x1b[0m' : ''}`;
     }
@@ -830,7 +809,7 @@ class DiffFormatter {
     const maxLen = Math.max(oldLines.length, newLines.length);
     for (let i = 0; i < maxLen; i++) {
       if (this.shown >= this.limit) {
-        yield "... (Limit baris tercapai)";
+        yield "... (baris lebih)";
         return;
       }
       
@@ -868,7 +847,7 @@ class DiffFormatter {
     const color = highlight ? '\x1b[32m' : '';
     for (const line of lines) {
       if (this.shown >= this.limit) {
-        yield "... (Limit baris tercapai)";
+        yield "... (baris lebih)";
         return;
       }
       this.analyzeAddedLine(line);
@@ -917,14 +896,13 @@ class DiffFormatter {
     }
     
     if (meta.moves && meta.moves.length > 0) {
-      // FIX (4): Show move confidence
       const highConfMoves = meta.moves.filter(m => m.confidence > 0.7).length;
       insights.push(`📦 ${meta.moves.length} block move(s) detected (${highConfMoves} high confidence)`);
     }
     
     if (this.identifierMap.size > 0) {
       const renames = Array.from(this.identifierMap.entries())
-        .slice(0, 3) // Limit 3 untuk tidak spam
+        .slice(0, 3)
         .map(([k, v]) => `${k}→${v}`).join(', ');
       const more = this.identifierMap.size > 3 ? ` (+${this.identifierMap.size - 3} more)` : '';
       insights.push(`🏷️  Renames: ${renames}${more}`);
@@ -970,6 +948,7 @@ function chooseEngine(meta) {
   return { fn: guardedMyers, name: "GuardedMyers" };
 }
 
+// Core generator
 export function* executeDiff(original, patched, options = {}) {
   const { highlight = false, deterministic = false } = options;
   const aLines = (original || "").split('\n');
@@ -1007,14 +986,7 @@ export function* executeDiff(original, patched, options = {}) {
   }
 }
 
-/**
- * Convenience wrapper around executeDiff.
- * Returns a plain string instead of a generator.
- * Returns '' for falsy/identical inputs.
- * @param {string} original
- * @param {string} patched
- * @param {number} [maxLines] - Optional hard cap on output lines
- */
+// FIX: Wrapper dengan truncation marker "baris lebih"
 export function generateDiff(original, patched, maxLines) {
   if (!original || !patched) return '';
   if (original === patched) return '';
@@ -1023,6 +995,7 @@ export function generateDiff(original, patched, maxLines) {
   for (const chunk of executeDiff(original, patched)) {
     parts.push(chunk);
   }
+
   const contentLines = parts.filter(
     p => !p.startsWith('📊') && !p.startsWith('\n💡')
   );
