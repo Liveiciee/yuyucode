@@ -12,7 +12,7 @@ permissions:
   contents: write
   deployments: write
 
-run-name: Benchmark - {{ github.ref_name }}
+run-name: Benchmark - ${{ github.ref_name }}
 
 concurrency:
   group: bench-${{ github.ref }}
