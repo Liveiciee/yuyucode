@@ -7,7 +7,7 @@ import * as commandsModule from '@codemirror/commands';
 const { keymap } = commandsModule;
 import { foldAll, unfoldAll } from '@codemirror/language';
 import { Save } from 'lucide-react';
-import { getLang, buildTheme, isTsLang, isEmmetLang } from './editorUtils.js';
+import { getLang, buildTheme, isTsLang } from './editorUtils.js';
 import { makeBlameGutter, fetchBlame } from './blame.js';
 import { buildOptionalExtensions } from './optionalExtensions.js';
 import { getTsExtensions } from './tsExtensions.js';

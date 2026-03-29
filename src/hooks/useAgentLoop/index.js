@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import { callServer } from '../../api.js';
 import { parseActions, executeAction, resolvePath, generateDiff } from '../../utils.js';
 import { runHooksV2, tokenTracker, parseElicitation } from '../../features.js';
-import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL, getSystemForModel } from '../../constants.js';
+import { BASE_SYSTEM, AUTO_COMPACT_CHARS, AUTO_COMPACT_MIN_MSG, MAX_FILE_PREVIEW, VISION_MODEL } from '../../constants.js';
 import { extractMentionedFiles, checkServerHealth, isExecError, buildFeedback, autoLoadImports, autoVerifyWrites } from './helpers.js';
 import { gatherProjectContext } from './context.js';
 import { buildSystemPrompt } from './systemPrompt.js';
