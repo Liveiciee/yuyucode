@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { injectVisionImage } from '../../api.js';
+import { injectVisionImage } from '../providers/base.js';
 
 describe('injectVisionImage', () => {
   it('does nothing when imageBase64 is null/undefined', () => {
