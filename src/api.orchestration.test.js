@@ -1,3 +1,4 @@
+// src/api.orchestration.test.js
 // @vitest-environment node
 // tests/api.orchestration.test.js — AI Orchestration & Fallback Tests (Enhanced)
 // ============================================================
@@ -229,7 +230,8 @@ describe('askAIStream', () => {
     );
 
     const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
-    expect(body.max_tokens).toBe(CONFIG.AI.MAX_TOKENS.default);
+    // Cerebras model uses provider-specific max tokens (8192)
+    expect(body.max_tokens).toBe(CONFIG.AI.MAX_TOKENS.cerebras);
     expect(body.temperature).toBe(CONFIG.AI.DEFAULT_TEMPERATURE);
   });
 
