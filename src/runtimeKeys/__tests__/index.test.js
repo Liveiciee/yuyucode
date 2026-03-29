@@ -68,7 +68,7 @@ async function createFreshStore() {
   vi.stubGlobal('window', { crypto: mockCrypto });
   
   // Import actual module dengan config override
-  const actual = await vi.importActual('./runtimeKeys.js');
+  const actual = await vi.importActual('../index.js');
   
   // Buat instance KeyStore baru (bukan pake singleton!)
   const freshStore = new actual.KeyStore();
