@@ -5,7 +5,13 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'bench-dashboard.html'
       - '.github/workflows/docs.yml'
+  workflow_run:
+    # Re-deploy docs whenever bench pushes fresh data to gh-pages branch.
+    # This ensures /dev/bench/ stays in sync without a manual trigger.
+    workflows: ["Benchmark"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
