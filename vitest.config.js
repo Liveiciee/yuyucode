@@ -1,18 +1,17 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import os from 'os'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import os from 'os';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // ENVIRONMENT DETECTION
 // ──────────────────────────────────────────────────────────────────────────────
-const isArm64 = os.arch() === 'arm64' || os.arch() === 'arm'
-const isCI = process.env.GITHUB_ACTIONS === 'true' || !!process.env.CI
+const isArm64 = os.arch() === 'arm64' || os.arch() === 'arm';
+const isCI = process.env.GITHUB_ACTIONS === 'true' || !!process.env.CI;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // POOL STRATEGY (Optimized for architecture & CI)
 // ──────────────────────────────────────────────────────────────────────────────
-// vmThreads: New in Vitest v2+, combines speed of threads with VM isolation
-const pool = isArm64 || isCI ? 'threads' : 'vmThreads'
+const pool = isArm64 || isCI ? 'threads' : 'vmThreads';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // CONFIGURATION
@@ -21,9 +20,9 @@ export default defineConfig({
   plugins: [react()],
 
   test: {
+    setupFiles: ['./vitest.setup.js', './src/setupTest.js'],
     // ─── Environment ──────────────────────────────────────────────────────────
     environment: 'happy-dom',
-    setupFiles: ['./src/setupTest.js'],
 
     // ─── Pool & Workers ───────────────────────────────────────────────────────
     pool,
@@ -70,12 +69,9 @@ export default defineConfig({
     outputFile: isCI ? { junit: './test-results/junit.xml' } : undefined,
 
     onConsoleLog: (log, type) => {
-      // Always show errors
-      if (type === 'stderr') return true
-      // Show our custom logs
-      if (log.includes('[RuntimeKeys]')) return true
-      // Suppress everything else
-      return false
+      if (type === 'stderr') return true;
+      if (log.includes('[RuntimeKeys]')) return true;
+      return false;
     },
 
     // ─── Watch Mode ───────────────────────────────────────────────────────────
@@ -124,8 +120,6 @@ export default defineConfig({
       clean: true,
       cleanOnRerun: true,
       all: true,
-
-      // Thresholds (fail CI if below)
       thresholds: {
         global: {
           lines: 60,
@@ -135,16 +129,12 @@ export default defineConfig({
         },
         perFile: true,
       },
-
-      // Watermarks (for color coding in reports)
       watermarks: {
         statements: [60, 80],
         functions: [60, 80],
         branches: [50, 70],
         lines: [60, 80],
       },
-
-      // Include paths
       include: [
         'src/hooks/**/*.js',
         'src/features.js',
@@ -153,29 +143,20 @@ export default defineConfig({
         'yuyu-server.cjs',
         'yuyu-map.cjs',
       ],
-
-      // Exclude paths
       exclude: [
-        // Build artifacts
         'scripts/yugit.cjs',
         'yuyu-bench.cjs',
         'public/**',
         'android/**',
         'patch/**',
         'dist/**',
-
-        // Entry points & configs
         'src/main.jsx',
         'src/App.jsx',
         'src/constants.js',
         'src/theme.js',
         'src/themes/**',
         'src/setupTest.js',
-
-        // Components (UI tests separate)
         'src/components/**',
-
-        // Test files
         '**/*.test.*',
         '**/*.spec.*',
         '**/*.bench.*',
@@ -185,9 +166,8 @@ export default defineConfig({
       ],
     },
 
-    // ─── Type Checking (Optional) ─────────────────────────────────────────────
     typecheck: {
       enabled: false,
     },
   },
-})
+});
