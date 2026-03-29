@@ -1,11 +1,11 @@
-// src/utils.js
 import { callServer } from './api.js';
 import { diffLines } from 'diff';
 
 // ── LOGGER UTILITY ───────────────────────────────────────────────────────────
 export const logger = {
   debug: (...args) => {
-    if (process.env.NODE_ENV !== 'production') {
+    // Check if we're in development mode (works in both browser and Node)
+    if (import.meta.env?.DEV !== false) {
       console.debug('[DEBUG]', ...args);
     }
   },
