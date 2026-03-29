@@ -17,16 +17,21 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+run-name: Deploy Docs - ${{ github.ref_name }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
-          node-version: '22' # Docs pakai node 22
+          node-version: '22'
 
       - name: Build VitePress
         run: npx vitepress build docs
