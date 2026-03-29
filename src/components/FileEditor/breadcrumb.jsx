@@ -1,8 +1,8 @@
-// src/components/FileEditor/breadcrumb.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { EditorView } from '@codemirror/view';
+import { Compartment, StateEffect } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
-import { EditorView, Compartment, StateEffect } from '@codemirror/view';
+import { ChevronRight } from 'lucide-react';
 
 export function Breadcrumb({ viewRef, T }) {
   const [crumbs, setCrumbs] = useState([]);
