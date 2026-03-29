@@ -144,6 +144,98 @@ footer a:hover{opacity:1}
   .filter-bar{flex-direction:column;align-items:stretch}
   .win-sel,.export-btn{display:none}
 }
+
+/* ── HERO ─────────────────────────────────────────────────────────────────── */
+#hero{
+  position:relative;z-index:1;overflow:hidden;
+  padding:56px 20px 48px;text-align:center;
+  background:linear-gradient(180deg,rgba(236,72,153,.04) 0%,transparent 100%);
+  border-bottom:1px solid rgba(236,72,153,.07);
+}
+#hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(236,72,153,.09),transparent 70%);
+  pointer-events:none;
+}
+.hero-eyebrow{
+  font-size:9px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--pk);opacity:.7;margin-bottom:18px;
+}
+.hero-headline{
+  font-size:clamp(22px,5vw,38px);font-weight:700;line-height:1.2;
+  color:var(--tx);margin-bottom:8px;
+}
+.hero-headline b{color:var(--pk)}
+.hero-tagline{
+  font-size:11px;color:var(--sc);margin-bottom:36px;letter-spacing:.04em;
+  max-width:480px;margin-left:auto;margin-right:auto;
+}
+.hero-stats{
+  display:flex;justify-content:center;gap:clamp(24px,6vw,72px);
+  margin-bottom:28px;flex-wrap:wrap;
+}
+.hero-stat{text-align:center}
+.hero-num{
+  font-size:clamp(28px,6vw,44px);font-weight:700;color:var(--pk);
+  line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+  transition:all .4s ease;
+}
+.hero-unit{font-size:10px;color:var(--sc);font-weight:400;margin-left:2px}
+.hero-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin-top:6px}
+.hero-device{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+  border-radius:20px;padding:5px 14px;font-size:10px;color:var(--mu);
+  letter-spacing:.04em;
+}
+.hero-device::before{content:'📱';font-size:12px}
+
+/* ── SPEED CONTEXT on hcards ─────────────────────────────────────────────── */
+.speed-ctx{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:8px;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 7px;border-radius:3px;margin-top:6px;font-weight:700;
+}
+.speed-god{background:rgba(236,72,153,.12);color:var(--pk);border:1px solid rgba(236,72,153,.2)}
+.speed-instant{background:rgba(74,222,128,.08);color:var(--gn);border:1px solid rgba(74,222,128,.15)}
+.speed-fast{background:rgba(34,211,238,.08);color:#22d3ee;border:1px solid rgba(34,211,238,.15)}
+.speed-ok{background:rgba(251,191,36,.08);color:var(--yw);border:1px solid rgba(251,191,36,.15)}
+.speed-slow{background:rgba(248,113,113,.08);color:var(--rd);border:1px solid rgba(248,113,113,.15)}
+.speed-expected{background:rgba(255,255,255,.04);color:var(--mu);border:1px solid rgba(255,255,255,.07)}
+
+/* human comparison blurb */
+.speed-human{
+  font-size:9px;color:rgba(236,72,153,.55);font-style:italic;
+  margin-top:3px;line-height:1.4;
+}
+
+/* ── RELATIVE SPEED BAR on scards ────────────────────────────────────────── */
+.s-bar-wrap{height:2px;background:rgba(255,255,255,.04);border-radius:1px;margin-top:6px;overflow:hidden}
+.s-bar{height:100%;border-radius:1px;background:var(--pk);transition:width .8s cubic-bezier(.4,0,.2,1)}
+
+/* ── STAGGER LOAD ANIMATION ──────────────────────────────────────────────── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.hcard{animation:fadeUp .35s ease both}
+.scard{animation:fadeUp .3s ease both}
+.ccard{animation:fadeUp .3s ease both}
+
+/* ── ANIMATED COUNTER ────────────────────────────────────────────────────── */
+@keyframes countUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.hero-num.counted{animation:countUp .5s ease both}
+
+/* ── PEAK CALLOUT ────────────────────────────────────────────────────────── */
+.peak-callout{
+  background:linear-gradient(135deg,rgba(236,72,153,.08),rgba(236,72,153,.03));
+  border:1px solid rgba(236,72,153,.18);border-radius:8px;
+  padding:10px 16px;margin-bottom:20px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.peak-icon{font-size:20px;line-height:1}
+.peak-body{flex:1;min-width:0}
+.peak-title{font-size:10px;color:var(--pk);font-weight:700;letter-spacing:.05em}
+.peak-desc{font-size:9px;color:var(--sc);margin-top:2px;line-height:1.5}
+.peak-val{font-size:18px;font-weight:700;color:var(--pk);white-space:nowrap;font-variant-numeric:tabular-nums}
+.peak-sub{font-size:8px;color:var(--mu);text-align:right;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -161,6 +253,26 @@ footer a:hover{opacity:1}
     <div class="meta" id="meta">—</div>
   </div>
 </div>
+<section id="hero">
+  <div class="hero-eyebrow">yuyu · bench · performance report</div>
+  <div class="hero-headline">Sub-microsecond.<br>On a <b>$130 phone.</b></div>
+  <div class="hero-tagline">Real benchmark data from GitHub Actions CI — every push, every commit, automatically.</div>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="hero-num" id="hPeak">—</div>
+      <div class="hero-label">peak ops/sec</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-num" id="hCount">—</div>
+      <div class="hero-label">benchmarks</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-num" id="hRuns">—</div>
+      <div class="hero-label">CI runs</div>
+    </div>
+  </div>
+  <div class="hero-device">Oppo A77s · Snapdragon 680 · 6GB RAM · Android + Termux</div>
+</section>
 <div class="main" id="root"><div class="spin"><span></span><span></span><span></span></div></div>
 <footer>
   <span>Built on a ~$130 phone · Oppo A77s × GitHub Actions · MIT</span>
@@ -229,6 +341,33 @@ function getCategory(name){const l=name.toLowerCase();if(l.includes('tab')||l.in
 // ── Explanations ──────────────────────────────────────────────────────────────
 const E={'single call — jsx':{i:'⚡',l:'Language detection',h:v=>`Detects file type in <b>${fmtNs(1e9/v)}</b>`,d:'Every file open triggers this — identifies language instantly so syntax highlighting and tooling activate.',r:'Bottleneck here = laggy editor on every file open.'},'single call — ts':{i:'⚡',l:'TypeScript detection',h:v=>`Identifies TypeScript in <b>${fmtNs(1e9/v)}</b>`,d:'TS-specific features activate the moment you open a .ts or .tsx file.',r:'Slow detection delays the type-check pipeline.'},'10 mixed extensions':{i:'⚡',l:'Batch language scan',h:v=>`Scans 10 files in <b>${fmtNs(1e9/v)}</b>`,d:'Workspace load scan — all file types detected at once when opening a project.',r:'Slow = sluggish startup.'},'10 mixed':{i:'⚡',l:'Batch detection',h:v=>`Processes 10 files in <b>${fmtNs(1e9/v)}</b>`,d:'Batch detection pass across mixed file types.',r:'Scales linearly with project size.'},'empty tabs':{i:'📑',l:'New tab speed',h:v=>`Opens blank tab in <b>${fmtNs(1e9/v)}</b>`,d:'Zero wait on new tab — ready before your finger lifts.',r:'Happens every new file. This is how responsive the UI feels.'},'open 1 tab (Array spread)':{i:'🗂️',l:'Tab open',h:v=>`Opens tab in <b>${fmtNs(1e9/v)}</b>`,d:'Core tab-open using immutable array spread — safe, predictable state.',r:'Every file open triggers this.'},'close middle tab from 10':{i:'🗂️',l:'Tab close',h:v=>`Closes tab in <b>${fmtNs(1e9/v)}</b>`,d:'Closes from middle of 10 open files — filters array, recalculates active tab.',r:'Heavy users keep 10+ tabs. Slow = perceptible lag.'},'find active tab from 20':{i:'🗂️',l:'Tab lookup',h:v=>`Finds active tab in <b>${fmtNs(1e9/v)}</b>`,d:'Linear scan for active tab among 20 — runs on every render cycle.',r:'Called constantly. Slow = whole editor renders sluggishly.'},'open 50 tabs sequentially':{i:'🗂️',l:'Stress: 50 tabs',h:v=>`Opens 50 tabs in <b>${fmtNs(1e9/v)}</b>`,d:'Sequential opens — O(n²) total, intentional tradeoff.',n:'O(n²) by design — immutability over raw mutation.'},'open 200 tabs sequentially':{i:'🔥',l:'Stress: 200 tabs',h:v=>`Opens 200 tabs in <b>${fmtNs(1e9/v)}</b>`,d:'Extreme stress — shows where O(n²) cost becomes visible.',n:'Stress only — real UX limit is ~50 tabs.'},'js only':{i:'👁️',l:'Live preview (JS)',h:v=>`Builds JS preview in <b>${fmtNs(1e9/v)}</b>`,d:'Generates iframe srcdoc for JS-only project — runs on every keypress in preview mode.',r:'Slow = preview lags your code.'},'html + css + js':{i:'👁️',l:'Live preview (full)',h:v=>`Builds full preview in <b>${fmtNs(1e9/v)}</b>`,d:'Combines HTML + CSS + JS into iframe srcdoc — most common preview case.',r:'Fast enough for real-time updates.'},'small diff (4 lines)':{i:'🔍',l:'Diff (small)',h:v=>`Computes change in <b>${fmtNs(1e9/v)}</b>`,d:'Myers diff on a 4-line AI edit — diff appears before you finish blinking.',r:'Most AI edits are small. This is the common case.'},'large diff (500 lines, many changes)':{i:'🔍',l:'Diff (large)',h:v=>v<10?`~<b>${(1000/Math.max(v,.01)).toFixed(0)}ms</b> per diff`:`<b>${fmt(v)} ops/s</b>`,d:'Myers on 500 lines with many changes — worst-case pattern.',n:'Myers O(ND): large D on large N is expensive by design.'},'identical (no diff)':{i:'🔍',l:'Diff: no changes',h:v=>`Confirms no changes in <b>${fmtNs(1e9/v)}</b>`,d:'Myers still does one full pass to confirm nothing changed.'},'5000 lines all changed (worst case Myers)':{i:'💀',l:'Worst case: Myers',h:v=>v<1?`~<b>${(1000/Math.max(v,.001)).toFixed(0)}ms</b> — expected`:`<b>${fmt(v)} ops/s</b>`,d:"Every line changed across 5000 lines — O(ND) worst case. Not a bug.",n:"⚠️ 0–3 ops/sec is correct. Myers O(ND) worst case."},'small file (4 lines)':{i:'🧠',l:'Symbol scan (small)',h:v=>`Extracts symbols in <b>${fmtNs(1e9/v)}</b>`,d:'Extracts exports from a 4-line file — typical small component.',r:'Small files are the common case in the project map.'},'realistic component (~50 lines)':{i:'🧠',l:'Symbol scan (typical)',h:v=>`Scans real component in <b>${fmtNs(1e9/v)}</b>`,d:'50-line React hook with multiple exports — median YuyuCode file.',r:'This is what the project map runs on most.'},'large file (10 components, ~500 lines)':{i:'🧠',l:'Symbol scan (large)',h:v=>`Scans 500-line file in <b>${fmtNs(1e9/v)}</b>`,d:'500 lines, 10 components — tests parser at scale.'},'non-code file (early return)':{i:'🚀',l:'Smart file skip',h:v=>`Skips non-code in <b>${fmtNs(1e9/v)}</b>`,d:'CSS, JSON, images recognized immediately and skipped.',r:'Projects are 30–50% non-JS. Saves significant scan time.'},'no action blocks':{i:'🤖',l:'AI parse: plain text',h:v=>`Processes plain reply in <b>${fmtNs(1e9/v)}</b>`,d:'Pure text AI response — fastest parser path. Runs thousands of times per session.',r:'Most AI replies are conversational. Real hot path.'},'1 action block':{i:'🤖',l:'AI parse: 1 action',h:v=>`Parses 1 action in <b>${fmtNs(1e9/v)}</b>`,d:'Single file operation — typical single-edit response.',r:'Median agentic operation.'},'5 action blocks':{i:'🤖',l:'AI parse: 5 actions',h:v=>`Parses 5 actions in <b>${fmtNs(1e9/v)}</b>`,d:'Multi-step response — typical for "implement this feature".',r:'Complex tasks generate 5–10 actions.'},'mixed — valid + invalid + non-action blocks':{i:'🤖',l:'AI parse: real-world',h:v=>`Handles messy reply in <b>${fmtNs(1e9/v)}</b>`,d:'Valid actions + invalid JSON + code examples — real AI output.',r:'Parser must handle every combo without false positives.'},'20 pre-built file data objects':{i:'🗺️',l:'Project map scoring',h:v=>`Scores 20 files in <b>${fmtNs(1e9/v)}</b>`,d:'Calculates file importance for AI context — based on import count, recency, size.',r:'Better scoring = AI sees the right files = smarter responses.'},'200 files with cross-imports':{i:'🔥',l:'Stress: 200-file map',h:v=>`Scores 200 files in <b>${fmtNs(1e9/v)}</b>`,d:'Dense dependency graph — all 200 files import each other.',n:"O(n²) dependency scan — scales to ~500 files before needing optimization."},'mixed workload — 5 ops all types concurrently':{i:'⚡',l:'Mixed workload',h:v=>`5 different ops concurrently in <b>${fmtNs(1e9/v)}</b>`,d:'Symbol + compression + diff + action parse + import scan — all at once.',r:'Closest to actual YuyuCode runtime during active editing.'},'10 compressSource in parallel':{i:'⚡',l:'Concurrent compression',h:v=>`10 compressions in <b>${fmtNs(1e9/v)}</b>`,d:'Parallel context compression — when AI requests multiple files at once.'},'10 generateDiff in parallel':{i:'⚠️',l:'Concurrent diff',h:v=>v<10?`~<b>${(1000/Math.max(v,.1)).toFixed(0)}ms</b> per batch`:`<b>${fmt(v)} ops/s</b>`,d:"10 large diffs at once — Myers is CPU-bound, not I/O-bound.",n:'⚠️ Low ops/sec expected — CPU saturation demonstration.'},'50 parseActions in parallel':{i:'🤖',l:'Concurrent AI parse (50x)',h:v=>`50 parses concurrently in <b>${fmtNs(1e9/v)}</b>`,d:'50 AI response parses simultaneously — background agent swarm at max load.'}};
 const DEF={i:'📊',l:n=>n,h:v=>v<1?`~<b>${(1000/Math.max(v,.001)).toFixed(0)}ms</b> per op`:`<b>${fmt(v)} ops/s</b>`,d:'Core engine function — higher ops/sec = faster execution.'};
+// ── Speed Context ─────────────────────────────────────────────────────────────
+function speedClass(v){
+  if(v>=1e8) return{cls:'speed-god',label:'🔥 Godspeed'};
+  if(v>=1e7) return{cls:'speed-instant',label:'⚡ Instantaneous'};
+  if(v>=1e6) return{cls:'speed-fast',label:'✅ Real-time'};
+  if(v>=1e5) return{cls:'speed-ok',label:'👍 Fast'};
+  if(v>=1e3) return{cls:'speed-ok',label:'⏱ Acceptable'};
+  return{cls:'speed-expected',label:'📐 Expected slow'};
+}
+function humanCompare(v){
+  const ns=1e9/Math.max(v,0.001);
+  if(ns<1000) return `${ns.toFixed(0)} ns — faster than a CPU cache miss`;
+  if(ns<100000) return `${(ns/1000).toFixed(1)} µs — faster than a neuron firing`;
+  if(ns<1000000) return `${(ns/1000).toFixed(0)} µs — imperceptible to humans`;
+  if(ns<100000000) return `${(ns/1e6).toFixed(1)} ms — feels instant`;
+  return `${(ns/1e6).toFixed(0)} ms — intentional O(ND) tradeoff`;
+}
+function animateCount(el,target,suffix=''){
+  const dur=900,start=performance.now();
+  const step=t=>{
+    const p=Math.min((t-start)/dur,1),ease=1-Math.pow(1-p,3);
+    const cur=Math.round(ease*target);
+    el.textContent=cur>=1e9?(cur/1e9).toFixed(1)+'B':cur>=1e6?(cur/1e6).toFixed(1)+'M':cur>=1e3?(cur/1e3).toFixed(0)+'K':cur+suffix;
+    if(p<1)requestAnimationFrame(step);else el.classList.add('counted');
+  };
+  requestAnimationFrame(step);
+}
 // ── State ──────────────────────────────────────────────────────────────────────
 let CF='all',CS='',CW=0,cmpMode=false,cmpA=null,cmpB=null,_data=null,_entries=[];
 // ── Load ──────────────────────────────────────────────────────────────────────
@@ -295,6 +434,46 @@ function render(data){
   const regressSet=new Set(fBenches.filter(b=>{const p=prev?.benches.find(x=>x.name===b.name);return p&&pct(b.value,p.value)<-5}).map(b=>b.name));
   for(const name of fNames){const vals=entries.map(e=>e.benches.find(b=>b.name===name)?.value??null);const lv=vals[vals.length-1];const trend=trendLine(vals);const card=document.createElement('div');card.className='ccard';card.innerHTML=`<div class="chead"><span class="cname">${name}</span><span class="cval">${fmt(lv??0)} ops/s</span></div><canvas></canvas><div class="ctrend ${trend}">${trend==='up'?'↑ improving':trend==='dn'?'↓ declining':'→ stable'}</div>`;grid.appendChild(card);const canvas=card.querySelector('canvas');requestAnimationFrame(()=>{drawChart(canvas,vals,labels,{regress:regressSet.has(name)});addTooltip(canvas,vals,labels)})}
   bindEvents(data,entries,fNames,all);
+  // ── Hero stats ──────────────────────────────────────────────────────────────
+  const hPeak=document.getElementById('hPeak'),hCount=document.getElementById('hCount'),hRuns=document.getElementById('hRuns');
+  if(hPeak&&!hPeak.dataset.set){
+    const peak=Math.max(...fBenches.map(b=>b.value).filter(v=>v>0));
+    animateCount(hPeak,peak);
+    animateCount(hCount,fBenches.length);
+    animateCount(hRuns,all.length);
+    hPeak.dataset.set='1';
+  }
+  // ── Peak callout ────────────────────────────────────────────────────────────
+  const pcWrap=document.querySelector('.peak-callout');
+  if(!pcWrap&&fBenches.length){
+    const pk=fBenches.reduce((a,b)=>b.value>a.value?b:a,fBenches[0]);
+    const ex=E[pk.name]||DEF;const ns=1e9/Math.max(pk.value,.001);
+    const callout=document.createElement('div');callout.className='peak-callout';
+    callout.innerHTML=`<div class="peak-icon">${ex.i}</div><div class="peak-body"><div class="peak-title">FASTEST THIS RUN</div><div class="peak-desc">${ex.d}</div></div><div><div class="peak-val">${fmt(pk.value)} <span style="font-size:10px;font-weight:400;color:var(--sc)">ops/s</span></div><div class="peak-sub">${ns<1e6?(ns/1000).toFixed(2)+' µs per op':(ns/1e6).toFixed(2)+' ms per op'}</div></div>`;
+    const summaryStrip=document.querySelector('.summary-strip');
+    if(summaryStrip)summaryStrip.insertAdjacentElement('afterend',callout);
+  }
+  // ── Speed context on hcards ─────────────────────────────────────────────────
+  document.querySelectorAll('.hcard').forEach((card,i)=>{
+    card.style.animationDelay=(i*28)+'ms';
+    const b=fBenches[i];if(!b)return;
+    const sc=speedClass(b.value);
+    const ctx=document.createElement('div');ctx.className=`speed-ctx ${sc.cls}`;ctx.textContent=sc.label;
+    const hc=document.createElement('div');hc.className='speed-human';hc.textContent=humanCompare(b.value);
+    card.appendChild(ctx);card.appendChild(hc);
+  });
+  // ── Relative speed bars on scards ───────────────────────────────────────────
+  const maxVal=Math.max(...fBenches.map(b=>b.value).filter(v=>v>0));
+  document.querySelectorAll('.scard').forEach((card,i)=>{
+    card.style.animationDelay=(i*18)+'ms';
+    const b=fBenches[i];if(!b||!maxVal)return;
+    const pct=Math.max(3,Math.round((b.value/maxVal)*100));
+    const bar=document.createElement('div');bar.className='s-bar-wrap';
+    const fill=document.createElement('div');fill.className='s-bar';fill.style.width='0';
+    bar.appendChild(fill);card.appendChild(bar);
+    setTimeout(()=>{fill.style.width=pct+'%'},50+i*15);
+  });
+  document.querySelectorAll('.ccard').forEach((card,i)=>{card.style.animationDelay=(i*22)+'ms'});
 }
 // ── Compare ────────────────────────────────────────────────────────────────────
 function doCompare(all,fNames){
