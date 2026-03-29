@@ -107,10 +107,8 @@ export const FileEditor = forwardRef(function FileEditor(
         buildOptionalExtensions(editorConfig, tab?.path, folder, collabWsRef)
       ),
     });
-  }, [
-    editorConfig?.vimMode, editorConfig?.emmet, editorConfig?.ghostText,
-    editorConfig?.lint, editorConfig?.multiCursor, editorConfig?.collab,
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorConfig?.vimMode, editorConfig?.emmet, editorConfig?.ghostText, editorConfig?.lint, editorConfig?.multiCursor, editorConfig?.collab]);
 
   // Blame toggle
   useEffect(() => {
@@ -201,6 +199,7 @@ export const FileEditor = forwardRef(function FileEditor(
     }
     prevPathRef.current = tab.path;
     setTimeout(() => setSaved(true), 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab?.path]);
 
   // External content sync

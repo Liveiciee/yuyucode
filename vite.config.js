@@ -85,9 +85,7 @@ export default defineConfig({
       'diff',
     ],
     exclude: ['@capacitor-community/sqlite'],
-    rolldownOptions: {
-      target: 'es2020', // Match build target in Vite 8 dependency optimizer
-    },
+
   },
   
   // Resolve alias untuk cleaner imports
