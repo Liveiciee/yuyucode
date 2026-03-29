@@ -4,15 +4,18 @@
  * @module api
  */
 
+// ──────────────────────────────────────────────────────────────────────────────
+// IMPORTS
+// ──────────────────────────────────────────────────────────────────────────────
 import { logger } from './utils.js'
-import { CEREBRAS_KEY, GROQ_KEY, YUYU_SERVER, WS_SERVER, MODELS, FALLBACK_MODEL } from './constants.js'
+import { CEREBRAS_KEY, GROQ_KEY, YUYU_SERVER, WS_SERVER, MODELS } from './constants.js'
 import { getRuntimeCerebrasKey, getRuntimeGroqKey } from './runtimeKeys.js'
 
 // ──────────────────────────────────────────────────────────────────────────────
-// CONFIGURATION
+// CONFIGURATION (merge from both codes)
 // ──────────────────────────────────────────────────────────────────────────────
 const CONFIG = Object.freeze({
-  // Server Configuration
+  // Server Configuration (from old code)
   SERVER: {
     PORT: 8765,
     WS_PORT: 8766,
@@ -22,14 +25,14 @@ const CONFIG = Object.freeze({
     WS_RECONNECT_DELAY_BASE: 1000,
   },
 
-  // AI Request Configuration
+  // AI Request Configuration (from new code)
   AI: {
     REQUEST_TIMEOUT: 60000,
     MAX_TOKENS: 4096,
     DEFAULT_TEMPERATURE: 0.3,
   },
 
-  // Retry Configuration (from old code)
+  // Retry Configuration (from old code - more retries)
   RETRY: {
     MAX_ATTEMPTS: 3,
     BASE_DELAY_MS: 1000,
@@ -51,18 +54,14 @@ const CONFIG = Object.freeze({
   ],
 })
 
-// Server URLs (can be overridden by imports)
-const YUYU_SERVER = `http://127.0.0.1:${CONFIG.SERVER.PORT}`
-const WS_SERVER = `ws://127.0.0.1:${CONFIG.SERVER.WS_PORT}`
+// Server URLs (fallback if not imported)
+const YUYU_SERVER_FALLBACK = `http://127.0.0.1:${CONFIG.SERVER.PORT}`
+const WS_SERVER_FALLBACK = `ws://127.0.0.1:${CONFIG.SERVER.WS_PORT}`
 
-// API Keys (can be overridden by imports)
-// const CEREBRAS_KEY = process.env.CEREBRAS_KEY || ''
-const CEREBRAS_KEY = ''
-// const GROQ_KEY = process.env.GROQ_KEY || ''
-const GROQ_KEY = ''
-
-// Models configuration (from new code)
-const MODELS = [
+// ──────────────────────────────────────────────────────────────────────────────
+// MODELS (fallback if not imported)
+// ──────────────────────────────────────────────────────────────────────────────
+const MODELS_FALLBACK = [
   { id: 'llama3.1-8b', provider: 'cerebras', name: 'Llama 3.1 8B' },
   { id: 'qwen-32b', provider: 'cerebras', name: 'Qwen 2.5 32B' },
   { id: 'qwen-72b', provider: 'cerebras', name: 'Qwen 2.5 72B' },
@@ -70,16 +69,6 @@ const MODELS = [
   { id: 'llama-3.1-8b-instant', provider: 'groq', name: 'Llama 3.1 8B' },
   { id: 'mixtral-8x7b-32768', provider: 'groq', name: 'Mixtral 8x7B' },
 ]
-
-// ──────────────────────────────────────────────────────────────────────────────
-// LOGGING (from old code - using console as fallback)
-// ──────────────────────────────────────────────────────────────────────────────
-const logger = {
-  debug: (...args) => console.debug('[DEBUG]', ...args),
-  info: (...args) => console.info('[INFO]', ...args),
-  warn: (...args) => console.warn('[WARN]', ...args),
-  error: (...args) => console.error('[ERROR]', ...args),
-}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // ERROR CLASSES (from new code - enhanced)
@@ -120,21 +109,11 @@ class ValidationError extends AIError {
 // ──────────────────────────────────────────────────────────────────────────────
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-/**
- * Calculate exponential backoff delay (from old code)
- * @param {number} attempt - Current attempt number (0-indexed)
- * @returns {number}
- */
 const getBackoffDelay = (attempt) => {
   const delay = CONFIG.RETRY.BASE_DELAY_MS * Math.pow(2, attempt)
   return Math.min(delay, CONFIG.RETRY.MAX_DELAY_MS)
 }
 
-/**
- * Check if error is retryable (from old code)
- * @param {Error} error - Error object
- * @returns {boolean}
- */
 const isRetryableError = (error) => {
   if (error instanceof AIError) {
     return error.code === 'NETWORK_ERROR' || error.code === 'SERVER_ERROR'
@@ -145,11 +124,6 @@ const isRetryableError = (error) => {
   return false
 }
 
-/**
- * Check if status code is retryable server error (from new code)
- * @param {number} statusCode - HTTP status code
- * @returns {boolean}
- */
 const isRetryableStatus = (statusCode) => {
   return statusCode === 502 || statusCode === 503 || statusCode === 504
 }
@@ -158,13 +132,11 @@ const isRetryableStatus = (statusCode) => {
 // KEY MANAGEMENT (from new code)
 // ──────────────────────────────────────────────────────────────────────────────
 function getCerebrasKey() {
-  // return getRuntimeCerebrasKey?.() || CEREBRAS_KEY || ''
-  return CEREBRAS_KEY
+  return getRuntimeCerebrasKey() || CEREBRAS_KEY || ''
 }
 
 function getGroqKey() {
-  // return getRuntimeGroqKey?.() || GROQ_KEY || ''
-  return GROQ_KEY
+  return getRuntimeGroqKey() || GROQ_KEY || ''
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -230,7 +202,7 @@ function injectVisionImage(messages, imageBase64) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// SSE STREAM READER (from new code - enhanced)
+// SSE STREAM READER (from new code)
 // ──────────────────────────────────────────────────────────────────────────────
 async function readSSEStream(response, onChunk, signal) {
   const reader = response.body.getReader()
@@ -269,7 +241,7 @@ async function readSSEStream(response, onChunk, signal) {
           fullContent += content
           onChunk?.(fullContent)
         } catch (parseError) {
-          logger.debug('SSE parse error:', parseError.message)
+          logger.debug?.('SSE parse error:', parseError.message)
         }
       }
     }
@@ -285,7 +257,7 @@ async function readSSEStream(response, onChunk, signal) {
           fullContent += content
           onChunk?.(fullContent)
         } catch (parseError) {
-          logger.debug('SSE final parse error:', parseError.message)
+          logger.debug?.('SSE final parse error:', parseError.message)
         }
       }
     }
@@ -297,7 +269,7 @@ async function readSSEStream(response, onChunk, signal) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// BASE AI REQUEST HANDLER (from new code - enhanced with old code features)
+// BASE AI REQUEST HANDLER (integrated)
 // ──────────────────────────────────────────────────────────────────────────────
 async function makeAIRequest({ url, apiKey, provider, messages, model, onChunk, signal, options = {} }) {
   validateMessages(messages)
@@ -367,7 +339,7 @@ async function makeAIRequest({ url, apiKey, provider, messages, model, onChunk, 
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// CEREBRAS PROVIDER (from new code)
+// PROVIDER FUNCTIONS (from new code)
 // ──────────────────────────────────────────────────────────────────────────────
 async function cerebrasRequest(messages, model, onChunk, signal, options) {
   const apiKey = getCerebrasKey()
@@ -385,9 +357,6 @@ async function cerebrasRequest(messages, model, onChunk, signal, options) {
   })
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// GROQ PROVIDER (from new code)
-// ──────────────────────────────────────────────────────────────────────────────
 async function groqRequest(messages, model, onChunk, signal, options) {
   const apiKey = getGroqKey()
   const processedMessages = injectVisionImage(messages, options?.imageBase64)
@@ -405,7 +374,7 @@ async function groqRequest(messages, model, onChunk, signal, options) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// FALLBACK LOGIC (from new code - enhanced)
+// FALLBACK LOGIC (from new code)
 // ──────────────────────────────────────────────────────────────────────────────
 async function tryGroqFallbackChain(messages, onChunk, signal, options) {
   for (const fallbackModel of CONFIG.GROQ_FALLBACK_CHAIN) {
@@ -414,9 +383,8 @@ async function tryGroqFallbackChain(messages, onChunk, signal, options) {
       return await groqRequest(messages, fallbackModel, onChunk, signal, options)
     } catch (error) {
       if (error.name === 'AbortError') throw error
-      // Continue to next model on rate limit or server error
       if (error.code === 'RATE_LIMIT' || error.code === 'SERVER_ERROR') {
-        logger.debug(`Fallback model ${fallbackModel} failed, trying next...`)
+        logger.debug?.(`Fallback model ${fallbackModel} failed, trying next...`)
         continue
       }
       throw error
@@ -451,7 +419,7 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
       ) {
         const attempt = options._attempt ?? 0
         const delay = getBackoffDelay(attempt)
-        logger.debug(`Groq request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${CONFIG.RETRY.MAX_ATTEMPTS})`)
+        logger.debug?.(`Groq request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${CONFIG.RETRY.MAX_ATTEMPTS})`)
         await sleep(delay)
         return askAIStream(messages, model, onChunk, signal, { ...options, _attempt: attempt + 1 })
       }
@@ -470,12 +438,12 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
       try {
         const fallbackResult = await tryGroqFallbackChain(messages, onChunk, signal, options)
         if (fallbackResult !== null) {
-          logger.info('Cerebras rate limited, using Groq fallback')
+          logger.info?.('Cerebras rate limited, using Groq fallback')
           return fallbackResult
         }
       } catch (fallbackError) {
         if (fallbackError?.name === 'AbortError') throw fallbackError
-        logger.debug('Groq fallback chain failed:', fallbackError?.message)
+        logger.debug?.('Groq fallback chain failed:', fallbackError?.message)
       }
       throw error
     }
@@ -488,7 +456,7 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
       if ((options._attempt ?? 0) < CONFIG.RETRY.MAX_ATTEMPTS) {
         const attempt = options._attempt ?? 0
         const delay = getBackoffDelay(attempt)
-        logger.debug(`Cerebras request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${CONFIG.RETRY.MAX_ATTEMPTS})`)
+        logger.debug?.(`Cerebras request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${CONFIG.RETRY.MAX_ATTEMPTS})`)
         await sleep(delay)
         return askAIStream(messages, model, onChunk, signal, { ...options, _attempt: attempt + 1 })
       }
@@ -502,13 +470,12 @@ export async function askAIStream(messages, model, onChunk, signal, options = {}
 export async function askAIWithFallback(messages, model, onChunk, signal, options = {}) {
   const { cerebrasKey, groqKey } = options
 
-  // Store keys temporarily if provided
   if (cerebrasKey && hasUsableApiKey(cerebrasKey)) {
     try {
       return await askAIStream(messages, model, onChunk, signal, options)
     } catch (error) {
       if (error.code === 'RATE_LIMIT' && hasUsableApiKey(groqKey)) {
-        logger.info('Rate limit hit, falling back to Groq')
+        logger.info?.('Rate limit hit, falling back to Groq')
         return await askAIStream(messages, 'mixtral-8x7b-32768', onChunk, signal, { ...options, apiKey: groqKey })
       }
       throw error
@@ -523,7 +490,7 @@ export async function askAIWithFallback(messages, model, onChunk, signal, option
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// SERVER COMMUNICATION (from old code - enhanced)
+// SERVER COMMUNICATION (from old code)
 // ──────────────────────────────────────────────────────────────────────────────
 export async function callServer(payload) {
   try {
@@ -541,18 +508,18 @@ export async function callServer(payload) {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
-      logger.warn(`Server error ${response.status}: ${errorText.slice(0, 200)}`)
+      logger.warn?.(`Server error ${response.status}: ${errorText.slice(0, 200)}`)
       return { ok: false, data: `Server error: ${response.status} — ${errorText.slice(0, 200)}` }
     }
 
     return await response.json()
   } catch (error) {
     if (error.name === 'AbortError') {
-      logger.error('Request timeout', { payload: payload.type })
+      logger.error?.('Request timeout', { payload: payload.type })
       return { ok: false, data: 'Request timeout. Server may be busy.' }
     }
 
-    logger.error('Server unreachable', error)
+    logger.error?.('Server unreachable', error)
     return {
       ok: false,
       data: 'YuyuServer tidak dapat dihubungi. Jalankan: node yuyu-server.cjs &'
@@ -565,7 +532,7 @@ export async function callServerBatch(payloads) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// WEBSOCKET EXECUTION STREAM (from old code - integrated)
+// WEBSOCKET EXECUTION STREAM (from old code)
 // ──────────────────────────────────────────────────────────────────────────────
 export function execStream(command, cwd, onLine, signal) {
   return new Promise((resolve, reject) => {
@@ -607,7 +574,6 @@ export function execStream(command, cwd, onLine, signal) {
         try {
           const data = JSON.parse(event.data)
 
-          // Ignore messages not for this exec
           if (data.id && data.id !== id) return
 
           if (data.type === 'stdout' || data.type === 'stderr') {
@@ -632,17 +598,17 @@ export function execStream(command, cwd, onLine, signal) {
             }
           }
         } catch (e) {
-          logger.warn('Failed to parse WebSocket message', e)
+          logger.warn?.('Failed to parse WebSocket message', e)
         }
       }
 
       // From old code: Reconnect logic
       ws.onerror = (error) => {
-        logger.error('WebSocket error', error)
+        logger.error?.('WebSocket error', error)
         if (reconnectAttempts < maxReconnect && !settled) {
           reconnectAttempts++
           const delay = CONFIG.SERVER.WS_RECONNECT_DELAY_BASE * reconnectAttempts
-          logger.info(`WebSocket reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnect})`)
+          logger.info?.(`WebSocket reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnect})`)
           setTimeout(connect, delay)
         } else if (!settled) {
           cleanup()
@@ -693,5 +659,4 @@ export {
   injectVisionImage,
 }
 
-// Export askAIStream as askCerebrasStream for backwards compatibility
 export { askAIStream as askCerebrasStream }
