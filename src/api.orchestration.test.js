@@ -1,5 +1,5 @@
 // @vitest-environment node
-// tests/api.orchestration.test.js — AI Orchestration & Fallback Tests
+// tests/api.orchestration.test.js — AI Orchestration & Fallback Tests (Enhanced)
 // ============================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -12,7 +12,7 @@ import {
 } from '../src/api.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Custom Matchers
+// Custom Matchers (for better assertions)
 // ──────────────────────────────────────────────────────────────────────────────
 expect.extend({
   toBeRateLimitError(received, expectedRetryAfter) {
@@ -83,11 +83,11 @@ expect.extend({
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Mock Setup
+// Mock Setup (with valid key lengths)
 // ──────────────────────────────────────────────────────────────────────────────
 vi.mock('../src/constants.js', () => ({
-  CEREBRAS_KEY: 'test-cerebras-key',
-  GROQ_KEY: 'test-groq-key',
+  CEREBRAS_KEY: 'test-cerebras-key-1234567890', // length >20
+  GROQ_KEY: 'test-groq-key-1234567890',         // length >20
   YUYU_SERVER: 'http://localhost:8765',
   WS_SERVER: 'ws://127.0.0.1:8766',
   MODELS: [
@@ -100,7 +100,7 @@ vi.mock('../src/constants.js', () => ({
 
 vi.mock('../src/runtimeKeys.js', () => ({
   getRuntimeCerebrasKey: () => null,
-  getRuntimeGroqKey: () => 'test-groq-key',
+  getRuntimeGroqKey: () => 'test-groq-key-1234567890', // length >20
 }));
 
 const originalFetch = globalThis.fetch;
@@ -229,7 +229,7 @@ describe('askAIStream', () => {
     );
 
     const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
-    expect(body.max_tokens).toBe(CONFIG.AI.MAX_TOKENS);
+    expect(body.max_tokens).toBe(CONFIG.AI.MAX_TOKENS.default);
     expect(body.temperature).toBe(CONFIG.AI.DEFAULT_TEMPERATURE);
   });
 
