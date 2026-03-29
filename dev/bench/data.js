@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774786526382,
+  "lastUpdate": 1774786532143,
   "repoUrl": "https://github.com/Liveiciee/yuyucode",
   "entries": {
     "YuyuCode Benchmark (CI · Ubuntu x86_64)": [
@@ -50065,6 +50065,310 @@ window.BENCHMARK_DATA = {
           {
             "name": "10MB-ish text — no actions",
             "value": 60772.41,
+            "unit": "ops/sec"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "committer": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "distinct": true,
+          "id": "f9357fb1b691f3213ef5ff7ea3a03ab56461b28b",
+          "message": "chore: remove unused imports, suppress hook warnings",
+          "timestamp": "2026-03-29T20:12:08+08:00",
+          "tree_id": "1b55b23f5899e5356e486e06f5563777a2c9928e",
+          "url": "https://github.com/Liveiciee/yuyucode/commit/f9357fb1b691f3213ef5ff7ea3a03ab56461b28b"
+        },
+        "date": 1774786531282,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "single call — jsx",
+            "value": 7934792.6,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "10 mixed extensions",
+            "value": 1238236.39,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "10 mixed",
+            "value": 1387492.93,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "single call — ts",
+            "value": 8540167.83,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "empty tabs",
+            "value": 15029080.74,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "js only",
+            "value": 5924016.44,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "html + css + js",
+            "value": 1434279.66,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "small diff (4 lines)",
+            "value": 166596.26,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "large diff (500 lines, many changes)",
+            "value": 27.6797,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "identical (no diff)",
+            "value": 11495053.77,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "open",
+            "value": 1,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "close middle tab from",
+            "value": 10,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "find active tab from",
+            "value": 20,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "small file (4 lines)",
+            "value": 1915668.1,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "realistic component (~50 lines)",
+            "value": 1606997.09,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "large file (10 components, ~500 lines)",
+            "value": 1718191.88,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "non-code file (early return)",
+            "value": 6663563.55,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "large file (500 lines)",
+            "value": 5178.2,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "large component (10x realistic, ~500 lines)",
+            "value": 9605.84,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "small file —",
+            "value": 1,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "realistic component —",
+            "value": 3,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no imports",
+            "value": 218519.09,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "20 pre-built file data objects",
+            "value": 181235.15,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no action blocks",
+            "value": 9593725.08,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "1 action block",
+            "value": 1670427.79,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "5 action blocks",
+            "value": 430679.43,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "mixed — valid + invalid + non-action blocks",
+            "value": 115420.93,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "null input",
+            "value": 13372121.41,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "undefined input",
+            "value": 13717872.55,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no extension",
+            "value": 4647618.23,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "deeply nested path",
+            "value": 6995585.36,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "500 mixed files (stress)",
+            "value": 7357.54,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "giant JS (500 lines)",
+            "value": 5829048.72,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "20 tabs (only first html/css/js matter)",
+            "value": 968300.79,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "unicode content",
+            "value": 5757006.25,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "5000 lines identical (no diff — best case)",
+            "value": 11234402.52,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "5000 lines all changed (worst case Myers)",
+            "value": 0.2427,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "unicode diff",
+            "value": 121610.58,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "empty →",
+            "value": 500,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "500 lines → empty (delete everything)",
+            "value": 11906508.43,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "find dirty tab from",
+            "value": 200,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "close all dirty tabs from",
+            "value": 200,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "reorder — move last to first (200 tabs)",
+            "value": 5454821.04,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "5000 line file",
+            "value": 1642371.99,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "unicode source",
+            "value": 1576158.24,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "deeply nested (50 levels)",
+            "value": 1665023.72,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "200 unique symbols",
+            "value": 1633062.52,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "empty string",
+            "value": 4394815.93,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "200 unique symbol names (compression resistant)",
+            "value": 3809.85,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "single line (1 char)",
+            "value": 1953554.97,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "50 imports",
+            "value": 192748.12,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "unicode import paths",
+            "value": 2460893.83,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "malformed import (no from)",
+            "value": 4202799.75,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "100 fake action blocks (all invalid JSON)",
+            "value": 1595.13,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "20 valid action blocks",
+            "value": 97576.77,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "10MB-ish text — no actions",
+            "value": 55795.12,
             "unit": "ops/sec"
           }
         ]
