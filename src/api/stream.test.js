@@ -3,7 +3,7 @@
 // ============================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { readSSEStream, injectVisionImage } from '../src/api.js';
+import { readSSEStream, injectVisionImage } from '../../api.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers

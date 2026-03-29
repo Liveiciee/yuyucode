@@ -3,7 +3,7 @@
 // ============================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { callServer, callServerBatch, execStream } from '../src/api.js';
+import { callServer, callServerBatch, execStream } from '../../api.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Mock Setup
