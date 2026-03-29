@@ -79,6 +79,14 @@ export function generateDiff(original, patched, maxLines = 40) {
   const aLines = original.split('\n');
   const bLines = patched.split('\n');
 
+  // Early bailout untuk file sangat besar (>5000 baris)
+  if (aLines.length > 5000 && bLines.length > 5000) {
+    const diffLinesCount = Math.abs(aLines.length - bLines.length);
+    if (diffLinesCount > 2000) {
+      return `⚠️ File terlalu besar (${aLines.length} vs ${bLines.length} baris).\nGunakan /review --all untuk analisis terbatas.`;
+    }
+  }
+
   const hunks = (aLines.length > MYERS_THRESHOLD || bLines.length > MYERS_THRESHOLD)
     ? segmentedDiff(aLines, bLines)
     : diffLines(original, patched);

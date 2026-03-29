@@ -1,26 +1,36 @@
 // src/components/FileEditor/editorUtils.js
-import { javascript } from '@codemirror/lang-javascript';
-import { css } from '@codemirror/lang-css';
-import { html } from '@codemirror/lang-html';
-import { json } from '@codemirror/lang-json';
-import { python } from '@codemirror/lang-python';
-import { markdown } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
 
-export function getLang(path) {
+// Lazy load language modules
+const langLoaders = {
+  js: () => import('@codemirror/lang-javascript').then(m => m.javascript()),
+  jsx: () => import('@codemirror/lang-javascript').then(m => m.javascript({ jsx: true })),
+  ts: () => import('@codemirror/lang-javascript').then(m => m.javascript({ typescript: true })),
+  tsx: () => import('@codemirror/lang-javascript').then(m => m.javascript({ jsx: true, typescript: true })),
+  css: () => import('@codemirror/lang-css').then(m => m.css()),
+  html: () => import('@codemirror/lang-html').then(m => m.html()),
+  json: () => import('@codemirror/lang-json').then(m => m.json()),
+  py: () => import('@codemirror/lang-python').then(m => m.python()),
+  md: () => import('@codemirror/lang-markdown').then(m => m.markdown()),
+};
+
+const langCache = new Map();
+
+export async function getLang(path) {
   const ext = path?.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'js': case 'mjs': case 'cjs': return javascript();
-    case 'jsx':  return javascript({ jsx: true });
-    case 'ts':   return javascript({ typescript: true });
-    case 'tsx':  return javascript({ jsx: true, typescript: true });
-    case 'css': case 'scss': case 'sass': return css();
-    case 'html': case 'htm': return html();
-    case 'json': return json();
-    case 'py':   return python();
-    case 'md': case 'mdx': return markdown();
-    default:     return javascript();
+  const loader = langLoaders[ext];
+  if (loader) {
+    if (langCache.has(ext)) return langCache.get(ext);
+    const lang = await loader();
+    langCache.set(ext, lang);
+    return lang;
   }
+  // default to javascript
+  if (!langCache.has('default')) {
+    const js = await import('@codemirror/lang-javascript');
+    langCache.set('default', js.javascript());
+  }
+  return langCache.get('default');
 }
 
 export function isEmmetLang(path) {

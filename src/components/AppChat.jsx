@@ -1,11 +1,12 @@
+import React, { lazy, Suspense } from "react";
+const FileEditor = lazy(() => import("./FileEditor.jsx"));
+const Terminal = lazy(() => import("./Terminal.jsx"));
+const LivePreview = lazy(() => import("./LivePreview.jsx"));
 // ── AppChat ───────────────────────────────────────────────────────────────────
 import React, { useState, useRef, useEffect } from 'react';
 import { Pin, Eye, ScrollText, Camera, Paperclip, Volume2, VolumeX, Loader, Play } from 'lucide-react';
 import { hl } from '../utils.js';
 import { MsgBubble, StreamingBubble } from './MsgBubble.jsx';
-import { FileEditor } from './FileEditor.jsx';
-import { Terminal } from './Terminal.jsx';
-import { LivePreview } from './LivePreview.jsx';
 import { KeyboardRow } from './KeyboardRow.jsx';
 import { GlobalFindReplace } from './GlobalFindReplace.jsx';
 import { VoiceBtn, PushToTalkBtn } from './VoiceBtn.jsx';

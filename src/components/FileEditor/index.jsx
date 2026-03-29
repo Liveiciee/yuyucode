@@ -7,10 +7,10 @@ import * as commandsModule from '@codemirror/commands';
 const { keymap } = commandsModule;
 import { foldAll, unfoldAll } from '@codemirror/language';
 import { Save } from 'lucide-react';
+const Minimap = lazy(() => import("./minimap.jsx"));
+const Breadcrumb = lazy(() => import("./breadcrumb.jsx"));
 import { getLang, buildTheme, isTsLang, isEmmetLang } from './editorUtils.js';
 import { makeBlameGutter, fetchBlame } from './blame.js';
-import { Minimap } from './minimap.jsx';
-import { Breadcrumb } from './breadcrumb.jsx';
 import { buildOptionalExtensions } from './optionalExtensions.js';
 import { getTsExtensions } from './tsExtensions.js';
 
@@ -280,7 +280,7 @@ export const FileEditor = forwardRef(function FileEditor(
 
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
         <div ref={containerRef} style={{ flex: 1, overflow: 'hidden' }}/>
-        {editorConfig?.minimap && <Minimap viewRef={viewRef} T={T}/>}
+        {editorConfig?.minimap && <Suspense fallback={null}><Minimap viewRef={viewRef} T={T}/>}
       </div>
     </div>
   );

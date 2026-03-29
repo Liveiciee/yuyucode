@@ -58,6 +58,44 @@ export const ghostL2Decorations = EditorView.decorations.compute([ghostL2Field, 
   return Decoration.set([Decoration.widget({ widget: new GhostWidget(text, 2), side: 1 }).range(pos)]);
 });
 
+// Cache untuk ghost suggestions
+const suggestionCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 menit
+
+async function fetchL1SuggestionWithCache(prefix) {
+  const key = prefix.slice(-400);
+  const cached = suggestionCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.text;
+  }
+  const result = await fetchL1Suggestion(prefix);
+  if (result) {
+    suggestionCache.set(key, { text: result, timestamp: Date.now() });
+    if (suggestionCache.size > 100) {
+      const firstKey = suggestionCache.keys().next().value;
+      suggestionCache.delete(firstKey);
+    }
+  }
+  return result;
+}
+
+async function fetchL2SuggestionWithCache(prefix) {
+  const key = prefix.slice(-800);
+  const cached = suggestionCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.text;
+  }
+  const result = await fetchL2Suggestion(prefix);
+  if (result) {
+    suggestionCache.set(key, { text: result, timestamp: Date.now() });
+    if (suggestionCache.size > 100) {
+      const firstKey = suggestionCache.keys().next().value;
+      suggestionCache.delete(firstKey);
+    }
+  }
+  return result;
+}
+
 async function fetchL1Suggestion(prefix) {
   const key = import.meta?.env?.VITE_CEREBRAS_API_KEY || '';
   if (!key) return null;
@@ -119,7 +157,7 @@ export function makeGhostPlugin() {
         const pos    = view.state.selection.main.head;
         const prefix = view.state.doc.sliceString(0, pos);
         if ((prefix.split('\n').pop() || '').trim().length < 3) return;
-        fetchL1Suggestion(prefix).then(text => {
+        fetchL1SuggestionWithCache(prefix).then(text => {
           if (!text || view.isDestroyed) return;
           if (view.state.selection.main.head !== pos) return;
           view.dispatch({ effects: setGhostEffect.of({ text, pos, level: 1 }) });
@@ -131,7 +169,7 @@ export function makeGhostPlugin() {
         const pos    = view.state.selection.main.head;
         const prefix = view.state.doc.sliceString(0, pos);
         if ((prefix.split('\n').pop() || '').trim().length < 6) return;
-        fetchL2Suggestion(prefix).then(text => {
+        fetchL2SuggestionWithCache(prefix).then(text => {
           if (!text || view.isDestroyed) return;
           if (view.state.selection.main.head !== pos) return;
           view.dispatch({ effects: setGhostL2Effect.of({ text, pos }) });
