@@ -9,7 +9,7 @@ on:
 run-name: E2E Tests - ${{ github.ref_name }}
 
 concurrency:
-  group: \( {{ github.workflow }}- \){{ github.ref }}
+  group: e2e-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-node-env
         with:
-          node-version: '20'   # sesuai file asli
+          node-version: '20'
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
@@ -33,7 +33,7 @@ jobs:
       - name: Run Playwright tests
         run: npx playwright test --reporter=list
 
-      - name: Upload Playwright Report
+      - name: Upload Playwright Report (Debug)
         if: always()
         uses: actions/upload-artifact@v4
         with:
