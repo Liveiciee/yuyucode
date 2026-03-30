@@ -1,8 +1,11 @@
 // ── Ink & Paper ────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 
-const theme = {
-  name: 'Ink & Paper',
+import { createTheme } from './factory.js';
+
+export default createTheme({
+  name:    'Ink & Paper',
+  accent:  '#c8a97e',
 
   bg:           '#0c0b09',
   bg2:          '#111009',
@@ -12,7 +15,6 @@ const theme = {
   text:         '#f0ece0',
   textSec:      '#b8b09a',
   textMute:     '#3a3228',
-  accent:       '#c8a97e',
   accentBg:     'rgba(200,169,126,.1)',
   accentBorder: 'rgba(200,169,126,.22)',
   success:      '#7ec882',
@@ -64,9 +66,9 @@ const theme = {
   input: {
     focusBorder: 'rgba(200,169,126,.3)',
     focusShadow: '0 0 0 2px rgba(200,169,126,.06)',
-    caret: '#c8a97e',
-    sendGrad: 'linear-gradient(135deg,#c8a97e,#7a5c30)',
-    sendShadow: '0 2px 10px rgba(200,169,126,.25)',
+    caret:       '#c8a97e',
+    sendGrad:    'linear-gradient(135deg,#c8a97e,#7a5c30)',
+    sendShadow:  '0 2px 10px rgba(200,169,126,.25)',
   },
   slash: { cmdColor:'rgba(200,169,126,.85)', descColor:'#302820' },
   pulse: 'rgba(200,169,126,.5)',
@@ -80,51 +82,44 @@ const theme = {
       80%  { transform:translate(1px,1px); }
       100% { transform:translate(0,0); }
     }
-    /* Brushstroke hr divider */
     .ink-divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(200,169,126,.3) 20%, rgba(200,169,126,.5) 50%, rgba(200,169,126,.3) 80%, transparent);
-      position: relative;
+      height:1px;
+      background:linear-gradient(90deg,transparent,rgba(200,169,126,.3) 20%,rgba(200,169,126,.5) 50%,rgba(200,169,126,.3) 80%,transparent);
+      position:relative;
     }
     .ink-divider::after {
-      content: '';
-      position: absolute;
-      top: -1px; left: 30%; right: 30%;
-      height: 3px;
-      background: rgba(200,169,126,.12);
-      filter: blur(2px);
+      content:'';
+      position:absolute;
+      top:-1px; left:30%; right:30%;
+      height:3px;
+      background:rgba(200,169,126,.12);
+      filter:blur(2px);
     }
-    /* AI message — no bubble, just left rule */
     .ink-ai-msg {
-      border-left: 2px solid rgba(200,169,126,.2);
-      padding-left: 14px;
-      margin-left: 2px;
+      border-left:2px solid rgba(200,169,126,.2);
+      padding-left:14px;
+      margin-left:2px;
     }
   `,
 
+  // Ink is glow-free — uses structural borders instead of box-shadows
   fx: {
     aiBubble: () => ({
-      background: 'transparent',
-      border: 'none',
-      boxShadow: 'none',
-      borderLeft: '2px solid rgba(200,169,126,.2)',
-      paddingLeft: '14px',
+      background:   'transparent',
+      border:       'none',
+      boxShadow:    'none',
+      borderLeft:   '2px solid rgba(200,169,126,.2)',
+      paddingLeft:  '14px',
       borderRadius: '0',
     }),
-    userBubble: () => ({
-      boxShadow: '0 1px 4px rgba(0,0,0,.6)',
-    }),
-    glowBorder: () => ({}), // No glow in ink
-    codeBlock: () => ({
-      borderLeft: '3px solid rgba(200,169,126,.25)',
+    userBubble: () => ({ boxShadow: '0 1px 4px rgba(0,0,0,.6)' }),
+    glowBorder: () => ({}),
+    codeBlock:  () => ({
+      borderLeft:   '3px solid rgba(200,169,126,.25)',
       borderRadius: '0 8px 8px 0',
     }),
-    chipOk: () => ({}),
-    glowText: () => ({}),
-    inputFocus: () => ({
-      boxShadow: 'inset 0 -1px 0 rgba(200,169,126,.35)',
-    }),
+    chipOk:     () => ({}),
+    glowText:   () => ({}),
+    inputFocus: () => ({ boxShadow: 'inset 0 -1px 0 rgba(200,169,126,.35)' }),
   },
-};
-
-export default theme;
+});

@@ -1,11 +1,16 @@
 // ── My Brand Theme — Template untuk Custom Theme ────────────────────────────
+// Duplikat field yang ingin kamu ganti, hapus sisanya.
+// fx tidak perlu di-override kalau pakai warm-glow defaults (accent berbasis).
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** @type {import('./index').YuyuTheme} */
-const theme = {
-  name: 'My Brand',
+import { createTheme } from './factory.js';
 
-  // ── Global colours ────────────────────────────────────────────────────────
+export default createTheme({
+  name:    'My Brand',
+  accent:  '#d97706',
+
+  // ── Global colours ──────────────────────────────────────────────────────────
   bg:           '#111',
   bg2:          '#161412',
   bg3:          '#1c1916',
@@ -14,7 +19,6 @@ const theme = {
   text:         '#ede8d8',
   textSec:      '#c4b8a0',
   textMute:     '#3a3428',
-  accent:       '#d97706',
   accentBg:     'rgba(217,119,6,.09)',
   accentBorder: 'rgba(217,119,6,.22)',
   success:      '#4ade80',
@@ -24,14 +28,14 @@ const theme = {
   warning:      '#fbbf24',
   warningBg:    'rgba(251,191,36,.08)',
 
-  // ── Atmosphere (glow blobs di bg) ─────────────────────────────────────────
+  // ── Atmosphere ───────────────────────────────────────────────────────────────
   atm: [
-    { color: 'rgba(217,119,6,.08)', x: '88%',  y: '55%', size: '55%' },
-    { color: 'rgba(99,102,241,.04)', x: '-12%', y: '-18%', size: '48%' },
+    { color:'rgba(217,119,6,.08)', x:'88%',  y:'55%',  size:'55%' },
+    { color:'rgba(99,102,241,.04)', x:'-12%', y:'-18%', size:'48%' },
   ],
   scanlines: true,
 
-  // ── Header ────────────────────────────────────────────────────────────────
+  // ── Header ───────────────────────────────────────────────────────────────────
   header: {
     bg:          'rgba(20,18,16,.88)',
     logoGrad:    'linear-gradient(135deg,#d97706,#b45309)',
@@ -42,7 +46,7 @@ const theme = {
     metaColor:   '#38342e',
   },
 
-  // ── Chat Bubbles ──────────────────────────────────────────────────────────
+  // ── Chat Bubbles ──────────────────────────────────────────────────────────────
   bubble: {
     user: {
       bg:     'rgba(217,119,6,.09)',
@@ -65,25 +69,13 @@ const theme = {
     },
   },
 
-  // ── Action Chips ──────────────────────────────────────────────────────────
-  chip: {
-    border: 'rgba(0,255,140,.16)',
-    bg:     'rgba(0,255,140,.04)',
-    color:  'rgba(0,220,120,.55)',
-    check:  'rgba(0,200,100,.5)',
-  },
+  // ── Action Chips ──────────────────────────────────────────────────────────────
+  chip: { border:'rgba(0,255,140,.16)', bg:'rgba(0,255,140,.04)', color:'rgba(0,220,120,.55)', check:'rgba(0,200,100,.5)' },
 
-  // ── Code Blocks ───────────────────────────────────────────────────────────
-  code: {
-    bg:     'rgba(0,0,0,.4)',
-    border: '1px solid rgba(217,119,6,.07)',
-    color:  'rgba(200,160,80,.55)',
-  },
+  // ── Code Blocks ───────────────────────────────────────────────────────────────
+  code: { bg:'rgba(0,0,0,.4)', border:'1px solid rgba(217,119,6,.07)', color:'rgba(200,160,80,.55)' },
 
-  // ── Loading dots ──────────────────────────────────────────────────────────
-  pulse: 'rgba(217,119,6,.45)',
-
-  // ── Input Area ────────────────────────────────────────────────────────────
+  // ── Input ─────────────────────────────────────────────────────────────────────
   input: {
     focusBorder: 'rgba(217,119,6,.22)',
     focusShadow: '0 0 0 3px rgba(217,119,6,.06)',
@@ -92,13 +84,13 @@ const theme = {
     sendShadow:  '0 3px 12px rgba(217,119,6,.3)',
   },
 
-  // ── Slash Command Popup ───────────────────────────────────────────────────
-  slash: {
-    cmdColor:  'rgba(217,119,6,.85)',
-    descColor: '#302820',
-  },
+  // ── Slash Command ─────────────────────────────────────────────────────────────
+  slash: { cmdColor:'rgba(217,119,6,.85)', descColor:'#302820' },
 
-  // ── Per-theme CSS & Animations ────────────────────────────────────────────
+  // ── Loading dots ──────────────────────────────────────────────────────────────
+  pulse: 'rgba(217,119,6,.45)',
+
+  // ── CSS & Animations ──────────────────────────────────────────────────────────
   css: `
     @keyframes mybrandPulse {
       0%,100% { opacity:.8; }
@@ -106,18 +98,5 @@ const theme = {
     }
   `,
 
-  // ── Visual FX helpers (dipakai oleh MsgBubble) ───────────────────────────
-  fx: {
-    aiBubble:   () => ({ boxShadow: '0 2px 12px rgba(0,0,0,.4)' }),
-    userBubble: () => ({ boxShadow: '0 0 12px rgba(217,119,6,.1), 0 2px 16px rgba(0,0,0,.4)' }),
-    glowBorder: (color='#d97706', intensity=1) => ({
-      boxShadow: `0 0 ${8*intensity}px ${color}22, inset 0 0 ${4*intensity}px ${color}08`,
-    }),
-    codeBlock:  () => ({ boxShadow: '0 0 1px rgba(217,119,6,.15), inset 0 0 6px rgba(0,0,0,.3)' }),
-    chipOk:     () => ({ boxShadow: '0 0 6px rgba(0,200,110,.18)' }),
-    glowText:   (color='#d97706') => ({ textShadow: `0 0 4px ${color}44` }),
-    inputFocus: () => ({ boxShadow: '0 0 0 1px rgba(217,119,6,.25), 0 0 10px rgba(217,119,6,.1)' }),
-  },
-};
-
-export default theme;
+  // fx fully covered by factory defaults — override here if needed
+});

@@ -1,8 +1,11 @@
 // ── Aurora Glass ───────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 
-const theme = {
-  name: 'Aurora Glass',
+import { createTheme } from './factory.js';
+
+export default createTheme({
+  name:    'Aurora Glass',
+  accent:  '#8b5cf6',
 
   bg:           '#080612',
   bg2:          'rgba(12,9,22,.95)',
@@ -12,7 +15,6 @@ const theme = {
   text:         '#ece8ff',
   textSec:      '#b8b0d8',
   textMute:     '#2e2a48',
-  accent:       '#8b5cf6',
   accentBg:     'rgba(139,92,246,.12)',
   accentBorder: 'rgba(139,92,246,.28)',
   success:      '#34d399',
@@ -63,13 +65,13 @@ const theme = {
   },
 
   chip:  { border:'rgba(139,92,246,.22)', bg:'rgba(139,92,246,.07)', color:'rgba(167,139,250,.75)', check:'rgba(52,211,153,.5)' },
-  code:  { bg:'rgba(8,6,18,.7)',          border:'1px solid rgba(139,92,246,.12)', color:'rgba(185,160,255,.65)' },
+  code:  { bg:'rgba(8,6,18,.7)', border:'1px solid rgba(139,92,246,.12)', color:'rgba(185,160,255,.65)' },
   input: {
     focusBorder: 'rgba(139,92,246,.35)',
     focusShadow: '0 0 0 3px rgba(139,92,246,.08)',
-    caret: '#a78bfa',
-    sendGrad: 'linear-gradient(135deg,#8b5cf6,#ec4899)',
-    sendShadow: '0 4px 16px rgba(139,92,246,.4)',
+    caret:       '#a78bfa',
+    sendGrad:    'linear-gradient(135deg,#8b5cf6,#ec4899)',
+    sendShadow:  '0 4px 16px rgba(139,92,246,.4)',
   },
   slash: { cmdColor:'rgba(167,139,250,.9)', descColor:'#2e2a48' },
   pulse: 'rgba(139,92,246,.6)',
@@ -94,47 +96,41 @@ const theme = {
       50%     { opacity:.13; }
     }
     .aurora-bubble-user {
-      backdrop-filter: blur(16px) saturate(1.5);
-      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+      backdrop-filter:-webkit-backdrop-filter:blur(16px) saturate(1.5);
     }
     .aurora-bubble-ai {
-      backdrop-filter: blur(12px) saturate(1.3);
-      -webkit-backdrop-filter: blur(12px) saturate(1.3);
+      backdrop-filter:-webkit-backdrop-filter:blur(12px) saturate(1.3);
     }
-    .aurora-chip {
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
+    .aurora-chip { backdrop-filter:-webkit-backdrop-filter:blur(8px); }
   `,
 
+  // Aurora uses backdrop-filter glass effects throughout — all fx overridden
   fx: {
     aiBubble: () => ({
-      backdropFilter: 'blur(12px) saturate(1.3)',
+      backdropFilter:       'blur(12px) saturate(1.3)',
       WebkitBackdropFilter: 'blur(12px) saturate(1.3)',
     }),
     userBubble: () => ({
-      backdropFilter: 'blur(16px) saturate(1.5)',
+      backdropFilter:       'blur(16px) saturate(1.5)',
       WebkitBackdropFilter: 'blur(16px) saturate(1.5)',
       boxShadow: '0 8px 32px rgba(139,92,246,.18), inset 0 1px 0 rgba(255,255,255,.1)',
     }),
-    glowBorder: (color='#8b5cf6') => ({
+    glowBorder: (color = '#8b5cf6') => ({
       boxShadow: `0 0 0 1px ${color}22, 0 4px 20px ${color}18`,
     }),
     codeBlock: () => ({
-      backdropFilter: 'blur(8px)',
+      backdropFilter:       'blur(8px)',
       WebkitBackdropFilter: 'blur(8px)',
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)',
     }),
     chipOk: () => ({
-      backdropFilter: 'blur(8px)',
+      backdropFilter:       'blur(8px)',
       WebkitBackdropFilter: 'blur(8px)',
     }),
-    glowText: () => ({}), // Aurora tidak pakai text glow
+    glowText:   () => ({}), // Aurora tidak pakai text-glow
     inputFocus: () => ({
       boxShadow: '0 0 0 1px rgba(139,92,246,.35), 0 0 24px rgba(139,92,246,.12)',
       backdropFilter: 'blur(4px)',
     }),
   },
-};
-
-export default theme;
+});

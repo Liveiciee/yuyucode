@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Search, Plug, Github, Key, Puzzle, Brain, MapPin, Scissors, Zap, Save, Upload, Settings, List, History, GitCompare, Plus, Palette, MessageSquare, Play, Package, X, Eye } from 'lucide-react';
-import { MODELS } from '../constants.js';
+import { MODELS, THEME_KEYS } from '../constants.js';
 
 export function BottomSheet({ children, onClose, height='88%', noPad:_noPad=false, T }) {
   const [dragY, setDragY] = useState(0);
@@ -92,7 +92,7 @@ export function CommandPalette({ onClose, onRun:_onRun, folder:_folder, memories
     { label: 'View', items: [
       { icon:'search', label:'Search files', sub:'Grep across project', action:()=>{ onShowSearch(); onClose(); } },
       { icon:'menu', label:'Toggle sidebar', sub: showSidebar?'Sembunyikan':'Tampilkan', action:()=>{ onToggleSidebar(); onClose(); } },
-      { icon:'palette', label:'Theme: '+theme, sub:'obsidian / aurora / ink / neon', action:()=>{ const themes=['obsidian','aurora','ink','neon']; const i=themes.indexOf(theme); onThemeChange(themes[(i+1)%themes.length]); onClose(); } },
+      { icon:'palette', label:'Theme: '+theme, sub:THEME_KEYS.join(' / '), action:()=>{ const i=THEME_KEYS.indexOf(theme); onThemeChange(THEME_KEYS[(i+1)%THEME_KEYS.length]); onClose(); } },
     ]},
     { label: 'AI Model', items: models.map(m=>({
       icon: model===m.id ? '●' : '○',

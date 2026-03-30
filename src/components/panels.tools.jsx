@@ -3,6 +3,7 @@ import { Preferences } from "@capacitor/preferences";
 import { Zap, Bookmark, Check, X, Save, Shield, List, GitMerge, Plug, Key, Settings } from 'lucide-react';
 import { BottomSheet } from './panels.base.jsx';
 import { resolveTheme } from './themeUtils.js';
+import { THEME_KEYS } from '../constants.js';
 
 // ─── CUSTOM ACTIONS PANEL ─────────────────────────────────────────────────────
 export function CustomActionsPanel({ folder:_folder, onRun, onClose, T }) {
@@ -428,7 +429,7 @@ export function ConfigPanel({
   const configs = [
     { label: 'Effort Level', value: effort,           options: ['low','medium','high'],        onChange: onEffort },
     { label: 'Font Size',    value: String(fontSize),  options: ['12','13','14','15','16'],     onChange: v => onFontSize(parseInt(v)) },
-    { label: 'Theme',        value: theme,             options: ['obsidian','aurora','ink','neon'], onChange: onTheme },
+    { label: 'Theme',        value: theme,             options: THEME_KEYS,                          onChange: onTheme },
     { label: 'Model',        value: model,             options: models.map(m => m.id),          onChange: onModel },
   ];
 

@@ -9,7 +9,7 @@ export const CEREBRAS_KEY = import.meta.env.VITE_CEREBRAS_API_KEY || '';
 export const GROQ_KEY     = import.meta.env.VITE_GROQ_API_KEY     || '';
 export const TAVILY_KEY   = import.meta.env.VITE_TAVILY_API_KEY   || '';
 
-export { THEMES_MAP as THEMES } from './themes/index.js';
+export { THEMES_MAP as THEMES, THEME_KEYS, DEFAULT_THEME } from './themes/index.js';
 export const YUYU_SERVER  = 'http://localhost:8765';
 export const WS_SERVER    = 'ws://127.0.0.1:8766';
 export const MAX_HISTORY  = 60;

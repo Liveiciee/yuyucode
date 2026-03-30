@@ -1,8 +1,11 @@
 // ── Obsidian Warm ──────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 
-const theme = {
-  name: 'Obsidian Warm',
+import { createTheme } from './factory.js';
+
+export default createTheme({
+  name:    'Obsidian Warm',
+  accent:  '#d97706',
 
   bg:           '#0e0c09',
   bg2:          '#131108',
@@ -12,7 +15,6 @@ const theme = {
   text:         '#ede8d8',
   textSec:      '#c4bc9c',
   textMute:     '#3a3428',
-  accent:       '#d97706',
   accentBg:     'rgba(217,119,6,.09)',
   accentBorder: 'rgba(217,119,6,.22)',
   success:      '#4ade80',
@@ -23,7 +25,7 @@ const theme = {
   warningBg:    'rgba(251,191,36,.08)',
 
   atm: [
-    { color:'rgba(217,119,6,.06)', x:'88%', y:'55%', size:'55%' },
+    { color:'rgba(217,119,6,.06)',  x:'88%',  y:'55%',  size:'55%' },
     { color:'rgba(99,102,241,.03)', x:'-12%', y:'-18%', size:'48%' },
   ],
   scanlines: true,
@@ -65,9 +67,9 @@ const theme = {
   input: {
     focusBorder: 'rgba(217,119,6,.28)',
     focusShadow: '0 0 0 3px rgba(217,119,6,.07)',
-    caret: '#d97706',
-    sendGrad: 'linear-gradient(135deg,#d97706,#b45309)',
-    sendShadow: '0 0 14px rgba(217,119,6,.35), 0 0 28px rgba(217,119,6,.15)',
+    caret:       '#d97706',
+    sendGrad:    'linear-gradient(135deg,#d97706,#b45309)',
+    sendShadow:  '0 0 14px rgba(217,119,6,.35), 0 0 28px rgba(217,119,6,.15)',
   },
   slash: { cmdColor:'rgba(217,119,6,.85)', descColor:'#2e2818' },
   pulse: 'rgba(217,119,6,.5)',
@@ -86,40 +88,12 @@ const theme = {
       0%,100% { filter:brightness(1) sepia(.05); }
       50%     { filter:brightness(1.04) sepia(.08); }
     }
-    .crt-flicker {
-      animation: crtFlicker 8s linear infinite;
-    }
-    .phosphor-text {
-      text-shadow: 0 0 4px rgba(217,119,6,.2);
-    }
+    .crt-flicker { animation:crtFlicker 8s linear infinite; }
+    .phosphor-text { text-shadow:0 0 4px rgba(217,119,6,.2); }
     .obsidian-border-glow {
-      box-shadow: 0 0 8px rgba(217,119,6,.12), inset 0 0 4px rgba(217,119,6,.04);
+      box-shadow:0 0 8px rgba(217,119,6,.12), inset 0 0 4px rgba(217,119,6,.04);
     }
   `,
 
-  fx: {
-    aiBubble: () => ({
-      boxShadow: '0 2px 12px rgba(0,0,0,.4)',
-    }),
-    userBubble: () => ({
-      boxShadow: '0 0 12px rgba(217,119,6,.1), 0 2px 16px rgba(0,0,0,.4)',
-    }),
-    glowBorder: (color='#d97706', intensity=1) => ({
-      boxShadow: `0 0 ${8*intensity}px ${color}22, inset 0 0 ${4*intensity}px ${color}08`,
-    }),
-    codeBlock: () => ({
-      boxShadow: '0 0 1px rgba(217,119,6,.15), inset 0 0 6px rgba(0,0,0,.3)',
-    }),
-    chipOk: () => ({
-      boxShadow: '0 0 6px rgba(0,200,110,.18)',
-    }),
-    glowText: (color='#d97706') => ({
-      textShadow: `0 0 4px ${color}44`,
-    }),
-    inputFocus: () => ({
-      boxShadow: '0 0 0 1px rgba(217,119,6,.25), 0 0 10px rgba(217,119,6,.1)',
-    }),
-  },
-};
-
-export default theme;
+  // fx fully covered by factory defaults — no override needed
+});

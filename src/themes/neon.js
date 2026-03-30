@@ -1,8 +1,11 @@
 // ── Neon Terminal ──────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 
-const theme = {
-  name: 'Neon Terminal',
+import { createTheme } from './factory.js';
+
+export default createTheme({
+  name:    'Neon Terminal',
+  accent:  '#00ff8c',
 
   bg:           '#03050a',
   bg2:          'rgba(4,7,12,.97)',
@@ -12,7 +15,6 @@ const theme = {
   text:         '#c8ffea',
   textSec:      'rgba(150,235,195,.8)',
   textMute:     '#0b1c12',
-  accent:       '#00ff8c',
   accentBg:     'rgba(0,255,140,.07)',
   accentBorder: 'rgba(0,255,140,.22)',
   success:      '#00ff8c',
@@ -23,9 +25,9 @@ const theme = {
   warningBg:    'rgba(255,204,0,.08)',
 
   atm: [
-    { color:'rgba(0,255,140,.08)', x:'-5%',  y:'-15%', size:'55%' },
-    { color:'rgba(0,180,255,.06)', x:'88%',  y:'65%',  size:'45%' },
-    { color:'rgba(120,0,255,.04)', x:'45%',  y:'90%',  size:'35%' },
+    { color:'rgba(0,255,140,.08)', x:'-5%', y:'-15%', size:'55%' },
+    { color:'rgba(0,180,255,.06)', x:'88%', y:'65%',  size:'45%' },
+    { color:'rgba(120,0,255,.04)', x:'45%', y:'90%',  size:'35%' },
   ],
   scanlines: true,
 
@@ -66,14 +68,13 @@ const theme = {
   input: {
     focusBorder: 'rgba(0,255,140,.35)',
     focusShadow: '0 0 0 3px rgba(0,255,140,.07)',
-    caret: '#00ff8c',
-    sendGrad: 'linear-gradient(135deg,#00ff8c,#00ccaa)',
-    sendShadow: '0 0 16px rgba(0,255,140,.4), 0 0 32px rgba(0,255,140,.2)',
+    caret:       '#00ff8c',
+    sendGrad:    'linear-gradient(135deg,#00ff8c,#00ccaa)',
+    sendShadow:  '0 0 16px rgba(0,255,140,.4), 0 0 32px rgba(0,255,140,.2)',
   },
   slash: { cmdColor:'rgba(0,255,140,.9)', descColor:'#0b1c12' },
   pulse: '#00ff8c',
 
-  // ── CSS injected globally ────────────────────────────────────────────────
   css: `
     @keyframes neonFlicker {
       0%,19%,21%,23%,25%,54%,56%,100% { opacity:1; }
@@ -88,45 +89,29 @@ const theme = {
       100% { transform:translateY(100vh); }
     }
     @keyframes gridPan {
-      0%   { background-position: 0 0; }
-      100% { background-position: 40px 40px; }
+      0%   { background-position:0 0; }
+      100% { background-position:40px 40px; }
     }
     .neon-text {
-      text-shadow: 0 0 7px #00ff8c, 0 0 14px #00ff8c88, 0 0 28px #00ff8c44;
-      animation: neonFlicker 6s linear infinite;
+      text-shadow:0 0 7px #00ff8c, 0 0 14px #00ff8c88, 0 0 28px #00ff8c44;
+      animation:neonFlicker 6s linear infinite;
     }
-    .neon-border {
-      box-shadow: 0 0 6px rgba(0,255,140,.5), 0 0 14px rgba(0,255,140,.25), inset 0 0 6px rgba(0,255,140,.08);
-    }
-    .neon-border-blue {
-      box-shadow: 0 0 6px rgba(0,180,255,.5), 0 0 14px rgba(0,180,255,.25), inset 0 0 6px rgba(0,180,255,.08);
-    }
+    .neon-border      { box-shadow:0 0 6px rgba(0,255,140,.5), 0 0 14px rgba(0,255,140,.25), inset 0 0 6px rgba(0,255,140,.08); }
+    .neon-border-blue { box-shadow:0 0 6px rgba(0,180,255,.5), 0 0 14px rgba(0,180,255,.25), inset 0 0 6px rgba(0,180,255,.08); }
   `,
 
-  // ── Per-element effect functions ─────────────────────────────────────────
+  // Neon uses a multi-layer glow formula + blue userBubble — all fx overridden
   fx: {
-    glowBorder: (color='#00ff8c', intensity=1) => ({
+    glowBorder: (color = '#00ff8c', intensity = 1) => ({
       boxShadow: `0 0 ${6*intensity}px ${color}88, 0 0 ${14*intensity}px ${color}44, inset 0 0 ${5*intensity}px ${color}11`,
     }),
-    aiBubble: () => ({
-      boxShadow: '0 0 20px rgba(0,255,140,.08), 0 0 40px rgba(0,255,140,.04)',
-    }),
-    userBubble: () => ({
-      boxShadow: '0 0 20px rgba(0,180,255,.14), 0 0 40px rgba(0,180,255,.06)',
-    }),
-    glowText: (color='#00ff8c') => ({
+    aiBubble:   () => ({ boxShadow: '0 0 20px rgba(0,255,140,.08), 0 0 40px rgba(0,255,140,.04)' }),
+    userBubble: () => ({ boxShadow: '0 0 20px rgba(0,180,255,.14), 0 0 40px rgba(0,180,255,.06)' }),
+    glowText:   (color = '#00ff8c') => ({
       textShadow: `0 0 7px ${color}, 0 0 14px ${color}88, 0 0 28px ${color}44`,
     }),
-    codeBlock: () => ({
-      boxShadow: '0 0 1px rgba(0,255,140,.2), 0 0 8px rgba(0,255,140,.06)',
-    }),
-    chipOk: () => ({
-      boxShadow: '0 0 8px rgba(0,255,140,.25)',
-    }),
-    inputFocus: () => ({
-      boxShadow: '0 0 0 1px rgba(0,255,140,.3), 0 0 12px rgba(0,255,140,.12)',
-    }),
+    codeBlock:  () => ({ boxShadow: '0 0 1px rgba(0,255,140,.2), 0 0 8px rgba(0,255,140,.06)' }),
+    chipOk:     () => ({ boxShadow: '0 0 8px rgba(0,255,140,.25)' }),
+    inputFocus: () => ({ boxShadow: '0 0 0 1px rgba(0,255,140,.3), 0 0 12px rgba(0,255,140,.12)' }),
   },
-};
-
-export default theme;
+});
