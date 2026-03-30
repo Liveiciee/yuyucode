@@ -1,7 +1,7 @@
 import CONFIG from './config.js';
 import { trimCommon, getSample } from './trim.js';
 import { computeBlockSimilarity } from './rollingHash.js';
-import { normalizeLine, isWeakAnchor, _tokenize, _getWeightedStructuralSignature, _extractIdentifiers } from './tokenizer.js';
+import { normalizeLine, isWeakAnchor, tokenize as _tokenize, getWeightedStructuralSignature as _getWeightedStructuralSignature, extractIdentifiers as _extractIdentifiers } from './tokenizer.js';
 import { similarityScore as _similarityScore } from './levenshtein.js';
 
 export function findAnchors(aLines, bLines) {
