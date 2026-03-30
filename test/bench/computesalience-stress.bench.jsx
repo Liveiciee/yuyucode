@@ -11,7 +11,7 @@ import {
   compressSource,
   extractImports,
   computeSalience,
-} from './_helpers.js';
+} from './_helpers.jsx';
 
 // Fixtures (keep them defined per file to avoid cross-contamination)
 describe('computeSalience — stress', () => {
