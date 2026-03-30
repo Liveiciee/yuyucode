@@ -1,0 +1,11 @@
+export { CustomActionsPanel } from './CustomActionsPanel.jsx';
+export { ShortcutsPanel } from './ShortcutsPanel.jsx';
+export { SnippetLibrary } from './SnippetLibrary.jsx';
+export { ThemeBuilder } from './ThemeBuilder.jsx';
+export { DeployPanel } from './DeployPanel.jsx';
+export { McpPanel } from './McpPanel.jsx';
+export { GitHubPanel } from './GitHubPanel.jsx';
+export { SessionsPanel } from './SessionsPanel.jsx';
+export { PermissionsPanel } from './PermissionsPanel.jsx';
+export { PluginsPanel } from './PluginsPanel.jsx';
+export { ConfigPanel } from './ConfigPanel.jsx';
