@@ -1,12 +1,12 @@
 // @vitest-environment node
 import { describe, bench } from 'vitest';
-import { generateDiff, parseActions } from '../../../src/utils.js';
+import { generateDiff, parseActions } from '../../src/utils.js';
 import {
   extractSymbols,
   compressSource,
   extractImports,
   computeSalience,
-} from '../../../yuyu-map.cjs';
+} from '../../yuyu-map.cjs';
 
 // ── Inline pure functions (copied from FileEditor — cannot import component) ──
 function getLangExt(path) {
