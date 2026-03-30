@@ -1,0 +1,209 @@
+#!/bin/bash
+# lines.sh - Show files with most lines
+
+ylong() {
+  # --- KONFIGURASI AWAL ---
+  local n=15
+  local all=0
+  local target_dir="."
+  local start_time=$(date +%s%3N)
+
+  # Parsing opsi sederhana
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -n|--number) n="$2"; shift 2 ;;
+      -a|--all) all=1; shift ;;
+      -h|--help)
+        echo "Usage: ylong [-n N] [-a] [directory]"
+        echo "  -n N      Show top N files (default 15)"
+        echo "  -a        Include all file types (not just source code)"
+        echo "  -h        Show this help"
+        return 0
+        ;;
+      *) target_dir="$1"; shift ;;
+    esac
+  done
+
+  # Cek direktori target
+  if [[ ! -d "$target_dir" ]]; then
+    echo "❌ Directory '$target_dir' not found."
+    return 1
+  fi
+
+  # Cek dependensi
+  local has_fzf=$(command -v fzf &>/dev/null && echo 1 || echo 0)
+
+  clear
+  echo -e "\033[1;97;44m  🚀 YLONG OMEGA v6.1 - THE PROJECT DESTROYER  \033[0m"
+  echo -e "\033[3m\"Karena kode yang panjang adalah dosa yang tertunda.\"\033[0m\n"
+
+  # ------------------------------------------------------------------
+  # 1. BUILD EXCLUDE PATTERNS (dengan array biar aman)
+  # ------------------------------------------------------------------
+  local exclude_patterns=(
+    "-not" "-path" "*/node_modules/*"
+    "-not" "-path" "*/vendor/*"
+    "-not" "-path" "*/dist/*"
+    "-not" "-path" "*/build/*"
+    "-not" "-path" "*/.git/*"
+    "-not" "-path" "*/coverage/*"
+    "-not" "-path" "*/docs/.vitepress/cache/*"
+    "-not" "-path" "*/android/app/src/main/assets/*"
+    "-not" "-name" "package-lock.json"
+    "-not" "-name" "yarn.lock"
+    "-not" "-name" "*.min.js"
+    "-not" "-name" "*.png"
+    "-not" "-name" "*.jpg"
+  )
+
+  # Baca .gitignore jika ada
+  if [[ -f .gitignore ]]; then
+    while IFS= read -r line; do
+      # Abaikan baris kosong atau komentar
+      [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+      # Potong spasi awal/akhir
+      line="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      # Tambahkan pattern exclude
+      exclude_patterns+=("-not" "-path" "*/$line*")
+    done < .gitignore
+  fi
+
+  # ------------------------------------------------------------------
+  # 2. FILE TYPE FILTER
+  # ------------------------------------------------------------------
+  local name_filter=""
+  if [[ $all -eq 0 ]]; then
+    # Hanya file source code umum
+    name_filter='\( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \
+                    -o -name "*.py" -o -name "*.php" -o -name "*.go" \
+                    -o -name "*.vue" -o -name "*.java" -o -name "*.c" -o -name "*.cpp" \
+                    -o -name "*.cjs" -o -name "*.mjs" -o -name "*.sh" \)'
+  else
+    name_filter="-true"  # Semua file
+  fi
+
+  # ------------------------------------------------------------------
+  # 3. SCAN DENGAN PARALLEL (gunakan array untuk exclude)
+  # ------------------------------------------------------------------
+  echo -ne " 🔍 \033[1;33mMembedah isi project...\033[0m"
+  local tmp=$(mktemp)
+
+  # Bangun command find dengan array
+  # find "$target_dir" -type f "${exclude_patterns[@]}" $name_filter -print0 | xargs ...
+  # Gunakan eval karena perlu menggabungkan -print0 dengan pipe
+  # Kita bisa langsung jalankan dengan perintah dalam string yang dieval (hati-hati)
+  # Atau kita buat perintah dengan function.
+
+  # Cara aman: bangun array perintah
+  local find_cmd=("find" "$target_dir" "-type" "f")
+  find_cmd+=("${exclude_patterns[@]}")
+  # Kita perlu menambahkan name_filter sebagai string, karena itu berisi parentheses
+  # Lebih mudah: kita evaluasi sebagai string setelah semua argumen
+  local name_filter_str="$name_filter"
+  # Gabungkan perintah
+  local full_cmd="${find_cmd[@]} $name_filter_str -print0"
+
+  # Jalankan dengan xargs paralel
+  eval "$full_cmd" | xargs -0 -P$(nproc) wc -l 2>/dev/null | grep -v " total$" > "$tmp"
+
+  echo -e "\r ✅ \033[1;32mSelesai dalam $(($(date +%s%3N) - start_time))ms\033[0m             "
+
+  # ------------------------------------------------------------------
+  # 4. STATISTIK DASAR
+  # ------------------------------------------------------------------
+  local file_count=$(wc -l < "$tmp")
+  if [[ $file_count -eq 0 ]]; then
+    echo "❌ Tidak ada file ditemukan (atau semua tersaring)."
+    rm "$tmp"
+    return 1
+  fi
+
+  local total_lines=$(awk '{sum+=$1} END{print sum}' "$tmp")
+  sort -rn -o "$tmp" "$tmp"
+
+  # ------------------------------------------------------------------
+  # 5. DEBT COLLECTOR (hitung dari file yang diproses)
+  # ------------------------------------------------------------------
+  local total_debt=0
+  while IFS= read -r line; do
+    file=$(echo "$line" | awk '{print $2}')
+    debt=$(grep -cE "TODO|FIXME|HACK" "$file" 2>/dev/null || echo 0)
+    ((total_debt += debt))
+  done < "$tmp"
+
+  # ------------------------------------------------------------------
+  # 6. DASHBOARD
+  # ------------------------------------------------------------------
+  echo -e " \033[1;94m╔═══════════════════════════════════════════════════╗\033[0m"
+  printf " \033[1;94m║\033[0m  %-18s : \033[1;97m%-25s\033[0m \033[1;94m║\033[0m\n" "Total Baris" "$(printf "%'d" $total_lines)"
+  printf " \033[1;94m║\033[0m  %-18s : \033[1;97m%-25s\033[0m \033[1;94m║\033[0m\n" "Total File" "$file_count"
+  printf " \033[1;94m║\033[0m  %-18s : \033[1;31m%-25s\033[0m \033[1;94m║\033[0m\n" "Utang Teknis" "$total_debt (TODO/FIXME)"
+  echo -e " \033[1;94m╚═══════════════════════════════════════════════════╝\033[0m"
+
+  # ------------------------------------------------------------------
+  # 7. ANALISA SISTEM (sederhana)
+  # ------------------------------------------------------------------
+  echo -ne " \n 💡 \033[1mANALISA SISTEM:\033[0m "
+  if [ $total_lines -gt 50000 ]; then
+    echo -e "\033[1;31m⚠️  PROJECT KEGENDUTAN! Segera refactor atau resign.\033[0m"
+  elif [ $total_debt -gt 50 ]; then
+    echo -e "\033[1;33m🚩 Banyak 'hutang' belum lunas. Cicil bos, jangan fitur mulu.\033[0m"
+  else
+    echo -e "\033[1;32m✅ Kode masih sehat walafiat. Pertahankan!\033[0m"
+  fi
+
+  # ------------------------------------------------------------------
+  # 8. DISTRIBUSI BAHASA (dengan bar ASCII)
+  # ------------------------------------------------------------------
+  echo -e "\n \033[1mDISTRIBUSI BAHASA:\033[0m"
+  # Kumpulkan ekstensi dan jumlah baris
+  declare -A lang_lines
+  while IFS= read -r line; do
+    lines=$(echo "$line" | awk '{print $1}')
+    file=$(echo "$line" | awk '{print $2}')
+    ext="${file##*.}"
+    [[ -z "$ext" ]] && ext="txt"
+    ((lang_lines[$ext] += lines))
+  done < "$tmp"
+
+  # Urutkan berdasarkan jumlah baris
+  for ext in "${!lang_lines[@]}"; do
+    echo "${lang_lines[$ext]}:$ext"
+  done | sort -t: -k1 -rn | head -n 3 | while IFS=: read -r count ext; do
+    pct=$(( count * 100 / total_lines ))
+    bar_len=$(( pct / 4 ))
+    bar=$(printf "%${bar_len}s" | tr ' ' '■')
+    printf "   %-5s \033[90m[%-25s]\033[0m %d%%\n" "$ext" "$bar" "$pct"
+  done
+
+  # ------------------------------------------------------------------
+  # 9. TOP LIST (Ranking)
+  # ------------------------------------------------------------------
+  echo -e "\n \033[1m🏆 RANKING FILE TERPANJANG (Dosa Terbesar):\033[0m"
+  local max_l=$(head -n 1 "$tmp" | awk '{print $1}')
+  
+  head -n "$n" "$tmp" | awk -v max="$max_l" '{
+    rank++;
+    scale = int(($1/max)*20);
+    graph = ""; for(i=0; i<scale; i++) graph = graph "▬";
+    color = "\033[32m"; if($1 > 1000) color = "\033[31m"; else if($1 > 500) color = "\033[33m";
+    printf "   \033[90m%2d.\033[0m %s%7d\033[0m lines \033[90m%s\033[0m \033[1m%s\033[0m\n", rank, color, $1, graph, $2
+  }'
+
+  # ------------------------------------------------------------------
+  # 10. INTERAKTIF (opsional)
+  # ------------------------------------------------------------------
+  if [ $has_fzf -eq 1 ]; then
+    echo -e "\n \033[1;90m💡 Tips: Tekan CTRL+C untuk keluar, atau liat info file lainnya.\033[0m"
+    # Tawarkan untuk memilih file (tapi non-blocking, hanya jika user tekan enter)
+    echo -n "   Ketik 'o' untuk membuka file terpanjang, atau Enter untuk keluar: "
+    read -r choice
+    if [[ "$choice" == "o" ]]; then
+      local selected=$(awk '{print $2}' "$tmp" | fzf --height=10 --prompt="Pilih file: ")
+      [[ -n "$selected" ]] && ${EDITOR:-nano} "$selected"
+    fi
+  fi
+
+  rm "$tmp"
+  echo -e "\n \033[1;34m>>> SCAN SELESAI <<<\033[0m\n"
+}

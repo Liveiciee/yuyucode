@@ -55,7 +55,9 @@
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "undici": "^7.24.6",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.2.0",

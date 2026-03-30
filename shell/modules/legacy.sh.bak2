@@ -95,9 +95,9 @@ ylong() {
   local n=15
   local all=0
   local target_dir="."
-  local start_time=$(date +%s)
+  local start_time=$(date +%s%3N 2>/dev/null || date +%s)000
 
-  # Parsing opsi
+  # Parsing opsi sederhana
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -n|--number) n="$2"; shift 2 ;;
@@ -113,19 +113,21 @@ ylong() {
     esac
   done
 
+  # Cek direktori target
   if [[ ! -d "$target_dir" ]]; then
     echo "❌ Directory '$target_dir' not found."
     return 1
   fi
 
+  # Cek dependensi
   local has_fzf=$(command -v fzf &>/dev/null && echo 1 || echo 0)
 
   clear
-  echo -e "\033[1;96m📊 YLONG - File Analyzer\033[0m"
-  echo ""
+  echo -e "\033[1;97;44m  🚀 YLONG OMEGA v6.1 - THE PROJECT DESTROYER  \033[0m"
+  echo -e "\033[3m\"Karena kode yang panjang adalah dosa yang tertunda.\"\033[0m\n"
 
   # ------------------------------------------------------------------
-  # 1. BUILD EXCLUDE PATTERNS
+  # 1. BUILD EXCLUDE PATTERNS (dengan array biar aman)
   # ------------------------------------------------------------------
   local exclude_patterns=(
     "-not" "-path" "*/node_modules/*"
@@ -143,10 +145,14 @@ ylong() {
     "-not" "-name" "*.jpg"
   )
 
+  # Baca .gitignore jika ada
   if [[ -f .gitignore ]]; then
     while IFS= read -r line; do
+      # Abaikan baris kosong atau komentar
       [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+      # Potong spasi awal/akhir
       line="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      # Tambahkan pattern exclude
       exclude_patterns+=("-not" "-path" "*/$line*")
     done < .gitignore
   fi
@@ -156,16 +162,17 @@ ylong() {
   # ------------------------------------------------------------------
   local name_filter=""
   if [[ $all -eq 0 ]]; then
+    # Hanya file source code umum
     name_filter='\( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \
                     -o -name "*.py" -o -name "*.php" -o -name "*.go" \
                     -o -name "*.vue" -o -name "*.java" -o -name "*.c" -o -name "*.cpp" \
                     -o -name "*.cjs" -o -name "*.mjs" -o -name "*.sh" \)'
   else
-    name_filter="-true"
+    name_filter="-true"  # Semua file
   fi
 
   # ------------------------------------------------------------------
-  # 3. SCAN WITH PARALLEL
+  # 3. SCAN DENGAN PARALLEL
   # ------------------------------------------------------------------
   echo -ne " 🔍 \033[1;33mMembedah isi project...\033[0m"
   local tmp=$(mktemp)
@@ -175,12 +182,14 @@ ylong() {
   local name_filter_str="$name_filter"
   local full_cmd="${find_cmd[@]} $name_filter_str -print0"
 
+  # Gunakan nproc jika ada, fallback ke 2
   local cpu_cores=$(nproc 2>/dev/null || echo 2)
   eval "$full_cmd" | xargs -0 -P$cpu_cores wc -l 2>/dev/null | grep -v " total$" > "$tmp"
 
-  local end_time=$(date +%s)
+  # Hitung waktu eksekusi
+  local end_time=$(date +%s%3N 2>/dev/null || date +%s)000
   local elapsed=$((end_time - start_time))
-  echo -e "\r ✅ \033[1;32mSelesai dalam ${elapsed}s\033[0m             "
+  echo -e "\r ✅ \033[1;32mSelesai dalam ${elapsed}ms\033[0m             "
 
   # ------------------------------------------------------------------
   # 4. STATISTIK DASAR
@@ -196,17 +205,13 @@ ylong() {
   sort -rn -o "$tmp" "$tmp"
 
   # ------------------------------------------------------------------
-  # 5. DEBT COLLECTOR (Safe)
+  # 5. DEBT COLLECTOR
   # ------------------------------------------------------------------
   local total_debt=0
   while IFS= read -r line; do
     file=$(echo "$line" | awk '{print $2}')
-    if [[ -n "$file" && -f "$file" ]]; then
-      debt=$(grep -cE "TODO|FIXME|HACK" "$file" 2>/dev/null || echo 0)
-      if [[ "$debt" =~ ^[0-9]+$ ]]; then
-        total_debt=$((total_debt + debt))
-      fi
-    fi
+    debt=$(grep -cE "TODO|FIXME|HACK" "$file" 2>/dev/null || echo 0)
+    ((total_debt += debt))
   done < "$tmp"
 
   # ------------------------------------------------------------------
@@ -231,44 +236,37 @@ ylong() {
   fi
 
   # ------------------------------------------------------------------
-  # 8. DISTRIBUSI BAHASA (Safe)
+  # 8. DISTRIBUSI BAHASA
   # ------------------------------------------------------------------
   echo -e "\n \033[1mDISTRIBUSI BAHASA:\033[0m"
-  if [[ "$total_lines" -eq 0 ]]; then
-    echo "   (tidak ada baris kode)"
-  else
-    declare -A lang_lines
-    while IFS= read -r line; do
-      lines=$(echo "$line" | awk '{print $1}')
-      file=$(echo "$line" | awk '{print $2}')
-      ext="${file##*.}"
-      [[ -z "$ext" ]] && ext="txt"
-      lines=${lines:-0}
-      ((lang_lines[$ext] += lines))
-    done < "$tmp"
+  declare -A lang_lines
+  while IFS= read -r line; do
+    lines=$(echo "$line" | awk '{print $1}')
+    file=$(echo "$line" | awk '{print $2}')
+    ext="${file##*.}"
+    [[ -z "$ext" ]] && ext="txt"
+    ((lang_lines[$ext] += lines))
+  done < "$tmp"
 
-    for ext in "${!lang_lines[@]}"; do
-      count=${lang_lines[$ext]:-0}
-      echo "$count:$ext"
-    done | sort -t: -k1 -rn | head -n 3 | while IFS=: read -r count ext; do
-      if [[ "$total_lines" -gt 0 && "$count" -gt 0 ]]; then
-        pct=$(( count * 100 / total_lines ))
-        bar_len=$(( pct / 4 ))
-        bar=$(printf "%${bar_len}s" | tr ' ' '#')
-        printf "   %-5s \033[90m[%-25s]\033[0m %d%%\n" "$ext" "$bar" "$pct"
-      fi
-    done
-  fi
+  for ext in "${!lang_lines[@]}"; do
+    echo "${lang_lines[$ext]}:$ext"
+  done | sort -t: -k1 -rn | head -n 3 | while IFS=: read -r count ext; do
+    pct=$(( count * 100 / total_lines ))
+    bar_len=$(( pct / 4 ))
+    bar=$(printf "%${bar_len}s" | tr ' ' '■')
+    printf "   %-5s \033[90m[%-25s]\033[0m %d%%\n" "$ext" "$bar" "$pct"
+  done
 
   # ------------------------------------------------------------------
-  # 9. TOP LIST
+  # 9. TOP LIST (Ranking)
   # ------------------------------------------------------------------
-  echo -e "\n \033[1m🏆 RANKING FILE TERPANJANG:\033[0m"
+  echo -e "\n \033[1m🏆 RANKING FILE TERPANJANG (Dosa Terbesar):\033[0m"
   local max_l=$(head -n 1 "$tmp" | awk '{print $1}')
+
   head -n "$n" "$tmp" | awk -v max="$max_l" '{
     rank++;
     scale = int(($1/max)*20);
-    graph = ""; for(i=0; i<scale; i++) graph = graph "#";
+    graph = ""; for(i=0; i<scale; i++) graph = graph "▬";
     color = "\033[32m"; if($1 > 1000) color = "\033[31m"; else if($1 > 500) color = "\033[33m";
     printf "   \033[90m%2d.\033[0m %s%7d\033[0m lines \033[90m%s\033[0m \033[1m%s\033[0m\n", rank, color, $1, graph, $2
   }'
