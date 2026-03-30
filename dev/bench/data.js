@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774883466917,
+  "lastUpdate": 1774883681877,
   "repoUrl": "https://github.com/Liveiciee/yuyucode",
   "entries": {
     "YuyuCode Benchmark (CI · Ubuntu x86_64)": [
@@ -44163,6 +44163,55 @@ window.BENCHMARK_DATA = {
           {
             "name": "500 mixed files (stress)",
             "value": 6708.68,
+            "unit": "ops/sec"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "committer": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "distinct": true,
+          "id": "f59a2f2952babd5beaf4a053f3107a1f0e7ba018",
+          "message": "fix: remove static imports for providers and add code splitting for codemirror",
+          "timestamp": "2026-03-30T23:13:53+08:00",
+          "tree_id": "00c3464e3d9d04983c482546ab35703442f1da05",
+          "url": "https://github.com/Liveiciee/yuyucode/commit/f59a2f2952babd5beaf4a053f3107a1f0e7ba018"
+        },
+        "date": 1774883681446,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "null input",
+            "value": 11659629.79,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "undefined input",
+            "value": 11168661.97,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no extension",
+            "value": 4227775.91,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "deeply nested path",
+            "value": 6415637.6,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "500 mixed files (stress)",
+            "value": 7325.17,
             "unit": "ops/sec"
           }
         ]
