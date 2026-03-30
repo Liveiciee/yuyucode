@@ -2,8 +2,6 @@ import { logger } from '../utils.js';
 import { CONFIG, MODELS } from './config.js';
 import { AIError, RateLimitError, ServerError } from './errors.js';
 import { validateMessages, hasUsableApiKey, getProviderForModel } from './validators.js';
-import { cerebrasRequest } from './providers/cerebras.js';
-import { groqRequest } from './providers/groq.js';
 import { sleep, getBackoffDelay, isRetryableError } from '../utils.js';
 
 async function tryGroqFallbackChain(messages, onChunk, signal, options, attemptedModels = []) {
