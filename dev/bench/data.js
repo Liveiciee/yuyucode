@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774873217207,
+  "lastUpdate": 1774881048797,
   "repoUrl": "https://github.com/Liveiciee/yuyucode",
   "entries": {
     "YuyuCode Benchmark (CI · Ubuntu x86_64)": [
@@ -44016,6 +44016,55 @@ window.BENCHMARK_DATA = {
           {
             "name": "200 files with cross-imports",
             "value": 14318.16,
+            "unit": "ops/sec"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "committer": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "distinct": true,
+          "id": "670bd7ff881a0834d5e436159a6fc5a7072447ed",
+          "message": "fix: recreate _helpers.jsx with all fixtures exported",
+          "timestamp": "2026-03-30T22:30:00+08:00",
+          "tree_id": "9415e47ba37a286d759a1e368f14447908fd0f07",
+          "url": "https://github.com/Liveiciee/yuyucode/commit/670bd7ff881a0834d5e436159a6fc5a7072447ed"
+        },
+        "date": 1774881048507,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "null input",
+            "value": 11222410.72,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "undefined input",
+            "value": 11349663.48,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no extension",
+            "value": 4215343.61,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "deeply nested path",
+            "value": 6254805.41,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "500 mixed files (stress)",
+            "value": 6793.7,
             "unit": "ops/sec"
           }
         ]
