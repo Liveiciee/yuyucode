@@ -8,7 +8,7 @@ import {
   computeSalience,
 } from '../../lib/map/index.cjs';
 
-// ── Inline pure functions ─────────────────────────────────────────────────────
+// ── Inline pure functions ──────────────────────────────────────────────
 export function getLangExt(path) {
   const ext = path?.split('.').pop()?.toLowerCase();
   const map = {
@@ -46,8 +46,12 @@ export function buildSrcdoc(tabs) {
   return `<!DOCTYPE html><html><head>${cssTab ? `<style>${cssTab.content}</style>` : ''}${CONSOLE_INTERCEPT}</head><body>${jsTab ? `<script type="module">${jsTab.content}</script>` : '<p>No file</p>'}</body></html>`;
 }
 
-// ── Fixtures ──────────────────────────────────────────────────────────────────
-export const SMALL_CODE = `import React from 'react';\nexport default function App() {\n  return <div>Hello</div>;\n}\n`;
+// ── Fixtures ───────────────────────────────────────────────────────────
+export const SMALL_CODE = `import React from 'react';
+export default function App() {
+  return <div>Hello</div>;
+}
+`;
 
 export const LARGE_CODE = Array.from({ length: 500 }, (_, i) =>
   `const fn${i} = (x) => x * ${i}; // line ${i}`
@@ -86,26 +90,47 @@ export function useAgentLoop(opts = {}) {
 
   return { messages, streaming, agentStatus, sendMsg };
 }
-
-export function buildSystemPrompt(config) {
-  const { memories, skills, handoff, map } = config;
-  const parts = [];
-  if (handoff) parts.push('## Handoff\\n' + handoff);
-  if (map)     parts.push('## Map\\n' + map);
-  if (memories?.length) parts.push('## Memories\\n' + memories.map(m => '- ' + m.text).join('\\n'));
-  if (skills?.length)   parts.push('## Skills\\n' + skills.map(s => s.content).join('\\n\\n'));
-  return parts.join('\\n\\n---\\n\\n');
-}
-
-export const EFFORT_CONFIG = {
-  low:    { maxIter: 3,  maxTokens: 8000 },
-  medium: { maxIter: 6,  maxTokens: 16000 },
-  high:   { maxIter: 10, maxTokens: 32000 },
-};
 `.trim();
 
-export const LARGE_COMPONENT = Array.from({ length: 10 }, (_, i) => REALISTIC_COMPONENT.replace(/useAgentLoop/g, `useAgentLoop${i}`)).join('\n\n');
+export const LARGE_COMPONENT = Array.from({ length: 10 }, (_, i) =>
+  REALISTIC_COMPONENT.replace(/useAgentLoop/g, `useAgentLoop${i}`)
+).join('\n\n');
 
+// ── MISSING FIXTURES (INI YANG BIKIN ERROR) ─────────────────────────────
+export const UNICODE_CODE = `
+const café = "☕";
+const japan = "🗾";
+export default function テスト() {
+  return café + japan;
+}
+`;
+
+export const ACTION_NONE = `just text without actions`;
+
+export const ACTION_ONE = `
+\`\`\`action
+{"type":"read_file","path":"src/a.js"}
+\`\`\`
+`;
+
+export const ACTION_FIVE = Array.from({ length: 5 }, (_, i) => `
+\`\`\`action
+{"type":"read_file","path":"src/file${i}.js"}
+\`\`\`
+`).join('\n');
+
+export const ACTION_MIXED = `
+text
+\`\`\`action
+{"type":"read_file","path":"src/a.js"}
+\`\`\`
+\`\`\`action
+INVALID JSON
+\`\`\`
+more text
+`;
+
+// ── OTHER FIXTURES ─────────────────────────────────────────────────────
 export const TABS_HTML_CSS_JS = [
   { path: 'index.html', content: '<html><head></head><body></body></html>' },
   { path: 'style.css',  content: 'body{margin:0;padding:0;font-family:sans-serif}h1{color:red}' },
@@ -119,11 +144,11 @@ export const EXTENSIONS = ['App.jsx', 'types.ts', 'style.css', 'index.html', 'da
 
 export const SALIENCE_FILES = Array.from({ length: 20 }, (_, i) => ({
   rel: `src/module${i}.js`,
-  src: `import { helper } from './utils.js';\nexport function fn${i}(x) { return x + ${i}; }\n`,
+  src: `import { helper } from './utils.js';
+export function fn${i}(x) { return x + ${i}; }`,
   lines: 2,
 }));
 
-// ── Extreme fixtures ──────────────────────────────────────────────────────────
 export const STRESS_5000 = Array.from({ length: 5000 }, (_, i) =>
   `export const fn${i} = (a, b, c) => { const r = a * ${i} + b - c; return r > 0 ? r : -r; };`
 ).join('\n');
@@ -133,33 +158,11 @@ export const STRESS_5000_ALL_CHANGED = Array.from({ length: 5000 }, (_, i) =>
 ).join('\n');
 
 export const DEEPLY_NESTED = Array.from({ length: 50 }, (_, i) =>
-  `export function level${i}(x) {\n${'  '.repeat(i)}return level${i+1} ? level${i+1}(x) : x;\n}`
+  `export function level${i}(x) {
+${'  '.repeat(i)}return level${i+1} ? level${i+1}(x) : x;
+}`
 ).join('\n');
-
-export const ACTION_PATHOLOGICAL = Array.from({ length: 100 }, (_, i) =>
-  `Step ${i}: use \`\`\`pseudo\ncode block ${i}\n\`\`\` and also \`\`\`action\nNOT JSON at all !!@#$%^&*()\n\`\`\``
-).join('\n');
-
-export const ACTION_20_VALID = Array.from({ length: 20 }, (_, i) =>
-  `\`\`\`action\n{"type":"read_file","path":"src/file${i}.js","encoding":"utf8"}\n\`\`\``
-).join('\n');
-
-export const TABS_200 = Array.from({ length: 200 }, (_, i) => ({
-  path: `/src/components/Component${i}.jsx`,
-  content: SMALL_CODE,
-  dirty: i % 7 === 0,
-}));
-
-export const FIFTY_IMPORTS = Array.from({ length: 50 }, (_, i) =>
-  `import { fn${i}, util${i} } from './module${i}.js';`
-).join('\n') + '\n\nexport default function App() { return null; }';
 
 export const LARGE_UNIQUE_SYMBOLS = Array.from({ length: 200 }, (_, i) =>
-  `export function uniqueFunc${i}Abcdef(param${i}X, param${i}Y) {\n  const result${i} = param${i}X * param${i}Y + ${i};\n  return result${i};\n}`
+  `export function uniqueFunc${i}(a,b){return a*b+${i}}`
 ).join('\n');
-
-export const SALIENCE_200 = Array.from({ length: 200 }, (_, i) => ({
-  rel: `src/module${i}.js`,
-  src: `import { helper } from './utils.js';\nimport { fn${(i+1)%200} } from './module${(i+1)%200}.js';\nexport function fn${i}(x) { return x + ${i}; }`,
-  lines: 3,
-}));
