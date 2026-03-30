@@ -179,4 +179,4 @@ describe('useAgentLoop — continueMsg + retryLast', () => {
     await act(async () => { await result.current.retryLast(); });
     expect(ctx.chat.setLoading).not.toHaveBeenCalled();
   });
-}
+});

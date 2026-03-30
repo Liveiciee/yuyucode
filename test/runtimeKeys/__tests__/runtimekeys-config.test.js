@@ -127,4 +127,4 @@ describe('runtimeKeys — CONFIG', () => {
     expect(mod.CONFIG.PBKDF2_ITERATIONS).toBe(1);
     expect(mod.CONFIG.LOAD_TIMEOUT).toBe(100);
   });
-}
+});

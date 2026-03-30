@@ -1,7 +1,6 @@
 import { FileEditor } from "./FileEditor.jsx";
 import React, { useState, useRef, useEffect } from 'react';
 import { Pin, Eye, ScrollText, Camera, Paperclip, Volume2, VolumeX, Loader, Play } from 'lucide-react';
-import { hl } from '../utils.js';
 import { MsgBubble, StreamingBubble } from './chat/msg/index.js';
 import { TabBar } from './chat/TabBar.jsx';
 import { EmptyState } from './chat/EmptyState.jsx';

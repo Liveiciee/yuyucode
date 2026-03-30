@@ -80,4 +80,4 @@ describe('sendMsg — patch diffReview with orig data and old_str', () => {
     expect(mockGenerateDiff).toHaveBeenCalled();
     expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
   });
-}
+});

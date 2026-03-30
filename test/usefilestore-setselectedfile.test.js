@@ -43,4 +43,4 @@ describe('useFileStore — setSelectedFile', () => {
     expect(result.current.openTabs).toHaveLength(0);
     expect(result.current.activeTab).toBe('chat');
   });
-}
+});

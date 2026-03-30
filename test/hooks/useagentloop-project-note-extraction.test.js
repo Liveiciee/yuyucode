@@ -160,4 +160,4 @@ describe('useAgentLoop — PROJECT_NOTE extraction', () => {
 
     expect(setNotes).toHaveBeenCalledWith(expect.stringContaining('pakai React 19'), expect.anything());
   });
-}
+});

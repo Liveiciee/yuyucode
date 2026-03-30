@@ -31,4 +31,4 @@ describe('executeAction — move_file', () => {
     const call = callServer.mock.calls[0][0];
     expect(call.from).toBe('/base/old.txt');
   });
-}
+});

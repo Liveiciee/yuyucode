@@ -330,4 +330,4 @@ describe('batch', () => {
     expect(r.body.results[0].ok).toBe(false);
     expect(r.body.results[1].ok).toBe(true);
   });
-}
+});

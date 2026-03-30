@@ -45,4 +45,4 @@ describe('parseActions — extended', () => {
     const text = '```js\nconst x = 1;\n```\n```bash\necho hi\n```';
     expect(parseActions(text)).toEqual([]);
   });
-}
+});

@@ -75,4 +75,4 @@ describe('sendMsg — PROJECT_NOTE extraction', () => {
     await act(async () => { await result.current.sendMsg('task'); });
     expect(ctx.project.setNotes).toHaveBeenCalled();
   });
-}
+});

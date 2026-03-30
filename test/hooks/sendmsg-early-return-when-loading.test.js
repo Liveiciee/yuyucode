@@ -70,4 +70,4 @@ describe('sendMsg — early return when loading', () => {
     await act(async () => { await result.current.sendMsg('hi'); });
     expect(mockAskCerebrasStream).not.toHaveBeenCalled();
   });
-}
+});

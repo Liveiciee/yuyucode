@@ -20,4 +20,4 @@ describe('executeAction — file_info', () => {
     await executeAction({ type: 'file_info', path: 'App.jsx' }, '/base');
     expect(callServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
   });
-}
+});

@@ -89,4 +89,4 @@ describe('useAgentLoop — CONTINUE auto-continuation', () => {
     expect(continueFn).not.toBeNull();
     vi.restoreAllMocks();
   });
-}
+});

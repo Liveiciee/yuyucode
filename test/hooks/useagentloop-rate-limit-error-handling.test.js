@@ -164,4 +164,4 @@ describe('useAgentLoop — RATE_LIMIT error handling', () => {
     expect(ctx.chat.startRateLimitTimer).toHaveBeenCalledWith(30);
     expect(ctx.chat.setMessages).toHaveBeenCalled();
   });
-}
+});

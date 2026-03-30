@@ -70,4 +70,4 @@ describe('sendMsg — early return when txt empty', () => {
     await act(async () => { await result.current.sendMsg(''); });
     expect(mockAskCerebrasStream).not.toHaveBeenCalled();
   });
-}
+});

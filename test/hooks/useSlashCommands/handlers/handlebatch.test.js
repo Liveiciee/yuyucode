@@ -491,4 +491,4 @@ describe('handleBatch', () => {
     // second file skipped because signal.aborted = true
     expect(processBatchFile).toHaveBeenCalledTimes(1);
   });
-}
+});

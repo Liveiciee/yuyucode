@@ -285,4 +285,4 @@ describe('ping', () => {
     expect(r.body.ok).toBe(true);
     expect(r.body.version).toBeDefined();
   });
-}
+});

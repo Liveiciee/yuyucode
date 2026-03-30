@@ -290,4 +290,4 @@ describe('append', () => {
     await request(PORT, { type: 'append', path: filePath, content: 'line2\n' });
     expect(fs.readFileSync(filePath, 'utf8')).toBe('line1\nline2\n');
   });
-}
+});

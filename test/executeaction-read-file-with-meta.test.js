@@ -31,4 +31,4 @@ describe('executeAction — read_file with meta', () => {
     const r = await executeAction({ type: 'read_file', path: 'small.js' }, '/base');
     expect(r.data).toBe('const x = 1;');
   });
-}
+});

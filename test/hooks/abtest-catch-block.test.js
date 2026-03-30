@@ -76,4 +76,4 @@ describe('abTest — catch block', () => {
     await act(async () => { await result.current.abTest('task', 'model-a', 'model-b'); });
     expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
   });
-}
+});

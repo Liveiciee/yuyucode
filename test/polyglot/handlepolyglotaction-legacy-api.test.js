@@ -87,28 +87,51 @@ afterAll(() => {
 // ============================================================================
 
 
-describe('Configuration', () => {
-  it('should have frozen config', () => {
-    expect(() => {
-      CONFIG.MAX_ARGS = 999;
-    }).toThrow();
+describe('handlePolyglotAction (Legacy API)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fs.existsSync.mockReturnValue(true);
+    fs.statSync.mockReturnValue(createMockStats());
   });
 
-  it('should have valid regex patterns', () => {
-    CONFIG.PATH_TRAVERSAL_PATTERNS.forEach(pattern => {
-      expect(pattern).toBeInstanceOf(RegExp);
+  it('should list runtimes', () => {
+    const result = handlePolyglotAction('list');
+    expect(result.ok).toBe(true);
+    expect(result.data).toContain('javascript');
+    expect(result.data).toContain('python');
+  });
+
+  it('should check health synchronously', () => {
+    spawnSync.mockReturnValue({
+      status: 0,
+      stdout: 'v3.10.0',
     });
+
+    const result = handlePolyglotAction('health');
+    expect(result.ok).toBe(true);
+    expect(result.data).toHaveProperty('python');
+    expect(result.data.python.ok).toBe(true);
   });
 
-  it('should have consistent limits', () => {
-    expect(CONFIG.MAX_TIMEOUT_MS).toBeGreaterThan(0);
-    expect(CONFIG.MAX_MEMORY_MB).toBeGreaterThan(0);
-    expect(CONFIG.MAX_OUTPUT_BYTES).toBeGreaterThan(CONFIG.MAX_FILE_SIZE_BYTES);
+  it('should handle run action (async)', async () => {
+    fs.readFileSync.mockReturnValue('console.log(1)');
+    spawnSync.mockReturnValue({ status: 0, stdout: '/usr/bin/node' });
+    
+    const mockProc = createMockProcess({ exitCode: 0 });
+    spawn.mockReturnValue(mockProc);
+
+    const result = await handlePolyglotAction('run', {
+      runtime: 'javascript',
+      entry: 'test.js',
+      cwd: TEST_DIR,
+    });
+
+    expect(result).toBeDefined();
   });
 
-  it('should have all required token weights', () => {
-    const weights = CONFIG.TOKEN_WEIGHTS;
-    expect(weights.keyword).toBeGreaterThan(0);
-    expect(weights.identifier).toBeGreaterThan(0);
+  it('should reject unknown actions', () => {
+    const result = handlePolyglotAction('fly');
+    expect(result.ok).toBe(false);
+    expect(result.data).toContain('Unknown');
   });
-}
+});

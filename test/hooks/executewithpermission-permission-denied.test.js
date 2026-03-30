@@ -73,4 +73,4 @@ describe('executeWithPermission — permission denied', () => {
     await act(async () => { await result.current.sendMsg('dangerous task'); });
     expect(mockCheckPermission).toHaveBeenCalled();
   });
-}
+});

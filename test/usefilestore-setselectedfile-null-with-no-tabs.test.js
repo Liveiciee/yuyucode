@@ -33,4 +33,4 @@ describe('useFileStore — setSelectedFile null with no tabs', () => {
     act(() => { result.current.setSelectedFile(null); });
     expect(result.current.activeTab).toBe('chat');
   });
-}
+});

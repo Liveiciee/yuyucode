@@ -44,4 +44,4 @@ describe('useFileStore — saveFile edge cases', () => {
     await act(async () => { await result.current.saveFile('new content', onMsg); });
     expect(onMsg).toHaveBeenCalledWith(expect.stringContaining('Saved'));
   });
-}
+});

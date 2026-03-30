@@ -78,4 +78,4 @@ describe('sendMsg — webSearch and safeActions execute in parallel', () => {
     await act(async () => { await result.current.sendMsg('search react hooks'); });
     expect(mockExecuteAction).toHaveBeenCalled();
   });
-}
+});

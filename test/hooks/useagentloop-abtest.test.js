@@ -171,4 +171,4 @@ describe('useAgentLoop — abTest', () => {
     expect(ctx.chat.setMessages).toHaveBeenCalled();
     expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
   });
-}
+});

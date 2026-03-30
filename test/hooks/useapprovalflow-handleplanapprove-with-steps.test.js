@@ -119,4 +119,4 @@ describe('useApprovalFlow — handlePlanApprove with steps', () => {
     await handlePlanApprove(0, true);
     expect(ctx.setMessages).toHaveBeenCalled();
   });
-}
+});

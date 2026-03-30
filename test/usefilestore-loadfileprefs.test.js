@@ -46,4 +46,4 @@ describe('useFileStore — loadFilePrefs', () => {
       act(() => { result.current.loadFilePrefs({ pinned: 'bad json', recent: null }); });
     }).not.toThrow();
   });
-}
+});

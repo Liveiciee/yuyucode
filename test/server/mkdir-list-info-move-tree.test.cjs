@@ -333,4 +333,4 @@ describe('mkdir / list / info / move / tree', () => {
     expect(r.body.data).toContain('sub/');
     expect(r.body.data).toContain('nested.js');
   });
-}
+});

@@ -163,4 +163,4 @@ describe('useAgentLoop — TTS enabled', () => {
 
     expect(speakText).toHaveBeenCalledWith('Response untuk TTS');
   });
-}
+});

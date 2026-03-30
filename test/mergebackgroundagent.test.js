@@ -54,4 +54,4 @@ describe('mergeBackgroundAgent', () => {
     const r = await mergeBackgroundAgent('fake-id-xyz', '/folder');
     expect(r.ok).toBe(false);
   });
-}
+});

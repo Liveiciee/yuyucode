@@ -93,4 +93,4 @@ describe('useAgentLoop — autoVerifyWrites error triggers continue', () => {
 
     expect(aiCalls).toBeGreaterThan(1);
   });
-}
+});

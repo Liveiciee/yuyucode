@@ -296,4 +296,4 @@ describe('ARM64 compatibility', () => {
     expect(endMem - startMem).toBeLessThan(15 * 1024 * 1024); // less than 15MB increase
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }, 30000);
-}
+});

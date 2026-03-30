@@ -59,4 +59,4 @@ describe('useChatStore — startRateLimitTimer', () => {
     act(() => { result.current.startRateLimitTimer(30); });
     expect(result.current.rateLimitTimer).toBe(30);
   });
-}
+});

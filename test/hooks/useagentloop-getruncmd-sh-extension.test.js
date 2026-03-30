@@ -87,4 +87,4 @@ describe('useAgentLoop — getRunCmd .sh extension', () => {
     const execCalls = mockCallServer.mock.calls.filter(c => c[0]?.type === 'exec' && c[0]?.command?.includes('bash'));
     expect(execCalls.length).toBeGreaterThan(0);
   });
-}
+});

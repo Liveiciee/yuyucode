@@ -75,4 +75,4 @@ describe('sendMsg — ttsEnabled calls speakText', () => {
     await act(async () => { await result.current.sendMsg('task'); });
     expect(ctx.speakText).toHaveBeenCalledWith('spoken reply');
   });
-}
+});

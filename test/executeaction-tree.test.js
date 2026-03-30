@@ -30,4 +30,4 @@ describe('executeAction — tree', () => {
       expect.objectContaining({ depth: 3 })
     );
   });
-}
+});

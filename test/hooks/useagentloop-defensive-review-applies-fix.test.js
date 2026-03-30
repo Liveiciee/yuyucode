@@ -95,4 +95,4 @@ describe('useAgentLoop — defensive review applies fix', () => {
 
     expect(aiCalls).toBeGreaterThanOrEqual(2);
   });
-}
+});

@@ -259,4 +259,4 @@ describe('PolyglotRunner', () => {
       expect(runner.stats.runs).toBeGreaterThan(0);
     });
   });
-}
+});

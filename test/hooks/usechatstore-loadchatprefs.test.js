@@ -79,4 +79,4 @@ describe('useChatStore — loadChatPrefs', () => {
       });
     }).not.toThrow();
   });
-}
+});

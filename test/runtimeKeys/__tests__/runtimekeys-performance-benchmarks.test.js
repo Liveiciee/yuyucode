@@ -144,4 +144,4 @@ describe('runtimeKeys — Performance Benchmarks', () => {
     const duration = performance.now() - start;
     expect(duration).toBeLessThan(300);
   });
-}
+});

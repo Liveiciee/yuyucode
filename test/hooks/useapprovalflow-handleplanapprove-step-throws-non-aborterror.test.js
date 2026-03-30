@@ -76,4 +76,4 @@ describe('useApprovalFlow — handlePlanApprove step throws non-AbortError', () 
     expect(hasErr).toBe(true);
     expect(ctx.setLoading).toHaveBeenCalledWith(false);
   });
-}
+});

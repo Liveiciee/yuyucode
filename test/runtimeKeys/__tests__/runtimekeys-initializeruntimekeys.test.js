@@ -139,4 +139,4 @@ describe('runtimeKeys — initializeRuntimeKeys', () => {
     const mod = await createFreshStore();
     await expect(mod.initializeRuntimeKeys({ password: 'test-pass' })).resolves.not.toThrow();
   });
-}
+});

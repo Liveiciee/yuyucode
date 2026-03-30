@@ -191,4 +191,4 @@ describe('runtimeKeys — loadRuntimeKeys', () => {
     const mod = await createFreshStore();
     await expect(mod.loadRuntimeKeys({ password: 'test-pass' })).rejects.toHaveProperty('code', 'LOAD_ERROR');
   });
-}
+});

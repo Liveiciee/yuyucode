@@ -22,4 +22,4 @@ describe('executeAction — delete_file', () => {
       type: 'delete', path: '/base/old.txt',
     });
   });
-}
+});

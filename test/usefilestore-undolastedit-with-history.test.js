@@ -44,4 +44,4 @@ describe('useFileStore — undoLastEdit with history', () => {
     expect(onMsg).toHaveBeenCalledWith(expect.stringContaining('Undo'));
     expect(result.current.editHistory).toHaveLength(0);
   });
-}
+});

@@ -79,4 +79,4 @@ describe('sendMsg — buildFeedback write failed', () => {
     await act(async () => { await result.current.sendMsg('write file'); });
     expect(mockAskCerebrasStream).toHaveBeenCalled();
   });
-}
+});

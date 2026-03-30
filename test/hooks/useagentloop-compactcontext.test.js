@@ -192,4 +192,4 @@ describe('useAgentLoop — compactContext', () => {
       act(async () => { await result.current.compactContext(); })
     ).resolves.not.toThrow();
   });
-}
+});

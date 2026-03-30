@@ -83,4 +83,4 @@ describe('useChatStore — getRelevantMemories', () => {
     });
     expect(result.current.getRelevantMemories('unrelated').length).toBeGreaterThan(0);
   });
-}
+});

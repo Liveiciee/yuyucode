@@ -2,7 +2,7 @@ import React from 'react';
 import { Play } from 'lucide-react';
 
 export function TabBar({ T, file, ui }) {
-  const activeTab = file.openTabs[file.activeTabIdx] || null;
+////////  const activeTab = file.openTabs[file.activeTabIdx] || null;
 
   return (
     <div style={{

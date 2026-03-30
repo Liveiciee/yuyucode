@@ -300,4 +300,4 @@ describe('read_many', () => {
     expect(r.body.ok).toBe(true);
     expect(r.body.data['/nonexistent/x.txt']).toBeNull();
   });
-}
+});

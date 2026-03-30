@@ -72,4 +72,4 @@ describe('useChatStore — exportChat', () => {
     expect(global.URL.createObjectURL).toHaveBeenCalled();
     vi.restoreAllMocks();
   });
-}
+});

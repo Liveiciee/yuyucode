@@ -66,4 +66,4 @@ describe('useChatStore — clearChat', () => {
     expect(result.current.messages).toHaveLength(1);
     expect(mockPreferencesRemove).toHaveBeenCalledWith({ key: 'yc_history' });
   });
-}
+});

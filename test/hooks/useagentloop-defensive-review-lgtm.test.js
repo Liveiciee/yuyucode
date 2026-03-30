@@ -92,4 +92,4 @@ describe('useAgentLoop — defensive review LGTM', () => {
     // Defensive review ran (2 AI calls minimum) but no extra patches
     expect(aiCalls).toBeGreaterThanOrEqual(2);
   });
-}
+});

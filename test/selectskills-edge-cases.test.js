@@ -79,4 +79,4 @@ describe('selectSkills — edge cases', () => {
     const noContent = [{ name: 'bare.md', active: true }];
     expect(() => selectSkills(noContent, 'task')).not.toThrow();
   });
-}
+});

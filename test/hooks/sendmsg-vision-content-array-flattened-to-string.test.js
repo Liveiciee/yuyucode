@@ -82,4 +82,4 @@ describe('sendMsg — vision content array flattened to string', () => {
     await act(async () => { await result.current.sendMsg('follow up'); });
     expect(mockAskCerebrasStream).toHaveBeenCalled();
   });
-}
+});

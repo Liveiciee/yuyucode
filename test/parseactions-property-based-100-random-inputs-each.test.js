@@ -52,4 +52,4 @@ describe('parseActions — property-based (100 random inputs each)', () => {
       expect(parseActions(s)).toEqual(parseActions(s));
     }));
   });
-}
+});

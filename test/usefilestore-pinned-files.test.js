@@ -40,4 +40,4 @@ describe('useFileStore — pinned files', () => {
     act(() => { result.current.togglePin('/project/App.jsx'); });
     expect(result.current.pinnedFiles).not.toContain('/project/App.jsx');
   });
-}
+});

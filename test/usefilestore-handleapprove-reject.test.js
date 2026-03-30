@@ -41,4 +41,4 @@ describe('useFileStore — handleApprove reject', () => {
     });
     expect(setMessages).toHaveBeenCalled();
   });
-}
+});

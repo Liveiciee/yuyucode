@@ -32,4 +32,4 @@ describe('executeAction — mcp', () => {
       expect.objectContaining({ params: {} })
     );
   });
-}
+});

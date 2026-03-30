@@ -18,4 +18,5 @@ export {
 } from './panels.agent.jsx';
 
 // Re-export all tool panels from the modular tools directory
+/* eslint-disable-next-line react-refresh/only-export-components */
 export * from './panels/tools';

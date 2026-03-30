@@ -29,7 +29,7 @@ export function* guardedMyers(aLines, bLines, ctx = {}) {
       return;
     }
 
-    let lines = h.value.split('\n');
+    const lines = h.value.split('\n');
     if (lines[lines.length - 1] === '') lines.pop();
 
     if (h.added || h.removed) changedLines += lines.length;

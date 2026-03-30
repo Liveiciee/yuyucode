@@ -22,4 +22,4 @@ describe('executeAction — web_search', () => {
       type: 'web_search', query: 'vitest mock fetch',
     });
   });
-}
+});

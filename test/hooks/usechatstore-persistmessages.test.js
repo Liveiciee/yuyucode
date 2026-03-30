@@ -83,4 +83,4 @@ describe('useChatStore — persistMessages', () => {
     });
     expect(mockPreferencesSet).not.toHaveBeenCalled();
   });
-}
+});

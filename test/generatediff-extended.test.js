@@ -40,4 +40,4 @@ describe('generateDiff — extended', () => {
     const diff = generateDiff(old, nw);
     expect(diff).toContain('baris lebih');
   });
-}
+});

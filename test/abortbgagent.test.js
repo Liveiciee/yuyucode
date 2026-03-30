@@ -45,4 +45,4 @@ describe('abortBgAgent', () => {
   it('does not throw for unknown agent id', () => {
     expect(() => abortBgAgent('nonexistent')).not.toThrow();
   });
-}
+});

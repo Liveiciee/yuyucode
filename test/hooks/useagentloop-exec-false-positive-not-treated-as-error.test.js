@@ -78,4 +78,4 @@ describe('useAgentLoop — exec false positive not treated as error', () => {
 
     expect(mockAskCerebrasStream.mock.calls.length).toBeGreaterThanOrEqual(1); // no auto-fix retry, but loop may continue
   });
-}
+});

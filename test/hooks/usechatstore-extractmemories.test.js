@@ -91,4 +91,4 @@ describe('useChatStore — extractMemories', () => {
     });
     expect(result.current.memories).toHaveLength(0);
   });
-}
+});

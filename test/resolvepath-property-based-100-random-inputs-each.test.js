@@ -27,4 +27,4 @@ describe('resolvePath — property-based (100 random inputs each)', () => {
       expect(resolvePath(s, '')).toContain(s);
     }));
   });
-}
+});

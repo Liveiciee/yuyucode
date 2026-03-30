@@ -63,4 +63,4 @@ describe('parsePlanSteps — edge cases', () => {
     expect(steps).toHaveLength(1);
     expect(steps[0].text.length).toBeGreaterThan(100);
   });
-}
+});

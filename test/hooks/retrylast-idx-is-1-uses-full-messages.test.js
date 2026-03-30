@@ -89,4 +89,4 @@ describe('retryLast — idx is -1, uses full messages', () => {
     await act(async () => { await result.current.retryLast(); });
     expect(mockAskCerebrasStream).toHaveBeenCalled();
   });
-}
+});

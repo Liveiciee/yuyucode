@@ -93,4 +93,4 @@ describe('useChatStore — message operations', () => {
     expect(await result.current.searchMessages('')).toEqual([]);
     expect(await result.current.searchMessages('   ')).toEqual([]);
   });
-}
+});

@@ -285,4 +285,4 @@ describe('unknown type', () => {
     expect(r.body.ok).toBe(false);
     expect(r.body.data).toContain('Unknown');
   });
-}
+});

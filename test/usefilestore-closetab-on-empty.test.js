@@ -32,4 +32,4 @@ describe('useFileStore — closeTab on empty', () => {
     const { result } = renderHook(() => useFileStore());
     expect(() => act(() => { result.current.closeTab(0); })).not.toThrow();
   });
-}
+});

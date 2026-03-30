@@ -91,14 +91,14 @@ export function computeBlockSimilarity(aLines, bLines) {
   const bBlocks = rollingHash(bLines, CONFIG.BLOCK_SIZE);
   
   let matches = 0;
-  let totalWeight = 0;
+  let _totalWeight = 0;
   const moves = [];
   
   for (const [hash, aData] of aBlocks) {
     if (bBlocks.has(hash)) {
       matches++;
       const bData = bBlocks.get(hash);
-      totalWeight += aData.weight;
+      _totalWeight += aData.weight;
       
       const posA = aData.startIdx;
       const posB = bData.startIdx;

@@ -77,7 +77,7 @@ export function tokenize(line) {
       continue;
     }
     
-    if (/[{}()\[\];,]/.test(char)) {
+    if (/[{}()[\];,]/.test(char)) {
       tokens.push({ value: char, type: 'punct' });
       i++;
       continue;

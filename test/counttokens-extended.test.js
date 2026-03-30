@@ -34,4 +34,4 @@ describe('countTokens — extended', () => {
     const result = countTokens(msgs);
     expect(Number.isInteger(result)).toBe(true);
   });
-}
+});

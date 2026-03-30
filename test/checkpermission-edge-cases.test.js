@@ -61,4 +61,4 @@ describe('checkPermission — edge cases', () => {
   it('web_search defaults to true', () => {
     expect(checkPermission({}, 'web_search')).toBe(true);
   });
-}
+});

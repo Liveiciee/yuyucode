@@ -170,4 +170,4 @@ describe('useAgentLoop — sendMsg slash command', () => {
     await act(async () => { await result.current.sendMsg('hello'); });
     expect(ctx.chat.setLoading).not.toHaveBeenCalled();
   });
-}
+});

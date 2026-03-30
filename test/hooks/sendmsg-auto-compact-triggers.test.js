@@ -84,4 +84,4 @@ describe('sendMsg — auto-compact triggers', () => {
     // Auto-compact path exercised (may or may not call depending on impl)
     expect(mockAskCerebrasStream).toHaveBeenCalled();
   });
-}
+});

@@ -20,4 +20,4 @@ describe('executeAction — mkdir', () => {
     await executeAction({ type: 'mkdir', path: 'new-dir' }, '/base');
     expect(callServer).toHaveBeenCalledWith({ type: 'mkdir', path: '/base/new-dir' });
   });
-}
+});

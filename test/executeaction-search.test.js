@@ -23,4 +23,4 @@ describe('executeAction — search', () => {
       content: 'useState',
     }));
   });
-}
+});

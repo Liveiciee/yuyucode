@@ -75,4 +75,4 @@ describe('checkServerHealth — ping throws', () => {
     // Server unreachable → shows error message
     expect(ctx.chat.setMessages).toHaveBeenCalled();
   });
-}
+});

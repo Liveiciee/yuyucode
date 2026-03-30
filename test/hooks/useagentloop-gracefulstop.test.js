@@ -161,4 +161,4 @@ describe('useAgentLoop — gracefulStop', () => {
 
     expect(ctx.chat.setGracefulStop).toHaveBeenCalledWith(false);
   });
-}
+});

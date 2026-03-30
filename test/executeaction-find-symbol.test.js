@@ -22,4 +22,4 @@ describe('executeAction — find_symbol', () => {
       type: 'search', content: 'useEffect',
     }));
   });
-}
+});

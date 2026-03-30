@@ -84,4 +84,4 @@ describe('callAI — vision model when imageBase64 provided', () => {
       expect.anything(),
     );
   });
-}
+});

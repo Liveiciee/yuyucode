@@ -151,4 +151,4 @@ describe('parseActions + executeAction (integration)', () => {
     const action = { type: 'read_file', path: 'src/App.jsx' };
     await expect(executeAction(action, '/proj', mockCS)).rejects.toThrow('network error');
   });
-}
+});

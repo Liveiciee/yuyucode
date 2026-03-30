@@ -74,4 +74,4 @@ describe('sendMsg — catch RATE_LIMIT error', () => {
     await act(async () => { await result.current.sendMsg('task'); });
     expect(ctx.chat.startRateLimitTimer).toHaveBeenCalled();
   });
-}
+});

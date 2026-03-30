@@ -198,4 +198,4 @@ describe('useAgentLoop — sendMsg basic loop', () => {
       expect.any(Object), 'exec'
     );
   });
-}
+});

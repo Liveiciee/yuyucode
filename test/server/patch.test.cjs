@@ -305,4 +305,4 @@ describe('patch', () => {
     await request(PORT, { type: 'patch', path: filePath, old_str: 'delete this\n', new_str: '' });
     expect(fs.readFileSync(filePath, 'utf8')).not.toContain('delete this');
   });
-}
+});

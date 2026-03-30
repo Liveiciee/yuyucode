@@ -62,4 +62,4 @@ describe('rewindMessages — edge cases', () => {
     expect(rewindMessages(msgs, 2)).toHaveLength(4);
     expect(rewindMessages(msgs, 3)).toHaveLength(2);
   });
-}
+});

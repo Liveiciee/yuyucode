@@ -77,4 +77,4 @@ describe('useApprovalFlow — verifySyntax empty output skipped', () => {
     const hasSyntaxErr = msgs.some(m => m?.content?.includes('Syntax error'));
     expect(hasSyntaxErr).toBe(false);
   });
-}
+});

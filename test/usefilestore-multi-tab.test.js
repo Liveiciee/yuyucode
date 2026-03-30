@@ -185,4 +185,4 @@ describe('useFileStore — multi-tab', () => {
 
     expect(result.current.recentFiles.length).toBeLessThanOrEqual(8);
   });
-}
+});

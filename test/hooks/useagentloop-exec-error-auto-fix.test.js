@@ -86,4 +86,4 @@ describe('useAgentLoop — exec error auto-fix', () => {
     // AI called more than once due to auto-fix
     expect(mockAskCerebrasStream.mock.calls.length).toBeGreaterThan(1);
   });
-}
+});

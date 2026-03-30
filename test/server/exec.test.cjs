@@ -290,4 +290,4 @@ describe('exec', () => {
     const r = await request(PORT, { type: 'exec', command: 'exit 1', path: os.tmpdir() });
     expect(r.body.ok).toBe(false);
   });
-}
+});

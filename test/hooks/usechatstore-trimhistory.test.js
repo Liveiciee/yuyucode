@@ -74,4 +74,4 @@ describe('useChatStore — trimHistory', () => {
     expect(trimmed.length).toBeLessThan(msgs.length);
     expect(trimmed.some(m => m.content.startsWith('[Ringkasan'))).toBe(true);
   });
-}
+});

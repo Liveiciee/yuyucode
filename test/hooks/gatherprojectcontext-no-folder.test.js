@@ -75,4 +75,4 @@ describe('gatherProjectContext — no folder', () => {
     // No folder = no context gathered, but still runs
     expect(mockAskCerebrasStream).toHaveBeenCalled();
   });
-}
+});

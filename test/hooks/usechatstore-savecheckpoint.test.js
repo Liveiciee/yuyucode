@@ -69,4 +69,4 @@ describe('useChatStore — saveCheckpoint', () => {
     expect(result.current.checkpoints).toHaveLength(1);
     expect(result.current.messages.at(-1).content).toContain('Checkpoint');
   });
-}
+});

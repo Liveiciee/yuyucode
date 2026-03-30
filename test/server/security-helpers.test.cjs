@@ -289,4 +289,4 @@ describe('security helpers', () => {
     expect(isValidGitHubIdentifierTest('owner;rm -rf /')).toBe(false);
     expect(isValidGitHubIdentifierTest('bad/repo')).toBe(false);
   });
-}
+});

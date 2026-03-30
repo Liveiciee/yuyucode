@@ -154,4 +154,4 @@ describe('useAgentLoop — sendMsg server check', () => {
     expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
     expect(ctx.chat.setMessages).toHaveBeenCalled();
   });
-}
+});

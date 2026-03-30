@@ -190,4 +190,4 @@ describe('Edge Cases & Stress Tests', () => {
       expect(typeof cfg.compile).toBe('boolean');
     });
   });
-}
+});

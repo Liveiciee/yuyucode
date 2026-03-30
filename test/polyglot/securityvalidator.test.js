@@ -244,4 +244,4 @@ describe('SecurityValidator', () => {
       expect(result).toContain('rust_');
     });
   });
-}
+});

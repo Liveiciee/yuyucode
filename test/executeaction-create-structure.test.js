@@ -58,4 +58,4 @@ describe('executeAction — create_structure', () => {
     expect(r.ok).toBe(true);
     expect(r.data).toBe('');
   });
-}
+});

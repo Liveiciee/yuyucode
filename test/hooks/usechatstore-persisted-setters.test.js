@@ -67,4 +67,4 @@ describe('useChatStore — persisted setters', () => {
       expect.objectContaining({ key: 'yc_checkpoints' })
     );
   });
-}
+});

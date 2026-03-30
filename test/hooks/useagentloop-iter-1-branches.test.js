@@ -85,4 +85,4 @@ describe('useAgentLoop — iter > 1 branches', () => {
     expect(ctx.chat.setAgentRunning).toHaveBeenCalledWith(true);
     expect(ctx.sendNotification).toHaveBeenCalled();
   });
-}
+});

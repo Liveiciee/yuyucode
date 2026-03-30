@@ -166,4 +166,4 @@ describe('useAgentLoop — permission check', () => {
     // checkPermission was called and returned false — result should be permission denied
     expect(mockCheckPermission).toHaveBeenCalled();
   });
-}
+});

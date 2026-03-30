@@ -36,4 +36,4 @@ describe('resolvePath', () => {
     const result = resolvePath('/proj', 'src/App.jsx');
     expect(result).toBe('/proj/src/App.jsx');
   });
-}
+});

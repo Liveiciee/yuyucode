@@ -65,4 +65,4 @@ describe('useChatStore — initial state', () => {
     expect(result.current.loading).toBe(false);
     expect(result.current.agentRunning).toBe(false);
   });
-}
+});

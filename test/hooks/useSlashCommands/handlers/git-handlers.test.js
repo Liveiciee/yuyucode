@@ -429,4 +429,4 @@ describe('git handlers', () => {
       });
     });
   });
-}
+});

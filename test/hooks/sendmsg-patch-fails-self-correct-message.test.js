@@ -78,4 +78,4 @@ describe('sendMsg — patch fails → self-correct message', () => {
     await act(async () => { await result.current.sendMsg('patch task'); });
     expect(mockAskCerebrasStream.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
-}
+});

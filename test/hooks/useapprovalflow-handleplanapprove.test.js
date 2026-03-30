@@ -79,4 +79,4 @@ describe('useApprovalFlow — handlePlanApprove', () => {
       expect.stringContaining('Plan diapprove')
     );
   });
-}
+});

@@ -157,4 +157,4 @@ describe('useAgentLoop — cancelMsg', () => {
     expect(ctx.chat.setStreaming).toHaveBeenCalledWith('');
     expect(ctx.chat.setAgentRunning).toHaveBeenCalledWith(false);
   });
-}
+});

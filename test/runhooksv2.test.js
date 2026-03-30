@@ -95,4 +95,4 @@ describe('runHooksV2', () => {
     ).resolves.not.toThrow();
     expect(callServer).toHaveBeenCalledTimes(2);
   });
-}
+});

@@ -84,4 +84,4 @@ describe('compactContext — too few messages', () => {
     const hasSmallMsg = msgs.some(m => m?.content?.includes('masih kecil'));
     expect(hasSmallMsg).toBe(true);
   });
-}
+});

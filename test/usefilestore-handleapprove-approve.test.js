@@ -88,4 +88,4 @@ describe('useFileStore — handleApprove approve', () => {
     });
     expect(mockCallServer).toHaveBeenCalledWith(expect.objectContaining({ type: 'exec' }));
   });
-}
+});

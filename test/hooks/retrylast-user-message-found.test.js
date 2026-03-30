@@ -82,4 +82,4 @@ describe('retryLast — user message found', () => {
     await act(async () => { await result.current.retryLast(); });
     expect(mockAskCerebrasStream).toHaveBeenCalled();
   });
-}
+});

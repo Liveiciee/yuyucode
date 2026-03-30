@@ -35,4 +35,4 @@ describe('useFileStore — undoLastEdit', () => {
     expect(callServer).not.toHaveBeenCalled();
     expect(onMsg).not.toHaveBeenCalled();
   });
-}
+});

@@ -86,4 +86,4 @@ describe('useApprovalFlow — verifySyntax unknown ext skipped', () => {
     const execCalls = mockCallServer.mock.calls.filter(c => c[0]?.type === 'exec');
     expect(execCalls.length).toBe(0);
   });
-}
+});

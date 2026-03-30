@@ -79,4 +79,4 @@ describe('tfidfRank — edge cases', () => {
   it('respects topN=1 returns exactly 1 result', () => {
     expect(tfidfRank(mems, 'react', 1)).toHaveLength(1);
   });
-}
+});

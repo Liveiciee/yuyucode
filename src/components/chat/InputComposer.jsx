@@ -4,7 +4,7 @@ import { VoiceBtn, PushToTalkBtn } from '../VoiceBtn.jsx';
 import { FOLLOW_UPS, SLASH_COMMANDS } from '../../constants.js';
 
 export function InputComposer({
-  T, project, chat, file, ui,
+  T, project, chat, file: _file, ui: _ui,
   sendMsg, cancelMsg, stopTts,
   handleCameraCapture, fileInputRef,
   inputRef, setSearchQ, searchQ, buildSlashSuggestions,

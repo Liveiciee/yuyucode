@@ -43,4 +43,4 @@ describe('useFileStore — setFileContent', () => {
       act(() => { result.current.setFileContent('anything'); });
     }).not.toThrow();
   });
-}
+});

@@ -32,4 +32,4 @@ describe('parseActions — edge cases', () => {
   it('handles action blocks with extra whitespace', () => {
     expect(parseActions('```action\n  {"type":"read_file","path":"x.js"}  \n```')).toHaveLength(1);
   });
-}
+});

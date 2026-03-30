@@ -313,4 +313,4 @@ describe('REST endpoints', () => {
     });
     expect(r.status).toBe(200);
   });
-}
+});

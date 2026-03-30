@@ -34,4 +34,4 @@ describe('resolvePath — extended', () => {
   it.skip('strips both trailing slash from base and leading from path', () => {
     expect(resolvePath('base/', '/file.txt')).toBe('base/file.txt');
   });
-}
+});

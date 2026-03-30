@@ -36,4 +36,4 @@ describe('generateDiff', () => {
     const lineCount = result.split('\n').length;
     expect(lineCount).toBeLessThanOrEqual(45);
   });
-}
+});

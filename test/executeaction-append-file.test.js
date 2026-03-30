@@ -22,4 +22,4 @@ describe('executeAction — append_file', () => {
       type: 'append', path: '/base/log.txt', content: 'line',
     });
   });
-}
+});

@@ -167,4 +167,4 @@ describe('useAgentLoop — diffReview mode', () => {
     expect(mockExecuteAction).not.toHaveBeenCalled();
     expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
   });
-}
+});

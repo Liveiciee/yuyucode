@@ -45,4 +45,4 @@ describe('getBgAgents', () => {
   it('returns an array', () => {
     expect(Array.isArray(getBgAgents())).toBe(true);
   });
-}
+});

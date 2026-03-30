@@ -167,4 +167,4 @@ describe('useAgentLoop — patch_file failure triggers self-correct', () => {
     // Should have called AI more than once due to self-correct
     expect(mockAskCerebrasStream.mock.calls.length).toBeGreaterThan(1);
   });
-}
+});

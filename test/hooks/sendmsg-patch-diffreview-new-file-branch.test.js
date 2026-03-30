@@ -79,4 +79,4 @@ describe('sendMsg — patch diffReview new file branch', () => {
     await act(async () => { await result.current.sendMsg('patch file'); });
     expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
   });
-}
+});

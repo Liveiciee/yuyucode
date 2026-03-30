@@ -84,4 +84,4 @@ describe('useAgentLoop — offline detection', () => {
     if (origOnline) Object.defineProperty(navigator, 'onLine', origOnline);
     else Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
   });
-}
+});

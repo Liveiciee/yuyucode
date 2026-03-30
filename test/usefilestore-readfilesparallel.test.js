@@ -42,4 +42,4 @@ describe('useFileStore — readFilesParallel', () => {
     expect(out['/src/A.js'].data).toBe('content A');
     expect(out['/src/B.js'].data).toBe('content B');
   });
-}
+});

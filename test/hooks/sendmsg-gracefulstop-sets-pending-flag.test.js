@@ -75,4 +75,4 @@ describe('sendMsg — gracefulStop sets pending flag', () => {
     await act(async () => { await result.current.sendMsg('task'); });
     expect(ctx.chat.setGracefulStop).toHaveBeenCalledWith(false);
   });
-}
+});

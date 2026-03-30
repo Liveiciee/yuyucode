@@ -86,4 +86,4 @@ describe('sendMsg — agentNote appended at MAX_ITER', () => {
     await act(async () => { await result.current.sendMsg('long task'); });
     expect(callCount).toBeGreaterThanOrEqual(3);
   });
-}
+});

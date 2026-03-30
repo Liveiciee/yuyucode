@@ -124,4 +124,4 @@ describe('useApprovalFlow — verifySyntax SYNTAX_ERR', () => {
       expect.anything()
     );
   });
-}
+});

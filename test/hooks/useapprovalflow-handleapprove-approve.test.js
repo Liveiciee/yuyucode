@@ -149,4 +149,4 @@ describe('useApprovalFlow — handleApprove approve', () => {
     await handleApprove(0, true, null);
     expect(verifySyntaxBatch).toHaveBeenCalled();
   });
-}
+});

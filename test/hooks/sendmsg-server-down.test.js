@@ -72,4 +72,4 @@ describe('sendMsg — server down', () => {
     expect(ctx.chat.setLoading).toHaveBeenCalledWith(false);
     expect(mockAskCerebrasStream).not.toHaveBeenCalled();
   });
-}
+});

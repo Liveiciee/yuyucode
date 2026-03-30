@@ -315,4 +315,4 @@ describe('cache invalidation', () => {
     const r = await request(PORT, { type: 'read', path: filePath });
     expect(r.body.data).toBe('patched');
   });
-}
+});

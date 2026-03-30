@@ -113,4 +113,4 @@ describe('TokenTracker', () => {
   it('singleton tokenTracker is a TokenTracker instance', () => {
     expect(tokenTracker).toBeInstanceOf(TokenTracker);
   });
-}
+});

@@ -332,4 +332,4 @@ describe('read / write / delete', () => {
     expect(r.body.ok).toBe(true);
     expect(fs.existsSync(filePath)).toBe(true);
   });
-}
+});

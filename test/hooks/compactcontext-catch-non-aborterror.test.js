@@ -85,4 +85,4 @@ describe('compactContext — catch non-AbortError', () => {
     await act(async () => { await result.current.compactContext(); });
     expect(setMessages).toHaveBeenCalled();
   });
-}
+});
