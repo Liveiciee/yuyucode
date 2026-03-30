@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774889434018,
+  "lastUpdate": 1774889677845,
   "repoUrl": "https://github.com/Liveiciee/yuyucode",
   "entries": {
     "YuyuCode Benchmark (CI · Ubuntu x86_64)": [
@@ -44335,6 +44335,55 @@ window.BENCHMARK_DATA = {
           {
             "name": "500 mixed files (stress)",
             "value": 6870.14,
+            "unit": "ops/sec"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "35d577dac831c8dafce035cbf0895f6a29b3ed31",
+          "message": "Update yuyu-bench-ci.cjs",
+          "timestamp": "2026-03-31T00:53:59+08:00",
+          "tree_id": "8b278398ee08631c7d0dd8a8d79580428339c1a4",
+          "url": "https://github.com/Liveiciee/yuyucode/commit/35d577dac831c8dafce035cbf0895f6a29b3ed31"
+        },
+        "date": 1774889677606,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "null input",
+            "value": 11429910.77,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "undefined input",
+            "value": 11646055.37,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no extension",
+            "value": 4426856.1,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "deeply nested path",
+            "value": 6106769.57,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "500 mixed files (stress)",
+            "value": 7031.46,
             "unit": "ops/sec"
           }
         ]
