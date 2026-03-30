@@ -6,7 +6,7 @@ import {
   compressSource,
   extractImports,
   computeSalience,
-} from '../../yuyu-map.cjs';
+} from '../../lib/map/index.cjs';
 
 // ── Inline pure functions (copied from FileEditor — cannot import component) ──
 function getLangExt(path) {
