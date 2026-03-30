@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { execSync } from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
+const { execSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const RAW_PATH = path.resolve('.yuyu/raw-bench.json');
 const OUT_PATH = '/tmp/bench-ci.json';
@@ -52,21 +52,21 @@ function normalize(raw) {
 
   if (!raw) return results;
 
-  // case 1: already array
+  // already array
   if (Array.isArray(raw)) {
     for (const item of raw) {
       if (!item) continue;
 
       results.push({
-        name: item.name ?? 'unknown',
-        unit: item.unit ?? 'ops/sec',
+        name: item.name || 'unknown',
+        unit: item.unit || 'ops/sec',
         value: Number(item.value ?? item.hz ?? 0),
       });
     }
     return results;
   }
 
-  // case 2: vitest structured output
+  // vitest structure
   if (raw.files && Array.isArray(raw.files)) {
     for (const file of raw.files) {
       const groups = file.groups || [];
@@ -101,7 +101,7 @@ function main() {
     results = [];
   }
 
-  // VALIDATION HARD GUARD (biar gak keulang error lo tadi)
+  // hard guard
   if (!Array.isArray(results)) {
     console.error('❌ Output must be array');
     results = [];
