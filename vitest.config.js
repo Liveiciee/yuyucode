@@ -2,31 +2,22 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import os from 'os';
 
-// ──────────────────────────────────────────────────────────────────────────────
-// ENVIRONMENT DETECTION
-// ──────────────────────────────────────────────────────────────────────────────
 const isArm64 = os.arch() === 'arm64' || os.arch() === 'arm';
 const isCI = process.env.GITHUB_ACTIONS === 'true' || !!process.env.CI;
-
-// ──────────────────────────────────────────────────────────────────────────────
-// POOL STRATEGY (Optimized for architecture & CI)
-// ──────────────────────────────────────────────────────────────────────────────
 const pool = isArm64 || isCI ? 'threads' : 'vmThreads';
 
-// ──────────────────────────────────────────────────────────────────────────────
-// CONFIGURATION
-// ──────────────────────────────────────────────────────────────────────────────
 export default defineConfig({
   plugins: [react()],
 
   test: {
-    include: ['src/**/*.test.{js,ts,jsx,tsx}'],
+    include: [
+      'src/**/*.test.{js,ts,jsx,tsx}',
+      'test/bench/**/*.bench.jsx'
+    ],
     exclude: ['e2e/**', 'node_modules/**'],
     setupFiles: ['./vitest.setup.js', './src/setupTest.js'],
-    // ─── Environment ──────────────────────────────────────────────────────────
     environment: 'happy-dom',
 
-    // ─── Pool & Workers ───────────────────────────────────────────────────────
     pool,
     poolOptions: {
       threads: {
@@ -42,7 +33,6 @@ export default defineConfig({
     maxWorkers: isArm64 ? 2 : undefined,
     minWorkers: isArm64 ? 1 : undefined,
 
-    // ─── Test Execution ───────────────────────────────────────────────────────
     globals: true,
     isolate: true,
     clearMocks: true,
@@ -57,14 +47,12 @@ export default defineConfig({
     retry: isCI ? 2 : 1,
     bail: isCI ? 1 : 0,
 
-    // ─── Sequence Control ─────────────────────────────────────────────────────
     sequence: {
       concurrent: false,
       shuffle: false,
       seed: Date.now(),
     },
 
-    // ─── Console & Logging ────────────────────────────────────────────────────
     silent: false,
     verbose: !isCI,
     reporters: isCI ? ['verbose', 'junit'] : ['dot'],
@@ -76,7 +64,6 @@ export default defineConfig({
       return false;
     },
 
-    // ─── Watch Mode ───────────────────────────────────────────────────────────
     watch: {
       ignore: [
         'node_modules',
@@ -89,16 +76,13 @@ export default defineConfig({
       ],
     },
 
-    // ─── CSS Handling ─────────────────────────────────────────────────────────
     css: false,
 
-    // ─── Diff Configuration ───────────────────────────────────────────────────
     diff: {
       expand: false,
       contextLines: 3,
     },
 
-    // ─── Transform & Dependencies ─────────────────────────────────────────────
     transformIgnorePatterns: [
       'node_modules/(?!( @capacitor| @codemirror| @valtown )/)',
     ],
@@ -108,7 +92,6 @@ export default defineConfig({
       },
     },
 
-    // ─── Coverage ─────────────────────────────────────────────────────────────
     coverage: {
       provider: 'v8',
       reporter: [
