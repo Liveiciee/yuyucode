@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774883681877,
+  "lastUpdate": 1774884442323,
   "repoUrl": "https://github.com/Liveiciee/yuyucode",
   "entries": {
     "YuyuCode Benchmark (CI · Ubuntu x86_64)": [
@@ -44212,6 +44212,55 @@ window.BENCHMARK_DATA = {
           {
             "name": "500 mixed files (stress)",
             "value": 7325.17,
+            "unit": "ops/sec"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "committer": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "distinct": true,
+          "id": "b6ecbc52f9e4ea870f394b1133bbd84b67b5cd46",
+          "message": "fix: add benchmark include pattern and clean up config",
+          "timestamp": "2026-03-30T23:26:34+08:00",
+          "tree_id": "77e2793e49d47ca0e687c739eb9e60196712db75",
+          "url": "https://github.com/Liveiciee/yuyucode/commit/b6ecbc52f9e4ea870f394b1133bbd84b67b5cd46"
+        },
+        "date": 1774884441985,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "null input",
+            "value": 11137286.35,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "undefined input",
+            "value": 11720554.31,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no extension",
+            "value": 4151101.88,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "deeply nested path",
+            "value": 5950926.37,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "500 mixed files (stress)",
+            "value": 6807.38,
             "unit": "ops/sec"
           }
         ]
