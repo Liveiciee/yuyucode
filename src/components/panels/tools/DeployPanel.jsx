@@ -1,7 +1,7 @@
 import React from "react";
 import { X } from 'lucide-react';
-import { BottomSheet } from '../panels.base.jsx';
-import { resolveTheme } from '../themeUtils.js';
+import { BottomSheet } from '../../panels.base.jsx';
+import { resolveTheme } from '../../themeUtils.js';
 
 export function DeployPanel({ deployLog, loading, onDeploy, onClose, T }) {
   const { border, text, textMute, accent, accentBg, accentBorder, bg2, textSec } = resolveTheme(T);

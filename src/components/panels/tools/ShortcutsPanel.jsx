@@ -1,7 +1,7 @@
 import React from "react";
 import { X } from 'lucide-react';
-import { BottomSheet } from '../panels.base.jsx';
-import { resolveTheme } from '../themeUtils.js';
+import { BottomSheet } from '../../panels.base.jsx';
+import { resolveTheme } from '../../themeUtils.js';
 
 export function ShortcutsPanel({ onClose, T }) {
   const { bg3, border, text, textSec, textMute, accent } = resolveTheme(T);

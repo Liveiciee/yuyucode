@@ -1,7 +1,7 @@
 import React from "react";
 import { Plug, X } from 'lucide-react';
-import { BottomSheet } from '../panels.base.jsx';
-import { resolveTheme } from '../themeUtils.js';
+import { BottomSheet } from '../../panels.base.jsx';
+import { resolveTheme } from '../../themeUtils.js';
 
 const BUILTIN_PLUGINS = [
   {id:'auto_commit',  name:'Auto Commit',   desc:'Commit otomatis setelah write_file', hookType:'postWrite', cmd:'cd {{context}} && git add -A && git commit -m "auto: yuyu save $(date +%H:%M)"'},

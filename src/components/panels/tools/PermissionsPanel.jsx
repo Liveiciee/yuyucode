@@ -1,7 +1,7 @@
 import React from "react";
 import { Shield, X } from 'lucide-react';
-import { BottomSheet } from '../panels.base.jsx';
-import { resolveTheme } from '../themeUtils.js';
+import { BottomSheet } from '../../panels.base.jsx';
+import { resolveTheme } from '../../themeUtils.js';
 
 export function PermissionsPanel({ permissions, accentColor:_accentColor, onToggle, onReset, onClose, T }) {
   const { border, text, textMute } = resolveTheme(T);

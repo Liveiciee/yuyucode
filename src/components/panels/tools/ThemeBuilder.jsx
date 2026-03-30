@@ -1,7 +1,7 @@
 import React from "react";
 import { X, Check } from 'lucide-react';
-import { BottomSheet } from '../panels.base.jsx';
-import { resolveTheme } from '../themeUtils.js';
+import { BottomSheet } from '../../panels.base.jsx';
+import { resolveTheme } from '../../themeUtils.js';
 
 export function ThemeBuilder({ onClose, themeKey, themesMap, themeKeys, onTheme, T }) {
   const { bg3, border, borderMed, text, textMute } = resolveTheme(T);

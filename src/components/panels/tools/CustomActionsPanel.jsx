@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { Zap, X, Save } from 'lucide-react';
-import { BottomSheet } from '../panels.base.jsx';
-import { resolveTheme } from '../themeUtils.js';
+import { BottomSheet } from '../../panels.base.jsx';
+import { resolveTheme } from '../../themeUtils.js';
 
 export function CustomActionsPanel({ folder:_folder, onRun, onClose, T }) {
   const { bg3, border, borderMed, text, textMute, accent, accentBg, accentBorder } = resolveTheme(T);

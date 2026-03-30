@@ -1,7 +1,7 @@
 import React from "react";
 import { Save, X } from 'lucide-react';
-import { BottomSheet } from '../panels.base.jsx';
-import { resolveTheme } from '../themeUtils.js';
+import { BottomSheet } from '../../panels.base.jsx';
+import { resolveTheme } from '../../themeUtils.js';
 
 export function SessionsPanel({ sessions, onRestore, onClose, T }) {
   const { bg3, border, text, textMute, accent, accentBg, accentBorder } = resolveTheme(T);

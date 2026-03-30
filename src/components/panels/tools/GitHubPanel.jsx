@@ -1,7 +1,7 @@
 import React from "react";
 import { X, List, GitMerge } from 'lucide-react';
-import { BottomSheet } from '../panels.base.jsx';
-import { resolveTheme } from '../themeUtils.js';
+import { BottomSheet } from '../../panels.base.jsx';
+import { resolveTheme } from '../../themeUtils.js';
 
 export function GitHubPanel({ githubRepo, githubToken, githubData, onRepoChange, onTokenChange, onFetch, onAskYuyu, onClose, T }) {
   const { bg3, border, borderMed, text, textMute, accent, accentBg, accentBorder } = resolveTheme(T);

@@ -1,8 +1,8 @@
 import React from "react";
 import { X, Settings } from 'lucide-react';
-import { BottomSheet } from '../panels.base.jsx';
-import { resolveTheme } from '../themeUtils.js';
-import { THEME_KEYS } from '../../constants.js';
+import { BottomSheet } from '../../panels.base.jsx';
+import { resolveTheme } from '../../themeUtils.js';
+import { THEME_KEYS } from '../../../constants.js';
 
 export function ConfigPanel({
   effort, fontSize, theme, model, thinkingEnabled, models,
