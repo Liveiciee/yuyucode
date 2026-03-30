@@ -1,4 +1,4 @@
-# Then delete the existing ylong() { ... } block and paste the new one.# ================================================
+# ================================================
 # YuyuCode Legacy Functions v5.1
 # Server Management, File Operations, ZIP Tools
 # Fixed: Now uses yuyu-server.cjs
@@ -95,7 +95,7 @@ ylong() {
   local n=15
   local all=0
   local target_dir="."
-  local start_time=$(date +%s%3N 2>/dev/null || date +%s)
+  local start_time=$(date +%s)
 
   # Parsing opsi
   while [[ $# -gt 0 ]]; do
@@ -177,6 +177,10 @@ ylong() {
 
   local cpu_cores=$(nproc 2>/dev/null || echo 2)
   eval "$full_cmd" | xargs -0 -P$cpu_cores wc -l 2>/dev/null | grep -v " total$" > "$tmp"
+
+  local end_time=$(date +%s)
+  local elapsed=$((end_time - start_time))
+  echo -e "\r ✅ \033[1;32mSelesai dalam ${elapsed}s\033[0m             "
 
   # ------------------------------------------------------------------
   # 4. STATISTIK DASAR
@@ -280,15 +284,6 @@ ylong() {
       local selected=$(awk '{print $2}' "$tmp" | fzf --height=10 --prompt="Pilih file: ")
       [[ -n "$selected" ]] && ${EDITOR:-nano} "$selected"
     fi
-  fi
-
-  # --- TIMING — hitung total durasi di akhir ---
-  local end_time=$(date +%s%3N 2>/dev/null || date +%s)
-  local elapsed=$((end_time - start_time))
-  if [[ $elapsed -gt 1000 ]]; then
-    echo -e "\r ✅ \033[1;32mSelesai dalam $((elapsed/1000)).$((elapsed%1000/100))s\033[0m             "
-  else
-    echo -e "\r ✅ \033[1;32mSelesai dalam ${elapsed}ms\033[0m             "
   fi
 
   rm "$tmp"

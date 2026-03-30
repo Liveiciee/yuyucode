@@ -1,11 +1,2 @@
-// ── panels.jsx — barrel re-export ───────────────────────────────────────────
-
-export { BottomSheet, CommandPalette } from './panels.base.jsx';
-export { TicTacToe } from './games/TicTacToe.jsx';
-export { ProjectManager } from './panels.project.jsx';
-export { GitComparePanel, FileHistoryPanel, GitBlamePanel, DepGraphPanel, MergeConflictPanel } from './panels.git.jsx';
-export { ElicitationPanel, SkillsPanel, BgAgentPanel } from './panels.agent.jsx';
-export { CustomActionsPanel, ShortcutsPanel, SnippetLibrary, ThemeBuilder,
-  DeployPanel, McpPanel, GitHubPanel, SessionsPanel, PermissionsPanel,
-  PluginsPanel, ConfigPanel } from './panels.tools.jsx';
-export { GlobalFindReplace } from './GlobalFindReplace.jsx';
+// Re-export all tool panels from the modular tools directory
+export * from './panels/tools';
