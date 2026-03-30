@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774884442323,
+  "lastUpdate": 1774889434018,
   "repoUrl": "https://github.com/Liveiciee/yuyucode",
   "entries": {
     "YuyuCode Benchmark (CI · Ubuntu x86_64)": [
@@ -44261,6 +44261,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "500 mixed files (stress)",
             "value": 6807.38,
+            "unit": "ops/sec"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6308d8bed384add56032470f1fd4a8f30434b8d7",
+          "message": "Update yuyu-bench-ci.cjs",
+          "timestamp": "2026-03-31T00:49:54+08:00",
+          "tree_id": "9ca1bd626ae6fd752a2e93f426ae165fdac0c66e",
+          "url": "https://github.com/Liveiciee/yuyucode/commit/6308d8bed384add56032470f1fd4a8f30434b8d7"
+        },
+        "date": 1774889433754,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "null input",
+            "value": 11601275.21,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "undefined input",
+            "value": 11817777.67,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no extension",
+            "value": 4033189.39,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "deeply nested path",
+            "value": 6234741.16,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "500 mixed files (stress)",
+            "value": 6870.14,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "null input",
+            "value": 11601275.21,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "undefined input",
+            "value": 11817777.67,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no extension",
+            "value": 4033189.39,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "deeply nested path",
+            "value": 6234741.16,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "500 mixed files (stress)",
+            "value": 6870.14,
             "unit": "ops/sec"
           }
         ]
