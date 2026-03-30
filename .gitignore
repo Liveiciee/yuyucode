@@ -83,3 +83,4 @@ bashrc-additions.sh.local
 shell/logs/
 shell/backups/
 shell/bin/ai.backup.*
+backups/
