@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774881048797,
+  "lastUpdate": 1774883094202,
   "repoUrl": "https://github.com/Liveiciee/yuyucode",
   "entries": {
     "YuyuCode Benchmark (CI · Ubuntu x86_64)": [
@@ -44065,6 +44065,55 @@ window.BENCHMARK_DATA = {
           {
             "name": "500 mixed files (stress)",
             "value": 6793.7,
+            "unit": "ops/sec"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "committer": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "distinct": true,
+          "id": "a1625366d59d8290460fcb4d81fb4f2984b0b62e",
+          "message": "fix: resolve all ESLint errors across test suite and src",
+          "timestamp": "2026-03-30T23:04:02+08:00",
+          "tree_id": "7e7af801bdf059139690bf4d03f7969d4f5b3d4b",
+          "url": "https://github.com/Liveiciee/yuyucode/commit/a1625366d59d8290460fcb4d81fb4f2984b0b62e"
+        },
+        "date": 1774883093858,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "null input",
+            "value": 11210749.17,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "undefined input",
+            "value": 11602745.49,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no extension",
+            "value": 4283371.04,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "deeply nested path",
+            "value": 6633435.1,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "500 mixed files (stress)",
+            "value": 6715.66,
             "unit": "ops/sec"
           }
         ]
