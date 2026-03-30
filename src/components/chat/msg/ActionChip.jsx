@@ -1,6 +1,6 @@
 import React from 'react';
 import { Check, X, ChevronDown } from 'lucide-react';
-import { actionMeta } from './actionMeta.js';
+import { actionMeta } from './actionMeta.jsx';
 
 export function ActionChip({ action, T }) {
   const [open, setOpen] = React.useState(false);
