@@ -5,121 +5,196 @@ const os = require('os');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
 
-// ── CONFIG ─────────────────────────────────────────
+// ── CONFIG ─────────────────────────────────────────────────────────────
 const ROOT = process.cwd();
+const OUT_FILE = process.env.BENCH_OUTPUT || path.join(os.tmpdir(), 'bench-ci.json');
+const FULL_REPORT = path.join(ROOT, '.yuyu', 'bench-report.json');
+const TMP_JSON = path.join(os.tmpdir(), 'vitest-bench.json');
 
-const CI_OUT = process.env.BENCH_OUTPUT || path.join(os.tmpdir(), 'bench-ci.json');
-const REPORT_OUT = path.join(ROOT, '.yuyu', 'bench-report.json');
-
-// ensure dirs
-fs.mkdirSync(path.dirname(CI_OUT), { recursive: true });
-fs.mkdirSync(path.dirname(REPORT_OUT), { recursive: true });
-
-// ── UTILS ──────────────────────────────────────────
+// ── UTILS ──────────────────────────────────────────────────────────────
 const stripAnsi = s => s.replace(/\x1b\[[\d;]*[a-zA-Z]/g, '');
-const parseHz = s => parseFloat(s.replace(/,/g, ''));
+const parseHz = s => parseFloat(String(s).replace(/,/g, ''));
+const mkdir = p => fs.mkdirSync(p, { recursive: true });
+
 const gitsha = () => {
-  try { return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim(); }
-  catch { return 'unknown'; }
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  } catch {
+    return 'unknown';
+  }
 };
 
-// platform lebih akurat di CI
-const platform = process.env.RUNNER_ARCH || process.arch;
+// detect platform REAL (bukan label doang)
+const platform =
+  process.arch === 'arm64' ? 'arm64' :
+  process.arch.startsWith('arm') ? 'arm' :
+  'x86_64';
 
-// ── RUN ────────────────────────────────────────────
+// ── RUN VITEST ─────────────────────────────────────────────────────────
+function runVitest() {
+  return spawnSync(
+    'npx',
+    [
+      'vitest',
+      'bench',
+      '--run',
+      '--reporter=verbose',
+      '--reporter=json',
+      `--outputFile=${TMP_JSON}`
+    ],
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['inherit', 'pipe', 'pipe']
+    }
+  );
+}
+
+// ── PARSERS ────────────────────────────────────────────────────────────
+
+// PRIORITAS: JSON (paling valid)
+function parseJSON() {
+  try {
+    const raw = fs.readFileSync(TMP_JSON, 'utf8');
+    const data = JSON.parse(raw);
+
+    if (!Array.isArray(data?.benchmarks)) return [];
+
+    return data.benchmarks
+      .filter(b => b && b.name && typeof b.hz === 'number' && isFinite(b.hz) && b.hz > 0)
+      .map(b => ({
+        name: b.name.trim(),
+        unit: 'ops/sec',
+        value: b.hz,
+        ...(b.rme ? { range: `±${b.rme}%` } : {})
+      }));
+  } catch {
+    return [];
+  }
+}
+
+// FALLBACK: CLI parsing
+function parseCLI(stdout) {
+  const clean = stripAnsi(stdout || '');
+
+  return clean
+    .split('\n')
+    .map(line => {
+      const m = line.match(/^\s*·\s+(.+?)\s+([\d,]+(?:\.\d+)?)/);
+      if (!m) return null;
+
+      const name = m[1].trim();
+      const hz = parseHz(m[2]);
+
+      if (!name || !isFinite(hz) || hz <= 0) return null;
+
+      return {
+        name,
+        unit: 'ops/sec',
+        value: hz
+      };
+    })
+    .filter(Boolean);
+}
+
+// ── CLEANING ───────────────────────────────────────────────────────────
+
+// FIX DUPLICATE (ini yang kena kamu tadi)
+function dedupe(entries) {
+  const map = new Map();
+
+  for (const e of entries) {
+    // ambil yg paling tinggi kalau duplicate
+    if (!map.has(e.name) || map.get(e.name).value < e.value) {
+      map.set(e.name, e);
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+// SORT + SCORE
+function normalize(entries) {
+  const max = Math.max(...entries.map(e => e.value));
+
+  return entries.map(e => ({
+    ...e,
+    score: Number((e.value / max).toFixed(4)),
+    ...(e.value / max < 0.1 ? { slow: true } : {})
+  }));
+}
+
+// ── MAIN ───────────────────────────────────────────────────────────────
+mkdir(path.dirname(OUT_FILE));
+mkdir(path.dirname(FULL_REPORT));
+
 console.log('🏃 Running benchmarks...');
 console.log(`📱 Platform: ${platform}`);
 console.log(`🧠 Node: ${process.version}\n`);
 
-const result = spawnSync(
-  'npx',
-  ['vitest', 'bench', '--run', '--reporter=verbose'],
-  { cwd: ROOT, encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'] }
-);
+const { stdout, stderr } = runVitest();
 
-const stdout = result.stdout || '';
-const stderr = result.stderr || '';
+if (stdout) process.stdout.write(stdout);
+if (stderr) process.stderr.write(stderr);
 
-stdout && process.stdout.write(stdout);
-stderr && process.stderr.write(stderr);
+// ambil data
+let entries = parseJSON();
 
-// ── PARSE (ANTI DUPLICATE + STRICT) ────────────────
-const entries = [];
-const seen = new Set();
-
-let inSummary = false;
-
-for (const line of stripAnsi(stdout).split('\n')) {
-  if (line.includes('BENCH') && line.includes('Summary')) {
-    inSummary = true;
-    continue;
-  }
-
-  if (inSummary) continue;
-
-  const m = line.match(/^\s*·\s+(.+?)\s+([\d,]+(?:\.\d+)?)/);
-  if (!m) continue;
-
-  const name = m[1].trim();
-  const hz = parseHz(m[2]);
-
-  if (!name || !hz || !isFinite(hz)) continue;
-  if (seen.has(name)) continue;
-
-  seen.add(name);
-
-  entries.push({
-    name,
-    unit: 'ops/sec',
-    value: hz
-  });
+// fallback kalau JSON gagal
+if (!entries.length) {
+  entries = parseCLI(stdout);
 }
 
-// ── SAFE FALLBACK ──────────────────────────────────
+// HARD GUARD (tapi gak fail CI keras)
 if (!entries.length) {
-  console.warn('\n⚠️ No benchmark parsed. Writing empty array (CI safe)');
-  fs.writeFileSync(CI_OUT, JSON.stringify([], null, 2));
+  fs.writeFileSync(OUT_FILE, JSON.stringify([], null, 2));
+  console.error('\n⚠️ No valid benchmark data (safe fallback)');
   process.exit(0);
 }
 
-// ── ENRICH (FITUR KAMU BALIK) ──────────────────────
-const max = Math.max(...entries.map(e => e.value));
+// FIX DUPLICATE + CLEAN
+entries = dedupe(entries);
 
-const enriched = entries.map(e => {
-  const score = e.value / max;
-  return {
-    ...e,
-    score: Number(score.toFixed(4)),
-    slow: score < 0.1
-  };
-});
+// SORT + SCORE
+entries = normalize(
+  entries.sort((a, b) => b.value - a.value)
+);
 
-// ── SORT ───────────────────────────────────────────
-enriched.sort((a, b) => b.value - a.value);
+// ── OUTPUT ─────────────────────────────────────────────────────────────
 
-// ── OUTPUT 1: CI (STRICT FORMAT) ───────────────────
-fs.writeFileSync(CI_OUT, JSON.stringify(entries, null, 2));
+// format buat github-action-benchmark (WAJIB flat array)
+const ciOutput = entries.map(({ name, value, unit, range }) => ({
+  name,
+  unit,
+  value,
+  ...(range ? { range } : {})
+}));
 
-// ── OUTPUT 2: FULL REPORT (FITUR KAMU) ─────────────
-fs.writeFileSync(REPORT_OUT, JSON.stringify({
+fs.writeFileSync(OUT_FILE, JSON.stringify(ciOutput, null, 2));
+
+// full report (optional, buat kamu)
+const fullReport = {
   meta: {
     git: gitsha(),
     platform,
     node: process.version,
     timestamp: new Date().toISOString(),
-    count: enriched.length
+    count: entries.length
   },
-  benchmarks: enriched
-}, null, 2));
+  benchmarks: entries
+};
 
-// ── LOG ────────────────────────────────────────────
+fs.writeFileSync(FULL_REPORT, JSON.stringify(fullReport, null, 2));
+
+// display
 console.log('\n📊 Benchmark Summary:\n');
-console.table(enriched.map(e => ({
+console.table(entries.map(e => ({
   Name: e.name,
   'Ops/sec': e.value.toLocaleString(),
   Score: e.score,
+  Stability: e.range || 'N/A',
   Slow: e.slow ? '⚠️' : ''
 })));
 
-console.log(`\n✅ CI → ${CI_OUT}`);
-console.log(`📦 Full report → ${REPORT_OUT}`);
+console.log(`\n✅ CI → ${OUT_FILE}`);
+console.log(`📦 Full report → ${FULL_REPORT}`);
