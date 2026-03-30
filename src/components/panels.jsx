@@ -1,6 +1,6 @@
-// Re-export all tool panels from the modular tools directory
+// Re-export all panel components from their respective files
+export * from './panels.base';
+export * from './panels.git';
+export * from './panels.agent';
+export * from './panels.project';
 export * from './panels/tools';
-
-// Also re-export components from panels.base.jsx and panels.git.jsx
-export { BottomSheet, CommandPalette } from './panels.base.jsx';
-export { GitComparePanel, FileHistoryPanel, GitBlamePanel } from './panels.git.jsx';
