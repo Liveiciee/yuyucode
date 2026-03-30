@@ -26,4 +26,4 @@ describe('buildSrcdoc — edge cases', () => {
   bench('unicode content', () => {
     buildSrcdoc([{ path: 'app.jsx', content: UNICODE_CODE }]);
   });
-}
+});

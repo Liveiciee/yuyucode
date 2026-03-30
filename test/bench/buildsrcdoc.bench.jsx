@@ -26,4 +26,4 @@ describe('buildSrcdoc', () => {
   bench('html + css + js', () => {
     buildSrcdoc(TABS_HTML_CSS_JS);
   });
-}
+});

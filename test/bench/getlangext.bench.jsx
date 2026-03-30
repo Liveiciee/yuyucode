@@ -22,4 +22,4 @@ describe('getLangExt', () => {
   bench('10 mixed extensions', () => {
     EXTENSIONS.forEach(f => getLangExt(f));
   });
-}
+});

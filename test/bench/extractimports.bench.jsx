@@ -26,4 +26,4 @@ describe('extractImports', () => {
   bench('no imports', () => {
     extractImports(LARGE_CODE);
   });
-}
+});

@@ -40,4 +40,4 @@ describe('multi-tab array ops', () => {
     }
     tabs.length;
   });
-}
+});

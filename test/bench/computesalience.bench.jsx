@@ -33,4 +33,4 @@ describe('computeSalience', () => {
       d.salience = (importedBy * 3) + 1 + Math.round(1000 / Math.max(d.lines, 1));
     }
   });
-}
+});

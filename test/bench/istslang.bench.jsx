@@ -22,4 +22,4 @@ describe('isTsLang', () => {
   bench('10 mixed', () => {
     EXTENSIONS.forEach(f => isTsLang(f));
   });
-}
+});

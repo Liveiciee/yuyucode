@@ -30,4 +30,4 @@ describe('extractSymbols', () => {
   bench('non-code file (early return)', () => {
     extractSymbols('body { color: red }', 'style.css');
   });
-}
+});

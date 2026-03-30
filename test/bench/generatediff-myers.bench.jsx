@@ -26,4 +26,4 @@ describe('generateDiff (Myers)', () => {
   bench('identical (no diff)', () => {
     generateDiff(LARGE_CODE, LARGE_CODE);
   });
-}
+});

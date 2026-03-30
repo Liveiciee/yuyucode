@@ -30,4 +30,4 @@ describe('parseActions — worst case', () => {
   bench('10MB-ish text — no actions', () => {
     parseActions('x'.repeat(100_000));
   });
-}
+});

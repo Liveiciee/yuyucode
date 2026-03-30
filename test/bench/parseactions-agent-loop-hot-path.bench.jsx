@@ -30,4 +30,4 @@ describe('parseActions (agent loop hot path)', () => {
   bench('mixed — valid + invalid + non-action blocks', () => {
     parseActions(ACTION_MIXED);
   });
-}
+});

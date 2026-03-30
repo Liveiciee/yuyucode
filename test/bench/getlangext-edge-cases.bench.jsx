@@ -37,4 +37,4 @@ describe('getLangExt — edge cases', () => {
     );
     files.forEach(f => getLangExt(f));
   });
-}
+});

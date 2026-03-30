@@ -30,4 +30,4 @@ describe('extractImports — stress & edge cases', () => {
   bench('malformed import (no from)', () => {
     extractImports(`import something broken\nexport default null;`);
   });
-}
+});

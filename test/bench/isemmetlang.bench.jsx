@@ -22,4 +22,4 @@ describe('isEmmetLang', () => {
   bench('10 mixed', () => {
     EXTENSIONS.forEach(f => isEmmetLang(f));
   });
-}
+});

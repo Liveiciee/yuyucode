@@ -56,4 +56,4 @@ describe('concurrent simulation', () => {
       Promise.resolve(extractImports(FIFTY_IMPORTS)),
     ]);
   });
-}
+});

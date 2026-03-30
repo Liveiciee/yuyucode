@@ -36,4 +36,4 @@ describe('multi-tab — stress', () => {
     t.unshift(t.pop());
     t.length;
   });
-}
+});

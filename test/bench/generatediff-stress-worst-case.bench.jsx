@@ -34,4 +34,4 @@ describe('generateDiff — stress & worst case', () => {
   bench('500 lines → empty (delete everything)', () => {
     generateDiff(LARGE_CODE, '');
   });
-}
+});

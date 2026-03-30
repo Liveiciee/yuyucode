@@ -34,4 +34,4 @@ describe('compressSource', () => {
   bench('non-code file (early return)', () => {
     compressSource('body { color: red }', 'style.css');
   });
-}
+});

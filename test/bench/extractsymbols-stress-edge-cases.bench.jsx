@@ -34,4 +34,4 @@ describe('extractSymbols — stress & edge cases', () => {
   bench('empty string', () => {
     extractSymbols('', 'empty.js');
   });
-}
+});

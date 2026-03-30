@@ -34,4 +34,4 @@ describe('compressSource — stress & edge cases', () => {
   bench('single line (1 char)', () => {
     compressSource('x', 'x.js');
   });
-}
+});
