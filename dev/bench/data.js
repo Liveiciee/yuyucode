@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774883094202,
+  "lastUpdate": 1774883466917,
   "repoUrl": "https://github.com/Liveiciee/yuyucode",
   "entries": {
     "YuyuCode Benchmark (CI · Ubuntu x86_64)": [
@@ -44114,6 +44114,55 @@ window.BENCHMARK_DATA = {
           {
             "name": "500 mixed files (stress)",
             "value": 6715.66,
+            "unit": "ops/sec"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "committer": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "distinct": true,
+          "id": "97a7244bf8f5ba840f3884159668dfc7ee3d9fd7",
+          "message": "fix: use correct exports from tokenizer.js with aliases",
+          "timestamp": "2026-03-30T23:10:15+08:00",
+          "tree_id": "1a527ee3b4f7495a61002f00df3dfcb5f5b49919",
+          "url": "https://github.com/Liveiciee/yuyucode/commit/97a7244bf8f5ba840f3884159668dfc7ee3d9fd7"
+        },
+        "date": 1774883466648,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "null input",
+            "value": 11563539.26,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "undefined input",
+            "value": 11839264.67,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "no extension",
+            "value": 3267239.05,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "deeply nested path",
+            "value": 6025530.69,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "500 mixed files (stress)",
+            "value": 6708.68,
             "unit": "ops/sec"
           }
         ]
