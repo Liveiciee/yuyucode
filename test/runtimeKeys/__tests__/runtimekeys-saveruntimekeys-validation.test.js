@@ -78,8 +78,8 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
     
 
     const state = store.getState();
-    expect(state.csk).toBe('csk-valid-long-key-1234567890');
-    expect(state.gsk).toBe('gsk-valid-long-key-1234567890');
+    expect(state.cerebras).toBe('csk-valid-long-key-1234567890');
+    expect(state.groq).toBe('gsk-valid-long-key-1234567890');
   });
 
   it('treats null/undefined/empty as skip', async () => {
