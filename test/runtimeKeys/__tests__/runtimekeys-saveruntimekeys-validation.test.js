@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { KeyValidationError, KeySaveError } from '../../../src/runtimeKeys/errors.js';
+import { KeyStorageError, KeySaveError } from '../../../src/runtimeKeys/errors.js';
 
 const mockHashValue = 'mock-hash-1234567890';
 
@@ -99,22 +99,22 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
   // Cukup pastikan state internal sudah benar melalui getState()
   });
 
-  it('throws KeyValidationError for short key', async () => {
+  it('throws KeyStorageError for short key', async () => {
     const store = await createFreshStore();
 
     mockGet.mockResolvedValueOnce({ value: null });
 
-    await expect(store.saveRuntimeKeys({ cerebras: 'short' }, { password: 'test-pass' })).rejects.toThrow(KeyValidationError);
+    await expect(store.saveRuntimeKeys({ cerebras: 'short' }, { password: 'test-pass' })).rejects.toThrow(KeyStorageError);
     await expect(store.saveRuntimeKeys({ cerebras: 'short' }, { password: 'test-pass' })).rejects.toThrow(/minimal 20 karakter/);
     expect(mockSet).not.toHaveBeenCalled();
   });
 
-  it('throws KeyValidationError for non-string key', async () => {
+  it('throws KeyStorageError for non-string key', async () => {
     const store = await createFreshStore();
 
     mockGet.mockResolvedValueOnce({ value: null });
 
-    await expect(store.saveRuntimeKeys({ cerebras: 12345 }, { password: 'test-pass' })).rejects.toThrow(KeyValidationError);
+    await expect(store.saveRuntimeKeys({ cerebras: 12345 }, { password: 'test-pass' })).rejects.toThrow(KeyStorageError);
     await expect(store.saveRuntimeKeys({ cerebras: 12345 }, { password: 'test-pass' })).rejects.toThrow(/harus berupa string/);
     expect(mockSet).not.toHaveBeenCalled();
   });
