@@ -11,12 +11,12 @@ vi.mock('@capacitor/preferences', () => ({
     set:  vi.fn().mockResolvedValue(undefined),
   },
 }));
-vi.mock('./api.js', () => ({ callServer: mockCallServer }));
+vi.mock('../src/api.js', () => ({ callServer: mockCallServer }));
 // utils.js is NOT mocked as a module — use vi.spyOn per-test to avoid
 // replacing the module in the shared registry (isolate:false cache pollution).
 
-import { callServer } from './api.js';
-import * as utilsModule from './utils.js';
+import { callServer } from '../src/api.js';
+import * as utilsModule from '../src/utils.js';
 import { useFileStore } from './hooks/useFileStore.js';
 
 beforeEach(() => {

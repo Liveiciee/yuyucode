@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from 'vitest';
-import { parseActions, executeAction, generateDiff, resolvePath } from './utils.js';
+import { parseActions, executeAction, generateDiff, resolvePath } from '../src/utils.js';
 
 // ── Dependency injection — NO vi.mock needed, compatible with isolate:false ──
 // executeAction(action, folder, _callServer) — inject a mock directly

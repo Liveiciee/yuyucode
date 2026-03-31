@@ -14,11 +14,11 @@ import {
   DEFAULT_PERMISSIONS,
   EFFORT_CONFIG,
   parseElicitation,
-} from './features.js';
+} from '../src/features.js';
 
 // ── Mock dependencies ─────────────────────────────────────────────────────────
-vi.mock('./api.js', () => ({ callServer: vi.fn().mockResolvedValue({ ok: true, data: '' }) }));
-vi.mock('./utils.js', () => ({
+vi.mock('../src/api.js', () => ({ callServer: vi.fn().mockResolvedValue({ ok: true, data: '' }) }));
+vi.mock('../src/utils.js', () => ({
   parseActions:  vi.fn().mockReturnValue([]),
   executeAction: vi.fn().mockResolvedValue({ ok: true, data: '' }),
 }));
@@ -29,7 +29,7 @@ vi.mock('@capacitor/preferences', () => ({
   },
 }));
 
-import { callServer } from './api.js';
+import { callServer } from '../src/api.js';
 import { Preferences } from '@capacitor/preferences'; // used via vi.mock above — CodeQL false positive
 
 beforeEach(() => {

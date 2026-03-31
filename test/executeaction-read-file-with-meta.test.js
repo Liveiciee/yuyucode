@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { executeAction, parseActions, resolvePath, generateDiff, countTokens } from './utils.js';
+import { executeAction, parseActions, resolvePath, generateDiff, countTokens } from '../src/utils.js';
 
-vi.mock('./api.js', () => ({ callServer: vi.fn() }));
-import { callServer } from './api.js';
+vi.mock('../src/api.js', () => ({ callServer: vi.fn() }));
+import { callServer } from '../src/api.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
