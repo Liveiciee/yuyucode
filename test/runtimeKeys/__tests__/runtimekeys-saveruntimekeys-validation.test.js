@@ -22,11 +22,18 @@ vi.stubGlobal('crypto', {
   },
 });
 
-// Helper untuk membuat KeyStore instance baru
+// Helper untuk membuat KeyStore instance baru dengan wrapper
 const createFreshStore = async () => {
   const { KeyStore } = await import('../../../src/runtimeKeys/keystore.js');
-  const store = new KeyStore();
-  return store;
+  const freshStore = new KeyStore();
+  return {
+    saveRuntimeKeys: (keys, opts) => freshStore.save(keys, opts),
+    getState: () => ({
+      csk: freshStore.getKey('cerebras'),
+      gsk: freshStore.getKey('groq'),
+    }),
+    getKey: (provider) => freshStore.getKey(provider),
+  };
 };
 
 describe('runtimeKeys — saveRuntimeKeys & validation', () => {

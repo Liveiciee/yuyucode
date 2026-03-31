@@ -49,21 +49,21 @@ beforeEach(async () => {
   executeAction.mockResolvedValue({ ok: true, data: 'written' });
   backupFiles.mockResolvedValue([]);
   verifySyntaxBatch.mockResolvedValue(undefined);
-  const { parsePlanSteps } = await import('../features.js');
+  const { parsePlanSteps } = await import('../../src/features.js');
   parsePlanSteps.mockReturnValue([]);
 });
 
-// ── handleApprove — reject ────────────────────────────────────────────────────
+// ── handlePlanApprove with steps ──────────────────────────────────────────────
 
 describe('useApprovalFlow — handlePlanApprove with steps', () => {
   it('executes steps and shows completion message', async () => {
-    const { parsePlanSteps } = await import('../features.js');
+    const { parsePlanSteps } = await import('../../src/features.js');
     parsePlanSteps.mockReturnValue([
       { num: 1, text: 'Read files', done: false, result: null },
       { num: 2, text: 'Make changes', done: false, result: null },
     ]);
 
-    const { executePlanStep } = await import('../features.js');
+    const { executePlanStep } = await import('../../src/features.js');
     executePlanStep.mockResolvedValue({ reply: 'Done step.', actions: [] });
 
     const sendMsgRef = { current: vi.fn() };
@@ -79,12 +79,12 @@ describe('useApprovalFlow — handlePlanApprove with steps', () => {
   });
 
   it('aborts plan execution on signal abort', async () => {
-    const { parsePlanSteps } = await import('../features.js');
+    const { parsePlanSteps } = await import('../../src/features.js');
     parsePlanSteps.mockReturnValue([
       { num: 1, text: 'Slow step', done: false, result: null },
     ]);
 
-    const { executePlanStep } = await import('../features.js');
+    const { executePlanStep } = await import('../../src/features.js');
     executePlanStep.mockImplementation((_step, _folder, _callAI, signal) => {
       if (signal?.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
       return Promise.resolve({ reply: 'done', actions: [] });
@@ -101,12 +101,12 @@ describe('useApprovalFlow — handlePlanApprove with steps', () => {
   });
 
   it('handles step with write actions — shows diff review card', async () => {
-    const { parsePlanSteps } = await import('../features.js');
+    const { parsePlanSteps } = await import('../../src/features.js');
     parsePlanSteps.mockReturnValue([
       { num: 1, text: 'Write file', done: false, result: null },
     ]);
 
-    const { executePlanStep } = await import('../features.js');
+    const { executePlanStep } = await import('../../src/features.js');
     executePlanStep.mockResolvedValue({
       reply: 'Writing file...',
       actions: [{ type: 'write_file', path: 'src/App.jsx', content: 'new code' }],
