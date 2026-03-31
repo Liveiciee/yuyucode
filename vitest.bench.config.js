@@ -16,12 +16,12 @@ export default defineConfig({
     include: ['test/bench/**/*.bench.{js,jsx,ts,tsx}'],
     exclude: ['e2e/**', 'node_modules/**'],
 
-    // Reporters set here (not via CLI) so Vitest resolves them as
-    // built-ins — avoids the loadCustomReporterModule package-lookup
-    // bug in Vitest 3.x where --reporter=json on the CLI triggers
-    // import('json') and fails with ERR_MODULE_NOT_FOUND.
-    reporters: ['json'],
-    outputFile: { json: RAW_PATH },
+    // test.benchmark.outputJson is Vitest's native bench JSON output path.
+    // This is separate from test reporters (reporters/outputFile) which only
+    // capture pass/fail test data — not hz/min/max bench metrics.
+    benchmark: {
+      outputJson: RAW_PATH,
+    },
 
     environment: 'happy-dom',
     setupFiles: ['./vitest.setup.js', './src/setupTest.js'],
