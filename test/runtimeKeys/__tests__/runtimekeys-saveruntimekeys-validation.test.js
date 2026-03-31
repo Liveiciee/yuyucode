@@ -16,7 +16,7 @@ vi.mock('@capacitor/preferences', () => ({
 
 // Mock crypto subtle for hash verification
 const mockDigest = vi.fn();
-globalThis.crypto = {
+vi.stubGlobal("crypto", {
   subtle: {
     digest: mockDigest,
   },

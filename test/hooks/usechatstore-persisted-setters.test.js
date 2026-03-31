@@ -14,11 +14,11 @@ vi.mock('@capacitor/preferences', () => ({
     remove: mockPreferencesRemove,
   },
 }));
-vi.mock('../api.js', () => ({
+vi.mock('../../src/api.js', () => ({
   askCerebrasStream: mockAskCerebrasStream,
   callServer: vi.fn().mockResolvedValue({ ok: true, data: '' }),
 }));
-vi.mock('../features.js', () => ({
+vi.mock('../../src/features.js', () => ({
   tfidfRank: vi.fn((mems, _txt, n) => mems.slice(0, n).map(m => ({ ...m, _score: 1 }))),
 }));
 
@@ -39,7 +39,7 @@ vi.mock('./useDb.js', () => ({
   dbLoadCheckpoints: mockDbLoadCheckpoints,
 }));
 
-import { useChatStore } from './useChatStore.js';
+import { useChatStore } from '../../src/hooks/useChatStore.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
