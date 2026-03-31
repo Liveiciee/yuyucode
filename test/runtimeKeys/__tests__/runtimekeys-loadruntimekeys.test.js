@@ -1,194 +1,130 @@
-// src/runtimeKeys.test.js
-// @vitest-environment happy-dom
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { loadRuntimeKeys } from '../../../src/runtimeKeys/index.js';
+import { KeyLoadError } from '../../../src/runtimeKeys/errors.js';
 
-// ──────────────────────────────────────────────────────────────────────────────
-// MOCK CAPACITOR PREFERENCES
-// ──────────────────────────────────────────────────────────────────────────────
-const mockPreferences = {
-  get: vi.fn(),
-  set: vi.fn(),
-  remove: vi.fn(),
-};
+const mockHashValue = 'mock-hash-1234567890';
+
+// Mock Preferences
+const mockGet = vi.fn();
+const mockSet = vi.fn();
 
 vi.mock('@capacitor/preferences', () => ({
-  Preferences: mockPreferences,
+  Preferences: {
+    get: mockGet,
+    set: mockSet,
+  },
 }));
 
-// ──────────────────────────────────────────────────────────────────────────────
-// MOCK CRYPTO - Factory function untuk fresh mock tiap panggil
-// ──────────────────────────────────────────────────────────────────────────────
-const createMockCrypto = () => {
-  const mockHashValue = 'mock-hash-1234567890';
-  
-  return {
-    subtle: {
-      importKey: vi.fn().mockResolvedValue({}),
-      deriveKey: vi.fn().mockResolvedValue({}),
-      encrypt: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
-      decrypt: vi.fn().mockImplementation(async () => {
-        const mockJson = JSON.stringify({
-          key: 'test-key-12345678901234567890',
-          expiresAt: Date.now() + 1000000,
-          hash: mockHashValue,
-        });
-        return new TextEncoder().encode(mockJson);
-      }),
-      digest: vi.fn().mockImplementation(async (_, data) => {
-        const input = new TextDecoder().decode(data);
-        if (input.includes('csk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
-        if (input.includes('gsk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
-        if (input.includes('short')) return new TextEncoder().encode('hash-short').buffer;
-        if (input.includes('new-csk')) return new TextEncoder().encode('mock-hash-new').buffer;
-        if (input.includes('old-csk')) return new TextEncoder().encode('mock-hash-old').buffer;
-        if (input.includes('csk-long-valid-key')) return new TextEncoder().encode(mockHashValue).buffer;
-        if (input.includes('gsk-long-valid-key')) return new TextEncoder().encode(mockHashValue).buffer;
-        return new TextEncoder().encode(mockHashValue).buffer;
-      }),
-    },
-    getRandomValues: vi.fn((arr) => {
-      for (let i = 0; i < arr.length; i++) arr[i] = i % 256;
-      return arr;
-    }),
-  };
+// Mock crypto subtle for hash verification
+const mockDigest = vi.fn();
+globalThis.crypto = {
+  subtle: {
+    digest: mockDigest,
+  },
 };
 
-// ──────────────────────────────────────────────────────────────────────────────
-// HELPER: Create Fresh Store Instance (BUKAN singleton!)
-// ──────────────────────────────────────────────────────────────────────────────
-async function createFreshStore() {
-  // Reset modules & globals
-  vi.resetModules();
-  vi.unstubAllGlobals();
-  
-  // Setup fresh crypto mock
-  const mockCrypto = createMockCrypto();
-  vi.stubGlobal('crypto', mockCrypto);
-  vi.stubGlobal('window', { crypto: mockCrypto });
-  
-  // Import actual module dengan config override
-  const actual = await vi.importActual('../index.js');
-  
-  // Buat instance KeyStore baru (bukan pake singleton!)
-  const freshStore = new actual.KeyStore();
-  
-  // Override config untuk test (cepat)
-  actual.CONFIG.PBKDF2_ITERATIONS = 1;
-  actual.CONFIG.LOAD_TIMEOUT = 100;
-  actual.CONFIG.KEY_MIN_LENGTH = 1;
-  actual.CONFIG.KEY_MAX_LENGTH = 1000;
-  
-  // Return object dengan methods yang sama kayak singleton export
-  return {
-    loadRuntimeKeys: (opts) => freshStore.load(opts),
-    saveRuntimeKeys: (keys, opts) => freshStore.save(keys, opts),
-    clearRuntimeKeys: () => freshStore.clear(),
-    getRuntimeCerebrasKey: () => freshStore.getKey('cerebras'),
-    getRuntimeGroqKey: () => freshStore.getKey('groq'),
-    checkKeysStatus: () => freshStore.getStatus(),
-    forceReloadKeys: (opts = {}) => freshStore.forceReload(opts),
-    initializeRuntimeKeys: (opts = {}) => freshStore.initialize(opts),
-    CONFIG: actual.CONFIG,
-    KeyStore: actual.KeyStore,
-    _store: freshStore, // internal access untuk debug
-  };
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// SETUP & TEARDOWN
-// ──────────────────────────────────────────────────────────────────────────────
-beforeEach(() => {
-  vi.clearAllMocks();
-  
-  // Reset mock implementations
-  mockPreferences.get.mockReset();
-  mockPreferences.set.mockReset();
-  mockPreferences.remove.mockReset();
-  
-  // Default: empty storage
-  mockPreferences.get.mockResolvedValue({ value: null });
-  mockPreferences.set.mockResolvedValue(undefined);
-  mockPreferences.remove.mockResolvedValue(undefined);
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
-
-// ──────────────────────────────────────────────────────────────────────────────
-// GROUP 1: Security & Password Requirement
-// ──────────────────────────────────────────────────────────────────────────────
-
 describe('runtimeKeys — loadRuntimeKeys', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGet.mockReset();
+    mockSet.mockReset();
+    
+    // Default mock for crypto subtle digest
+    mockDigest.mockImplementation(async (algorithm, data) => {
+      const input = new TextDecoder().decode(data);
+      if (input.includes('csk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
+      if (input.includes('gsk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
+      if (input.includes('csk-long-valid-key')) return new TextEncoder().encode(mockHashValue).buffer;
+      if (input.includes('gsk-long-valid-key')) return new TextEncoder().encode(mockHashValue).buffer;
+      return new TextEncoder().encode(mockHashValue).buffer;
+    });
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+  });
+
   it('loads both keys successfully', async () => {
-    const mockData = JSON.stringify({
-      key: 'csk-valid-long-key-1234567890',
-      expiresAt: Date.now() + 1000000,
-      hash: mockHashValue,
+    const now = Date.now();
+    mockGet.mockImplementation(async ({ key }) => {
+      if (key === 'runtime_keys') {
+        return {
+          value: JSON.stringify({
+            csk: {
+              key: 'csk-valid-long-key-1234567890',
+              expiresAt: now + 1000000,
+              hash: mockHashValue,
+            },
+            gsk: {
+              key: 'gsk-valid-long-key-1234567890',
+              expiresAt: now + 1000000,
+              hash: mockHashValue,
+            },
+          }),
+        };
+      }
+      return { value: null };
     });
 
-    mockPreferences.get.mockImplementation(({ key }) => {
-      if (key === 'yc_cerebras_key_enc') return Promise.resolve({ value: mockData });
-      if (key === 'yc_groq_key_enc') return Promise.resolve({ value: mockData.replace('csk', 'gsk') });
-      return Promise.resolve({ value: null });
-    });
-
-    const mod = await createFreshStore();
-    const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
-
-    expect(result.success).toBe(true);
-    expect(result.loaded).toBe(2);
-    expect(result.errors).toHaveLength(0);
+    const result = await loadRuntimeKeys();
+    expect(result.csk).toBe('csk-valid-long-key-1234567890');
+    expect(result.gsk).toBe('gsk-valid-long-key-1234567890');
   });
 
   it('loads with some validation failures', async () => {
-    const mockDataShort = JSON.stringify({
-      key: 'short',
-      expiresAt: Date.now() + 1000000,
-      hash: 'hash-short',
-    });
-    const mockDataValid = JSON.stringify({
-      key: 'gsk-valid-long-key-1234567890',
-      expiresAt: Date.now() + 1000000,
-      hash: mockHashValue,
+    const now = Date.now();
+    mockGet.mockImplementation(async ({ key }) => {
+      if (key === 'runtime_keys') {
+        return {
+          value: JSON.stringify({
+            csk: {
+              key: 'csk-short',
+              expiresAt: now + 1000000,
+              hash: mockHashValue,
+            },
+            gsk: {
+              key: 'gsk-valid-long-key-1234567890',
+              expiresAt: now + 1000000,
+              hash: mockHashValue,
+            },
+          }),
+        };
+      }
+      return { value: null };
     });
 
-    mockPreferences.get.mockImplementation(({ key }) => {
-      if (key === 'yc_cerebras_key_enc') return Promise.resolve({ value: mockDataShort });
-      if (key === 'yc_groq_key_enc') return Promise.resolve({ value: mockDataValid });
-      return Promise.resolve({ value: null });
-    });
-
-    const mod = await createFreshStore();
-    const result = await mod.loadRuntimeKeys({ password: 'test-pass' });
-
-    expect(result.loaded).toBe(2);
-    expect(mod.getRuntimeGroqKey()).toBe('gsk-valid-long-key-1234567890');
-    expect(mod.getRuntimeCerebrasKey()).toBe('short');
+    const result = await loadRuntimeKeys();
+    expect(result.csk).toBeNull();
+    expect(result.gsk).toBe('gsk-valid-long-key-1234567890');
   });
 
   it('loads without validation (validate: false)', async () => {
-    const mockDataShort = JSON.stringify({
-      key: 'short',
-      expiresAt: Date.now() + 1000000,
-      hash: 'hash-short',
+    const now = Date.now();
+    mockGet.mockImplementation(async ({ key }) => {
+      if (key === 'runtime_keys') {
+        return {
+          value: JSON.stringify({
+            csk: {
+              key: 'csk-short',
+              expiresAt: now + 1000000,
+              hash: mockHashValue,
+            },
+          }),
+        };
+      }
+      return { value: null };
     });
 
-    mockPreferences.get.mockImplementation(() => Promise.resolve({ value: mockDataShort }));
-
-    const mod = await createFreshStore();
-    const result = await mod.loadRuntimeKeys({ password: 'test-pass', validate: false });
-
-    expect(result.success).toBe(true);
-    expect(result.loaded).toBe(2);
+    const result = await loadRuntimeKeys({ validate: false });
+    expect(result.csk).toBe('csk-short');
   });
 
   it('throws KeyLoadError on timeout', async () => {
-    mockPreferences.get.mockImplementation(() => new Promise(() => {}));
+    mockGet.mockImplementation(() => new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout')), 100);
+    }));
 
-    const mod = await createFreshStore();
-    await expect(mod.loadRuntimeKeys({ password: 'test-pass' })).rejects.toHaveProperty('code', 'LOAD_ERROR');
+    await expect(loadRuntimeKeys()).rejects.toThrow(KeyLoadError);
+    await expect(loadRuntimeKeys()).rejects.toThrow(/gagal load runtime keys/i);
   });
 });

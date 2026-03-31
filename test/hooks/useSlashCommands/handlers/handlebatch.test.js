@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleBatch } from './batch.js';
+import { handleBatch } from '../../../../src/hooks/useSlashCommands/handlers/batch.js';
 
 vi.mock('@capacitor/preferences', () => ({
   Preferences: {
@@ -80,15 +80,14 @@ describe('handleBatch', () => {
     handleBatch(defaultArgs({ parts: ['/batch'] }));
     expect(simpleResponse).toHaveBeenCalledWith(
       expect.any(Function),
-      expect.stringContaining('Contoh')
+      expect.stringContaining('Contoh')                                                      
     );
   });
 
   it('does NOT call withLoading when no command', () => {
     handleBatch(defaultArgs({ parts: ['/batch'] }));
     expect(withLoading).not.toHaveBeenCalled();
-  });
-
+  });                                                                                    
   it('does NOT call callServer when no command', () => {
     handleBatch(defaultArgs({ parts: ['/batch'] }));
     expect(callServer).not.toHaveBeenCalled();
@@ -366,13 +365,11 @@ describe('handleBatch', () => {
       .mockResolvedValueOnce([{ path: '/s/b.ts', content: '' }]);
     await handleBatch(defaultArgs());
     expect(simpleResponse).toHaveBeenCalledWith(
-      expect.any(Function),
-      expect.stringContaining('3 perubahan')
+      expect.any(Function),                                                                    expect.stringContaining('3 perubahan')
     );
   });
 
-  it('counts unique files by path in summary', async () => {
-    callServer.mockResolvedValue({ ok: true, data: [makeFile('a.js')] });
+  it('counts unique files by path in summary', async () => {                                 callServer.mockResolvedValue({ ok: true, data: [makeFile('a.js')] });
     processBatchFile.mockResolvedValue([
       { path: '/src/a.js', content: 'v1' },
       { path: '/src/a.js', content: 'v2' },

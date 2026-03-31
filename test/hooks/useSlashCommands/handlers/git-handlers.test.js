@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleDiff, handleHistory, handleStatus } from './git.js';
+import { handleDiff, handleHistory, handleStatus } from '../../../../src/hooks/useSlashCommands/handlers/git.js';
 
 vi.mock('@capacitor/preferences', () => ({
   Preferences: {
@@ -221,8 +221,7 @@ describe('git handlers', () => {
   // ─── handleHistory ─────────────────────────────────────────────
 
   describe('handleHistory', () => {
-    it('shows message when no file selected', () => {
-      handleHistory({ selectedFile: null, setShowFileHistory: mockSetShowFileHistory, setMessages: mockSetMessages });
+    it('shows message when no file selected', () => {                                          handleHistory({ selectedFile: null, setShowFileHistory: mockSetShowFileHistory, setMessages: mockSetMessages });
       expect(simpleResponse).toHaveBeenCalledWith(mockSetMessages, expect.stringContaining('Buka file dulu'));
     });
 
