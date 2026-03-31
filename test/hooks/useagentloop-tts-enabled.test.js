@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 const mockAskCerebrasStream = vi.hoisted(() => vi.fn());
@@ -15,17 +15,17 @@ const mockSelectSkills      = vi.hoisted(() => vi.fn());
 const mockGenerateDiff      = vi.hoisted(() => vi.fn());
 const mockResolvePath       = vi.hoisted(() => vi.fn((base, p) => base + '/' + p));
 
-vi.mock('../api.js', () => ({
+vi.mock('../../src/api.js', () => ({
   askCerebrasStream: mockAskCerebrasStream,
   callServer: mockCallServer,
 }));
-vi.mock('../utils.js', () => ({
+vi.mock('../../src/utils.js', () => ({
   parseActions: mockParseActions,
   executeAction: mockExecuteAction,
   resolvePath: mockResolvePath,
   generateDiff: mockGenerateDiff,
 }));
-vi.mock('../features.js', () => ({
+vi.mock('../../src/features.js', () => ({
   runHooksV2:      mockRunHooksV2,
   checkPermission: mockCheckPermission,
   tokenTracker:    mockTokenTracker,
@@ -33,7 +33,7 @@ vi.mock('../features.js', () => ({
   selectSkills:    mockSelectSkills,
   parseElicitation: vi.fn().mockReturnValue(null),
 }));
-vi.mock('../constants.js', () => ({
+vi.mock('../../src/constants.js', () => ({
   BASE_SYSTEM:            'BASE_SYSTEM ',
   getSystemForModel:      vi.fn().mockReturnValue('BASE_SYSTEM '),
   AUTO_COMPACT_CHARS:     80000,
@@ -46,7 +46,7 @@ vi.mock('../constants.js', () => ({
   MODELS:                 [{ id: 'qwen-3-235b', label: 'Qwen', provider: 'cerebras' }],
 }));
 
-import { useAgentLoop } from './useAgentLoop.js';
+import { useAgentLoop } from '../../src/hooks/useAgentLoop.js';
 
 // ── Fake context builders ─────────────────────────────────────────────────────
 function makeProject(overrides = {}) {
