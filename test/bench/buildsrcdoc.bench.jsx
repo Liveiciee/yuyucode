@@ -1,29 +1,17 @@
 // @vitest-environment node
 import { describe, bench } from 'vitest';
-import {
-  getLangExt,
-  isEmmetLang,
-  isTsLang,
-  buildSrcdoc,
-  generateDiff,
-  parseActions,
-  extractSymbols,
-  compressSource,
-  extractImports,
-  computeSalience,
-} from './_helpers.jsx';
+import { buildSrcdoc } from './_helpers.jsx';
 
-// Fixtures (keep them defined per file to avoid cross-contamination)
 describe('buildSrcdoc', () => {
   bench('empty tabs', () => {
-    buildSrcdoc(TABS_EMPTY);
+    return buildSrcdoc(TABS_EMPTY);
   });
 
   bench('js only', () => {
-    buildSrcdoc(TABS_JS_ONLY);
+    return buildSrcdoc(TABS_JS_ONLY);
   });
 
   bench('html + css + js', () => {
-    buildSrcdoc(TABS_HTML_CSS_JS);
+    return buildSrcdoc(TABS_HTML_CSS_JS);
   });
 });
