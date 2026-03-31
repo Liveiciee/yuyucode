@@ -11,7 +11,7 @@ vi.mock('@capacitor/preferences', () => ({
     set:  vi.fn().mockResolvedValue(undefined),
   },
 }));
-vi.mock('./api.js', () => ({ callServer: mockCallServer }));
+vi.mock('../api.js', () => ({ callServer: mockCallServer }));
 // utils.js NOT mocked as module — vi.spyOn to avoid cache pollution (isolate:false)
 
 import { callServer } from './api.js';

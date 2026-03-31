@@ -104,7 +104,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
     mockGet.mockResolvedValueOnce({ value: null });
 
-    await expect(store.saveRuntimeKeys({ cerebras: 'short' }, { password: 'test-pass' })).rejects.toThrow(KeyStorageError);
+    await expect(store.saveRuntimeKeys({ cerebras: 'short' }, { password: 'test-pass' })).rejects.toHaveProperty("name", "KeyStorageError");
     await expect(store.saveRuntimeKeys({ cerebras: 'short' }, { password: 'test-pass' })).rejects.toThrow(/minimal 20 karakter/);
     expect(mockSet).not.toHaveBeenCalled();
   });
@@ -114,7 +114,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
     mockGet.mockResolvedValueOnce({ value: null });
 
-    await expect(store.saveRuntimeKeys({ cerebras: 12345 }, { password: 'test-pass' })).rejects.toThrow(KeyStorageError);
+    await expect(store.saveRuntimeKeys({ cerebras: 12345 }, { password: 'test-pass' })).rejects.toHaveProperty("name", "KeyStorageError");
     await expect(store.saveRuntimeKeys({ cerebras: 12345 }, { password: 'test-pass' })).rejects.toThrow(/harus berupa string/);
     expect(mockSet).not.toHaveBeenCalled();
   });
