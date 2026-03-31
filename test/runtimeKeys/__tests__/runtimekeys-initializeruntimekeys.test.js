@@ -1,4 +1,4 @@
-// src/runtimeKeys.test.js
+// test/runtimeKeys/__tests__/runtimekeys-initializeruntimekeys.test.js
 // @vitest-environment happy-dom
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -68,7 +68,7 @@ async function createFreshStore() {
   vi.stubGlobal('window', { crypto: mockCrypto });
   
   // Import actual module dengan config override
-  const actual = await vi.importActual('../index.js');
+  const actual = await vi.importActual('../../../src/runtimeKeys/index.js');
   
   // Buat instance KeyStore baru (bukan pake singleton!)
   const freshStore = new actual.KeyStore();
