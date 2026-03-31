@@ -70,7 +70,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
       groq: '  gsk-valid-long-key-1234567890  ',
     }, { password: 'test-pass' });
 
-    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockSet).toHaveBeenCalledTimes(2);
     const savedData = JSON.parse(mockSet.mock.calls[0][0].value);
 
     expect(savedData.csk.key).toBe('csk-valid-long-key-1234567890');
@@ -97,7 +97,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
       other: '',
     }, { password: 'test-pass' });
 
-    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockSet).toHaveBeenCalledTimes(2);
     const savedData = JSON.parse(mockSet.mock.calls[0][0].value);
     expect(savedData.csk).toBeUndefined();
     expect(savedData.gsk).toBeUndefined();
