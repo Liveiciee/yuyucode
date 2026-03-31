@@ -16,11 +16,12 @@ vi.mock('@capacitor/preferences', () => ({
 
 // Mock crypto subtle for hash verification
 const mockDigest = vi.fn();
-globalThis.crypto = {
+// Use vi.stubGlobal instead of direct assignment
+vi.stubGlobal('crypto', {
   subtle: {
     digest: mockDigest,
   },
-};
+});
 
 // Helper untuk membuat KeyStore instance baru
 const createFreshStore = async () => {
