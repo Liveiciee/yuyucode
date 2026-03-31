@@ -1,4 +1,5 @@
-import React, { useRef, useEffect } from "react";
+// src/App.jsx
+import React, { useRef, useEffect, useState } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { callServer } from './api.js';
 import { ThemeEffects } from './components/ThemeEffects.jsx';
@@ -23,7 +24,9 @@ import { useDevTools }       from './hooks/useDevTools.js';
 import { useAgentLoop }      from './hooks/useAgentLoop.js';
 import { useGrowth }         from './hooks/useGrowth.js';
 import { useBrightness }     from './hooks/useBrightness.js';
-import { useDb }            from './hooks/useDb.js';
+import { useDb }             from './hooks/useDb.js';
+// Import fungsi WebSocket terpusat
+import { connectWebSocket, getWebSocket, disconnectWebSocket } from './api/websocket.js';
 
 // ARM64 detection for performance tuning
 const isArm64 = /arm64|arm|aarch64/i.test(navigator?.platform || '') || /aarch64/i.test(navigator?.userAgent || '');
@@ -72,8 +75,8 @@ async function handleWatchMessage(rawData, folder, fileSnapshotsRef, setMessages
 export default function App() {
   // ── STORES ──
   const ui      = useUIStore();
-  const [showApiKeys, setShowApiKeys] = React.useState(false);
-  const [onboarded,   setOnboarded]   = React.useState(true);
+  const [showApiKeys, setShowApiKeys] = useState(false);
+  const [onboarded,   setOnboarded]   = useState(true);
   const project = useProjectStore();
   const file    = useFileStore();
   const chat    = useChatStore();
@@ -99,7 +102,7 @@ export default function App() {
   // ── REFS ──
   const abortRef              = useRef(null);
   const handleSlashCommandRef = useRef(null);
-  const wsRef                 = useRef(null);
+  const wsRef                 = useRef(null); // Ref ini sekarang hanya untuk tracking status watch, bukan instance WS
   const fileSnapshotsRef      = useRef({});
   const reconnectTimeoutRef   = useRef(null);
 
@@ -265,36 +268,46 @@ export default function App() {
   useEffect(() => { chat.persistMessages(chat.messages); }, [chat.messages]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if(project.folder) project.loadFolderPrefs(project.folder); }, [project.folder]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // FileWatcher Effect - MODIFIED: Menggunakan shared WebSocket
   useEffect(() => {
-    if (!project.fileWatcherActive || !project.folder) return;
-    let dead = false;
-    function connect() {
-      if (dead) return;
-      const ws = new WebSocket('ws://127.0.0.1:8766');
-      wsRef.current = ws;
-      ws.onopen = () => ws.send(JSON.stringify({type:'watch',path:project.folder}));
-      ws.onmessage = async (e) => {
-        try {
-          await handleWatchMessage(e.data, project.folder, fileSnapshotsRef, chat.setMessages, sendNotification);
-        } catch (_e) { }
-      };
-      ws.onerror = () => {};
-      ws.onclose = () => { 
-        if (!dead) {
-          if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = setTimeout(connect, 3000);
-        }
-      };
+    if (!project.fileWatcherActive || !project.folder) {
+      // Jika watcher dimatikan, kita tidak perlu melakukan apa-apa pada shared WS
+      // karena listener spesifik akan di-cleanup.
+      wsRef.current = null;
+      return;
     }
-    connect();
-    return () => { 
-      dead = true;
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      if (wsRef.current) {
-        wsRef.current.onclose = null;
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+
+    // Inisialisasi koneksi terpusat (jika belum ada)
+    const ws = connectWebSocket();
+    wsRef.current = ws;
+
+    // Handler pesan khusus untuk file watcher
+    const handleMessage = async (e) => {
+      try {
+        await handleWatchMessage(e.data, project.folder, fileSnapshotsRef, chat.setMessages, sendNotification);
+      } catch (_e) { }
+    };
+
+    // Daftarkan listener
+    ws.addEventListener('message', handleMessage);
+
+    // Kirim pesan 'watch' saat mount
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({type:'watch',path:project.folder}));
+    } else {
+      // Jika belum open, tunggu sampai open baru kirim (opsional, tergantung implementasi server)
+      const onOpenHandler = () => {
+        ws.send(JSON.stringify({type:'watch',path:project.folder}));
+        ws.removeEventListener('open', onOpenHandler);
+      };
+      ws.addEventListener('open', onOpenHandler);
+    }
+
+    // Cleanup: Hapus listener saat unmount atau folder berubah
+    return () => {
+      ws.removeEventListener('message', handleMessage);
+      // JANGAN tutup koneksi (ws.close()) karena komponen lain mungkin masih butuh!
+      wsRef.current = null;
     };
   }, [project.fileWatcherActive, project.folder]); // eslint-disable-line react-hooks/exhaustive-deps
 
