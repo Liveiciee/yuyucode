@@ -22,28 +22,11 @@ vi.stubGlobal('crypto', {
   },
 });
 
-// Helper untuk membuat KeyStore instance baru dan membungkusnya dengan API yang sama seperti singleton
+// Helper untuk membuat KeyStore instance baru
 const createFreshStore = async () => {
   const { KeyStore } = await import('../../../src/runtimeKeys/keystore.js');
-  const freshStore = new KeyStore();
-
-  // Override config untuk test (cepat)
-  freshStore.CONFIG.PBKDF2_ITERATIONS = 1;
-  freshStore.CONFIG.LOAD_TIMEOUT = 100;
-  freshStore.CONFIG.KEY_MIN_LENGTH = 1;
-  freshStore.CONFIG.KEY_MAX_LENGTH = 1000;
-
-  // Bungkus dengan method yang sama seperti yang digunakan di test
-  return {
-    saveRuntimeKeys: (keys, opts) => freshStore.save(keys, opts),
-    getState: () => ({
-      csk: freshStore.getKey('cerebras'),
-      gsk: freshStore.getKey('groq'),
-    }),
-    getKey: (provider) => freshStore.getKey(provider),
-    loadRuntimeKeys: (opts) => freshStore.load(opts),
-    clearRuntimeKeys: () => freshStore.clear(),
-  };
+  const store = new KeyStore();
+  return store;
 };
 
 describe('runtimeKeys — saveRuntimeKeys & validation', () => {
