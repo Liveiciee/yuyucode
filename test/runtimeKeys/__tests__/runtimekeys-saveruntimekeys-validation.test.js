@@ -29,8 +29,8 @@ const createFreshStore = async () => {
   return {
     saveRuntimeKeys: (keys, opts) => freshStore.save(keys, opts),
     getState: () => ({
-      csk: freshStore.getKey('cerebras'),
-      gsk: freshStore.getKey('groq'),
+      cerebras: freshStore.getKey('cerebras'),
+      groq: freshStore.getKey('groq'),
     }),
     getKey: (provider) => freshStore.getKey(provider),
   };
@@ -66,8 +66,8 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
     mockSet.mockResolvedValue(undefined);
 
     await store.saveRuntimeKeys({
-      csk: '  csk-valid-long-key-1234567890  ',
-      gsk: '  gsk-valid-long-key-1234567890  ',
+      cerebras: '  csk-valid-long-key-1234567890  ',
+      groq: '  gsk-valid-long-key-1234567890  ',
     }, { password: 'test-pass' });
 
     expect(mockSet).toHaveBeenCalledTimes(1);
@@ -92,8 +92,8 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
     mockSet.mockResolvedValue(undefined);
 
     await store.saveRuntimeKeys({
-      csk: null,
-      gsk: undefined,
+      cerebras: null,
+      groq: undefined,
       other: '',
     }, { password: 'test-pass' });
 
@@ -108,8 +108,8 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
     mockGet.mockResolvedValueOnce({ value: null });
 
-    await expect(store.saveRuntimeKeys({ csk: 'short' }, { password: 'test-pass' })).rejects.toThrow(KeyValidationError);
-    await expect(store.saveRuntimeKeys({ csk: 'short' }, { password: 'test-pass' })).rejects.toThrow(/minimal 20 karakter/);
+    await expect(store.saveRuntimeKeys({ cerebras: 'short' }, { password: 'test-pass' })).rejects.toThrow(KeyValidationError);
+    await expect(store.saveRuntimeKeys({ cerebras: 'short' }, { password: 'test-pass' })).rejects.toThrow(/minimal 20 karakter/);
     expect(mockSet).not.toHaveBeenCalled();
   });
 
@@ -118,8 +118,8 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
     mockGet.mockResolvedValueOnce({ value: null });
 
-    await expect(store.saveRuntimeKeys({ csk: 12345 }, { password: 'test-pass' })).rejects.toThrow(KeyValidationError);
-    await expect(store.saveRuntimeKeys({ csk: 12345 }, { password: 'test-pass' })).rejects.toThrow(/harus berupa string/);
+    await expect(store.saveRuntimeKeys({ cerebras: 12345 }, { password: 'test-pass' })).rejects.toThrow(KeyValidationError);
+    await expect(store.saveRuntimeKeys({ cerebras: 12345 }, { password: 'test-pass' })).rejects.toThrow(/harus berupa string/);
     expect(mockSet).not.toHaveBeenCalled();
   });
 
@@ -130,7 +130,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
     mockGet.mockResolvedValueOnce({ value: null });
     mockSet.mockResolvedValue(undefined);
 
-    await store.saveRuntimeKeys({ csk: 'sk-valid-long-key-1234567890' }, { password: 'test-pass' });
+    await store.saveRuntimeKeys({ cerebras: 'sk-valid-long-key-1234567890' }, { password: 'test-pass' });
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('sk- prefix is deprecated'));
     consoleWarnSpy.mockRestore();
@@ -142,7 +142,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
     mockGet.mockResolvedValueOnce({ value: null });
     mockSet.mockRejectedValue(new Error('Storage full'));
 
-    await expect(store.saveRuntimeKeys({ csk: 'csk-valid-long-key-1234567890' }, { password: 'test-pass' })).rejects.toThrow(KeySaveError);
-    await expect(store.saveRuntimeKeys({ csk: 'csk-valid-long-key-1234567890' }, { password: 'test-pass' })).rejects.toThrow(/gagal menyimpan runtime keys/);
+    await expect(store.saveRuntimeKeys({ cerebras: 'csk-valid-long-key-1234567890' }, { password: 'test-pass' })).rejects.toThrow(KeySaveError);
+    await expect(store.saveRuntimeKeys({ cerebras: 'csk-valid-long-key-1234567890' }, { password: 'test-pass' })).rejects.toThrow(/gagal menyimpan runtime keys/);
   });
 });
