@@ -85,7 +85,8 @@ function normalize(raw) {
           const hz = Number(bench.hz ?? 0);
 
           results.push({
-            name: `${group.name} > ${bench.name}`,
+            // Vitest 3.x outputJson uses fullName on groups, not name
+            name: `${group.fullName ?? group.name ?? 'bench'} > ${bench.name}`,
             unit: 'ops/sec',
             value: Number.isFinite(hz) ? hz : 0,
           });
