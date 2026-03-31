@@ -12,6 +12,7 @@ export default defineConfig({
   test: {
     include: [
       'src/**/*.test.{js,ts,jsx,tsx}',
+      'test/**/*.test.{js,ts,jsx,tsx}',
     ],
     exclude: ['e2e/**', 'node_modules/**'],
     setupFiles: ['./vitest.setup.js', './src/setupTest.js'],
