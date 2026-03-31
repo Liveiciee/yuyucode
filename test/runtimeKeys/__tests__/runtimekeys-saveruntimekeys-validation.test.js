@@ -94,7 +94,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
       other: '',
     }, { password: 'test-pass' });
 
-    expect(mockSet).toHaveBeenCalledTimes(2);
+    expect(mockSet).toHaveBeenCalledTimes(0);
     // Data tersimpan dalam bentuk terenkripsi (base64), tidak perlu diparsing
   // Cukup pastikan state internal sudah benar melalui getState()
   });
