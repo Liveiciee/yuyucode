@@ -12,9 +12,16 @@ function runBench() {
   console.log(`📱 Platform: ${process.arch}`);
   console.log(`🧠 Node: ${process.version}`);
 
+  // Ensure output dir exists before vitest writes to it
+  fs.mkdirSync(path.dirname(RAW_PATH), { recursive: true });
+
   try {
+    // Use --config so reporters are resolved as built-ins (not via
+    // loadCustomReporterModule). Passing --reporter=json via CLI in
+    // Vitest 3.x triggers import('json') which fails with
+    // ERR_MODULE_NOT_FOUND — config-based reporters bypass that path.
     execSync(
-      `npx vitest bench --run --reporter=json --outputFile=${RAW_PATH}`,
+      `npx vitest bench --run --config vitest.bench.config.js`,
       { stdio: 'inherit' }
     );
   } catch (err) {
