@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774937184316,
+  "lastUpdate": 1774938345972,
   "repoUrl": "https://github.com/Liveiciee/yuyucode",
   "entries": {
     "YuyuCode Benchmark (CI · Ubuntu x86_64)": [
@@ -54967,6 +54967,400 @@ window.BENCHMARK_DATA = {
           {
             "name": "test/bench/multi-tab-stress.bench.jsx > multi-tab — stress > open 200 tabs sequentially",
             "value": 22396.716265015184,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/multi-tab-stress.bench.jsx > multi-tab — stress > find dirty tab from 200",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/multi-tab-stress.bench.jsx > multi-tab — stress > close all dirty tabs from 200",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/multi-tab-stress.bench.jsx > multi-tab — stress > reorder — move last to first (200 tabs)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/parseactions-agent-loop-hot-path.bench.jsx > parseActions (agent loop hot path) > no action blocks",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/parseactions-agent-loop-hot-path.bench.jsx > parseActions (agent loop hot path) > 1 action block",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/parseactions-agent-loop-hot-path.bench.jsx > parseActions (agent loop hot path) > 5 action blocks",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/parseactions-agent-loop-hot-path.bench.jsx > parseActions (agent loop hot path) > mixed — valid + invalid + non-action blocks",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/parseactions-worst-case.bench.jsx > parseActions — worst case > 100 fake action blocks (all invalid JSON)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/parseactions-worst-case.bench.jsx > parseActions — worst case > 20 valid action blocks",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/parseactions-worst-case.bench.jsx > parseActions — worst case > empty string",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/parseactions-worst-case.bench.jsx > parseActions — worst case > 10MB-ish text — no actions",
+            "value": 0,
+            "unit": "ops/sec"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "committer": {
+            "email": "liveiciee@gmail.com",
+            "name": "Liveiciee",
+            "username": "Liveiciee"
+          },
+          "distinct": true,
+          "id": "76f51335ee0b1c0c517a5debed37e106125acb16",
+          "message": "fix: correct import paths for features.js and add wrapper for runtimeKeys store",
+          "timestamp": "2026-03-31T14:24:48+08:00",
+          "tree_id": "4879ec68ed121dae0d2df138bf9a64681b6d7013",
+          "url": "https://github.com/Liveiciee/yuyucode/commit/76f51335ee0b1c0c517a5debed37e106125acb16"
+        },
+        "date": 1774938345316,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test/bench/buildsrcdoc-edge-cases.bench.jsx > buildSrcdoc — edge cases > giant JS (500 lines)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/buildsrcdoc-edge-cases.bench.jsx > buildSrcdoc — edge cases > 20 tabs (only first html/css/js matter)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/buildsrcdoc-edge-cases.bench.jsx > buildSrcdoc — edge cases > unicode content",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/buildsrcdoc.bench.jsx > buildSrcdoc > empty tabs",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/buildsrcdoc.bench.jsx > buildSrcdoc > js only",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/buildsrcdoc.bench.jsx > buildSrcdoc > html + css + js",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/compresssource-stress-edge-cases.bench.jsx > compressSource — stress & edge cases > 5000 line file",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/compresssource-stress-edge-cases.bench.jsx > compressSource — stress & edge cases > 200 unique symbol names (compression resistant)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/compresssource-stress-edge-cases.bench.jsx > compressSource — stress & edge cases > unicode source",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/compresssource-stress-edge-cases.bench.jsx > compressSource — stress & edge cases > empty string",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/compresssource-stress-edge-cases.bench.jsx > compressSource — stress & edge cases > single line (1 char)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/compresssource.bench.jsx > compressSource > small file (4 lines)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/compresssource.bench.jsx > compressSource > realistic component (~50 lines)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/compresssource.bench.jsx > compressSource > large file (500 lines)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/compresssource.bench.jsx > compressSource > large component (10x realistic, ~500 lines)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/compresssource.bench.jsx > compressSource > non-code file (early return)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/computesalience-stress.bench.jsx > computeSalience — stress > 200 files with cross-imports",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/computesalience.bench.jsx > computeSalience > 20 pre-built file data objects",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/concurrent-simulation.bench.jsx > concurrent simulation > 10 extractSymbols in parallel (Promise.all)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/concurrent-simulation.bench.jsx > concurrent simulation > 10 compressSource in parallel",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/concurrent-simulation.bench.jsx > concurrent simulation > 10 generateDiff in parallel",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/concurrent-simulation.bench.jsx > concurrent simulation > 50 parseActions in parallel",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/concurrent-simulation.bench.jsx > concurrent simulation > mixed workload — 5 ops all types concurrently",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractimports-stress-edge-cases.bench.jsx > extractImports — stress & edge cases > 50 imports",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractimports-stress-edge-cases.bench.jsx > extractImports — stress & edge cases > unicode import paths",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractimports-stress-edge-cases.bench.jsx > extractImports — stress & edge cases > empty string",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractimports-stress-edge-cases.bench.jsx > extractImports — stress & edge cases > malformed import (no from)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractimports.bench.jsx > extractImports > small file — 1 import",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractimports.bench.jsx > extractImports > realistic component — 3 imports",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractimports.bench.jsx > extractImports > no imports",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractsymbols-stress-edge-cases.bench.jsx > extractSymbols — stress & edge cases > 5000 line file",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractsymbols-stress-edge-cases.bench.jsx > extractSymbols — stress & edge cases > unicode source",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractsymbols-stress-edge-cases.bench.jsx > extractSymbols — stress & edge cases > deeply nested (50 levels)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractsymbols-stress-edge-cases.bench.jsx > extractSymbols — stress & edge cases > 200 unique symbols",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractsymbols-stress-edge-cases.bench.jsx > extractSymbols — stress & edge cases > empty string",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractsymbols.bench.jsx > extractSymbols > small file (4 lines)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractsymbols.bench.jsx > extractSymbols > realistic component (~50 lines)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractsymbols.bench.jsx > extractSymbols > large file (10 components, ~500 lines)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/extractsymbols.bench.jsx > extractSymbols > non-code file (early return)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/generatediff-myers.bench.jsx > generateDiff (Myers) > small diff (4 lines)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/generatediff-myers.bench.jsx > generateDiff (Myers) > large diff (500 lines, many changes)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/generatediff-myers.bench.jsx > generateDiff (Myers) > identical (no diff)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/generatediff-stress-worst-case.bench.jsx > generateDiff — stress & worst case > 5000 lines identical (no diff — best case)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/generatediff-stress-worst-case.bench.jsx > generateDiff — stress & worst case > 5000 lines all changed (worst case Myers)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/generatediff-stress-worst-case.bench.jsx > generateDiff — stress & worst case > unicode diff",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/generatediff-stress-worst-case.bench.jsx > generateDiff — stress & worst case > empty → 500 lines (insert everything)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/generatediff-stress-worst-case.bench.jsx > generateDiff — stress & worst case > 500 lines → empty (delete everything)",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/getlangext-edge-cases.bench.jsx > getLangExt — edge cases > null input",
+            "value": 11900964.333837412,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/getlangext-edge-cases.bench.jsx > getLangExt — edge cases > undefined input",
+            "value": 11035689.293676903,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/getlangext-edge-cases.bench.jsx > getLangExt — edge cases > no extension",
+            "value": 4071245.5440168045,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/getlangext-edge-cases.bench.jsx > getLangExt — edge cases > deeply nested path",
+            "value": 6474057.404376225,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/getlangext-edge-cases.bench.jsx > getLangExt — edge cases > 500 mixed files (stress)",
+            "value": 6624.6853179480495,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/getlangext.bench.jsx > getLangExt > single call — jsx",
+            "value": 7092526.964500776,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/getlangext.bench.jsx > getLangExt > 10 mixed extensions",
+            "value": 968484.7603414548,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/isemmetlang.bench.jsx > isEmmetLang > single call — jsx",
+            "value": 6951016.4846818885,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/isemmetlang.bench.jsx > isEmmetLang > 10 mixed",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/istslang.bench.jsx > isTsLang > single call — ts",
+            "value": 6141077.349034678,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/istslang.bench.jsx > isTsLang > 10 mixed",
+            "value": 0,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/multi-tab-array-ops.bench.jsx > multi-tab array ops > open 1 tab (Array spread)",
+            "value": 10520399.831672344,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/multi-tab-array-ops.bench.jsx > multi-tab array ops > close middle tab from 10",
+            "value": 897840.9710739593,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/multi-tab-array-ops.bench.jsx > multi-tab array ops > find active tab from 20",
+            "value": 476430.97376738186,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/multi-tab-array-ops.bench.jsx > multi-tab array ops > open 50 tabs sequentially",
+            "value": 240129.51926074282,
+            "unit": "ops/sec"
+          },
+          {
+            "name": "test/bench/multi-tab-stress.bench.jsx > multi-tab — stress > open 200 tabs sequentially",
+            "value": 23502.94904213088,
             "unit": "ops/sec"
           },
           {
