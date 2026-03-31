@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { loadRuntimeKeys } from '../../../src/runtimeKeys/index.js';
 import { KeyLoadError } from '../../../src/runtimeKeys/errors.js';
 
-const mockHashValue = 'mock-hash-1234567890';
-
-// Mock Preferences
-const mockGet = vi.fn();
-const mockSet = vi.fn();
+// Use vi.hoisted to ensure these are available inside vi.mock
+const { mockGet, mockSet, mockDigest } = vi.hoisted(() => ({
+  mockGet: vi.fn(),
+  mockSet: vi.fn(),
+  mockDigest: vi.fn(),
+}));
 
 vi.mock('@capacitor/preferences', () => ({
   Preferences: {
@@ -15,13 +16,14 @@ vi.mock('@capacitor/preferences', () => ({
   },
 }));
 
-// Mock crypto subtle for hash verification
-const mockDigest = vi.fn();
-globalThis.crypto = {
+// Use vi.stubGlobal for crypto
+vi.stubGlobal('crypto', {
   subtle: {
     digest: mockDigest,
   },
-};
+});
+
+const mockHashValue = 'mock-hash-1234567890';
 
 describe('runtimeKeys — loadRuntimeKeys', () => {
   beforeEach(() => {
