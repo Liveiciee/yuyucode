@@ -11,6 +11,8 @@ import { getLang, buildTheme, isTsLang } from './editorUtils.js';
 import { makeBlameGutter, fetchBlame } from './blame.js';
 import { buildOptionalExtensions } from './optionalExtensions.js';
 import { getTsExtensions } from './tsExtensions.js';
+// Import fungsi WebSocket terpusat
+import { getWebSocket } from '../../api/websocket.js';
 
 const Minimap = lazy(() => import("./minimap.jsx"));
 const Breadcrumb = lazy(() => import("./breadcrumb.jsx"));
@@ -25,7 +27,8 @@ export const FileEditor = forwardRef(function FileEditor(
   const langComp       = useRef(new Compartment());
   const optsComp       = useRef(new Compartment());
   const blameComp      = useRef(new Compartment());
-  const collabWsRef    = useRef(null);
+  // Kita tidak lagi membuat instance baru, hanya menyimpan referensi listener jika perlu
+  const collabWsRef    = useRef(null); 
   const prevPathRef    = useRef(null);
   const savedStatesRef = useRef(new Map());
 
@@ -142,26 +145,61 @@ export const FileEditor = forwardRef(function FileEditor(
     return () => { cancelled = true; };
   }, [editorConfig?.tsLsp, tab?.path]);
 
-  // Collab WS
+  // Collab WS - MODIFIED: Menggunakan shared WebSocket
   useEffect(() => {
     if (!editorConfig?.collab || !editorConfig?.collabRoom) {
-      if (collabWsRef.current) { collabWsRef.current.close(); collabWsRef.current = null; }
+      // Jika fitur collab mati, kita tidak perlu melakukan apa-apa khusus pada shared WS
+      // karena listener spesifik akan di-cleanup di return function.
+      collabWsRef.current = null;
       return;
     }
-    const ws = new WebSocket('ws://127.0.0.1:8766');
+
+    // Ambil instance WebSocket global
+    const ws = getWebSocket();
+    
+    if (!ws) {
+      console.warn('FileEditor: Shared WebSocket not initialized yet.');
+      return;
+    }
+
     collabWsRef.current = ws;
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'collab_join', room: editorConfig.collabRoom, file: tab?.path }));
-    };
-    ws.onmessage = e => {
+
+    // Handler pesan khusus untuk kolaborasi di file ini
+    const handleMessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
-        if (msg.type !== 'collab_updates' || !viewRef.current) return;
-        // TODO: implement receiveUpdates
+        // Filter hanya pesan collab_updates untuk room/file ini
+        if (msg.type !== 'collab_updates' || msg.room !== editorConfig.collabRoom || !viewRef.current) return;
+        
+        // TODO: Implement receiveUpdates logic di sini
+        // Contoh: applyChanges(viewRef.current, msg.changes);
+        console.log('Collab update received:', msg);
       } catch (_) {}
     };
-    ws.onclose = () => { collabWsRef.current = null; };
-    return () => { ws.close(); collabWsRef.current = null; };
+
+    // Daftarkan listener
+    ws.addEventListener('message', handleMessage);
+
+    // Kirim join event saat mount
+    ws.send(JSON.stringify({ 
+      type: 'collab_join', 
+      room: editorConfig.collabRoom, 
+      file: tab?.path 
+    }));
+
+    // Cleanup: Hapus listener saat unmount atau ganti file
+    return () => {
+      ws.removeEventListener('message', handleMessage);
+      // Opsional: Kirim leave event
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ 
+          type: 'collab_leave', 
+          room: editorConfig.collabRoom, 
+          file: tab?.path 
+        }));
+      }
+      collabWsRef.current = null;
+    };
   }, [editorConfig?.collab, editorConfig?.collabRoom, tab?.path]);
 
   // Tab swap
