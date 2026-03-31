@@ -11,6 +11,10 @@ import {
   compressSource,
   extractImports,
   computeSalience,
+  SMALL_CODE,
+  LARGE_CODE,
+  REALISTIC_COMPONENT,
+  LARGE_COMPONENT,
 } from './_helpers.jsx';
 
 // Fixtures (keep them defined per file to avoid cross-contamination)
