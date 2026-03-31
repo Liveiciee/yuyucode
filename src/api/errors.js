@@ -41,6 +41,15 @@ export class ValidationError extends AIError {
   }
 }
 
+export class KeyStorageError extends ValidationError {
+  constructor(field, message, code = 'VALIDATION_ERROR') {
+    super(field, message);
+    this.name = 'KeyStorageError';
+    this.code = code;
+    this.field = field;
+  }
+}
+
 export class CircuitBreakerOpenError extends AIError {
   constructor(provider) {
     super(`Circuit breaker is open for ${provider}`, 'CIRCUIT_OPEN', { provider });
@@ -50,7 +59,7 @@ export class CircuitBreakerOpenError extends AIError {
 
 export class TimeoutError extends AIError {
   constructor(provider, timeoutMs) {
-    super(`${provider} request timeout after ${timeoutMs}ms`, 'TIMEOUT', { provider, timeoutMs });
+    super(`${provider} request timed out after ${timeoutMs}ms`, 'TIMEOUT', { provider, timeoutMs });
     this.provider = provider;
     this.timeoutMs = timeoutMs;
   }
