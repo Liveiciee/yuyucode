@@ -16,15 +16,14 @@ vi.mock('@capacitor/preferences', () => ({
 
 // Mock crypto subtle for hash verification
 const mockDigest = vi.fn();
-vi.stubGlobal("crypto", {
+vi.stubGlobal('crypto', {
   subtle: {
     digest: mockDigest,
   },
-};
+});
 
 // Helper untuk membuat KeyStore instance baru
 const createFreshStore = async () => {
-  // Import actual module dengan config override
   const { KeyStore } = await import('../../../src/runtimeKeys/keystore.js');
   const store = new KeyStore();
   return store;
@@ -35,8 +34,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
     vi.clearAllMocks();
     mockGet.mockReset();
     mockSet.mockReset();
-    
-    // Default mock for crypto subtle digest
+
     mockDigest.mockImplementation(async (algorithm, data) => {
       const input = new TextDecoder().decode(data);
       if (input.includes('csk-valid')) return new TextEncoder().encode(mockHashValue).buffer;
@@ -45,8 +43,7 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
       if (input.includes('gsk-short')) return new TextEncoder().encode(mockHashValue).buffer;
       return new TextEncoder().encode(mockHashValue).buffer;
     });
-    
-    // Default mock untuk Preferences.get
+
     mockGet.mockResolvedValue({ value: null });
   });
 
@@ -57,30 +54,25 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
   it('saves valid keys, trims, updates state', async () => {
     const store = await createFreshStore();
     const now = Date.now();
-    
-    // Mock get untuk load existing keys
-    mockGet.mockResolvedValueOnce({ value: null }); // no existing keys
-    
-    // Mock set untuk save
+
+    mockGet.mockResolvedValueOnce({ value: null });
     mockSet.mockResolvedValue(undefined);
-    
+
     await store.saveRuntimeKeys({
       csk: '  csk-valid-long-key-1234567890  ',
       gsk: '  gsk-valid-long-key-1234567890  ',
     });
-    
-    // Verify Preferences.set dipanggil
+
     expect(mockSet).toHaveBeenCalledTimes(1);
     const savedData = JSON.parse(mockSet.mock.calls[0][0].value);
-    
+
     expect(savedData.csk.key).toBe('csk-valid-long-key-1234567890');
     expect(savedData.gsk.key).toBe('gsk-valid-long-key-1234567890');
     expect(savedData.csk.hash).toBeDefined();
     expect(savedData.gsk.hash).toBeDefined();
     expect(savedData.csk.expiresAt).toBeGreaterThan(now);
     expect(savedData.gsk.expiresAt).toBeGreaterThan(now);
-    
-    // Verify state updated
+
     const state = store.getState();
     expect(state.csk).toBe('csk-valid-long-key-1234567890');
     expect(state.gsk).toBe('gsk-valid-long-key-1234567890');
@@ -88,17 +80,16 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
   it('treats null/undefined/empty as skip', async () => {
     const store = await createFreshStore();
-    
+
     mockGet.mockResolvedValueOnce({ value: null });
     mockSet.mockResolvedValue(undefined);
-    
+
     await store.saveRuntimeKeys({
       csk: null,
       gsk: undefined,
       other: '',
     });
-    
-    // Should still call set even with empty data
+
     expect(mockSet).toHaveBeenCalledTimes(1);
     const savedData = JSON.parse(mockSet.mock.calls[0][0].value);
     expect(savedData.csk).toBeUndefined();
@@ -107,67 +98,44 @@ describe('runtimeKeys — saveRuntimeKeys & validation', () => {
 
   it('throws KeyValidationError for short key', async () => {
     const store = await createFreshStore();
-    
+
     mockGet.mockResolvedValueOnce({ value: null });
-    
-    await expect(store.saveRuntimeKeys({
-      csk: 'short',
-    })).rejects.toThrow(KeyValidationError);
-    
-    await expect(store.saveRuntimeKeys({
-      csk: 'short',
-    })).rejects.toThrow(/minimal 20 karakter/);
-    
-    // Should not call Preferences.set on validation error
+
+    await expect(store.saveRuntimeKeys({ csk: 'short' })).rejects.toThrow(KeyValidationError);
+    await expect(store.saveRuntimeKeys({ csk: 'short' })).rejects.toThrow(/minimal 20 karakter/);
     expect(mockSet).not.toHaveBeenCalled();
   });
 
   it('throws KeyValidationError for non-string key', async () => {
     const store = await createFreshStore();
-    
+
     mockGet.mockResolvedValueOnce({ value: null });
-    
-    await expect(store.saveRuntimeKeys({
-      csk: 12345,
-    })).rejects.toThrow(KeyValidationError);
-    
-    await expect(store.saveRuntimeKeys({
-      csk: 12345,
-    })).rejects.toThrow(/harus berupa string/);
-    
+
+    await expect(store.saveRuntimeKeys({ csk: 12345 })).rejects.toThrow(KeyValidationError);
+    await expect(store.saveRuntimeKeys({ csk: 12345 })).rejects.toThrow(/harus berupa string/);
     expect(mockSet).not.toHaveBeenCalled();
   });
 
   it('emits console.warn for sk- prefix', async () => {
     const store = await createFreshStore();
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    
+
     mockGet.mockResolvedValueOnce({ value: null });
     mockSet.mockResolvedValue(undefined);
-    
-    await store.saveRuntimeKeys({
-      csk: 'sk-valid-long-key-1234567890',
-    });
-    
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('sk- prefix is deprecated')
-    );
-    
+
+    await store.saveRuntimeKeys({ csk: 'sk-valid-long-key-1234567890' });
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('sk- prefix is deprecated'));
     consoleWarnSpy.mockRestore();
   });
 
   it('throws KeySaveError if Preferences.set fails', async () => {
     const store = await createFreshStore();
-    
+
     mockGet.mockResolvedValueOnce({ value: null });
     mockSet.mockRejectedValue(new Error('Storage full'));
-    
-    await expect(store.saveRuntimeKeys({
-      csk: 'csk-valid-long-key-1234567890',
-    })).rejects.toThrow(KeySaveError);
-    
-    await expect(store.saveRuntimeKeys({
-      csk: 'csk-valid-long-key-1234567890',
-    })).rejects.toThrow(/gagal menyimpan runtime keys/);
+
+    await expect(store.saveRuntimeKeys({ csk: 'csk-valid-long-key-1234567890' })).rejects.toThrow(KeySaveError);
+    await expect(store.saveRuntimeKeys({ csk: 'csk-valid-long-key-1234567890' })).rejects.toThrow(/gagal menyimpan runtime keys/);
   });
 });

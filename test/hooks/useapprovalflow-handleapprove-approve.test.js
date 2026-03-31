@@ -49,11 +49,11 @@ beforeEach(async () => {
   executeAction.mockResolvedValue({ ok: true, data: 'written' });
   backupFiles.mockResolvedValue([]);
   verifySyntaxBatch.mockResolvedValue(undefined);
-  const { parsePlanSteps } = await import('../features.js');
+  const { parsePlanSteps } = await import('../../src/features.js');
   parsePlanSteps.mockReturnValue([]);
 });
 
-// ── handleApprove — reject ────────────────────────────────────────────────────
+// ── handleApprove — approve ────────────────────────────────────────────────────
 
 describe('useApprovalFlow — handleApprove approve', () => {
   it('backs up files, writes, and updates messages', async () => {

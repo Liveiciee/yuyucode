@@ -17,19 +17,18 @@ vi.mock('@capacitor/preferences', () => ({
 
 // Mock crypto subtle for hash verification
 const mockDigest = vi.fn();
-vi.stubGlobal("crypto", {
+vi.stubGlobal('crypto', {
   subtle: {
     digest: mockDigest,
   },
-};
+});
 
 describe('runtimeKeys — loadRuntimeKeys', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGet.mockReset();
     mockSet.mockReset();
-    
-    // Default mock for crypto subtle digest
+
     mockDigest.mockImplementation(async (algorithm, data) => {
       const input = new TextDecoder().decode(data);
       if (input.includes('csk-valid-long-key')) return new TextEncoder().encode(mockHashValue).buffer;
