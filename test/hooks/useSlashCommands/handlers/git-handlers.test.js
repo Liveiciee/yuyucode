@@ -9,28 +9,28 @@ vi.mock('@capacitor/preferences', () => ({
   },
 }));
 
-vi.mock('../../../api.js', () => ({
+vi.mock('../../../../src/api.js', () => ({
   callServer: vi.fn(),
 }));
 
-vi.mock('../../../constants.js', () => ({
+vi.mock('../../../../src/constants.js', () => ({
   MODELS: [
     { id: 'gpt-4', label: 'GPT-4' },
     { id: 'claude-3', label: 'Claude 3' },
   ],
 }));
 
-vi.mock('../helpers/withLoading.js', () => ({
+vi.mock('../../../../src/hooks/useSlashCommands/helpers/withLoading.js', () => ({
   withLoading: vi.fn(),
 }));
 
-vi.mock('../helpers/simpleResponse.js', () => ({
+vi.mock('../../../../src/hooks/useSlashCommands/helpers/simpleResponse.js', () => ({
   simpleResponse: vi.fn(),
 }));
 
-import { simpleResponse } from '../helpers/simpleResponse.js';
-import { callServer } from '../../../api.js';
-import { withLoading } from '../helpers/withLoading.js';
+import { simpleResponse } from '../../../../src/hooks/useSlashCommands/helpers/simpleResponse.js';
+import { callServer } from '../../../../src/api.js';
+import { withLoading } from '../../../../src/hooks/useSlashCommands/helpers/withLoading.js';
 
 
 describe('git handlers', () => {
@@ -221,7 +221,8 @@ describe('git handlers', () => {
   // ─── handleHistory ─────────────────────────────────────────────
 
   describe('handleHistory', () => {
-    it('shows message when no file selected', () => {                                          handleHistory({ selectedFile: null, setShowFileHistory: mockSetShowFileHistory, setMessages: mockSetMessages });
+    it('shows message when no file selected', () => {
+      handleHistory({ selectedFile: null, setShowFileHistory: mockSetShowFileHistory, setMessages: mockSetMessages });
       expect(simpleResponse).toHaveBeenCalledWith(mockSetMessages, expect.stringContaining('Buka file dulu'));
     });
 
