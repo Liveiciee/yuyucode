@@ -9,15 +9,15 @@ vi.mock('@capacitor/preferences', () => ({
   },
 }));
 
-vi.mock('../../../api.js', () => ({ callServer: vi.fn() }));
-vi.mock('../helpers/withLoading.js', () => ({ withLoading: vi.fn() }));
-vi.mock('../helpers/simpleResponse.js', () => ({ simpleResponse: vi.fn() }));
-vi.mock('../helpers/processBatchFile.js', () => ({ processBatchFile: vi.fn() }));
+vi.mock('../../../../src/api.js', () => ({ callServer: vi.fn() }));
+vi.mock('../../../../src/hooks/useSlashCommands/helpers/withLoading.js', () => ({ withLoading: vi.fn() }));
+vi.mock('../../../../src/hooks/useSlashCommands/helpers/simpleResponse.js', () => ({ simpleResponse: vi.fn() }));
+vi.mock('../../../../src/hooks/useSlashCommands/helpers/processBatchFile.js', () => ({ processBatchFile: vi.fn() }));
 
-import { simpleResponse } from '../helpers/simpleResponse.js';
-import { callServer } from '../../../api.js';
-import { withLoading } from '../helpers/withLoading.js';
-import { processBatchFile } from '../helpers/processBatchFile.js';
+import { simpleResponse } from '../../../../src/hooks/useSlashCommands/helpers/simpleResponse.js';
+import { callServer } from '../../../../src/api.js';
+import { withLoading } from '../../../../src/hooks/useSlashCommands/helpers/withLoading.js';
+import { processBatchFile } from '../../../../src/hooks/useSlashCommands/helpers/processBatchFile.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -80,14 +80,14 @@ describe('handleBatch', () => {
     handleBatch(defaultArgs({ parts: ['/batch'] }));
     expect(simpleResponse).toHaveBeenCalledWith(
       expect.any(Function),
-      expect.stringContaining('Contoh')                                                      
+      expect.stringContaining('Contoh')
     );
   });
 
   it('does NOT call withLoading when no command', () => {
     handleBatch(defaultArgs({ parts: ['/batch'] }));
     expect(withLoading).not.toHaveBeenCalled();
-  });                                                                                    
+  });
   it('does NOT call callServer when no command', () => {
     handleBatch(defaultArgs({ parts: ['/batch'] }));
     expect(callServer).not.toHaveBeenCalled();
@@ -365,11 +365,13 @@ describe('handleBatch', () => {
       .mockResolvedValueOnce([{ path: '/s/b.ts', content: '' }]);
     await handleBatch(defaultArgs());
     expect(simpleResponse).toHaveBeenCalledWith(
-      expect.any(Function),                                                                    expect.stringContaining('3 perubahan')
+      expect.any(Function),
+      expect.stringContaining('3 perubahan')
     );
   });
 
-  it('counts unique files by path in summary', async () => {                                 callServer.mockResolvedValue({ ok: true, data: [makeFile('a.js')] });
+  it('counts unique files by path in summary', async () => {
+    callServer.mockResolvedValue({ ok: true, data: [makeFile('a.js')] });
     processBatchFile.mockResolvedValue([
       { path: '/src/a.js', content: 'v1' },
       { path: '/src/a.js', content: 'v2' },
