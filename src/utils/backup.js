@@ -1,5 +1,5 @@
 // src/utils/backup.js
-import { callServer } from '../api.js';
+import { callServer } from '../api/server.js';
 import { resolvePath } from './path.js';
 
 export async function backupFiles(targets, folder) {
