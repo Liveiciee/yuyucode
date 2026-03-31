@@ -11,6 +11,10 @@ import {
   compressSource,
   extractImports,
   computeSalience,
+  ACTION_NONE,
+  ACTION_ONE,
+  ACTION_FIVE,
+  ACTION_MIXED,
 } from './_helpers.jsx';
 
 // Fixtures (keep them defined per file to avoid cross-contamination)
