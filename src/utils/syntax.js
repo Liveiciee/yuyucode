@@ -1,5 +1,5 @@
 // src/utils/syntax.js
-import { callServer } from '../api/server.js';
+import { callServer } from '../api/callServer.js';
 import { resolvePath } from './path.js';
 
 export function getSyntaxCmd(ext, absPath) {

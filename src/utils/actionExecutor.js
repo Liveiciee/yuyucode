@@ -1,5 +1,5 @@
 // src/utils/actionExecutor.js
-import { callServer } from '../api/server.js';
+import { callServer } from '../api/callServer.js';
 import { resolvePath } from './path.js';
 
 const ACTION_HANDLERS = {
