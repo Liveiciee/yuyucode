@@ -11,6 +11,7 @@ import {
   compressSource,
   extractImports,
   computeSalience,
+  SMALL_CODE,
 } from './_helpers.jsx';
 
 // Fixtures (keep them defined per file to avoid cross-contamination)
