@@ -40,7 +40,7 @@ export function useProjectStore() {
 
   // ── Permissions / Hooks / Plugins ──
   const [permissions, setPermissionsRaw] = useState(DEFAULT_PERMISSIONS);
-  const [hooks, setHooksRaw]           = useState({ preWrite: [], postWrite: [], postPush: [] });
+  const [hooks, setHooksRaw]           = useState({ preToolCall: [], postToolCall: [], preWrite: [], postWrite: [], postPush: [] });
   const [activePlugins, setActivePluginsRaw] = useState({});
 
   // ── GitHub ──

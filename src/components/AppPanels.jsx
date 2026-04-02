@@ -1,5 +1,5 @@
 // ── AppPanels ─────────────────────────────────────────────────────────────────
-import React, { Activity } from 'react';
+import React, { Fragment } from 'react';
 import { Trash2, Brain, MapPin, Plus, Zap, X } from 'lucide-react';
 import { loadSessions, getBgAgents, mergeBackgroundAgent, abortBgAgent } from '../features.js';
 import { callServer } from '../api.js';
@@ -147,96 +147,78 @@ export function AppPanels({
         </div>
       )}
 
-      {/* Activity-wrapped panels */}
-      <Activity mode={ui.showMCP?'visible':'hidden'}>
-        {ui.showMCP&&(<McpPanel T={T} mcpTools={project.mcpTools} folder={project.folder}
-          onResult={async(tool,act)=>{const r=await callServer({type:'mcp',tool,action:act,params:{path:project.folder}});chat.setMessages(m=>[...m,{role:'assistant',content:`🔌 ${tool}/${act}:\n\`\`\`\n${(r.data||'').slice(0,1000)}\n\`\`\``,actions:[]}]);ui.setShowMCP(false);}}
-          onClose={()=>ui.setShowMCP(false)}/>)}
-      </Activity>
+      {/* Panels */}
+      {ui.showMCP&&(<McpPanel T={T} mcpTools={project.mcpTools} folder={project.folder}
+        onResult={async(tool,act)=>{const r=await callServer({type:'mcp',tool,action:act,params:{path:project.folder}});chat.setMessages(m=>[...m,{role:'assistant',content:`🔌 ${tool}/${act}:\n\`\`\`\n${(r.data||'').slice(0,1000)}\n\`\`\``,actions:[]}]);ui.setShowMCP(false);}}
+        onClose={()=>ui.setShowMCP(false)}/>)}
 
-      <Activity mode={ui.showGitHub?'visible':'hidden'}>
-        {ui.showGitHub&&(<GitHubPanel T={T} githubRepo={project.githubRepo} githubToken={project.githubToken} githubData={project.githubData}
-          onRepoChange={v=>project.setGithubRepo(v)} onTokenChange={v=>project.setGithubToken(v)}
-          onFetch={fetchGitHub}
-          onAskYuyu={item=>{chat.setMessages(m=>[...m,{role:'user',content:'Bantu fix issue: #'+item.number+' '+item.title+'\n\n'+item.body?.slice(0,300)}]);ui.setShowGitHub(false);}}
-          onClose={()=>ui.setShowGitHub(false)}/>)}
-      </Activity>
+      {ui.showGitHub&&(<GitHubPanel T={T} githubRepo={project.githubRepo} githubToken={project.githubToken} githubData={project.githubData}
+        onRepoChange={v=>project.setGithubRepo(v)} onTokenChange={v=>project.setGithubToken(v)}
+        onFetch={fetchGitHub}
+        onAskYuyu={item=>{chat.setMessages(m=>[...m,{role:'user',content:'Bantu fix issue: #'+item.number+' '+item.title+'\n\n'+item.body?.slice(0,300)}]);ui.setShowGitHub(false);}}
+        onClose={()=>ui.setShowGitHub(false)}/>)}
 
-      <Activity mode={ui.showSessions?'visible':'hidden'}>
-        {ui.showSessions&&(<SessionsPanel T={T} sessions={ui.sessionList}
-          onRestore={s=>{chat.setMessages(s.messages||[]);project.setFolder(s.folder||'');project.setFolderInput(s.folder||'');ui.setShowSessions(false);chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Sesi **'+s.name+'** dipulihkan.',actions:[]}]);}}
-          onClose={()=>ui.setShowSessions(false)}/>)}
-      </Activity>
+      {ui.showSessions&&(<SessionsPanel T={T} sessions={ui.sessionList}
+        onRestore={s=>{chat.setMessages(s.messages||[]);project.setFolder(s.folder||'');project.setFolderInput(s.folder||'');ui.setShowSessions(false);chat.setMessages(m=>[...m,{role:'assistant',content:'✅ Sesi **'+s.name+'** dipulihkan.',actions:[]}]);}}
+        onClose={()=>ui.setShowSessions(false)}/>)}
 
-      <Activity mode={ui.showPermissions?'visible':'hidden'}>
-        {ui.showPermissions&&(<PermissionsPanel T={T} permissions={project.permissions} accentColor={T.accent}
-          onToggle={tool=>project.setPermissions({...project.permissions,[tool]:!project.permissions[tool]})}
-          onReset={()=>project.setPermissions({read_file:true,write_file:true,exec:true,list_files:true,search:true,mcp:false,delete_file:false,browse:false})}
-          onClose={()=>ui.setShowPermissions(false)}/>)}
-      </Activity>
+      {ui.showPermissions&&(<PermissionsPanel T={T} permissions={project.permissions} accentColor={T.accent}
+        onToggle={tool=>project.setPermissions({...project.permissions,[tool]:!project.permissions[tool]})}
+        onReset={()=>project.setPermissions({read_file:true,write_file:true,exec:true,list_files:true,search:true,mcp:false,delete_file:false,browse:false})}
+        onClose={()=>ui.setShowPermissions(false)}/>)}
 
-      <Activity mode={ui.showPlugins?'visible':'hidden'}>
-        {ui.showPlugins&&(<PluginsPanel T={T} activePlugins={project.activePlugins} folder={project.folder}
-          onToggle={(p,isActive,folder)=>{
-            const newActive={...project.activePlugins,[p.id]:!isActive};
-            project.setActivePlugins(newActive);
-            project.setHooks(prev=>{
-              const hooksForType=[...(prev[p.hookType]||[])];
-              const idx=hooksForType.findIndex(h=>typeof h==='object'&&h._pluginId===p.id);
-              if(!isActive){if(idx===-1) hooksForType.push({type:'shell',command:p.cmd.replace('{{context}}',folder),_pluginId:p.id});}
-              else{if(idx!==-1) hooksForType.splice(idx,1);}
-              return {...prev,[p.hookType]:hooksForType};
-            });
-            chat.setMessages(m=>[...m,{role:'assistant',content:(isActive?'🔌 Plugin **'+p.name+'** dinonaktifkan.':'✅ Plugin **'+p.name+'** aktif!'),actions:[]}]);
-          }}
-          onClose={()=>ui.setShowPlugins(false)}/>)}
-      </Activity>
+      {ui.showPlugins&&(<PluginsPanel T={T} activePlugins={project.activePlugins} folder={project.folder}
+        onToggle={(p,isActive,folder)=>{
+          const newActive={...project.activePlugins,[p.id]:!isActive};
+          project.setActivePlugins(newActive);
+          project.setHooks(prev=>{
+            const hooksForType=[...(prev[p.hookType]||[])];
+            const idx=hooksForType.findIndex(h=>typeof h==='object'&&h._pluginId===p.id);
+            if(!isActive){if(idx===-1) hooksForType.push({type:'shell',command:p.cmd.replace('{{context}}',folder),_pluginId:p.id});}
+            else{if(idx!==-1) hooksForType.splice(idx,1);}
+            return {...prev,[p.hookType]:hooksForType};
+          });
+          chat.setMessages(m=>[...m,{role:'assistant',content:(isActive?'🔌 Plugin **'+p.name+'** dinonaktifkan.':'✅ Plugin **'+p.name+'** aktif!'),actions:[]}]);
+        }}
+        onClose={()=>ui.setShowPlugins(false)}/>)}
 
-      <Activity mode={ui.showBgAgents?'visible':'hidden'}>
-        {ui.showBgAgents&&(<BgAgentPanel T={T} agents={getBgAgents()}
-          onMerge={async id=>{
-            chat.setLoading(true);
-            const result=await mergeBackgroundAgent(id,project.folder);
-            if(result.hasConflicts){ui.setMergeConflictData(result);ui.setShowMergeConflict(true);}
-            else{chat.setMessages(m=>[...m,{role:'assistant',content:result.ok?'✅ '+result.msg:'❌ '+result.msg,actions:[]}]);}
-            ui.setShowBgAgents(false);chat.setLoading(false);
-          }}
-          onAbort={id=>abortBgAgent(id)}
-          onSpawn={task=>{ui.setShowBgAgents(false);sendMsg('/bg '+task);}}
-          onClose={()=>ui.setShowBgAgents(false)}/>)}
-      </Activity>
+      {ui.showBgAgents&&(<BgAgentPanel T={T} agents={getBgAgents()}
+        onMerge={async id=>{
+          chat.setLoading(true);
+          const result=await mergeBackgroundAgent(id,project.folder);
+          if(result.hasConflicts){ui.setMergeConflictData(result);ui.setShowMergeConflict(true);}
+          else{chat.setMessages(m=>[...m,{role:'assistant',content:result.ok?'✅ '+result.msg:'❌ '+result.msg,actions:[]}]);}
+          ui.setShowBgAgents(false);chat.setLoading(false);
+        }}
+        onAbort={id=>abortBgAgent(id)}
+        onSpawn={task=>{ui.setShowBgAgents(false);sendMsg('/bg '+task);}}
+        onClose={()=>ui.setShowBgAgents(false)}/>)}
 
-      <Activity mode={ui.showSkills?'visible':'hidden'}>
-        {ui.showSkills&&(<SkillsPanel T={T} skills={project.skills}
-          onToggle={name=>project.toggleSkill(name)}
-          onUpload={async(name,text)=>{const r=await project.uploadSkill(name,text);chat.setMessages(m=>[...m,{role:'assistant',content:r.ok?'🧩 Skill **'+name+'** di-upload!':'❌ Upload gagal: '+r.data,actions:[]}]);}}
-          onAdd={async(name,text)=>{const r=await project.uploadSkill(name,text);chat.setMessages(m=>[...m,{role:'assistant',content:r.ok?'🧩 Skill **'+name+'.md** disimpan!':'❌ Gagal: '+r.data,actions:[]}]);}}
-          onRemove={async name=>{const r=await project.removeSkill(name);if(r.ok) chat.setMessages(m=>[...m,{role:'assistant',content:'🗑 Skill **'+name+'** dihapus.',actions:[]}]);}}
-          onClose={()=>ui.setShowSkills(false)} accentColor={T.accent}/>)}
-      </Activity>
+      {ui.showSkills&&(<SkillsPanel T={T} skills={project.skills}
+        onToggle={name=>project.toggleSkill(name)}
+        onUpload={async(name,text)=>{const r=await project.uploadSkill(name,text);chat.setMessages(m=>[...m,{role:'assistant',content:r.ok?'🧩 Skill **'+name+'** di-upload!':'❌ Upload gagal: '+r.data,actions:[]}]);}}
+        onAdd={async(name,text)=>{const r=await project.uploadSkill(name,text);chat.setMessages(m=>[...m,{role:'assistant',content:r.ok?'🧩 Skill **'+name+'.md** disimpan!':'❌ Gagal: '+r.data,actions:[]}]);}}
+        onRemove={async name=>{const r=await project.removeSkill(name);if(r.ok) chat.setMessages(m=>[...m,{role:'assistant',content:'🗑 Skill **'+name+'** dihapus.',actions:[]}]);}}
+        onClose={()=>ui.setShowSkills(false)} accentColor={T.accent}/>)}
 
-      <Activity mode={ui.showConfig?'visible':'hidden'}>
-        {ui.showConfig&&(<ConfigPanel T={T} effort={project.effort} fontSize={ui.fontSize} theme={ui.theme}
-          model={project.model} thinkingEnabled={project.thinkingEnabled} models={MODELS}
-          onEffort={v=>project.setEffort(v)} onFontSize={v=>ui.setFontSize(v)} onTheme={v=>ui.setTheme(v)}
-          onModel={v=>project.setModel(v)} onThinking={()=>project.setThinkingEnabled(!project.thinkingEnabled)}
-          vimMode={ui.vimMode} onVimMode={v=>ui.setVimMode(v)}
-          showMinimap={ui.showMinimap} onMinimap={v=>ui.setShowMinimap(v)}
-          ghostTextEnabled={ui.ghostTextEnabled} onGhostText={v=>ui.setGhostTextEnabled(v)}
-          lintEnabled={ui.lintEnabled} onLint={v=>ui.setLintEnabled(v)}
-          tsLspEnabled={ui.tsLspEnabled} onTsLsp={v=>ui.setTsLspEnabled(v)}
-          blameEnabled={ui.blameEnabled} onBlame={v=>ui.setBlameEnabled(v)}
-          multiCursor={ui.multiCursor} onMultiCursor={v=>ui.setMultiCursor(v)}
-          stickyScroll={ui.stickyScroll} onStickyScroll={v=>ui.setStickyScroll(v)}
-          collabEnabled={ui.collabEnabled} onCollab={v=>ui.setCollabEnabled(v)}
-          diffReview={project.diffReview} onDiffReview={v=>project.setDiffReview(v)}
-          onClose={()=>ui.setShowConfig(false)}/>)}
-      </Activity>
+      {ui.showConfig&&(<ConfigPanel T={T} effort={project.effort} fontSize={ui.fontSize} theme={ui.theme}
+        model={project.model} thinkingEnabled={project.thinkingEnabled} models={MODELS}
+        onEffort={v=>project.setEffort(v)} onFontSize={v=>ui.setFontSize(v)} onTheme={v=>ui.setTheme(v)}
+        onModel={v=>project.setModel(v)} onThinking={()=>project.setThinkingEnabled(!project.thinkingEnabled)}
+        vimMode={ui.vimMode} onVimMode={v=>ui.setVimMode(v)}
+        showMinimap={ui.showMinimap} onMinimap={v=>ui.setShowMinimap(v)}
+        ghostTextEnabled={ui.ghostTextEnabled} onGhostText={v=>ui.setGhostTextEnabled(v)}
+        lintEnabled={ui.lintEnabled} onLint={v=>ui.setLintEnabled(v)}
+        tsLspEnabled={ui.tsLspEnabled} onTsLsp={v=>ui.setTsLspEnabled(v)}
+        blameEnabled={ui.blameEnabled} onBlame={v=>ui.setBlameEnabled(v)}
+        multiCursor={ui.multiCursor} onMultiCursor={v=>ui.setMultiCursor(v)}
+        stickyScroll={ui.stickyScroll} onStickyScroll={v=>ui.setStickyScroll(v)}
+        collabEnabled={ui.collabEnabled} onCollab={v=>ui.setCollabEnabled(v)}
+        diffReview={project.diffReview} onDiffReview={v=>project.setDiffReview(v)}
+        onClose={()=>ui.setShowConfig(false)}/>)}
 
-      <Activity mode={ui.showDeploy?'visible':'hidden'}>
-        {ui.showDeploy&&(<DeployPanel T={T} deployLog={ui.deployLog} loading={chat.loading}
-          onDeploy={runDeploy} onClose={()=>ui.setShowDeploy(false)}/>)}
-      </Activity>
+      {ui.showDeploy&&(<DeployPanel T={T} deployLog={ui.deployLog} loading={chat.loading}
+        onDeploy={runDeploy} onClose={()=>ui.setShowDeploy(false)}/>)}
 
       {/* File input (hidden) */}
       <input ref={fileInputRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleImageAttach}/>

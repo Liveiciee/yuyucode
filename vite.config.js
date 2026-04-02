@@ -24,12 +24,6 @@ export default defineConfig({
     cssCodeSplit: true, // Split CSS
     assetsInlineLimit: 4096, // 4kb, files lebih kecil jadi inline
     rollupOptions: {
-    output: {
-      manualChunks: {
-        codemirror: ["@codemirror/state", "@codemirror/view", "@codemirror/commands", "@codemirror/lang-javascript", "@codemirror/lang-html", "@codemirror/lang-css"],
-        vendor: ["react", "react-dom", "lucide-react"]
-      }
-    },
       // @capacitor-community/sqlite is a native Capacitor plugin — only exists
       // at runtime on Android/iOS. Externalize so Rollup doesn't try to bundle it.
       external: ['@capacitor-community/sqlite'],
